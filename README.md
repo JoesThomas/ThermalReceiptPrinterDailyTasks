@@ -1,4 +1,4 @@
-# Thermal Receipt Printer — Complete Modular v7
+# Thermal Receipt Printer — Complete Modular
 
 This is the complete merged project based on `thermal_receipt_modular_v3`, with
 the later calendar/travel, news, finance, savings and savings-growth work folded
