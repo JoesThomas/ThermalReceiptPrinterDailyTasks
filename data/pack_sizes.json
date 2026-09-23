@@ -1,0 +1,40 @@
+{
+  "basmati rice": {
+    "unit": "g",
+    "packs": [
+      500,
+      1000,
+      2000
+    ]
+  },
+  "jasmine rice": {
+    "unit": "g",
+    "packs": [
+      500,
+      1000
+    ]
+  },
+  "spinach": {
+    "unit": "g",
+    "packs": [
+      200,
+      250,
+      500
+    ]
+  },
+  "chicken thighs": {
+    "unit": "g",
+    "packs": [
+      600,
+      750,
+      1000
+    ]
+  },
+  "greek yoghurt": {
+    "unit": "g",
+    "packs": [
+      500,
+      1000
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "weekday_max_minutes": 30,
+  "prep_preference": "smart",
+  "component_preferences": {
+    "mayonnaise": "buy",
+    "shawarma_spice": "make"
+  },
+  "excluded_allergens": [],
+  "vegetarian_only": false,
+  "vegan_only": false,
+  "batch_preferred_weekday": 6,
+  "weekly_food_budget": 60.0,
+  "takeaway_budget": 20.0,
+  "bought_lunch_budget": 12.0,
+  "cooking_style": {
+    "make_from_scratch": "smart",
+    "sunday_max_active_minutes": 60,
+    "prefer_batch_components": true,
+    "prefer_whole_joints": true,
+    "reduce_food_waste": true,
+    "use_freezer_stock": true,
+    "show_why_this_week": false,
+    "show_storage_guidance": true,
+    "show_cooking_guides": true,
+    "equipment_aware_methods": true
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "items": {
+    "olive oil": true,
+    "salt": true,
+    "black pepper": true,
+    "cumin": false,
+    "smoked paprika": false,
+    "rice": false,
+    "mayonnaise": false
+  },
+  "use_soon": []
+}
