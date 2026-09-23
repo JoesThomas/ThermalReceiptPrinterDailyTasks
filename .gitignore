@@ -1,7 +1,201 @@
-data/savings.json
-passwords.json
-regular_payments.txt
-# Python cache files
+# ============================================================
+# THERMAL RECEIPT PRINTER - GITIGNORE
+# ============================================================
+
+
+# ------------------------------------------------------------
+# Python
+# ------------------------------------------------------------
+
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+
+# ------------------------------------------------------------
+# Virtual environments
+# ------------------------------------------------------------
+
+.venv/
+venv/
+env/
+ENV/
+
+
+# ------------------------------------------------------------
+# PyCharm / JetBrains
+# ------------------------------------------------------------
+
+.idea/
+*.iml
+*.ipr
+*.iws
+
+
+# ------------------------------------------------------------
+# macOS
+# ------------------------------------------------------------
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+
+# ------------------------------------------------------------
+# Logs / temporary files
+# ------------------------------------------------------------
+
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+logs/
+tmp/
+temp/
+
+
+# ------------------------------------------------------------
+# PRIVATE CREDENTIALS
+# ------------------------------------------------------------
+
+passwords.json
+data/passwords.json
+
+.env
+.env.*
+!.env.example
+
+credentials.json
+token.json
+
+*.pem
+*.key
+*.p12
+*.pfx
+
+
+# ------------------------------------------------------------
+# PERSONAL FINANCE DATA
+# ------------------------------------------------------------
+
+# Current savings balances
+data/savings.json
+savings.json
+
+# Generated finance history / snapshots
+data/finance_history.json
+
+# Optional local finance cache
+data/finance_cache.json
+finance_cache.json
+
+
+# ------------------------------------------------------------
+# LOCAL / PERSONAL INVENTORY STATE
+# ------------------------------------------------------------
+
+# These change as food is used and are personal runtime state.
+data/pantry.json
+data/freezer.json
+
+# Root-level legacy copies
+pantry.json
+freezer.json
+
+
+# ------------------------------------------------------------
+# PERSONAL / GENERATED HISTORY
+# ------------------------------------------------------------
+
+data/recipe_history.json
+recipe_history.json
+
+
+# ------------------------------------------------------------
+# DELIVERY FALLBACK / EMAIL DATA
+# ------------------------------------------------------------
+
+# May contain information derived from personal emails/deliveries.
+data/delivery_emails.json
+delivery_emails.json
+
+
+# ------------------------------------------------------------
+# LOCAL CALENDAR / GOOGLE DATA
+# ------------------------------------------------------------
+
+*.ics
+
+# OAuth credentials/tokens if Google APIs are added later.
+client_secret*.json
+google_credentials*.json
+google_token*.json
+
+
+# ------------------------------------------------------------
+# GENERATED RECEIPTS / OUTPUT
+# ------------------------------------------------------------
+
+output/
+outputs/
+receipts/
+previews/
+
+*.receipt
+*.escpos
+
+
+# ------------------------------------------------------------
+# KEEP THESE PROJECT DATA FILES
+# ------------------------------------------------------------
+
+# Explicitly document files that belong in source control.
+# These ! rules matter if broader ignore rules are added later.
+
+!data/components.json
+!data/cooking_rules.json
+!data/equipment.json
+!data/finance_categories.json
+!data/meal_overrides.json
+!data/meal_preferences.json
+!data/pack_sizes.json
+!data/recipes.json
+
+!components.json
+!equipment.json
+!meal_overrides.json
+!meal_preferences.json
+!recipes.json
+
+
+# ------------------------------------------------------------
+# TEST / BUILD ARTIFACTS
+# ------------------------------------------------------------
+
+build/
+dist/
+*.egg-info/
+.eggs/
+
+
+# ------------------------------------------------------------
+# Miscellaneous editor files
+# ------------------------------------------------------------
+
+.vscode/
+.history/
+*~
+
+# Personal regular payment data
+regular_payments.txt
