@@ -9,6 +9,11 @@ import json
 import math
 import re
 
+from finance.investments import (
+    load_investments,
+    investment_snapshot,
+)
+
 DEFAULT_CATEGORIES = [
     "FOOD",
     "EATING OUT",
@@ -290,19 +295,35 @@ def debug_spending_transactions(
     print(f"TOTAL: £{total:.2f}")
     print("=" * 60 + "\n")
 
-def _window_totals(transactions: list[dict], rules: dict, start: date, end: date) -> dict[str, float]:
+def _window_totals(
+    transactions: list[dict],
+    rules: dict,
+    start: date,
+    end: date,
+) -> dict[str, float]:
     totals = defaultdict(float)
+
     for tx in transactions:
         d = _parse_date(tx)
+
         if d is None or not (start <= d <= end):
             continue
-        category = categorise_transaction(tx, rules)
-        if not _is_spend(tx, category):
-            continue
-        amount = _amount(tx)
-        if tx.get("is_refund"):
-            amount *= -1
+
+        category = categorise_transaction(
+            tx,
+            rules,
+        )
+
+        amount = float(
+            tx.get(
+                "spend_amount",
+                _amount(tx),
+            )
+            or 0
+        )
+
         totals[category] += amount
+
     return dict(totals)
 
 def category_trends(
@@ -413,10 +434,20 @@ def period_analysis(transactions: list[dict], rules: dict, kind: str, period_dat
         )[:3],
     }
 
-def save_snapshot(history_path: Path, analysis: dict, savings_snapshot: dict | None = None) -> None:
+def save_snapshot(
+    history_path: Path,
+    analysis: dict,
+    savings_snapshot: dict | None = None,
+    investment_snapshot: dict | None = None,
+) -> None:
     if savings_snapshot:
         analysis = dict(analysis)
         analysis["savings"] = savings_snapshot
+    if investment_snapshot:
+        analysis = dict(analysis)
+        analysis["investments"] = (
+            investment_snapshot
+        )
     history_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         history = json.loads(history_path.read_text(encoding="utf-8")) if history_path.exists() else {}

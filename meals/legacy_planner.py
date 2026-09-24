@@ -627,7 +627,8 @@ def print_today_recipe(printer, left, line) -> None:
     meal = get_meal(today)
     if not meal:
         return
-    line(printer, "="); left(printer, "TODAY'S RECIPE"); line(printer, "=")
+    line(printer, "="); left(printer, "TODAY'S RECIPE");
+    line(printer, "-")
     if meal.get("kind") != "recipe":
         left(printer, meal.get("name", "PLANNED MEAL").upper())
         for x in wrap(meal.get("overview", "")): left(printer, x)

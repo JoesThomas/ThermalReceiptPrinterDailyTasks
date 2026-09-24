@@ -1,7 +1,10 @@
 """Live receipt pipeline migrated from the former legacy_main entrypoint.
 This module is invoked by app.py; it is no longer an application entrypoint.
 """
-
+from services.vehicle_status import (
+    get_vehicle_status,
+    expiring_vehicle_items,
+)
 import email
 import imaplib
 import traceback
@@ -9,6 +12,9 @@ from pathlib import Path
 import json
 from html import unescape
 import calendar
+from difflib import SequenceMatcher
+from email.utils import parsedate_to_datetime
+
 """
 VINTAGE 1980s DAILY INFORMATION RECEIPT
 NetumScan 80mm ESC/POS thermal printer
@@ -41,7 +47,7 @@ from email.utils import parsedate_to_datetime
 from zoneinfo import ZoneInfo
 
 import requests
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from icalendar import Calendar
 import recurring_ical_events
 from escpos.printer import Usb
@@ -92,6 +98,16 @@ def load_private_config():
 
 PRIVATE = load_private_config()
 
+vehicles = PRIVATE.get(
+    "vehicles",
+    [],
+)
+
+dvla_api_key = (
+    PRIVATE
+    .get("dvla", {})
+    .get("api_key", "")
+)
 
 def private_value(section, key, default=""):
     section_data = PRIVATE.get(section, {})
@@ -109,9 +125,185 @@ PRINTER_VENDOR_ID = 0x0416
 PRINTER_PRODUCT_ID = 0x5011
 
 LOCAL_NEWS_QUERIES = (
-    "Birmingham",
-    '"Aston Villa"',
-    '"Birmingham City"',
+    (
+        '"Birmingham" '
+        '"West Midlands" '
+        'council OR transport OR development '
+        'OR business OR events'
+    ),
+    (
+        '"Birmingham" '
+        'road OR train OR bus OR tram '
+        'OR disruption OR closure'
+    ),
+    (
+        '"Birmingham city centre" '
+        'development OR planning OR opening '
+        'OR closing OR regeneration'
+    ),
+    (
+        '"Birmingham" '
+        'festival OR event OR weekend'
+    ),
+    (
+        '"Aston Villa" '
+        'confirmed OR signs OR injury '
+        'OR fixture OR statement'
+    ),
+)
+
+# -------------------------------------------------
+# BIRMINGHAM NEWS PRIORITISATION
+# -------------------------------------------------
+
+LOCAL_NEWS_MIN_SCORE = 4
+
+
+BIRMINGHAM_UK_SIGNALS = (
+    "birmingham city council",
+    "west midlands",
+    "west midlands railway",
+    "west midlands police",
+    "transport for west midlands",
+    "birmingham new street",
+    "birmingham airport",
+    "bullring",
+    "grand central",
+    "digbeth",
+    "edgbaston",
+    "selly oak",
+    "stirchley",
+    "bournville",
+    "moseley",
+    "jewellery quarter",
+    "aston",
+    "longbridge",
+    "solihull",
+    "sandwell",
+)
+
+
+NON_UK_BIRMINGHAM_SIGNALS = (
+    "birmingham, al",
+    "birmingham alabama",
+    "alabama",
+    "al.com",
+    "birmingham, mi",
+    "birmingham michigan",
+    "michigan",
+)
+
+
+HIGH_VALUE_LOCAL_SIGNALS = (
+    # Transport
+    "road closed",
+    "road closure",
+    "roadworks",
+    "traffic",
+    "train service",
+    "rail service",
+    "bus service",
+    "tram service",
+    "service suspended",
+    "service disruption",
+    "travel disruption",
+    "new street",
+    "west midlands railway",
+    "transport for west midlands",
+
+    # Council / public services
+    "birmingham city council",
+    "council",
+    "bin collection",
+    "waste collection",
+    "public transport",
+    "nhs",
+    "hospital",
+
+    # Development / business
+    "planning permission",
+    "planning application",
+    "redevelopment",
+    "development",
+    "regeneration",
+    "new homes",
+    "city centre",
+    "opening",
+    "closing",
+    "jobs",
+)
+
+EVENT_SIGNALS = (
+    "festival",
+    "event",
+    "concert",
+    "exhibition",
+    "show",
+    "market",
+    "fair",
+)
+
+LOW_VALUE_NEWS_SIGNALS = (
+    "match report",
+    "player ratings",
+    "predicted line-up",
+    "predicted lineup",
+    "starting xi",
+    "transfer rumour",
+    "transfer rumor",
+    "transfer gossip",
+    "should emery",
+    "could emery",
+    "must emery",
+    "emery should",
+    "emery could",
+    "blunder",
+    "embarrassing",
+    "dream signing",
+    "ideal signing",
+    "urged to",
+    "told to",
+    "pundit says",
+    "what emery said",
+    "what happened",
+    "three wins in three",
+)
+
+
+IMPORTANT_VILLA_SIGNALS = (
+    "signs",
+    "signed",
+    "signing",
+    "joins",
+    "joined",
+    "leaves",
+    "departure",
+    "injury",
+    "injured",
+    "fixture changed",
+    "fixture postponed",
+    "postponed",
+    "manager appointed",
+    "manager sacked",
+    "club statement",
+    "confirmed",
+    "drawn against",
+)
+
+IMMEDIATE_LOCAL_SIGNALS = (
+    "major disruption",
+    "severe disruption",
+    "service suspended",
+    "services suspended",
+    "broken down train",
+    "train cancelled",
+    "trains cancelled",
+    "road closed",
+    "road closure",
+    "emergency closure",
+    "tram suspended",
+    "bus disruption",
+    "flood warning",
 )
 
 # Google Calendar "Secret address in iCal format".
@@ -972,6 +1164,35 @@ def extract_delivery_from_email(
         full_text.lower()
     )
 
+    # -------------------------------------------------
+    # ALREADY DELIVERED
+    # -------------------------------------------------
+    #
+    # A completed delivery must never be returned as an
+    # upcoming delivery, even if the email also contains
+    # phrases such as "delivery today".
+    #
+
+    delivered_patterns = (
+        r"\bhas been delivered\b",
+        r"\bwas delivered\b",
+        r"\bwe(?:'ve| have) delivered\b",
+        r"\bparcel delivered\b",
+        r"\bpackage delivered\b",
+        r"\bdelivered successfully\b",
+        r"\bdelivered to\b",
+        r"\bproof of delivery\b",
+    )
+
+    if any(
+            re.search(
+                pattern,
+                lower_text,
+            )
+            for pattern in delivered_patterns
+    ):
+        return None
+
     today = datetime.now(
         ZoneInfo(
             "Europe/London"
@@ -1027,53 +1248,186 @@ def extract_delivery_from_email(
             break
 
     # -------------------------
-    # TODAY / TOMORROW
+    # DELIVERY DATE
     # -------------------------
 
     delivery_date = None
 
-    today_patterns = (
-        r"\b(?:arriv\w*|deliver\w*|"
-        r"delivery|expected|due)"
-        r".{0,50}\btoday\b",
+    # -------------------------
+    # EXPLICIT WEEKDAY
+    # -------------------------
+    #
+    # Check this first.
+    #
+    # This is particularly important for Amazon emails.
+    # Their progress tracker can contain text such as:
+    #
+    # Ordered
+    # Dispatched
+    # Out for delivery
+    # Delivered
+    #
+    # even though the actual delivery statement says:
+    #
+    # Arriving Saturday
+    #
+    # An explicit arrival weekday therefore takes
+    # precedence over generic delivery-status wording.
+    # -------------------------
 
-        r"\bout\s+for\s+delivery\b",
-
-        r"\bparcel\b.{0,40}\btoday\b",
-
-        r"\bpackage\b.{0,40}\btoday\b",
+    weekday_match = re.search(
+        r"\b(?:arriving|arrives|expected|due)"
+        r"\s+(?:on\s+)?"
+        r"(monday|tuesday|wednesday|thursday|"
+        r"friday|saturday|sunday)\b",
+        lower_text,
+        flags=re.IGNORECASE,
     )
 
-    tomorrow_patterns = (
-        r"\b(?:arriv\w*|deliver\w*|"
-        r"delivery|expected|due)"
-        r".{0,50}\btomorrow\b",
-
-        r"\bparcel\b.{0,40}\btomorrow\b",
-
-        r"\bpackage\b.{0,40}\btomorrow\b",
-    )
-
-    if any(
-        re.search(
-            pattern,
-            lower_text,
+    if weekday_match:
+        weekday_name = (
+            weekday_match
+            .group(1)
+            .lower()
         )
-        for pattern in today_patterns
-    ):
-        delivery_date = today
 
-    elif any(
-        re.search(
-            pattern,
-            lower_text,
+        weekday_numbers = {
+            "monday": 0,
+            "tuesday": 1,
+            "wednesday": 2,
+            "thursday": 3,
+            "friday": 4,
+            "saturday": 5,
+            "sunday": 6,
+        }
+
+        target_weekday = (
+            weekday_numbers[
+                weekday_name
+            ]
         )
-        for pattern in tomorrow_patterns
-    ):
+
+        days_ahead = (
+                             target_weekday
+                             - today.weekday()
+                     ) % 7
+
         delivery_date = (
-            today
-            + timedelta(days=1)
+                today
+                + timedelta(
+            days=days_ahead
         )
+        )
+
+    # -------------------------
+    # TODAY
+    # -------------------------
+
+    if not delivery_date:
+
+        today_patterns = (
+            r"\b(?:arriving|arrives|expected|due)"
+            r"\s+(?:on\s+)?today\b",
+
+            r"\bdelivery\s+(?:is\s+)?"
+            r"(?:expected\s+)?today\b",
+
+            r"\bparcel\b.{0,40}"
+            r"\b(?:arriving|due|expected)\s+today\b",
+
+            r"\bpackage\b.{0,40}"
+            r"\b(?:arriving|due|expected)\s+today\b",
+        )
+
+        if any(
+                re.search(
+                    pattern,
+                    lower_text,
+                    flags=re.IGNORECASE,
+                )
+                for pattern in today_patterns
+        ):
+            delivery_date = today
+
+    # -------------------------
+    # TOMORROW
+    # -------------------------
+
+    if not delivery_date:
+
+        tomorrow_patterns = (
+            r"\b(?:arriving|arrives|expected|due)"
+            r"\s+(?:on\s+)?tomorrow\b",
+
+            r"\bdelivery\s+(?:is\s+)?"
+            r"(?:expected\s+)?tomorrow\b",
+
+            r"\bparcel\b.{0,40}"
+            r"\b(?:arriving|due|expected)\s+tomorrow\b",
+
+            r"\bpackage\b.{0,40}"
+            r"\b(?:arriving|due|expected)\s+tomorrow\b",
+        )
+
+        if any(
+                re.search(
+                    pattern,
+                    lower_text,
+                    flags=re.IGNORECASE,
+                )
+                for pattern in tomorrow_patterns
+        ):
+            delivery_date = (
+                    today
+                    + timedelta(days=1)
+            )
+
+    # -------------------------
+    # WEEKDAY DELIVERY
+    # -------------------------
+
+    if not delivery_date:
+        weekday_match = re.search(
+            r"\b(?:arriv\w*|delivery|expected)"
+            r".{0,20}?\b"
+            r"(monday|tuesday|wednesday|thursday|"
+            r"friday|saturday|sunday)\b",
+            lower_text,
+            flags=re.IGNORECASE,
+        )
+
+        if weekday_match:
+            weekday_name = (
+                weekday_match.group(1).lower()
+            )
+
+            weekday_numbers = {
+                "monday": 0,
+                "tuesday": 1,
+                "wednesday": 2,
+                "thursday": 3,
+                "friday": 4,
+                "saturday": 5,
+                "sunday": 6,
+            }
+
+            target_weekday = (
+                weekday_numbers[
+                    weekday_name
+                ]
+            )
+
+            days_ahead = (
+                                 target_weekday
+                                 - today.weekday()
+                         ) % 7
+
+            delivery_date = (
+                    today
+                    + timedelta(
+                days=days_ahead
+            )
+            )
 
     # -------------------------
     # NUMERIC DATES
@@ -1215,7 +1569,6 @@ def extract_delivery_from_email(
                             )
                         )
                     )
-
                 except ValueError:
                     pass
 
@@ -1328,10 +1681,7 @@ def extract_delivery_from_email(
         "delivery_date": (
             delivery_date
         ),
-        "time_from": time_from,
-        "time_to": time_to,
     }
-
 
 def get_upcoming_deliveries():
     """
@@ -1343,69 +1693,170 @@ def get_upcoming_deliveries():
     """
     email_records = get_gmail_delivery_emails()
 
-    if not email_records and DELIVERY_EMAIL_FILE.exists():
+    # -------------------------------------------------
+    # FALLBACK JSON
+    # -------------------------------------------------
+
+    if (
+        not email_records
+        and DELIVERY_EMAIL_FILE.exists()
+    ):
         try:
             fallback_records = json.loads(
                 DELIVERY_EMAIL_FILE.read_text(
                     encoding="utf-8"
                 )
             )
-            if isinstance(fallback_records, list):
+
+            if isinstance(
+                fallback_records,
+                list,
+            ):
                 email_records = fallback_records
-        except (OSError, json.JSONDecodeError):
+
+        except (
+            OSError,
+            json.JSONDecodeError,
+        ):
             pass
 
     if not email_records:
         return []
 
+    # -------------------------------------------------
+    # DATE WINDOW
+    # -------------------------------------------------
+
     today = datetime.now(
         ZoneInfo("Europe/London")
     ).date()
 
-    latest = today + timedelta(
-        days=DELIVERY_LOOKAHEAD_DAYS
+    latest = (
+        today
+        + timedelta(
+            days=DELIVERY_LOOKAHEAD_DAYS
+        )
     )
 
     deliveries = []
     seen = set()
 
+    # -------------------------------------------------
+    # PROCESS EMAILS
+    # -------------------------------------------------
+
     for record in email_records:
-        if not isinstance(record, dict):
-            continue
 
-        delivery = extract_delivery_from_email(
-            record.get("email_subject", ""),
-            record.get("email_body", ""),
-        )
-
-        subject = record.get(
-            "email_subject",
-            ""
-        )
-
-        body = record.get(
-            "email_body",
-            ""
-        )
-
-        if not _likely_delivery_email(
-                subject,
-                body,
+        if not isinstance(
+            record,
+            dict,
         ):
             continue
 
+        # IMPORTANT:
+        # Define these before trying to use them.
+        subject = (
+            record.get(
+                "email_subject",
+                "",
+            )
+            or ""
+        )
+
+        body = (
+            record.get(
+                "email_body",
+                "",
+            )
+            or ""
+        )
+
+        # -------------------------------------------------
+        # IS THIS ACTUALLY DELIVERY RELATED?
+        # -------------------------------------------------
+
+        if not _likely_delivery_email(
+            subject,
+            body,
+        ):
+            continue
+
+        # -------------------------------------------------
+        # EXTRACT DELIVERY DATE
+        # -------------------------------------------------
+
+        delivery = extract_delivery_from_email(
+            subject,
+            body,
+        )
+
+        # -------------------------------------------------
+        # TEMPORARY EVRI DEBUGGING
+        # -------------------------------------------------
+
+        if "evri" in (
+            subject + " " + body
+        ).lower():
+
+            print(
+                "\n=== EVRI DELIVERY DEBUG ==="
+            )
+
+            print(
+                "SUBJECT:",
+                repr(subject),
+            )
+
+            print(
+                "PARSED:",
+                repr(delivery),
+            )
+
+            if delivery:
+                print(
+                    "PARSED DATE:",
+                    delivery.get(
+                        "delivery_date"
+                    ),
+                )
+
+            print(
+                "TODAY:",
+                today,
+            )
+
+            print(
+                "===========================\n"
+            )
+
+        # -------------------------------------------------
+        # NOTHING EXTRACTED
+        # -------------------------------------------------
+
         if not delivery:
-            # print(
-            #    "Delivery email found but date "
-            #    "could not be extracted:",
-            #    subject,
-            # )
             continue
 
-        delivery_date = delivery["delivery_date"]
+        delivery_date = delivery.get(
+            "delivery_date"
+        )
 
-        if not (today <= delivery_date <= latest):
+        if not delivery_date:
             continue
+
+        # -------------------------------------------------
+        # ONLY TODAY -> LOOKAHEAD WINDOW
+        # -------------------------------------------------
+
+        if not (
+            today
+            <= delivery_date
+            <= latest
+        ):
+            continue
+
+        # -------------------------------------------------
+        # DEDUPLICATE
+        # -------------------------------------------------
 
         key = (
             delivery["event_title"],
@@ -1415,14 +1866,26 @@ def get_upcoming_deliveries():
         if key in seen:
             continue
 
-        seen.add(key)
-        deliveries.append(delivery)
+        seen.add(
+            key
+        )
+
+        deliveries.append(
+            delivery
+        )
+
+    # -------------------------------------------------
+    # EARLIEST FIRST
+    # -------------------------------------------------
 
     deliveries.sort(
-        key=lambda item: item["delivery_date"]
+        key=lambda item:
+        item["delivery_date"]
     )
 
-    return deliveries[:MAX_UPCOMING_DELIVERIES]
+    return deliveries[
+        :MAX_UPCOMING_DELIVERIES
+    ]
 
 
 def _delivery_value(delivery, *keys, default=None):
@@ -1667,8 +2130,6 @@ def print_upcoming_deliveries(printer, deliveries):
             format_delivery_expected(delivery),
         )
 
-    print_line(printer, "=")
-
 
 # ============================================================
 # FINANCE CHECK - LIVE OPEN BANKING DATA
@@ -1835,6 +2296,7 @@ WEATHER_CODES = {
 def weather_description(code):
     return WEATHER_CODES.get(code, "UNKNOWN")
 
+
 def weather_graphic(code):
     if code == 0:
         return [
@@ -1912,6 +2374,10 @@ def get_weather():
             "temperature_2m,"
             "relative_humidity_2m,"
             "wind_speed_10m,"
+            "wind_gusts_10m,"
+            "precipitation_probability,"
+            "precipitation,"
+            "visibility,"
             "weather_code"
         ),
         "daily": (
@@ -1967,6 +2433,10 @@ def get_hourly_weather(
                     "wind_speed_10m"
                 ][i]
             ),
+            "gust": (hourly.get("wind_gusts_10m") or [0] * len(hourly["time"]))[i],
+            "precip_probability": (hourly.get("precipitation_probability") or [0] * len(hourly["time"]))[i],
+            "precipitation": (hourly.get("precipitation") or [0] * len(hourly["time"]))[i],
+            "visibility": (hourly.get("visibility") or [99999] * len(hourly["time"]))[i],
             "code": (
                 hourly[
                     "weather_code"
@@ -2144,38 +2614,23 @@ def printer_safe_text(text):
     }
 
     for original, replacement in replacements.items():
-        text = text.replace(
-            original,
-            replacement,
-        )
+        text = text.replace(original, replacement)
 
-    # Remove ANSI escape sequences.
     text = re.sub(
         r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])",
         "",
         text,
     )
 
-    # Normalise accented characters.
-    text = unicodedata.normalize(
-        "NFKD",
-        text,
-    )
-
+    text = unicodedata.normalize("NFKD", text)
     text = "".join(
-        ch
-        for ch in text
+        ch for ch in text
         if not unicodedata.combining(ch)
     )
 
-    text = (
-        text
-        .replace("\r\n", "\n")
-        .replace("\r", "\n")
-        .replace("\t", "    ")
-    )
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = text.replace("\t", "    ")
 
-    # Allow printable ASCII plus the pound symbol.
     text = "".join(
         ch
         for ch in text
@@ -2216,7 +2671,6 @@ def print_food_shop_check(
     printer.set(bold=True)
     centre(printer, "FOOD SHOP")
     printer.set(bold=False)
-
     print_line(printer, "-")
 
     items = [
@@ -2259,7 +2713,6 @@ def print_shopping_list(printer, shopping_list_text):
     printer.set(bold=True)
     centre(printer, "SHOPPING LIST")
     printer.set(bold=False)
-
     print_line(printer, "-")
 
     items = [
@@ -5996,58 +6449,706 @@ def _compact_news_summary(text, max_words=55):
         if words >= 35: break
     return printer_safe_text(" ".join(out))
 
-def _news_stories(url, number=3, params=None):
-    response = requests.get(url, params=params, timeout=15,
-                            headers={"User-Agent":"Mozilla/5.0 (compatible; ReceiptNews/2.0)"})
+def _normalise_news_text(text):
+    """
+    Normalise news text so near-duplicate stories can be compared.
+    """
+    text = printer_safe_text(text or "").lower()
+
+    text = re.sub(
+        r"[^a-z0-9\s]",
+        " ",
+        text,
+    )
+
+    text = re.sub(
+        r"\s+",
+        " ",
+        text,
+    ).strip()
+
+    text = re.sub(
+        r"^(breaking|live|update|latest)\s+",
+        "",
+        text,
+    )
+
+    return text
+
+
+def _news_text_similarity(first, second):
+    first = _normalise_news_text(first)
+    second = _normalise_news_text(second)
+
+    if not first or not second:
+        return 0.0
+
+    return SequenceMatcher(
+        None,
+        first,
+        second,
+    ).ratio()
+
+
+def _news_summary_is_useful(headline, summary):
+    """
+    Return False when the RSS description is basically
+    just the headline repeated.
+    """
+    if not summary:
+        return False
+
+    headline_normalised = _normalise_news_text(
+        headline
+    )
+
+    summary_normalised = _normalise_news_text(
+        summary
+    )
+
+    if not summary_normalised:
+        return False
+
+    if headline_normalised == summary_normalised:
+        return False
+
+    # Summary contains too little additional information.
+    if len(summary_normalised.split()) < 8:
+        return False
+
+    similarity = SequenceMatcher(
+        None,
+        headline_normalised,
+        summary_normalised,
+    ).ratio()
+
+    if similarity >= 0.80:
+        return False
+
+    return True
+
+
+def _news_items_are_duplicates(first, second):
+    """
+    Detect two headlines describing substantially the
+    same story rather than only exact duplicate titles.
+    """
+    first_title = first.get("headline", "")
+    second_title = second.get("headline", "")
+
+    first_normalised = _normalise_news_text(
+        first_title
+    )
+
+    second_normalised = _normalise_news_text(
+        second_title
+    )
+
+    if not first_normalised or not second_normalised:
+        return False
+
+    if first_normalised == second_normalised:
+        return True
+
+    if _news_text_similarity(
+        first_normalised,
+        second_normalised,
+    ) >= 0.78:
+        return True
+
+    first_words = set(
+        first_normalised.split()
+    )
+
+    second_words = set(
+        second_normalised.split()
+    )
+
+    if not first_words or not second_words:
+        return False
+
+    overlap = (
+        len(first_words & second_words)
+        / min(
+            len(first_words),
+            len(second_words),
+        )
+    )
+
+    return overlap >= 0.75
+
+
+def _deduplicate_news_stories(stories):
+    unique = []
+
+    for story in stories:
+        if any(
+            _news_items_are_duplicates(
+                story,
+                existing,
+            )
+            for existing in unique
+        ):
+            continue
+
+        unique.append(story)
+
+    return unique
+
+def _is_probably_non_uk_birmingham(story):
+    """
+    Reject stories which appear to concern Birmingham
+    in the US rather than Birmingham, UK.
+    """
+    headline = str(
+        story.get("headline", "")
+        or ""
+    )
+
+    summary = str(
+        story.get("summary", "")
+        or ""
+    )
+
+    source = str(
+        story.get("source", "")
+        or ""
+    )
+
+    text = (
+            headline
+            + " "
+            + summary
+            + " "
+            + source
+    ).lower()
+
+    # Explicit foreign Birmingham.
+    if any(
+        signal in text
+        for signal in NON_UK_BIRMINGHAM_SIGNALS
+    ):
+        return True
+
+    # Dollar-denominated local-government stories are
+    # a strong indication that this is not Birmingham UK.
+    #
+    # Only reject this way when there is no convincing
+    # UK-local signal.
+    if "$" in text:
+        has_uk_signal = any(
+            signal in text
+            for signal in BIRMINGHAM_UK_SIGNALS
+        )
+
+        if not has_uk_signal:
+            return True
+
+    return False
+
+def _score_birmingham_story(story):
+    """
+    Score a story according to how useful it is for a
+    daily Birmingham receipt.
+
+    This deliberately favours practical local information
+    over sports commentary and clickbait.
+    """
+    headline = str(
+        story.get("headline", "")
+        or ""
+    )
+
+    summary = str(
+        story.get("summary", "")
+        or ""
+    )
+
+    source = str(
+        story.get("source", "")
+        or ""
+    )
+
+    text = (
+            headline
+            + " "
+            + summary
+            + " "
+            + source
+    ).lower()
+
+    score = 0
+
+    # -------------------------------------------------
+    # WRONG BIRMINGHAM
+    # -------------------------------------------------
+
+    if _is_probably_non_uk_birmingham(
+        story
+    ):
+        return -100
+
+    # -------------------------------------------------
+    # STRONG UK / LOCAL SIGNALS
+    # -------------------------------------------------
+
+    event_story = any(
+        signal in text
+        for signal in EVENT_SIGNALS
+    )
+
+    if event_story:
+        # Events only receive a useful-news boost when
+        # they are actually imminent.
+        if (
+                "today" in text
+                or "tonight" in text
+                or "tomorrow" in text
+                or "this weekend" in text
+        ):
+            score += 2
+        else:
+            score -= 2
+
+    immediate_matches = sum(
+        1
+        for signal in IMMEDIATE_LOCAL_SIGNALS
+        if signal in text
+    )
+
+    score += min(
+        immediate_matches * 5,
+        10,
+    )
+
+    local_matches = sum(
+        1
+        for signal in BIRMINGHAM_UK_SIGNALS
+        if signal in text
+    )
+
+    score += min(
+        local_matches * 2,
+        6,
+    )
+
+    # The story actually names Birmingham.
+    if "birmingham" in text:
+        score += 2
+
+    # -------------------------------------------------
+    # USEFUL LOCAL INFORMATION
+    # -------------------------------------------------
+
+    useful_matches = sum(
+        1
+        for signal in HIGH_VALUE_LOCAL_SIGNALS
+        if signal in text
+    )
+
+    score += min(
+        useful_matches * 2,
+        8,
+    )
+
+    # -------------------------------------------------
+    # LOW-VALUE / CLICKBAIT
+    # -------------------------------------------------
+
+    low_value_matches = sum(
+        1
+        for signal in LOW_VALUE_NEWS_SIGNALS
+        if signal in text
+    )
+
+    score -= (
+        low_value_matches * 4
+    )
+
+    # -------------------------------------------------
+    # SPORT
+    # -------------------------------------------------
+
+    villa_story = (
+        "aston villa" in text
+        or "villa" in headline.lower()
+    )
+
+    birmingham_city_story = (
+        "birmingham city" in text
+        or "blues" in headline.lower()
+    )
+
+    # Routine football shouldn't dominate a general
+    # Birmingham briefing.
+    if villa_story:
+        important_villa = any(
+            signal in text
+            for signal in IMPORTANT_VILLA_SIGNALS
+        )
+
+        if important_villa:
+            score += 2
+        else:
+            score -= 4
+
+    if birmingham_city_story:
+        # Keep genuinely significant Blues news possible,
+        # but heavily down-rank routine match coverage.
+        if (
+            "match report" in text
+            or "player ratings" in text
+            or "preview" in text
+        ):
+            score -= 6
+        else:
+            score -= 2
+
+    # Women's/youth routine match reports are valid news,
+    # but not high-priority general local information.
+    if (
+        "women" in text
+        and "match report" in text
+    ):
+        score -= 4
+
+    return score
+
+def _rank_birmingham_news(stories):
+    ranked = []
+
+    for story in stories:
+        story = dict(story)
+
+        score = _score_birmingham_story(
+            story
+        )
+
+        story["local_score"] = score
+
+        # Don't pad the receipt with weak stories.
+        if score < LOCAL_NEWS_MIN_SCORE:
+            continue
+
+        ranked.append(
+            story
+        )
+
+    # Primarily rank by usefulness.
+    ranked.sort(
+        key=lambda story: (
+            story.get(
+                "local_score",
+                0,
+            ),
+            story.get(
+                "published"
+            )
+            or datetime.min.replace(
+                tzinfo=ZoneInfo(
+                    "Europe/London"
+                )
+            ),
+        ),
+        reverse=True,
+    )
+
+    return ranked
+
+def _news_stories(
+    url,
+    number=3,
+    params=None,
+    max_age_hours=None,
+):
+    response = requests.get(
+        url,
+        params=params,
+        timeout=15,
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 "
+                "(compatible; ReceiptNews/2.0)"
+            )
+        },
+    )
+
     response.raise_for_status()
-    root = ET.fromstring(response.content)
+
+    root = ET.fromstring(
+        response.content
+    )
+
+    now = datetime.now(
+        ZoneInfo("Europe/London")
+    )
+
     stories = []
-    seen = set()
-    for item in root.findall("./channel/item"):
-        title_el, link_el, desc_el = item.find("title"), item.find("link"), item.find("description")
-        if title_el is None or not title_el.text: continue
-        title = printer_safe_text(" ".join(title_el.text.split()))
-        if " - " in title: title = title.rsplit(" - ", 1)[0]
-        signature = tuple(sorted(set(re.findall(r"[a-z]{4,}", title.lower()))))
-        if signature in seen: continue
-        seen.add(signature)
-        desc = desc_el.text if desc_el is not None and desc_el.text else ""
-        summary = _compact_news_summary(desc)
-        stories.append({"headline": title, "summary": summary})
-        if len(stories) >= number: break
+
+    for item in root.findall(
+        "./channel/item"
+    ):
+        title_el = item.find("title")
+        desc_el = item.find("description")
+        date_el = item.find("pubDate")
+
+        if (
+            title_el is None
+            or not title_el.text
+        ):
+            continue
+
+        title = printer_safe_text(
+            " ".join(
+                title_el.text.split()
+            )
+        )
+
+        source = ""
+
+        if " - " in title:
+            title, source = title.rsplit(
+                " - ",
+                1,
+            )
+
+            title = title.strip()
+            source = source.strip()
+
+        # -----------------------------
+        # PUBLICATION AGE
+        # -----------------------------
+
+        published = None
+
+        if (
+            date_el is not None
+            and date_el.text
+        ):
+            try:
+                published = (
+                    parsedate_to_datetime(
+                        date_el.text
+                    )
+                    .astimezone(
+                        ZoneInfo(
+                            "Europe/London"
+                        )
+                    )
+                )
+            except (
+                TypeError,
+                ValueError,
+                OverflowError,
+            ):
+                published = None
+
+        if (
+            max_age_hours is not None
+            and published is not None
+        ):
+            age_hours = (
+                now - published
+            ).total_seconds() / 3600
+
+            if (
+                age_hours < 0
+                or age_hours > max_age_hours
+            ):
+                continue
+
+        # -----------------------------
+        # SUMMARY
+        # -----------------------------
+
+        description = (
+            desc_el.text
+            if (
+                desc_el is not None
+                and desc_el.text
+            )
+            else ""
+        )
+
+        summary = _compact_news_summary(
+            description
+        )
+
+        # Don't print a second copy of the
+        # headline as the article body.
+        if not _news_summary_is_useful(
+            title,
+            summary,
+        ):
+            summary = ""
+
+        stories.append({
+            "headline": title,
+            "summary": summary,
+            "published": published,
+            "source": source,
+        })
+
+        # Fetch a larger candidate pool.
+        if len(stories) >= number:
+            break
+
     return stories
 
 def get_top_news_headlines(number=3):
     return _news_stories(NEWS_RSS_URL, number)
 
-def get_birmingham_news_headlines(number=3):
-    collected = []
-    for query in LOCAL_NEWS_QUERIES:
-        try:
-            collected.extend(_news_stories(
-                LOCAL_NEWS_RSS_URL, number,
-                {"q":query, "hl":"en-GB", "gl":"GB", "ceid":"GB:en"}
-            ))
-        except Exception:
-            continue
-    unique = []
-    keys = set()
-    for story in collected:
-        key = re.sub(r"\W+", " ", story["headline"].lower()).strip()
-        if key not in keys:
-            keys.add(key); unique.append(story)
-        if len(unique) >= number: break
-    return unique
+def get_birmingham_news_headlines(
+    number=5,
+):
+    """
+    Return up to `number` genuinely useful Birmingham
+    stories for the daily receipt.
 
-def _print_news_stories(printer, heading, stories):
+    It is deliberately acceptable to return fewer than
+    `number` stories when the available news is poor.
+    """
+
+    collected = []
+
+    # Fetch far more stories than we ultimately print.
+    # Filtering/ranking happens afterwards.
+    candidates_per_query = 12
+
+    for query in LOCAL_NEWS_QUERIES:
+
+        try:
+            stories = _news_stories(
+                LOCAL_NEWS_RSS_URL,
+                candidates_per_query,
+                {
+                    "q": query,
+                    "hl": "en-GB",
+                    "gl": "GB",
+                    "ceid": "GB:en",
+                },
+
+                # Daily briefing should contain recent
+                # material rather than old search results.
+                max_age_hours=48,
+            )
+
+            collected.extend(
+                stories
+            )
+
+        except Exception as error:
+            print(
+                "Local news query error:",
+                query,
+                repr(error),
+            )
+
+    # -------------------------------------------------
+    # REMOVE DUPLICATE COVERAGE
+    # -------------------------------------------------
+
+    unique = _deduplicate_news_stories(
+        collected
+    )
+
+    # -------------------------------------------------
+    # SCORE FOR ACTUAL USEFULNESS
+    # -------------------------------------------------
+
+    ranked = _rank_birmingham_news(
+        unique
+    )
+
+    # -------------------------------------------------
+    # DEBUG
+    # -------------------------------------------------
+    #
+    # Keep this temporarily. It will make tuning the
+    # scoring system much easier.
+    #
+
+    print(
+        "\n=== BIRMINGHAM NEWS RANKING ==="
+    )
+
+    for story in sorted(
+        unique,
+        key=_score_birmingham_story,
+        reverse=True,
+    )[:20]:
+
+        print(
+            f"{_score_birmingham_story(story):>4} | "
+            f"{story.get('headline', '')}"
+        )
+
+    print(
+        "================================\n"
+    )
+
+    # Crucially: DO NOT fill empty positions with
+    # low-quality stories.
+    return ranked[:number]
+
+def _print_news_stories(
+    printer,
+    heading,
+    stories,
+):
     if not stories:
         return
-    print_line(printer, "=")
-    printer.set(bold=True); left(printer, heading); printer.set(bold=False)
-    for i, story in enumerate(stories[:3], 1):
-        print_wrapped(printer, f"{i}. {story['headline']}", width=40)
-        if story.get("summary"):
-            print_wrapped(printer, story["summary"], width=40)
+
+    print_line(
+        printer,
+        "=",
+    )
+
+    printer.set(
+        bold=True
+    )
+
+    left(
+        printer,
+        heading,
+    )
+
+    printer.set(
+        bold=False
+    )
+
+    for index, story in enumerate(
+        stories[:5],
+        1,
+    ):
+        if index > 1:
+            printer.text("\n")
+
+        headline = story.get(
+            "headline",
+            "",
+        )
+
+        summary = story.get(
+            "summary",
+            "",
+        )
+
+        print_wrapped(
+            printer,
+            f"{index}. {headline}",
+            width=40,
+        )
+
+        if _news_summary_is_useful(
+            headline,
+            summary,
+        ):
+            print_wrapped(
+                printer,
+                summary,
+                width=40,
+            )
 
 def print_news(printer, stories):
     _print_news_stories(printer, "UK NEWS", stories)
@@ -6305,7 +7406,7 @@ def print_header(printer):
         double_height=False,
         double_width=False,
     )
-    printer_text(printer, "DAILY INFORMATION / DATA LOG\n")
+    printer_text(printer, "DAILY UPDATE\n")
     printer.set(bold=False)
     now = datetime.now()
     printer_text(printer,
@@ -6315,45 +7416,816 @@ def print_header(printer):
     printer_text(printer,
         f"{LOCATION_NAME} / {LOCATION_REGION}\n"
     )
-    print_line(printer, "=")
+
+def _route_distance_text(option):
+    metres = option.distance_metres
+    if not metres:
+        return ""
+    miles = metres / 1609.344
+    if miles < 0.1:
+        return f"{metres:.0f} M"
+    return f"{miles:.1f} MI"
+
+def _right_value_line(
+    printer,
+    label,
+    value,
+    width=40,
+):
+    """
+    Print a label on the left and a value flush-right.
+    """
+    label = str(label or "").strip()
+    value = str(value or "").strip()
+
+    available = (
+        width
+        - len(value)
+        - 1
+    )
+
+    if len(label) > available:
+        label = label[:available]
+
+    left(
+        printer,
+        f"{label:<{available}} {value}",
+    )
+
+
+def _time_line(
+    printer,
+    label,
+    dt,
+    width=40,
+):
+    """
+    Print a time consistently flush-right.
+    """
+    if not dt:
+        return
+
+    if hasattr(dt, "strftime"):
+        value = dt.strftime("%H:%M")
+    else:
+        value = str(dt)
+
+    _right_value_line(
+        printer,
+        label,
+        value,
+        width,
+    )
+
+def _public_transport_label(option):
+    """
+    Produce labels such as:
+
+        BUS 45
+        BUS X1
+        TRAIN - BOURNVILLE
+        TRAM WEST MIDLANDS METRO
+    """
+
+    for leg in option.transit_legs:
+
+        mode = str(
+            getattr(
+                leg,
+                "mode",
+                "",
+            )
+            or ""
+        ).upper()
+
+        if mode == "WALK":
+            continue
+
+        route = str(
+            getattr(
+                leg,
+                "route_name",
+                "",
+            )
+            or ""
+        ).strip()
+
+        departure_stop = str(
+            getattr(
+                leg,
+                "departure_stop",
+                "",
+            )
+            or ""
+        ).strip()
+
+        # -----------------------------
+        # BUS
+        # -----------------------------
+
+        if "BUS" in mode:
+
+            if route:
+                return (
+                    f"BUS {route}"
+                ).upper()
+
+            return "BUS"
+
+        # -----------------------------
+        # TRAIN / RAIL
+        # -----------------------------
+
+        if (
+            "TRAIN" in mode
+            or "RAIL" in mode
+        ):
+
+            if departure_stop:
+                station = re.sub(
+                    r"\s+station$",
+                    "",
+                    departure_stop,
+                    flags=re.IGNORECASE,
+                )
+
+                return (
+                    f"TRAIN - {station}"
+                ).upper()
+
+            return "TRAIN"
+
+        # -----------------------------
+        # TRAM
+        # -----------------------------
+
+        if (
+            "TRAM" in mode
+            or "LIGHT_RAIL" in mode
+        ):
+
+            if route:
+                return (
+                    f"TRAM {route}"
+                ).upper()
+
+            return "TRAM"
+
+        # Other public transport.
+        if route:
+            return (
+                f"{mode} {route}"
+            ).strip()
+
+        if mode:
+            return mode
+
+    return "PUBLIC TRANSPORT"
+
+def _public_transport_route(option):
+    """
+    Return a compact route description for the first
+    non-walking public-transport leg.
+
+    Examples:
+        BUS 45
+        TRAIN
+        BOURNVILLE -> BIRMINGHAM NEW STREET
+    """
+
+    for leg in option.transit_legs:
+
+        mode = str(
+            getattr(
+                leg,
+                "mode",
+                "",
+            )
+            or ""
+        ).upper()
+
+        if mode == "WALK":
+            continue
+
+        route = str(
+            getattr(
+                leg,
+                "route_name",
+                "",
+            )
+            or ""
+        ).strip()
+
+        departure_stop = str(
+            getattr(
+                leg,
+                "departure_stop",
+                "",
+            )
+            or ""
+        ).strip()
+
+        arrival_stop = str(
+            getattr(
+                leg,
+                "arrival_stop",
+                "",
+            )
+            or ""
+        ).strip()
+
+        # Remove redundant "Station" suffix on receipts.
+        departure_stop = re.sub(
+            r"\s+station$",
+            "",
+            departure_stop,
+            flags=re.IGNORECASE,
+        )
+
+        arrival_stop = re.sub(
+            r"\s+station$",
+            "",
+            arrival_stop,
+            flags=re.IGNORECASE,
+        )
+
+        # -----------------------------
+        # BUS
+        # -----------------------------
+
+        if "BUS" in mode:
+            label = (
+                f"BUS {route}"
+                if route
+                else "BUS"
+            )
+
+            return (
+                label.upper(),
+                "",
+            )
+
+        # -----------------------------
+        # TRAIN
+        # -----------------------------
+
+        if (
+            "TRAIN" in mode
+            or "RAIL" in mode
+        ):
+            journey = ""
+
+            if departure_stop and arrival_stop:
+                journey = (
+                    f"{departure_stop} -> "
+                    f"{arrival_stop}"
+                ).upper()
+
+            return (
+                "TRAIN",
+                journey,
+            )
+
+        # -----------------------------
+        # TRAM
+        # -----------------------------
+
+        if (
+            "TRAM" in mode
+            or "LIGHT_RAIL" in mode
+        ):
+            label = (
+                f"TRAM {route}"
+                if route
+                else "TRAM"
+            )
+
+            return (
+                label.upper(),
+                "",
+            )
+
+        label = (
+            f"{mode} {route}"
+            if route
+            else mode
+        )
+
+        return (
+            label.upper(),
+            "",
+        )
+
+    return (
+        "PUBLIC TRANSPORT",
+        "",
+    )
 
 def print_calendar(printer, events):
+    """
+    Print today's calendar as:
+
+    1. A compact checklist of all events.
+    2. A travel section containing useful journey
+       information without turn-by-turn directions.
+
+    The entire section is omitted when there are no events.
+    """
     if not events:
         return
-    print_line(printer, "=")
-    printer.set(bold=True); left(printer, "TODAY'S CALENDAR"); printer.set(bold=False)
 
-    home = private_value("locations", "home")
-    api_key = private_value("google_maps", "routes_api_key")
+    # =================================================
+    # CALENDAR OVERVIEW
+    # =================================================
+
+    print_line(
+        printer,
+        "=",
+    )
+
+    printer.set(
+        bold=True
+    )
+
+    left(
+        printer,
+        "TODAY'S CALENDAR",
+    )
+
+    printer.set(
+        bold=False
+    )
+
+    print_line(
+        printer,
+        "-",
+    )
+
+    # Quick checklist of every event.
+    for event in events:
+        time_text = (
+            event.get("time")
+            or ""
+        )
+
+        title = (
+            event.get("title")
+            or "EVENT"
+        )
+
+        print_wrapped(
+            printer,
+            f"[ ] {time_text}  {title}",
+            width=40,
+        )
+
+    # =================================================
+    # SETUP TRAVEL
+    # =================================================
+
+    home = private_value(
+        "locations",
+        "home",
+    )
+
+    api_key = private_value(
+        "google_maps",
+        "routes_api_key",
+    )
+
     previous = None
+    travel_started = False
+
+    # =================================================
+    # EVENT TRAVEL
+    # =================================================
 
     for event in events:
-        print_wrapped(printer, f"{event['time']}  {event['title']}", width=40)
-        location = (event.get("location") or "").strip()
-        if location:
-            print_wrapped(printer, location, width=40)
 
-        online = any(x in location.lower() for x in ("zoom","teams","meet.google","online","virtual"))
-        if location and not online and not event.get("all_day") and event.get("start_dt") and home and api_key:
-            origin, origin_label = sensible_chained_origin(
-                home=home, previous_event=previous, current_event=event
+        location = (
+            event.get("location")
+            or ""
+        ).strip()
+
+        # Ignore online events.
+        online = any(
+            marker in location.lower()
+            for marker in (
+                "zoom",
+                "teams",
+                "meet.google",
+                "online",
+                "virtual",
             )
-            options = travel_options(
-                api_key=api_key, origin=origin, destination=location,
-                event_start=event["start_dt"],
-                drive_buffer_minutes=10,
-                transit_buffer_minutes=15,
-                walk_buffer_minutes=10,
-                show_walk_under_minutes=25,
-            )
-            if options:
-                left(printer, f"FROM {origin_label}")
-                for option in options:
-                    label = option.summary if option.mode == "TRANSIT" else option.mode
-                    left(printer, f"{label[:24]:<24} ~{option.duration_minutes} MIN")
-                    left(printer, f"{'LEAVE BY':<28}{option.leave_by:%H:%M}")
+        )
+
+        # Only attempt travel for events where it
+        # actually makes sense.
+        if (
+            not location
+            or online
+            or event.get("all_day")
+            or not event.get("start_dt")
+            or not home
+            or not api_key
+        ):
             previous = event
+            continue
 
+        origin, origin_label = (
+            sensible_chained_origin(
+                home=home,
+                previous_event=previous,
+                current_event=event,
+            )
+        )
+
+        options = travel_options(
+            api_key=api_key,
+            origin=origin,
+            destination=location,
+            event_start=event["start_dt"],
+            drive_buffer_minutes=10,
+            transit_buffer_minutes=15,
+            walk_buffer_minutes=10,
+            show_walk_under_minutes=40,
+        )
+
+        if not options:
+            previous = event
+            continue
+
+        # ---------------------------------------------
+        # Start TRAVEL section only if at least one
+        # event actually has journey information.
+        # ---------------------------------------------
+
+        if not travel_started:
+            printer.text("\n")
+
+            printer.set(
+                bold=True
+            )
+
+            left(
+                printer,
+                "TRAVEL",
+            )
+
+            printer.set(
+                bold=False
+            )
+
+            print_line(
+                printer,
+                "-",
+            )
+
+            travel_started = True
+
+        else:
+            # Exactly one separator between events.
+            print_line(
+                printer,
+                "-",
+            )
+
+        # ---------------------------------------------
+        # EVENT
+        # ---------------------------------------------
+
+        event_time = (
+            event.get("time")
+            or ""
+        )
+
+        # If time contains "13:00-14:00", only show
+        # the start time in the travel section.
+        start_time = (
+            event_time.split(
+                "-",
+                1,
+            )[0].strip()
+        )
+
+        title = (
+            event.get("title")
+            or "EVENT"
+        ).upper()
+
+        print_wrapped(
+            printer,
+            f"{start_time}  {title}",
+            width=40,
+        )
+
+        print_wrapped(
+            printer,
+            location,
+            width=40,
+        )
+
+        printer.text("\n")
+
+        left(
+            printer,
+            f"FROM {origin_label.upper()}",
+        )
+
+        # ---------------------------------------------
+        # PRIORITISE WALKING
+        # ---------------------------------------------
+
+        walk_option = next(
+            (
+                option
+                for option in options
+                if option.mode == "WALK"
+            ),
+            None,
+        )
+
+        display_options = list(
+            options
+        )
+
+        if (
+            walk_option
+            and walk_option.duration_minutes <= 20
+        ):
+            display_options.remove(
+                walk_option
+            )
+
+            display_options.insert(
+                0,
+                walk_option,
+            )
+
+        # ---------------------------------------------
+        # JOURNEY OPTIONS
+        # ---------------------------------------------
+
+        first_option = True
+
+        for option in display_options:
+
+            if not first_option:
+                printer.text("\n")
+
+            first_option = False
+
+            # =========================================
+            # WALK / DRIVE
+            # =========================================
+
+            if option.mode != "TRANSIT":
+
+                label = option.mode
+
+                if (
+                    option.mode == "WALK"
+                    and option.duration_minutes <= 20
+                ):
+                    label = "WALK - RECOMMENDED"
+
+                elif option.mode == "WALK":
+                    label = "WALK"
+
+                elif (
+                    option.mode == "DRIVE"
+                    and walk_option
+                    and walk_option.duration_minutes <= 20
+                ):
+                    label = "DRIVE - ALTERNATIVE"
+
+                _right_value_line(
+                    printer,
+                    label,
+                    f"{option.duration_minutes} MIN",
+                )
+
+                distance = _route_distance_text(
+                    option
+                )
+
+                if distance:
+                    _right_value_line(
+                        printer,
+                        "DISTANCE",
+                        distance.upper(),
+                    )
+
+                _time_line(
+                    printer,
+                    "LEAVE BY",
+                    option.leave_by,
+                )
+
+                continue
+
+            # =========================================
+            # PUBLIC TRANSPORT
+            # =========================================
+
+            transport_label = (
+                _public_transport_label(
+                    option
+                )
+            )
+
+            _right_value_line(
+                printer,
+                transport_label,
+                f"{option.duration_minutes} MIN",
+            )
+
+            _time_line(
+                printer,
+                "LEAVE",
+                option.leave_by,
+            )
+
+            _time_line(
+                printer,
+                "ARRIVE",
+                option.arrive_by,
+            )
+
+            # -----------------------------------------
+            # NO TURN-BY-TURN DIRECTIONS
+            # -----------------------------------------
+            #
+            # We deliberately do NOT print:
+            #
+            # for leg in option.transit_legs:
+            #     leg.instruction
+            #
+            # The receipt only needs journey timing.
+
+            # -----------------------------------------
+            # EARLIER SERVICES
+            # -----------------------------------------
+
+            if option.earlier_options:
+
+                # Separate the recommended journey from
+                # the alternative services.
+                print_line(
+                    printer,
+                    "-",
+                )
+
+                left(
+                    printer,
+                    "EARLIER",
+                )
+
+                for earlier_index, earlier in enumerate(
+                        option.earlier_options
+                ):
+
+                    # Blank line between earlier services,
+                    # but no ----- separator.
+                    printer.text("\n")
+
+                    earlier_label, earlier_route = (
+                        _public_transport_route(
+                            earlier
+                        )
+                    )
+
+                    # Service + duration.
+                    _right_value_line(
+                        printer,
+                        earlier_label,
+                        f"{earlier.duration_minutes} MIN",
+                    )
+
+                    # For trains, show stations.
+                    if earlier_route:
+                        print_wrapped(
+                            printer,
+                            earlier_route,
+                            width=40,
+                        )
+
+                    _time_line(
+                        printer,
+                        "LEAVE",
+                        earlier.leave_by,
+                    )
+
+                    _time_line(
+                        printer,
+                        "ARRIVE",
+                        earlier.arrive_by,
+                    )
+
+        previous = event
+
+def print_vehicle_expiry_checks(
+    printer,
+    vehicles,
+    dvla_api_key,
+):
+    now = datetime.now(
+        ZoneInfo("Europe/London")
+    )
+
+    # Monday = 0 ... Sunday = 6
+    if now.weekday() != 6:
+        return
+
+    if not vehicles or not dvla_api_key:
+        return
+
+    vehicles_due = []
+
+    for vehicle in vehicles:
+        registration = vehicle.get(
+            "registration"
+        )
+
+        name = vehicle.get(
+            "name",
+            registration,
+        )
+
+        try:
+            status = get_vehicle_status(
+                registration,
+                dvla_api_key,
+            )
+
+            warnings = expiring_vehicle_items(
+                status,
+                today=now.date(),
+                days=31,
+            )
+
+            if warnings:
+                vehicles_due.append(
+                    (
+                        name,
+                        status,
+                        warnings,
+                    )
+                )
+
+        except Exception as error:
+            print(
+                "Vehicle check error "
+                f"({registration}): "
+                f"{error!r}"
+            )
+
+    # Nothing expiring = absolutely no
+    # receipt output.
+    if not vehicles_due:
+        return
+
+    print_line(printer, "=")
+
+    printer.set(bold=True)
+    left(printer, "VEHICLE REMINDERS")
+    printer.set(bold=False)
+
+    for name, status, warnings in vehicles_due:
+        print_line(printer, "-")
+
+        registration = status[
+            "registration"
+        ]
+
+        left(
+            printer,
+            printer_safe_text(
+                f"{name} - {registration}"
+            ),
+        )
+
+        for warning in warnings:
+            expiry = warning[
+                "expiry_date"
+            ]
+
+            remaining = warning[
+                "days_remaining"
+            ]
+
+            left(
+                printer,
+                warning["type"],
+            )
+
+            left(
+                printer,
+                (
+                    f"EXPIRES {expiry:%d %b %Y} "
+                    f"- {remaining} DAYS"
+                ).upper(),
+            )
 
 def therapy_payment_due(events):
     """Return True when an upcoming calendar event is a therapy appointment."""
@@ -6377,9 +8249,11 @@ def therapy_payment_due(events):
 
 def print_google_doc(printer, text, upcoming_events):
     print_line(printer, "=")
+
     printer.set(bold=True)
     left(printer, "TO DO")
     printer.set(bold=False)
+    print_line(printer, "-")
 
     # ----------------------------------------
     # AUTOMATIC THERAPY PAYMENT REMINDER
@@ -6414,6 +8288,7 @@ def print_random_document_lines(printer, text):
     printer.set(bold=True)
     left(printer, "EXERCISES TO DO")
     printer.set(bold=False)
+    print_line(printer, "-")
 
     # .split() breaks the selected text into
     # individual exercises.
@@ -6426,7 +8301,74 @@ def print_random_document_lines(printer, text):
             width=40,
         )
 
+BORING_WEATHER_CODES = {0, 1, 2, 3}
+
+
+def is_definitively_boring_weather(weather):
+    """
+    Return True only when every available signal says today's weather is mundane.
+
+    This is intentionally conservative: uncertainty or any notable condition
+    keeps the full weather output. Thresholds use the units requested from
+    Open-Meteo (C, km/h, mm, metres).
+    """
+    try:
+        hourly = weather["hourly"]
+        daily = weather["daily"]
+
+        temperatures = [float(x) for x in hourly.get("temperature_2m", []) if x is not None]
+        winds = [float(x) for x in hourly.get("wind_speed_10m", []) if x is not None]
+        gusts = [float(x) for x in hourly.get("wind_gusts_10m", []) if x is not None]
+        precip_probs = [float(x) for x in hourly.get("precipitation_probability", []) if x is not None]
+        precipitation = [float(x) for x in hourly.get("precipitation", []) if x is not None]
+        visibility = [float(x) for x in hourly.get("visibility", []) if x is not None]
+        codes = [int(x) for x in hourly.get("weather_code", []) if x is not None]
+
+        # Missing inputs mean we cannot confidently call the day boring.
+        if not all((temperatures, winds, gusts, precip_probs, precipitation, visibility, codes)):
+            return False
+
+        high = float(daily["temperature_2m_max"][0])
+        low = float(daily["temperature_2m_min"][0])
+        daily_rain_probability = float(daily["precipitation_probability_max"][0])
+
+        return (
+            all(code in BORING_WEATHER_CODES for code in codes)
+            and max(precip_probs) < 20.0
+            and daily_rain_probability < 20.0
+            and sum(precipitation) < 0.2
+            and max(winds) < 32.2       # 20 mph
+            and max(gusts) < 48.3       # 30 mph
+            and high < 25.0
+            and low > 3.0
+            and (high - low) < 10.0
+            and min(visibility) >= 5000.0
+        )
+    except (KeyError, IndexError, TypeError, ValueError):
+        return False
+
+
+def print_compact_weather(printer, weather):
+    current = weather["current"]
+    daily = weather["daily"]
+    condition = weather_description(current["weather_code"])
+    high = float(daily["temperature_2m_max"][0])
+    low = float(daily["temperature_2m_min"][0])
+
+    print_line(printer, "=")
+    printer.set(bold=True)
+    left(printer, "WEATHER")
+    printer.set(bold=False)
+    left(printer, f"{current['temperature_2m']:.1f}C  {condition}")
+    left(printer, f"HIGH {high:.1f}C / LOW {low:.1f}C")
+    left(printer, "DRY WITH LIGHT WINDS")
+
+
 def print_weather(printer, weather):
+    if is_definitively_boring_weather(weather):
+        print_compact_weather(printer, weather)
+        return
+
     current = weather["current"]
     daily = weather["daily"]
 
@@ -6444,7 +8386,7 @@ def print_weather(printer, weather):
 
     print_line(printer, "=")
     printer.set(bold=True)
-    centre(printer, "WEATHER STATION")
+    centre(printer, "WEATHER")
     printer.set(bold=False)
     centre(printer, LOCATION_NAME)
     centre(printer, LOCATION_REGION)
@@ -6541,7 +8483,7 @@ def print_weather(printer, weather):
     )
     left(
         printer,
-        f"SUN {sunrise.strftime('%H:%M')}"
+        f"SUNSET/SUNRISE {sunrise.strftime('%H:%M')}"
         f"-{sunset.strftime('%H:%M')}",
     )
 
@@ -6679,6 +8621,14 @@ def run_live_pipeline():
 
     cut_receipt_section(
         printer
+    )
+
+    print("Checking vehicle MOT/tax...")
+
+    print_vehicle_expiry_checks(
+        printer,
+        vehicles,
+        dvla_api_key,
     )
 
     try:

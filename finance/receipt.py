@@ -1,4 +1,10 @@
 from __future__ import annotations
+from finance.investments import (
+    load_investments,
+    investment_totals,
+    investment_age_days,
+    investment_snapshot,
+)
 from datetime import date
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -22,6 +28,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RULES_FILE = PROJECT_ROOT / "data" / "finance_categories.json"
 HISTORY_FILE = PROJECT_ROOT / "data" / "finance_history.json"
 SAVINGS_FILE = PROJECT_ROOT / "data" / "savings.json"
+
+INVESTMENTS_FILE = (
+    PROJECT_ROOT
+    / "data"
+    / "investments.json"
+)
 
 # Keep this True while validating the corrected 30-day calculation.
 # Set it to False once the console total matches the banking data you expect.
@@ -64,6 +76,22 @@ def print_integrated_finance(
     st = savings_totals(savings_data)
     net_cash = available_cash + st["net_cash"]
 
+    investment_data = load_investments(
+        INVESTMENTS_FILE
+    )
+
+    investment_summary = (
+        investment_totals(
+            investment_data
+        )
+    )
+
+    investment_age = (
+        investment_age_days(
+            investment_data
+        )
+    )
+
     # Use one cleaned transaction set for the headline total, category trends
     # and baseline. This prevents transfers, savings movements, repayments and
     # duplicates from inflating LAST 30 DAYS.
@@ -83,12 +111,135 @@ def print_integrated_finance(
     left(printer, f"{'AMEX':<27}{_money(-amex):>15}")
 
     if st["accounts"]:
-        line(printer, "-")
-        for x in savings_receipt_lines(savings_data):
-            left(printer, x)
+        line(
+            printer,
+            "-",
+        )
 
-    line(printer, "-"); left(printer, "NET CASH")
-    left(printer, f"{'':<27}{_money(net_cash):>15}")
+        for x in savings_receipt_lines(
+                savings_data
+        ):
+            left(
+                printer,
+                x,
+            )
+
+    line(
+        printer,
+        "-",
+    )
+
+    left(
+        printer,
+        "NET CASH",
+    )
+
+    left(
+        printer,
+        f"{'':<27}{_money(net_cash):>15}",
+    )
+
+    # ------------------------------------------
+    # INVESTMENTS
+    # ------------------------------------------
+
+    if investment_data["accounts"]:
+        line(
+            printer,
+            "-",
+        )
+
+        left(
+            printer,
+            "INVESTMENTS",
+        )
+
+        line(
+            printer,
+            "-",
+        )
+
+        for account in investment_data[
+            "accounts"
+        ]:
+            name = str(
+                account.get(
+                    "name",
+                    "INVESTMENT",
+                )
+            ).upper()[:24]
+
+            try:
+                value = float(
+                    account.get(
+                        "value",
+                        0,
+                    )
+                    or 0
+                )
+            except (
+                    TypeError,
+                    ValueError,
+            ):
+                value = 0.0
+
+            left(
+                printer,
+                (
+                    f"{name:<27}"
+                    f"{_money(value):>15}"
+                ),
+            )
+
+        left(
+            printer,
+            (
+                f"{'TOTAL':<27}"
+                f"{_money(investment_summary['value']):>15}"
+            ),
+        )
+
+        left(
+            printer,
+            (
+                f"{'CONTRIBUTED':<27}"
+                f"{_money(investment_summary['contributions']):>15}"
+            ),
+        )
+
+        left(
+            printer,
+            (
+                f"{'GAIN / LOSS':<27}"
+                f"{_money(investment_summary['gain']):>15}"
+            ),
+        )
+
+        if (
+                investment_summary[
+                    "gain_pct"
+                ]
+                is not None
+        ):
+            left(
+                printer,
+                (
+                    f"{'RETURN':<27}"
+                    f"{investment_summary['gain_pct']:>+14.1f}%"
+                ),
+            )
+
+        if (
+                investment_age is not None
+                and investment_age > 30
+        ):
+            left(
+                printer,
+                (
+                    f"VALUE {investment_age} "
+                    f"DAYS OLD"
+                ),
+            )
 
     payments = []
     for item in direct_debits + standing_orders + subscriptions:
@@ -124,21 +275,93 @@ def print_integrated_finance(
         for x in runway_receipt_lines(available_cash, savings_data, monthly_spend):
             left(printer, x)
 
-    # Period analysis only at a newly completed quarter/year boundary.
-    today = datetime.now(ZoneInfo("Europe/London")).date()
-    for kind, period_date in completed_periods_to_save(today):
-        analysis = period_analysis(clean_transactions, rules, kind, period_date)
-        current_savings = savings_snapshot(savings_data)
-        prev_label = previous_period_label(kind, analysis["label"])
-        previous = load_snapshot(HISTORY_FILE, prev_label)
-        analysis = add_savings_growth_to_analysis(analysis, current_savings, previous)
-        save_snapshot(HISTORY_FILE, analysis)
+    # -------------------------------------------------
+    # QUARTERLY / YEARLY ANALYSIS
+    # -------------------------------------------------
+    #
+    # Only runs when a quarter/year has just completed.
+    #
 
-        line(printer, "=")
-        for x in period_receipt_lines(analysis):
-            left(printer, x)
-        for x in savings_growth_receipt_lines(analysis):
-            left(printer, x)
+    today = datetime.now(
+        ZoneInfo("Europe/London")
+    ).date()
+
+    for kind, period_date in completed_periods_to_save(
+            today
+    ):
+        analysis = period_analysis(
+            clean_transactions,
+            rules,
+            kind,
+            period_date,
+        )
+
+        # ---------------------------------------------
+        # SAVINGS SNAPSHOT
+        # ---------------------------------------------
+
+        current_savings = savings_snapshot(
+            savings_data
+        )
+
+        prev_label = previous_period_label(
+            kind,
+            analysis["label"],
+        )
+
+        previous = load_snapshot(
+            HISTORY_FILE,
+            prev_label,
+        )
+
+        analysis = add_savings_growth_to_analysis(
+            analysis,
+            current_savings,
+            previous,
+        )
+
+        # ---------------------------------------------
+        # INVESTMENT SNAPSHOT
+        # ---------------------------------------------
+
+        current_investments = investment_snapshot(
+            investment_data
+        )
+
+        # ---------------------------------------------
+        # SAVE COMPLETE PERIOD SNAPSHOT
+        # ---------------------------------------------
+
+        save_snapshot(
+            HISTORY_FILE,
+            analysis,
+            investment_snapshot=current_investments,
+        )
+
+        # ---------------------------------------------
+        # PRINT PERIOD ANALYSIS
+        # ---------------------------------------------
+
+        line(
+            printer,
+            "=",
+        )
+
+        for x in period_receipt_lines(
+                analysis
+        ):
+            left(
+                printer,
+                x,
+            )
+
+        for x in savings_growth_receipt_lines(
+                analysis
+        ):
+            left(
+                printer,
+                x,
+            )
 
     line(printer, "="); left(printer, "SUMMARY"); line(printer, "-")
     left(printer, f"{'NET CASH':<27}{_money(net_cash):>15}")
