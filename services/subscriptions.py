@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import json
-
 from datetime import datetime
 from pathlib import Path
+
+from data_store import edit_json, read_json, write_json
 
 
 PROJECT_ROOT = (
@@ -16,18 +16,20 @@ SUBSCRIPTIONS_FILE = (
     / "subscriptions.json"
 )
 
-def load_subscriptions():
-    if not SUBSCRIPTIONS_FILE.exists():
-        return {
-            "monthly": [],
-            "yearly": [],
-            "instalments": [],
-        }
-    with SUBSCRIPTIONS_FILE.open(
-        "r",
-        encoding="utf-8",
-    ) as file:
-        data = json.load(file)
+def _default_subscriptions():
+    return {
+        "monthly": [],
+        "yearly": [],
+        "instalments": [],
+    }
+
+
+def _normalise_data(data):
+    if not isinstance(data, dict):
+        raise ValueError(
+            "data/subscriptions.json must contain a JSON object."
+        )
+
     data.setdefault(
         "monthly",
         [],
@@ -40,34 +42,26 @@ def load_subscriptions():
         "instalments",
         [],
     )
+
     return data
 
+
+def load_subscriptions():
+    data = read_json(
+        SUBSCRIPTIONS_FILE,
+        _default_subscriptions(),
+    )
+    return _normalise_data(
+        data
+    )
+
+
 def save_subscriptions(data):
-    SUBSCRIPTIONS_FILE.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    temporary = (
-        SUBSCRIPTIONS_FILE
-        .with_suffix(".tmp")
-    )
-
-    with temporary.open(
-        "w",
-        encoding="utf-8",
-    ) as file:
-        json.dump(
-            data,
-            file,
-            indent=2,
-            ensure_ascii=False,
-        )
-
-        file.write("\n")
-
-    temporary.replace(
-        SUBSCRIPTIONS_FILE
+    write_json(
+        SUBSCRIPTIONS_FILE,
+        _normalise_data(
+            data
+        ),
     )
 
 
@@ -154,122 +148,186 @@ def _matches(
         if term
     )
 
+def _transaction_id(transaction):
+    for key in (
+        "transaction_id",
+        "normalised_provider_transaction_id",
+        "provider_transaction_id",
+        "id",
+    ):
+        value = transaction.get(
+            key
+        )
+
+        if value:
+            return str(
+                value
+            )
+
+    paid_date = _date(
+        transaction
+    ) or ""
+
+    amount = _amount(
+        transaction
+    )
+
+    description = _description(
+        transaction
+    )
+
+    return (
+        f"fallback:{paid_date}:"
+        f"{amount:.2f}:{description}"
+    )
+
+
 def update_subscriptions_from_transactions(
     transactions,
 ):
     """
-    Update known subscriptions/bills using
+    Update existing known subscriptions/bills from
     observed transactions.
 
-    Returns changes that should be printed
-    on this receipt.
+    Transactions are de-duplicated using their provider
+    transaction ID where available, falling back to
+    date + amount + description.
     """
-
-    data = load_subscriptions()
-
     changes = []
 
-    changed_file = False
+    with edit_json(
+        SUBSCRIPTIONS_FILE,
+        _default_subscriptions(),
+    ) as data:
+        _normalise_data(
+            data
+        )
 
-    for frequency in (
-        "monthly",
-        "yearly",
-    ):
-
-        for subscription in data.get(
-            frequency,
-            [],
+        for frequency in (
+            "monthly",
+            "yearly",
         ):
-
-            matches = [
-                tx
-                for tx in transactions
-                if _matches(
-                    subscription,
-                    tx,
-                )
-            ]
-
-            if not matches:
-                continue
-
-            # Most recent matching transaction.
-            matches.sort(
-                key=lambda tx:
-                    _date(tx) or "",
-                reverse=True,
-            )
-
-            transaction = matches[0]
-
-            new_amount = _amount(
-                transaction
-            )
-
-            paid_date = _date(
-                transaction
-            )
-
-            if (
-                new_amount <= 0
-                or not paid_date
-            ):
-                continue
-
-            old_amount = subscription.get(
-                "amount"
-            )
-
-            try:
-                old_amount = float(
-                    old_amount
-                )
-
-            except (
-                TypeError,
-                ValueError,
-            ):
-                old_amount = None
-
-            # We've already processed this
-            # transaction on a previous run.
-            if (
-                subscription.get(
-                    "last_paid"
-                )
-                == paid_date
-            ):
-                continue
-
-            history = subscription.setdefault(
-                "history",
+            for subscription in data.get(
+                frequency,
                 [],
-            )
+            ):
+                matches = [
+                    tx
+                    for tx in transactions
+                    if _matches(
+                        subscription,
+                        tx,
+                    )
+                ]
 
-            # Record the observed payment.
-            history.append({
-                "date": paid_date,
-                "amount": round(
-                    new_amount,
-                    2,
-                ),
-            })
+                if not matches:
+                    continue
 
-            # Prevent history growing forever.
-            subscription["history"] = (
-                history[-24:]
-            )
+                matches.sort(
+                    key=lambda tx:
+                        _date(tx) or "",
+                    reverse=True,
+                )
 
-            subscription[
-                "last_paid"
-            ] = paid_date
+                transaction = matches[0]
+                new_amount = _amount(
+                    transaction
+                )
+                paid_date = _date(
+                    transaction
+                )
 
-            changed_file = True
+                if (
+                    new_amount <= 0
+                    or not paid_date
+                ):
+                    continue
 
-            # First observed payment:
-            # initialise without reporting
-            # it as a price change.
-            if old_amount is None:
+                transaction_id = (
+                    _transaction_id(
+                        transaction
+                    )
+                )
+
+                history = subscription.setdefault(
+                    "history",
+                    [],
+                )
+
+                if any(
+                    entry.get(
+                        "transaction_id"
+                    )
+                    == transaction_id
+                    for entry in history
+                    if isinstance(
+                        entry,
+                        dict,
+                    )
+                ):
+                    continue
+
+                old_amount = subscription.get(
+                    "amount"
+                )
+
+                try:
+                    old_amount = float(
+                        old_amount
+                    )
+                except (
+                    TypeError,
+                    ValueError,
+                ):
+                    old_amount = None
+
+                history.append({
+                    "date": paid_date,
+                    "amount": round(
+                        new_amount,
+                        2,
+                    ),
+                    "transaction_id":
+                        transaction_id,
+                })
+
+                subscription["history"] = (
+                    history[-24:]
+                )
+
+                subscription[
+                    "last_paid"
+                ] = paid_date
+
+                if old_amount is None:
+                    subscription[
+                        "amount"
+                    ] = round(
+                        new_amount,
+                        2,
+                    )
+                    continue
+
+                difference = (
+                    new_amount
+                    - old_amount
+                )
+
+                if abs(
+                    difference
+                ) < 0.01:
+                    continue
+
+                percentage = (
+                    (
+                        difference
+                        / old_amount
+                        * 100.0
+                    )
+                    if old_amount
+                    else 0.0
+                )
+
                 subscription[
                     "amount"
                 ] = round(
@@ -277,62 +335,26 @@ def update_subscriptions_from_transactions(
                     2,
                 )
 
-                continue
-
-            difference = (
-                new_amount
-                - old_amount
-            )
-
-            # Ignore penny-level noise.
-            if abs(difference) < 0.01:
-                continue
-
-            if old_amount:
-                percentage = (
-                    difference
-                    / old_amount
-                    * 100.0
-                )
-            else:
-                percentage = 0.0
-
-            subscription[
-                "amount"
-            ] = round(
-                new_amount,
-                2,
-            )
-
-            changes.append({
-                "name":
-                    subscription.get(
-                        "name",
-                        "Subscription",
-                    ),
-
-                "frequency":
-                    frequency,
-
-                "date":
-                    paid_date,
-
-                "old_amount":
-                    old_amount,
-
-                "new_amount":
-                    new_amount,
-
-                "difference":
-                    difference,
-
-                "percentage":
-                    percentage,
-            })
-
-    if changed_file:
-        save_subscriptions(
-            data
-        )
+                changes.append({
+                    "name":
+                        subscription.get(
+                            "name",
+                            "Subscription",
+                        ),
+                    "frequency":
+                        frequency,
+                    "date":
+                        paid_date,
+                    "old_amount":
+                        old_amount,
+                    "new_amount":
+                        new_amount,
+                    "difference":
+                        difference,
+                    "percentage":
+                        percentage,
+                    "transaction_id":
+                        transaction_id,
+                })
 
     return changes
