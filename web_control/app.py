@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os, subprocess, sys
+import shlex
 import json
 from datetime import timedelta
 from functools import wraps
@@ -461,11 +462,27 @@ def _start_print_command(command_args):
             encoding="utf-8",
         )
 
+        command = [
+            sys.executable,
+            str(PROJECT_ROOT / "main.py"),
+            *command_args,
+        ]
+
+        shell_command = (
+            " ".join(
+                shlex.quote(part)
+                for part in command
+            )
+            + "; status=$?; "
+            + f"rm -f {shlex.quote(str(lock))}; "
+            + "exit $status"
+        )
+
         process = subprocess.Popen(
             [
-                sys.executable,
-                str(PROJECT_ROOT / "main.py"),
-                *command_args,
+                "/bin/sh",
+                "-c",
+                shell_command,
             ],
             cwd=PROJECT_ROOT,
             stdout=log_handle,
