@@ -440,6 +440,20 @@ if not SECRET_KEY_FILE.exists():
         "Missing web_control/secret_key.txt"
     )
 
+for private_path in (
+    SECRET_KEY_FILE,
+    PASSWORD_FILE,
+    PROJECT_PASSWORDS_FILE,
+):
+    if private_path.exists():
+        try:
+            os.chmod(
+                private_path,
+                0o600,
+            )
+        except OSError:
+            pass
+
 app.secret_key = (
     SECRET_KEY_FILE
     .read_text(
