@@ -615,6 +615,7 @@ def meal_today_cooked():
             )
 
         actions[action_key] = {
+            "status": "processing",
             "recorded_at": datetime.now(
                 timezone.utc
             ).isoformat(),
@@ -623,16 +624,49 @@ def meal_today_cooked():
             "frozen": frozen,
         }
 
-    record_cooked(
-        recipe_name
-    )
-
-    if frozen > 0:
-        add_freezer_portions(
-            recipe_name,
-            frozen,
-            source="cooked meal leftovers",
+    try:
+        record_cooked(
+            recipe_name
         )
+
+        if frozen > 0:
+            add_freezer_portions(
+                recipe_name,
+                frozen,
+                source="cooked meal leftovers",
+            )
+
+    except Exception:
+        with edit_json(
+            MEAL_ACTIONS_FILE,
+            {
+                "actions": {},
+            },
+        ) as meal_actions:
+            meal_actions.setdefault(
+                "actions",
+                {},
+            ).pop(
+                action_key,
+                None,
+            )
+        raise
+
+    with edit_json(
+        MEAL_ACTIONS_FILE,
+        {
+            "actions": {},
+        },
+    ) as meal_actions:
+        actions = meal_actions.setdefault(
+            "actions",
+            {},
+        )
+
+        if action_key in actions:
+            actions[action_key][
+                "status"
+            ] = "completed"
 
     if frozen:
         flash(
