@@ -14,6 +14,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 from receipt_settings import load_receipt_settings, save_receipt_settings
 from routines import WEEKDAYS, add_routine, delete_routine, load_routines, mark_done, next_due_date, set_enabled
+from printer_config import (
+    check_printer_connection,
+    load_printer_settings,
+    printer_connection_label,
+    save_printer_settings,
+)
 
 app = Flask(__name__)
 
@@ -21,6 +27,26 @@ import json
 
 SUBSCRIPTIONS_FILE = (
     PROJECT_ROOT / "data" / "subscriptions.json"
+)
+
+FREEZER_FILE = (
+    PROJECT_ROOT / "data" / "freezer.json"
+)
+
+PANTRY_FILE = (
+    PROJECT_ROOT / "data" / "pantry.json"
+)
+
+ROUTINES_DATA_FILE = (
+    PROJECT_ROOT / "data" / "routines.json"
+)
+
+RECEIPT_SETTINGS_FILE = (
+    PROJECT_ROOT / "data" / "receipt_settings.json"
+)
+
+PRINTER_SETTINGS_FILE = (
+    PROJECT_ROOT / "data" / "printer_settings.json"
 )
 
 
@@ -75,6 +101,151 @@ def save_subscriptions(data):
     temp_file.replace(
         SUBSCRIPTIONS_FILE
     )
+
+
+def _load_json_file(path, default):
+    if not path.exists():
+        return default
+
+    try:
+        value = json.loads(
+            path.read_text(
+                encoding="utf-8"
+            )
+        )
+    except (
+        OSError,
+        json.JSONDecodeError,
+    ):
+        return default
+
+    return value
+
+
+def _save_json_file(path, value):
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    temp = path.with_suffix(
+        path.suffix + ".tmp"
+    )
+
+    temp.write_text(
+        json.dumps(
+            value,
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    temp.replace(path)
+
+
+def load_freezer():
+    data = _load_json_file(
+        FREEZER_FILE,
+        {"items": []},
+    )
+
+    if not isinstance(data, dict):
+        data = {"items": []}
+
+    items = data.get("items")
+
+    if not isinstance(items, list):
+        items = []
+
+    data["items"] = items
+    return data
+
+
+def load_pantry():
+    data = _load_json_file(
+        PANTRY_FILE,
+        {"items": {}},
+    )
+
+    if not isinstance(data, dict):
+        data = {"items": {}}
+
+    items = data.get("items")
+
+    if not isinstance(items, dict):
+        items = {}
+
+    data["items"] = items
+    return data
+
+
+def data_file_status():
+    files = [
+        ("Freezer", FREEZER_FILE),
+        ("Pantry", PANTRY_FILE),
+        ("Routines", ROUTINES_DATA_FILE),
+        ("Receipt settings", RECEIPT_SETTINGS_FILE),
+        ("Printer settings", PRINTER_SETTINGS_FILE),
+        ("Subscriptions", SUBSCRIPTIONS_FILE),
+    ]
+
+    output = []
+
+    for label, path in files:
+        exists = path.exists()
+        valid = False
+        detail = "Not created yet"
+
+        if exists:
+            try:
+                value = json.loads(
+                    path.read_text(
+                        encoding="utf-8"
+                    )
+                )
+
+                valid = isinstance(
+                    value,
+                    (dict, list),
+                )
+
+                if isinstance(value, dict):
+                    if "items" in value:
+                        items = value.get("items")
+                        if isinstance(items, dict):
+                            detail = f"{len(items)} items"
+                        elif isinstance(items, list):
+                            detail = f"{len(items)} items"
+                        else:
+                            detail = "items has invalid format"
+                            valid = False
+                    else:
+                        detail = f"{len(value)} top-level fields"
+
+                elif isinstance(value, list):
+                    detail = f"{len(value)} records"
+
+            except (
+                OSError,
+                json.JSONDecodeError,
+            ) as error:
+                detail = str(error)
+
+        output.append({
+            "label": label,
+            "path": str(
+                path.relative_to(
+                    PROJECT_ROOT
+                )
+            ),
+            "exists": exists,
+            "valid": valid,
+            "detail": detail,
+        })
+
+    return output
 
 
 PROJECT_PASSWORDS_FILE = (
@@ -260,6 +431,356 @@ def login_required(view):
         return view(*args, **kwargs)
     return wrapped
 
+@app.post("/printer/settings")
+@login_required
+def printer_settings_update():
+    connection = request.form.get(
+        "connection",
+        "usb",
+    ).strip().lower()
+
+    if connection not in {
+        "usb",
+        "network",
+    }:
+        connection = "usb"
+
+    settings = load_printer_settings()
+    settings["connection"] = connection
+
+    settings.setdefault(
+        "usb",
+        {},
+    )
+
+    settings["usb"]["vendor_id"] = (
+        request.form.get(
+            "usb_vendor_id",
+            "0x0416",
+        ).strip()
+        or "0x0416"
+    )
+
+    settings["usb"]["product_id"] = (
+        request.form.get(
+            "usb_product_id",
+            "0x5011",
+        ).strip()
+        or "0x5011"
+    )
+
+    settings.setdefault(
+        "network",
+        {},
+    )
+
+    settings["network"]["host"] = (
+        request.form.get(
+            "network_host",
+            "",
+        ).strip()
+    )
+
+    try:
+        port = int(
+            request.form.get(
+                "network_port",
+                "9100",
+            )
+        )
+    except ValueError:
+        port = 9100
+
+    settings["network"]["port"] = max(
+        1,
+        min(
+            65535,
+            port,
+        ),
+    )
+
+    save_printer_settings(
+        settings
+    )
+
+    flash(
+        "Printer connection settings saved."
+    )
+
+    return redirect(
+        url_for("index")
+    )
+
+
+@app.post("/printer/test")
+@login_required
+def printer_test():
+    status = check_printer_connection()
+
+    if status["ok"]:
+        flash(
+            f"Printer connected: {status['label']}."
+        )
+    else:
+        flash(
+            "Printer connection failed: "
+            + status["message"]
+        )
+
+    return redirect(
+        url_for("index")
+    )
+
+
+@app.post("/freezer/add")
+@login_required
+def freezer_add():
+    name = request.form.get(
+        "name",
+        "",
+    ).strip()
+
+    if not name:
+        flash("Enter a freezer item name.")
+        return redirect(url_for("index"))
+
+    try:
+        portions = max(
+            0,
+            int(
+                request.form.get(
+                    "portions",
+                    "1",
+                )
+            ),
+        )
+    except ValueError:
+        flash("Freezer portions must be a number.")
+        return redirect(url_for("index"))
+
+    source = request.form.get(
+        "source",
+        "",
+    ).strip()
+
+    data = load_freezer()
+    items = data["items"]
+
+    existing = next(
+        (
+            item
+            for item in items
+            if str(
+                item.get(
+                    "name",
+                    "",
+                )
+            ).strip().lower()
+            == name.lower()
+        ),
+        None,
+    )
+
+    if existing:
+        existing["portions"] = (
+            int(
+                existing.get(
+                    "portions",
+                    0,
+                )
+                or 0
+            )
+            + portions
+        )
+
+        if source:
+            existing["source"] = source
+
+    else:
+        from datetime import date
+
+        items.append({
+            "name": name,
+            "portions": portions,
+            "source": source or "manual",
+            "added": date.today().isoformat(),
+        })
+
+    _save_json_file(
+        FREEZER_FILE,
+        data,
+    )
+
+    flash(
+        f"Freezer updated: {name}."
+    )
+
+    return redirect(
+        url_for("index")
+    )
+
+
+@app.post("/freezer/<int:index>/update")
+@login_required
+def freezer_update(index):
+    data = load_freezer()
+    items = data["items"]
+
+    if index < 0 or index >= len(items):
+        return ("Freezer item not found", 404)
+
+    item = items[index]
+
+    name = request.form.get(
+        "name",
+        "",
+    ).strip()
+
+    if not name:
+        flash("Freezer item name cannot be empty.")
+        return redirect(url_for("index"))
+
+    try:
+        portions = max(
+            0,
+            int(
+                request.form.get(
+                    "portions",
+                    "0",
+                )
+            ),
+        )
+    except ValueError:
+        flash("Freezer portions must be a number.")
+        return redirect(url_for("index"))
+
+    item["name"] = name
+    item["portions"] = portions
+    item["source"] = request.form.get(
+        "source",
+        item.get(
+            "source",
+            "",
+        ),
+    ).strip()
+
+    _save_json_file(
+        FREEZER_FILE,
+        data,
+    )
+
+    flash(
+        f"Freezer item updated: {name}."
+    )
+
+    return redirect(
+        url_for("index")
+    )
+
+
+@app.post("/freezer/<int:index>/delete")
+@login_required
+def freezer_delete(index):
+    data = load_freezer()
+    items = data["items"]
+
+    if index < 0 or index >= len(items):
+        return ("Freezer item not found", 404)
+
+    name = str(
+        items[index].get(
+            "name",
+            "item",
+        )
+    )
+
+    del items[index]
+
+    _save_json_file(
+        FREEZER_FILE,
+        data,
+    )
+
+    flash(
+        f"Removed from freezer: {name}."
+    )
+
+    return redirect(
+        url_for("index")
+    )
+
+
+@app.post("/pantry/item")
+@login_required
+def pantry_item_update():
+    name = request.form.get(
+        "name",
+        "",
+    ).strip()
+
+    if not name:
+        flash("Enter a pantry item name.")
+        return redirect(url_for("index"))
+
+    present = (
+        request.form.get(
+            "present",
+            "1",
+        )
+        == "1"
+    )
+
+    data = load_pantry()
+    data["items"][name] = present
+
+    _save_json_file(
+        PANTRY_FILE,
+        data,
+    )
+
+    flash(
+        f"Pantry updated: {name}."
+    )
+
+    return redirect(
+        url_for("index")
+    )
+
+
+@app.post("/pantry/<path:item_name>/delete")
+@login_required
+def pantry_item_delete(item_name):
+    data = load_pantry()
+
+    existing = next(
+        (
+            key
+            for key in data["items"]
+            if key.lower()
+            == item_name.lower()
+        ),
+        None,
+    )
+
+    if existing is None:
+        return ("Pantry item not found", 404)
+
+    del data["items"][existing]
+
+    _save_json_file(
+        PANTRY_FILE,
+        data,
+    )
+
+    flash(
+        f"Removed pantry item: {existing}."
+    )
+
+    return redirect(
+        url_for("index")
+    )
+
+
 @app.post("/instalment/<int:index>/update")
 @login_required
 def instalment_update(index):
@@ -354,6 +875,10 @@ def index():
     settings = load_receipt_settings()
     routines = load_routines()
     subscriptions = load_subscriptions()
+    printer_settings = load_printer_settings()
+    freezer = load_freezer()
+    pantry = load_pantry()
+    file_status = data_file_status()
 
     for item in routines:
         due = next_due_date(item)
@@ -376,6 +901,13 @@ def index():
         subscriptions=subscriptions,
         food_shop_items=food_shop_items,
         food_shop_error=food_shop_error,
+        printer_settings=printer_settings,
+        printer_connection_label=printer_connection_label(
+            printer_settings
+        ),
+        freezer=freezer,
+        pantry=pantry,
+        file_status=file_status,
     )
 
 def _checked(name): return request.form.get(name) == "on"
