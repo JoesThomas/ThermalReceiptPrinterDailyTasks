@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Receipt Control - Data Error</title>
+    <style>
+        body {
+            font-family: system-ui;
+            background: #eee;
+            margin: 0;
+            color: #171717;
+        }
+        main {
+            max-width: 680px;
+            margin: 48px auto;
+            padding: 20px;
+        }
+        section {
+            background: white;
+            border-radius: 14px;
+            padding: 22px;
+        }
+        code {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+        a {
+            color: inherit;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <section>
+        <h1>Data file error</h1>
+        <p>
+            Receipt Control refused to overwrite a malformed
+            local data file.
+        </p>
+        <code>{{ error_message }}</code>
+        <p>
+            Fix or restore the file, then reload the page.
+        </p>
+        <p><a href="{{ url_for('index') }}">Return to Receipt Control</a></p>
+    </section>
+</main>
+</body>
+</html>
