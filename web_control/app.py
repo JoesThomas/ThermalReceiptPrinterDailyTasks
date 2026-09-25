@@ -1131,70 +1131,125 @@ def pantry_item_delete(item_name):
 @app.post("/instalment/<int:index>/update")
 @login_required
 def instalment_update(index):
-    data = load_subscriptions()
-    instalments = data.get("instalments", [])
-
-    if index < 0 or index >= len(instalments):
-        return ("Instalment not found", 404)
-
-    item = instalments[index]
-
-    item["name"] = request.form.get(
-        "name",
-        item.get("name", ""),
-    ).strip()
-
     def decimal_field(name):
-        value = request.form.get(name, "").strip()
+        value = request.form.get(
+            name,
+            "",
+        ).strip()
 
         if not value:
             return None
 
-        return round(float(value), 2)
+        return round(
+            float(value),
+            2,
+        )
 
     def integer_field(name):
-        value = request.form.get(name, "").strip()
+        value = request.form.get(
+            name,
+            "",
+        ).strip()
 
         if not value:
             return None
 
-        return max(0, int(value))
+        return max(
+            0,
+            int(value),
+        )
 
     try:
-        item["amount"] = decimal_field("amount")
-        item["total_price"] = decimal_field(
+        amount = decimal_field(
+            "amount"
+        )
+        total_price = decimal_field(
             "total_price"
         )
-        item["paid_to_date"] = decimal_field(
+        paid_to_date = decimal_field(
             "paid_to_date"
         )
-        item["remaining_balance"] = decimal_field(
+        remaining_balance = decimal_field(
             "remaining_balance"
         )
-        item["payments_remaining"] = integer_field(
+        payments_remaining = integer_field(
             "payments_remaining"
         )
-
     except ValueError:
-        flash("Invalid instalment value.")
-        return redirect(url_for("index"))
+        flash(
+            "Invalid instalment value."
+        )
+        return redirect(
+            url_for("index")
+        )
 
     next_payment = request.form.get(
         "next_payment",
         "",
     ).strip()
 
-    item["next_payment"] = (
-        next_payment or None
-    )
+    with edit_json(
+        SUBSCRIPTIONS_FILE,
+        {
+            "monthly": [],
+            "yearly": [],
+            "instalments": [],
+        },
+    ) as data:
+        instalments = data.setdefault(
+            "instalments",
+            [],
+        )
 
-    save_subscriptions(data)
+        if (
+            index < 0
+            or index >= len(instalments)
+        ):
+            return (
+                "Instalment not found",
+                404,
+            )
+
+        item = instalments[index]
+
+        item["name"] = request.form.get(
+            "name",
+            item.get(
+                "name",
+                "",
+            ),
+        ).strip()
+
+        item["amount"] = amount
+        item["total_price"] = total_price
+        item["paid_to_date"] = paid_to_date
+        item[
+            "remaining_balance"
+        ] = remaining_balance
+        item[
+            "payments_remaining"
+        ] = payments_remaining
+        item["next_payment"] = (
+            next_payment
+            or None
+        )
+
+        item_name = item[
+            "name"
+        ]
+
+    audit_event(
+        "instalment_updated",
+        item_name,
+    )
 
     flash(
-        f"{item['name']} updated."
+        f"{item_name} updated."
     )
 
-    return redirect(url_for("index"))
+    return redirect(
+        url_for("index")
+    )
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -1273,25 +1328,155 @@ def _checked(name): return request.form.get(name) == "on"
 @app.post("/save")
 @login_required
 def save():
-    settings = load_receipt_settings()
-    for name in ("calendar", "deliveries", "weather", "national_news", "local_news", "villa", "villa_trains"):
-        settings["features"][name] = _checked(name)
-    for name in ("finance_check", "food_shop", "shopping_list"):
-        if _checked(name): settings["one_shot"][name] = True
-    detail = request.form.get("weather_detail", "auto")
-    settings["display"]["weather_detail"] = detail if detail in {"auto", "compact", "full"} else "auto"
-    try: settings["display"]["news_count"] = max(1, min(10, int(request.form.get("news_count", 3))))
-    except ValueError: settings["display"]["news_count"] = 3
-    try: settings["display"]["earlier_journeys"] = max(0, min(5, int(request.form.get("earlier_journeys", 3))))
-    except ValueError: settings["display"]["earlier_journeys"] = 3
-    save_receipt_settings(settings); flash("Settings saved."); return redirect(url_for("index"))
+    with edit_json(
+        RECEIPT_SETTINGS_FILE,
+        {
+            "features": {},
+            "one_shot": {},
+            "display": {},
+        },
+    ) as settings:
+        features = settings.setdefault(
+            "features",
+            {},
+        )
+
+        for name in (
+            "calendar",
+            "deliveries",
+            "weather",
+            "national_news",
+            "local_news",
+            "villa",
+            "villa_trains",
+        ):
+            features[name] = _checked(
+                name
+            )
+
+        one_shot = settings.setdefault(
+            "one_shot",
+            {},
+        )
+
+        for name in (
+            "finance_check",
+            "food_shop",
+            "shopping_list",
+        ):
+            if _checked(
+                name
+            ):
+                one_shot[name] = True
+
+        display = settings.setdefault(
+            "display",
+            {},
+        )
+
+        detail = request.form.get(
+            "weather_detail",
+            "auto",
+        )
+
+        display[
+            "weather_detail"
+        ] = (
+            detail
+            if detail in {
+                "auto",
+                "compact",
+                "full",
+            }
+            else "auto"
+        )
+
+        try:
+            display["news_count"] = max(
+                1,
+                min(
+                    10,
+                    int(
+                        request.form.get(
+                            "news_count",
+                            3,
+                        )
+                    ),
+                ),
+            )
+        except ValueError:
+            display[
+                "news_count"
+            ] = 3
+
+        try:
+            display[
+                "earlier_journeys"
+            ] = max(
+                0,
+                min(
+                    5,
+                    int(
+                        request.form.get(
+                            "earlier_journeys",
+                            3,
+                        )
+                    ),
+                ),
+            )
+        except ValueError:
+            display[
+                "earlier_journeys"
+            ] = 3
+
+    audit_event(
+        "receipt_settings_updated"
+    )
+
+    flash(
+        "Settings saved."
+    )
+
+    return redirect(
+        url_for("index")
+    )
+
 
 @app.post("/one-shot/<name>/clear")
 @login_required
 def clear_one_shot(name):
-    if name not in {"finance_check", "food_shop", "shopping_list"}: return ("Unknown request", 404)
-    settings = load_receipt_settings(); settings["one_shot"][name] = False; save_receipt_settings(settings)
-    return redirect(url_for("index"))
+    if name not in {
+        "finance_check",
+        "food_shop",
+        "shopping_list",
+    }:
+        return (
+            "Unknown request",
+            404,
+        )
+
+    with edit_json(
+        RECEIPT_SETTINGS_FILE,
+        {
+            "features": {},
+            "one_shot": {},
+            "display": {},
+        },
+    ) as settings:
+        settings.setdefault(
+            "one_shot",
+            {},
+        )[name] = False
+
+    audit_event(
+        "one_shot_cleared",
+        name,
+    )
+
+    return redirect(
+        url_for("index")
+    )
+
 
 @app.post("/routine/add")
 @login_required
