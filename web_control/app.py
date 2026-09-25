@@ -42,8 +42,6 @@ limiter = Limiter(
     default_limits=[],
 )
 
-import json
-
 SUBSCRIPTIONS_FILE = (
     PROJECT_ROOT / "data" / "subscriptions.json"
 )
@@ -119,22 +117,35 @@ def audit_event(action, detail=""):
 
 
 def load_subscriptions():
-    if not SUBSCRIPTIONS_FILE.exists():
-        return {
+    data = read_json(
+        SUBSCRIPTIONS_FILE,
+        {
             "monthly": [],
             "yearly": [],
             "instalments": [],
-        }
+        },
+    )
 
-    with SUBSCRIPTIONS_FILE.open(
-        "r",
-        encoding="utf-8",
-    ) as file:
-        data = json.load(file)
+    if not isinstance(
+        data,
+        dict,
+    ):
+        raise JsonDataError(
+            "data/subscriptions.json must contain a JSON object."
+        )
 
-    data.setdefault("monthly", [])
-    data.setdefault("yearly", [])
-    data.setdefault("instalments", [])
+    data.setdefault(
+        "monthly",
+        [],
+    )
+    data.setdefault(
+        "yearly",
+        [],
+    )
+    data.setdefault(
+        "instalments",
+        [],
+    )
 
     return data
 
@@ -144,30 +155,9 @@ def save_subscriptions(data):
     Save subscription and instalment changes
     made through Receipt Control.
     """
-    SUBSCRIPTIONS_FILE.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    temp_file = SUBSCRIPTIONS_FILE.with_suffix(
-        ".json.tmp"
-    )
-
-    with temp_file.open(
-        "w",
-        encoding="utf-8",
-    ) as file:
-        json.dump(
-            data,
-            file,
-            indent=2,
-            ensure_ascii=False,
-        )
-
-        file.write("\n")
-
-    temp_file.replace(
-        SUBSCRIPTIONS_FILE
+    write_json(
+        SUBSCRIPTIONS_FILE,
+        data,
     )
 
 
@@ -485,9 +475,6 @@ if (
         "SESSION_COOKIE_SECURE"
     ] = True
 
-
-app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", PERMANENT_SESSION_LIFETIME=timedelta(hours=12))
-if os.environ.get("RECEIPT_WEB_SECURE_COOKIE") == "1": app.config["SESSION_COOKIE_SECURE"] = True
 
 @app.after_request
 def add_security_headers(response):
