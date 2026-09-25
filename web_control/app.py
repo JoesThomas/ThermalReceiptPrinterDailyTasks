@@ -20,6 +20,12 @@ from printer_config import (
     printer_connection_label,
     save_printer_settings,
 )
+from meal_planner import (
+    add_freezer_portions,
+    get_meal,
+    record_cooked,
+    use_freezer_portion,
+)
 
 app = Flask(__name__)
 
@@ -430,6 +436,135 @@ def login_required(view):
         if not session.get("authenticated"): return redirect(url_for("login"))
         return view(*args, **kwargs)
     return wrapped
+
+@app.post("/meal/today/cooked")
+@login_required
+def meal_today_cooked():
+    meal = get_meal()
+
+    if not meal:
+        flash("There is no meal planned for today.")
+        return redirect(url_for("index"))
+
+    if meal.get("kind") != "recipe":
+        flash(
+            "Today's planned meal is not a recipe, "
+            "so there is nothing to record as cooked."
+        )
+        return redirect(url_for("index"))
+
+    recipe = meal.get("recipe", {})
+    recipe_name = str(
+        recipe.get(
+            "name",
+            "Recipe",
+        )
+    ).strip()
+
+    try:
+        made = max(
+            1,
+            int(
+                request.form.get(
+                    "portions_made",
+                    recipe.get(
+                        "servings",
+                        1,
+                    ),
+                )
+            ),
+        )
+
+        eaten = max(
+            0,
+            int(
+                request.form.get(
+                    "portions_eaten",
+                    "1",
+                )
+            ),
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+        flash("Portions must be whole numbers.")
+        return redirect(url_for("index"))
+
+    if eaten > made:
+        flash(
+            "Portions eaten cannot be greater "
+            "than portions made."
+        )
+        return redirect(url_for("index"))
+
+    frozen = made - eaten
+
+    record_cooked(
+        recipe_name
+    )
+
+    if frozen > 0:
+        add_freezer_portions(
+            recipe_name,
+            frozen,
+            source="cooked meal leftovers",
+        )
+
+    if frozen:
+        flash(
+            f"Recorded {recipe_name} as cooked. "
+            f"{eaten} eaten, {frozen} added to freezer."
+        )
+    else:
+        flash(
+            f"Recorded {recipe_name} as cooked. "
+            f"{eaten} eaten, nothing added to freezer."
+        )
+
+    return redirect(
+        url_for("index")
+    )
+
+
+@app.post("/freezer/<int:index>/eat-one")
+@login_required
+def freezer_eat_one(index):
+    data = load_freezer()
+    items = data.get(
+        "items",
+        [],
+    )
+
+    if index < 0 or index >= len(items):
+        return ("Freezer item not found", 404)
+
+    item = items[index]
+
+    name = str(
+        item.get(
+            "name",
+            "",
+        )
+    ).strip()
+
+    if not name:
+        return ("Freezer item has no name", 400)
+
+    if use_freezer_portion(name):
+        flash(
+            f"Used one freezer portion of {name}."
+        )
+    else:
+        flash(
+            f"No freezer portions of {name} are available."
+        )
+
+    return redirect(
+        url_for("index")
+    )
+
 
 @app.post("/printer/settings")
 @login_required
@@ -880,6 +1015,14 @@ def index():
     pantry = load_pantry()
     file_status = data_file_status()
 
+    today_meal = None
+    today_meal_error = None
+
+    try:
+        today_meal = get_meal()
+    except Exception as error:
+        today_meal_error = str(error)
+
     for item in routines:
         due = next_due_date(item)
         item["next_due_display"] = (
@@ -908,6 +1051,8 @@ def index():
         freezer=freezer,
         pantry=pantry,
         file_status=file_status,
+        today_meal=today_meal,
+        today_meal_error=today_meal_error,
     )
 
 def _checked(name): return request.form.get(name) == "on"
