@@ -8,11 +8,15 @@ from pathlib import Path
 from urllib.parse import quote_plus
 from urllib.request import urlopen
 from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import check_password_hash
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 from receipt_settings import load_receipt_settings, save_receipt_settings
+from data_store import JsonDataError, edit_json, read_json, write_json
 from routines import WEEKDAYS, add_routine, delete_routine, load_routines, mark_done, next_due_date, set_enabled
 from printer_config import (
     check_printer_connection,
@@ -28,6 +32,13 @@ from meal_planner import (
 )
 
 app = Flask(__name__)
+
+csrf = CSRFProtect(app)
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=[],
+)
 
 import json
 
@@ -110,45 +121,17 @@ def save_subscriptions(data):
 
 
 def _load_json_file(path, default):
-    if not path.exists():
-        return default
-
-    try:
-        value = json.loads(
-            path.read_text(
-                encoding="utf-8"
-            )
-        )
-    except (
-        OSError,
-        json.JSONDecodeError,
-    ):
-        return default
-
-    return value
+    return read_json(
+        path,
+        default,
+    )
 
 
 def _save_json_file(path, value):
-    path.parent.mkdir(
-        parents=True,
-        exist_ok=True,
+    write_json(
+        path,
+        value,
     )
-
-    temp = path.with_suffix(
-        path.suffix + ".tmp"
-    )
-
-    temp.write_text(
-        json.dumps(
-            value,
-            indent=2,
-            ensure_ascii=False,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-
-    temp.replace(path)
 
 
 def load_freezer():
@@ -332,6 +315,17 @@ def load_food_shop_items():
         return [], str(error)
 
 
+@app.errorhandler(JsonDataError)
+def handle_json_data_error(error):
+    return (
+        render_template(
+            "data_error.html",
+            error_message=str(error),
+        ),
+        500,
+    )
+
+
 # ============================================================
 # PASSWORD
 # ============================================================
@@ -429,6 +423,37 @@ if (
 
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", PERMANENT_SESSION_LIFETIME=timedelta(hours=12))
 if os.environ.get("RECEIPT_WEB_SECURE_COOKIE") == "1": app.config["SESSION_COOKIE_SECURE"] = True
+
+@app.after_request
+def add_security_headers(response):
+    response.headers.setdefault(
+        "X-Content-Type-Options",
+        "nosniff",
+    )
+    response.headers.setdefault(
+        "X-Frame-Options",
+        "DENY",
+    )
+    response.headers.setdefault(
+        "Referrer-Policy",
+        "no-referrer",
+    )
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=()",
+    )
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; "
+        "img-src 'self' data:; "
+        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'",
+    )
+    return response
+
 
 def login_required(view):
     @wraps(view)
@@ -986,6 +1011,7 @@ def instalment_update(index):
 
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
 def login():
     if request.method == "POST":
         if check_password_hash(
