@@ -8941,7 +8941,11 @@ def _print_section_error(
     left(printer, message)
 
 
-def run_live_pipeline():
+def run_live_pipeline(
+    *,
+    force_finance=False,
+    only_page=None,
+):
 
     print(
         "Connecting to thermal printer..."
@@ -8967,554 +8971,609 @@ def run_live_pipeline():
     ]["width"]["pixels"] = 576
 
     setup_printer(printer)
-    print_header(printer)
 
-    # ==========================================
-    # WEATHER
-    # ==========================================
+    valid_pages = {
+        None,
+        "information",
+        "actions",
+        "food",
+        "finance",
+    }
 
-    if feature_enabled(
-        settings,
-        "weather",
-    ):
-        try:
-            print(
-                "Downloading Stirchley weather..."
-            )
+    if only_page not in valid_pages:
+        raise ValueError(
+            f"Unknown receipt page: {only_page}"
+        )
 
-            weather = get_weather()
-
-            print_weather(
-                printer,
-                weather,
-            )
-
-        except Exception as error:
-            print(
-                "Weather error:",
-                repr(error),
-            )
-
-            _print_section_error(
-                printer,
-                "WEATHER ERROR",
-            )
-
-    # ==========================================
-    # NATIONAL NEWS
-    # ==========================================
-
-    if feature_enabled(
-        settings,
-        "national_news",
-    ):
-        try:
-            news_count = int(
-                display_value(
-                    settings,
-                    "news_count",
-                    NEWS_HEADLINES,
-                )
-            )
-
-            print(
-                "Downloading today's UK news..."
-            )
-
-            headlines = (
-                get_top_news_headlines(
-                    news_count
-                )
-            )
-
-            print_news(
-                printer,
-                headlines,
-            )
-
-        except Exception as error:
-            print(
-                "UK news error:",
-                repr(error),
-            )
-
-    # ==========================================
-    # BIRMINGHAM NEWS
-    # ==========================================
-
-    if feature_enabled(
-        settings,
-        "local_news",
-    ):
-        try:
-            news_count = int(
-                display_value(
-                    settings,
-                    "news_count",
-                    LOCAL_NEWS_HEADLINES,
-                )
-            )
-
-            print(
-                "Downloading today's "
-                "Birmingham news..."
-            )
-
-            local_headlines = (
-                get_birmingham_news_headlines(
-                    news_count
-                )
-            )
-
-            print_local_news(
-                printer,
-                local_headlines,
-            )
-
-        except Exception as error:
-            print(
-                "Birmingham news error:",
-                repr(error),
-            )
-
-    # ==========================================
-    # CUT RECEIPT
-    # ==========================================
-
-    cut_receipt_section(
-        printer
+    print_information_page = (
+        only_page in (None, "information")
     )
-
-    # ==========================================
-    # VEHICLE CHECK
-    # ==========================================
-
-    print(
-        "Checking vehicle MOT/tax..."
+    print_actions_page = (
+        only_page in (None, "actions")
     )
-
-    print_vehicle_expiry_checks(
-        printer,
-        vehicles,
-        dvla_api_key,
+    print_food_page = (
+        only_page in (None, "food")
     )
-
-    # ==========================================
-    # VILLA
-    # ==========================================
-
-    if feature_enabled(
-            settings,
-            "villa",
-    ):
-        try:
-            villa_match = (
-                get_aston_villa_match_today(
-                    FOOTBALL_DATA_API_KEY
-                )
-            )
-
-            if villa_match:
-                print_villa_matchday(
-                    printer,
-                    villa_match,
-
-                    include_trains=(
-                        feature_enabled(
-                            settings,
-                            "villa_trains",
-                        )
-                    ),
-
-                    transport_app_id=(
-                        TRANSPORT_API_APP_ID
-                    ),
-
-                    transport_app_key=(
-                        TRANSPORT_API_APP_KEY
-                    ),
-
-                    left=left,
-                    centre=centre,
-                    line=print_line,
-                    safe_text=printer_safe_text,
-                )
-
-        except Exception as error:
-            print(
-                "Villa match-day error:",
-                repr(error),
-            )
-
-    # ==========================================
-    # CALENDAR
-    # ==========================================
-
-    events = []
-    upcoming_events = []
-
-    if feature_enabled(
-        settings,
-        "calendar",
-    ):
-        try:
-            print(
-                "Downloading Google Calendar..."
-            )
-
-            events = get_calendar_events(
-                CALENDAR_ICAL_URL,
-                days_ahead=0,
-            )
-
-            upcoming_events = (
-                get_calendar_events(
-                    CALENDAR_ICAL_URL,
-                    days_ahead=3,
-                )
-            )
-
-            print_calendar(
-                printer,
-                events,
-            )
-
-        except Exception as error:
-            print(
-                "Calendar error:",
-                repr(error),
-            )
-
-            _print_section_error(
-                printer,
-                "CALENDAR ERROR",
-            )
-
-    # ==========================================
-    # GOOGLE DOC / TO-DO
-    # ==========================================
-
-    document_1 = ""
-
-    try:
-        print(
-            "Downloading Google Doc #1..."
-        )
-
-        document_1 = (
-            get_google_doc_text(
-                GOOGLE_DOC_1_URL
-            )
-        )
-
-        print_google_doc(
-            printer,
-            document_1,
-            upcoming_events,
-        )
-
-    except Exception as error:
-        print(
-            "Document 1 error:",
-            repr(error),
-        )
-
-        traceback.print_exc()
-
-    # ==========================================
-    # TRIGGERS
-    # ==========================================
-
-    doc_finance = (
-        finance_requested(
-            document_1
-        )
-    )
-
-    doc_food_shop = (
-        food_shop_requested(
-            document_1
-        )
-    )
-
-    doc_shopping_list = (
-        shopping_list_requested(
-            document_1
-        )
-    )
-
-    web_finance = (
-        one_shot_requested(
-            settings,
-            "finance_check",
-        )
-    )
-
-    web_food_shop = (
-        one_shot_requested(
-            settings,
-            "food_shop",
-        )
-    )
-
-    web_shopping_list = (
-        one_shot_requested(
-            settings,
-            "shopping_list",
-        )
+    print_finance_page = (
+        only_page in (None, "finance")
     )
 
     today = datetime.now(
         ZoneInfo("Europe/London")
     ).date()
 
-    # Keep scheduled finance independent
-    # of Google Doc punctuation.
+    web_finance = one_shot_requested(
+        settings,
+        "finance_check",
+    )
+
     scheduled_finance = (
         today.weekday() == 6
     )
 
     should_run_finance = (
-        scheduled_finance
-        or doc_finance
+        force_finance
+        or only_page == "finance"
+        or scheduled_finance
         or web_finance
     )
 
-    should_run_food_shop = (
-        doc_food_shop
-        or web_food_shop
-    )
+    if print_information_page:
+        print_header(printer)
 
-    should_run_shopping_list = (
-        doc_shopping_list
-        or web_shopping_list
-    )
+    if print_information_page:
+        # ==========================================
+        # WEATHER
+        # ==========================================
 
-    # ==========================================
-    # FOOD SHOP
-    # ==========================================
+        if feature_enabled(
+            settings,
+            "weather",
+        ):
+            try:
+                print(
+                    "Downloading Stirchley weather..."
+                )
 
-    if should_run_food_shop:
+                weather = get_weather()
 
-        food_shop_success = False
+                print_weather(
+                    printer,
+                    weather,
+                )
+
+            except Exception as error:
+                print(
+                    "Weather error:",
+                    repr(error),
+                )
+
+                _print_section_error(
+                    printer,
+                    "WEATHER ERROR",
+                )
+
+        # ==========================================
+        # NATIONAL NEWS
+        # ==========================================
+
+        if feature_enabled(
+            settings,
+            "national_news",
+        ):
+            try:
+                news_count = int(
+                    display_value(
+                        settings,
+                        "news_count",
+                        NEWS_HEADLINES,
+                    )
+                )
+
+                print(
+                    "Downloading today's UK news..."
+                )
+
+                headlines = (
+                    get_top_news_headlines(
+                        news_count
+                    )
+                )
+
+                print_news(
+                    printer,
+                    headlines,
+                )
+
+            except Exception as error:
+                print(
+                    "UK news error:",
+                    repr(error),
+                )
+
+        # ==========================================
+        # BIRMINGHAM NEWS
+        # ==========================================
+
+        if feature_enabled(
+            settings,
+            "local_news",
+        ):
+            try:
+                news_count = int(
+                    display_value(
+                        settings,
+                        "news_count",
+                        LOCAL_NEWS_HEADLINES,
+                    )
+                )
+
+                print(
+                    "Downloading today's "
+                    "Birmingham news..."
+                )
+
+                local_headlines = (
+                    get_birmingham_news_headlines(
+                        news_count
+                    )
+                )
+
+                print_local_news(
+                    printer,
+                    local_headlines,
+                )
+
+            except Exception as error:
+                print(
+                    "Birmingham news error:",
+                    repr(error),
+                )
+
+        # ==========================================
+        # CUT RECEIPT
+        # ==========================================
+
+        cut_receipt_section(
+            printer
+        )
+
+    if print_actions_page:
+        # ==========================================
+        # VEHICLE CHECK
+        # ==========================================
+
+        print(
+            "Checking vehicle MOT/tax..."
+        )
+
+        print_vehicle_expiry_checks(
+            printer,
+            vehicles,
+            dvla_api_key,
+        )
+
+        # ==========================================
+        # VILLA
+        # ==========================================
+
+        if feature_enabled(
+                settings,
+                "villa",
+        ):
+            try:
+                villa_match = (
+                    get_aston_villa_match_today(
+                        FOOTBALL_DATA_API_KEY
+                    )
+                )
+
+                if villa_match:
+                    print_villa_matchday(
+                        printer,
+                        villa_match,
+
+                        include_trains=(
+                            feature_enabled(
+                                settings,
+                                "villa_trains",
+                            )
+                        ),
+
+                        transport_app_id=(
+                            TRANSPORT_API_APP_ID
+                        ),
+
+                        transport_app_key=(
+                            TRANSPORT_API_APP_KEY
+                        ),
+
+                        left=left,
+                        centre=centre,
+                        line=print_line,
+                        safe_text=printer_safe_text,
+                    )
+
+            except Exception as error:
+                print(
+                    "Villa match-day error:",
+                    repr(error),
+                )
+
+        # ==========================================
+        # CALENDAR
+        # ==========================================
+
+        events = []
+        upcoming_events = []
+
+        if feature_enabled(
+            settings,
+            "calendar",
+        ):
+            try:
+                print(
+                    "Downloading Google Calendar..."
+                )
+
+                events = get_calendar_events(
+                    CALENDAR_ICAL_URL,
+                    days_ahead=0,
+                )
+
+                upcoming_events = (
+                    get_calendar_events(
+                        CALENDAR_ICAL_URL,
+                        days_ahead=3,
+                    )
+                )
+
+                print_calendar(
+                    printer,
+                    events,
+                )
+
+            except Exception as error:
+                print(
+                    "Calendar error:",
+                    repr(error),
+                )
+
+                _print_section_error(
+                    printer,
+                    "CALENDAR ERROR",
+                )
+
+        # ==========================================
+        # GOOGLE DOC / TO-DO
+        # ==========================================
+
+        document_1 = ""
 
         try:
             print(
-                "Food shop requested..."
+                "Downloading Google Doc #1..."
             )
 
-            food_shop_text = (
+            document_1 = (
                 get_google_doc_text(
-                    FOOD_SHOP_GOOGLE_DOC_URL
+                    GOOGLE_DOC_1_URL
                 )
             )
 
-            print_food_shop_check(
+            print_google_doc(
                 printer,
-                food_shop_text,
+                document_1,
+                upcoming_events,
             )
-
-            food_shop_success = True
 
         except Exception as error:
             print(
-                "Food shop error:",
+                "Document 1 error:",
                 repr(error),
             )
 
             traceback.print_exc()
 
-            _print_section_error(
-                printer,
-                "FOOD SHOP ERROR",
-                "ITEM LIST UNAVAILABLE",
-            )
+        # ==========================================
+        # TRIGGERS
+        # ==========================================
 
-        if (
-                food_shop_success
-                and web_food_shop
-        ):
-            consume_one_shot(
+        doc_finance = (
+            finance_requested(
+                document_1
+            )
+        )
+
+        doc_food_shop = (
+            food_shop_requested(
+                document_1
+            )
+        )
+
+        doc_shopping_list = (
+            shopping_list_requested(
+                document_1
+            )
+        )
+
+        web_finance = (
+            one_shot_requested(
+                settings,
+                "finance_check",
+            )
+        )
+
+        web_food_shop = (
+            one_shot_requested(
                 settings,
                 "food_shop",
             )
+        )
 
-    # ==========================================
-    # SHOPPING LIST
-    # ==========================================
+        web_shopping_list = (
+            one_shot_requested(
+                settings,
+                "shopping_list",
+            )
+        )
 
-    if should_run_shopping_list:
+        today = datetime.now(
+            ZoneInfo("Europe/London")
+        ).date()
 
-        shopping_list_success = False
+        # Keep scheduled finance independent
+        # of Google Doc punctuation.
+        scheduled_finance = (
+            today.weekday() == 6
+        )
+
+        should_run_finance = (
+            force_finance
+            or scheduled_finance
+            or doc_finance
+            or web_finance
+        )
+
+        should_run_food_shop = (
+            doc_food_shop
+            or web_food_shop
+        )
+
+        should_run_shopping_list = (
+            doc_shopping_list
+            or web_shopping_list
+        )
+
+        # ==========================================
+        # FOOD SHOP
+        # ==========================================
+
+        if should_run_food_shop:
+
+            food_shop_success = False
+
+            try:
+                print(
+                    "Food shop requested..."
+                )
+
+                food_shop_text = (
+                    get_google_doc_text(
+                        FOOD_SHOP_GOOGLE_DOC_URL
+                    )
+                )
+
+                print_food_shop_check(
+                    printer,
+                    food_shop_text,
+                )
+
+                food_shop_success = True
+
+            except Exception as error:
+                print(
+                    "Food shop error:",
+                    repr(error),
+                )
+
+                traceback.print_exc()
+
+                _print_section_error(
+                    printer,
+                    "FOOD SHOP ERROR",
+                    "ITEM LIST UNAVAILABLE",
+                )
+
+            if (
+                    food_shop_success
+                    and web_food_shop
+            ):
+                consume_one_shot(
+                    settings,
+                    "food_shop",
+                )
+
+        # ==========================================
+        # SHOPPING LIST
+        # ==========================================
+
+        if should_run_shopping_list:
+
+            shopping_list_success = False
+
+            try:
+                print(
+                    "Shopping list requested..."
+                )
+
+                shopping_list_success = True
+
+            except Exception as error:
+                print(
+                    "Shopping list error:",
+                    repr(error),
+                )
+
+                traceback.print_exc()
+
+                _print_section_error(
+                    printer,
+                    "SHOPPING LIST ERROR",
+                    "SHOPPING LIST UNAVAILABLE",
+                )
+
+            if (
+                shopping_list_success
+                and web_shopping_list
+            ):
+                consume_one_shot(
+                    settings,
+                    "shopping_list",
+                )
+
+        # ==========================================
+        # SUNDAY SUBSCRIPTIONS
+        # ==========================================
+
+        if should_print_subscriptions():
+
+            try:
+                subscriptions_text = (
+                    get_google_doc_text(
+                        SUBSCRIPTIONS_GOOGLE_DOC_URL
+                    )
+                )
+
+                print_subscriptions(
+                    printer,
+                    subscriptions_text,
+                )
+
+            except Exception as error:
+                print(
+                    "Subscriptions error:",
+                    repr(error),
+                )
+
+        # ==========================================
+        # DELIVERIES
+        # ==========================================
+
+        if feature_enabled(
+            settings,
+            "deliveries",
+        ):
+            try:
+                print(
+                    "Checking upcoming deliveries..."
+                )
+
+                deliveries = (
+                    get_upcoming_deliveries()
+                )
+
+                print_upcoming_deliveries(
+                    printer,
+                    deliveries,
+                )
+
+            except Exception as error:
+                print(
+                    "Delivery error:",
+                    repr(error),
+                )
+
+        # ==========================================
+        # EXERCISES
+        # ==========================================
 
         try:
-            print(
-                "Shopping list requested..."
+            document_2 = (
+                get_google_doc_text(
+                    GOOGLE_DOC_2_URL
+                )
             )
 
-            shopping_list_success = True
+            print_random_document_lines(
+                printer,
+                document_2,
+            )
 
         except Exception as error:
             print(
-                "Shopping list error:",
+                "Document 2 error:",
+                repr(error),
+            )
+
+        # ==========================================
+        # CUT DAILY ACTIONS
+        # ==========================================
+
+        cut_receipt_section(
+            printer
+        )
+
+    if print_food_page:
+        # ==========================================
+        # MEAL PLANNER
+        # ==========================================
+
+        try:
+            if today.weekday() == 5:
+
+                meals.generate_week(
+                    meals.sunday_for(today),
+                )
+
+                meals.print_weekly_overview(
+                    printer,
+                    left,
+                    print_line,
+                )
+
+                meals.print_shopping_list(
+                    printer,
+                    left,
+                    print_line,
+                )
+
+            if today.weekday() == 6:
+
+                meals.print_sunday_prep(
+                    printer,
+                    left,
+                    print_line,
+                )
+
+            meals.print_today_recipe(
+                printer,
+                left,
+                print_line,
+            )
+
+        except Exception as error:
+            print(
+                "Meal planner error:",
                 repr(error),
             )
 
             traceback.print_exc()
 
-            _print_section_error(
-                printer,
-                "SHOPPING LIST ERROR",
-                "SHOPPING LIST UNAVAILABLE",
-            )
-
-        if (
-            shopping_list_success
-            and web_shopping_list
-        ):
-            consume_one_shot(
-                settings,
-                "shopping_list",
-            )
-
-    # ==========================================
-    # SUNDAY SUBSCRIPTIONS
-    # ==========================================
-
-    if should_print_subscriptions():
-
-        try:
-            subscriptions_text = (
-                get_google_doc_text(
-                    SUBSCRIPTIONS_GOOGLE_DOC_URL
-                )
-            )
-
-            print_subscriptions(
-                printer,
-                subscriptions_text,
-            )
-
-        except Exception as error:
-            print(
-                "Subscriptions error:",
-                repr(error),
-            )
-
-    # ==========================================
-    # DELIVERIES
-    # ==========================================
-
-    if feature_enabled(
-        settings,
-        "deliveries",
-    ):
-        try:
-            print(
-                "Checking upcoming deliveries..."
-            )
-
-            deliveries = (
-                get_upcoming_deliveries()
-            )
-
-            print_upcoming_deliveries(
-                printer,
-                deliveries,
-            )
-
-        except Exception as error:
-            print(
-                "Delivery error:",
-                repr(error),
-            )
-
-    # ==========================================
-    # EXERCISES
-    # ==========================================
-
-    try:
-        document_2 = (
-            get_google_doc_text(
-                GOOGLE_DOC_2_URL
-            )
+        print_footer(
+            printer
         )
 
-        print_random_document_lines(
-            printer,
-            document_2,
-        )
-
-    except Exception as error:
-        print(
-            "Document 2 error:",
-            repr(error),
-        )
-
-    # ==========================================
-    # CUT DAILY ACTIONS
-    # ==========================================
-
-    cut_receipt_section(
-        printer
-    )
-
-    # ==========================================
-    # MEAL PLANNER
-    # ==========================================
-
-    try:
-        if today.weekday() == 5:
-
-            meals.generate_week(
-                meals.sunday_for(today),
-            )
-
-            meals.print_weekly_overview(
-                printer,
-                left,
-                print_line,
-            )
-
-            meals.print_shopping_list(
-                printer,
-                left,
-                print_line,
-            )
-
-        if today.weekday() == 6:
-
-            meals.print_sunday_prep(
-                printer,
-                left,
-                print_line,
-            )
-
-        meals.print_today_recipe(
-            printer,
-            left,
-            print_line,
-        )
-
-    except Exception as error:
-        print(
-            "Meal planner error:",
-            repr(error),
-        )
-
-        traceback.print_exc()
-
-    print_footer(
-        printer
-    )
-
-    printer.cut()
+        printer.cut()
 
     # ==========================================
     # FINANCE - SEPARATE RECEIPT
     # ==========================================
 
-    if should_run_finance:
+    if (
+        print_finance_page
+        and should_run_finance
+    ):
 
         finance_success = False
 
@@ -9576,12 +9635,6 @@ def run_live_pipeline():
             print_subscription_changes(
                 printer,
                 subscription_changes,
-            )
-
-            # Reload after transaction matching because
-            # subscriptions.json may just have been updated.
-            subscriptions_data = (
-                load_subscriptions()
             )
 
             # Reload after transaction matching because
