@@ -161,6 +161,37 @@
             font-weight: 700;
         }
 
+        .tesco-item,
+        .debug-print {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .tesco-link {
+            white-space: nowrap;
+            text-decoration: none;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+            padding: 8px 10px;
+            color: inherit;
+            background: #f7f7f7;
+        }
+
+        .debug-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .debug-grid form,
+        .debug-grid button {
+            width: 100%;
+        }
+
 
         @media(max-width:560px) {
 
@@ -872,6 +903,114 @@
             </p>
 
         {% endif %}
+
+    </section>
+
+
+    <!-- FOOD SHOP -->
+
+    <section>
+
+        <h2>Food shop</h2>
+
+        <p class="muted">
+            Open each item as a Tesco Groceries search.
+            The Tesco site remains responsible for choosing
+            the exact product and adding it to your basket.
+        </p>
+
+        {% if food_shop_error %}
+
+            <p>
+                Food shop unavailable:
+                {{ food_shop_error }}
+            </p>
+
+        {% elif food_shop_items %}
+
+            {% for item in food_shop_items %}
+
+                <div class="tesco-item">
+
+                    <span>
+                        {{ item }}
+                    </span>
+
+                    <a
+                        class="tesco-link"
+                        href="{{ url_for(
+                            'tesco_search',
+                            item=item
+                        ) }}"
+                        target="_blank"
+                        rel="noopener"
+                    >
+                        Find at Tesco
+                    </a>
+
+                </div>
+
+            {% endfor %}
+
+            <p>
+                <a
+                    class="tesco-link"
+                    href="https://www.tesco.com/groceries/en-GB/"
+                    target="_blank"
+                    rel="noopener"
+                >
+                    Open Tesco Groceries
+                </a>
+            </p>
+
+        {% else %}
+
+            <p>
+                No food-shop items found.
+            </p>
+
+        {% endif %}
+
+    </section>
+
+
+    <!-- DEBUG PRINTING -->
+
+    <section>
+
+        <h2>Print individual page</h2>
+
+        <p class="muted">
+            Print one physical receipt page for
+            debugging without running the other pages.
+        </p>
+
+        <div class="debug-grid">
+
+            {% for key,label in [
+                ('information','Information'),
+                ('actions','Actions'),
+                ('food','Food / meal planner'),
+                ('finance','Finance')
+            ] %}
+
+                <form
+                    method="post"
+                    action="{{ url_for('print_page') }}"
+                >
+                    <input
+                        type="hidden"
+                        name="page"
+                        value="{{ key }}"
+                    >
+                    <button>
+                        Print {{ label }}
+                    </button>
+                </form>
+
+            {% endfor %}
+
+        </div>
 
     </section>
 
