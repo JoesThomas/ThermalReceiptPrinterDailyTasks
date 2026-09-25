@@ -2,6 +2,8 @@ from __future__ import annotations
 import os, subprocess, sys
 import shlex
 import json
+import fcntl
+from datetime import date, datetime, timezone
 from datetime import timedelta
 from functools import wraps
 from pathlib import Path
@@ -65,6 +67,55 @@ RECEIPT_SETTINGS_FILE = (
 PRINTER_SETTINGS_FILE = (
     PROJECT_ROOT / "data" / "printer_settings.json"
 )
+
+MEAL_ACTIONS_FILE = (
+    PROJECT_ROOT / "data" / "meal_actions.json"
+)
+
+AUDIT_LOG_FILE = (
+    PROJECT_ROOT / "logs" / "audit.log"
+)
+
+
+def audit_event(action, detail=""):
+    AUDIT_LOG_FILE.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    timestamp = datetime.now(
+        timezone.utc
+    ).isoformat()
+
+    safe_detail = str(
+        detail
+    ).replace(
+        "\n",
+        " ",
+    )[:500]
+
+    line = (
+        f"{timestamp}\t{action}\t{safe_detail}\n"
+    )
+
+    with AUDIT_LOG_FILE.open(
+        "a",
+        encoding="utf-8",
+    ) as file:
+        fcntl.flock(
+            file.fileno(),
+            fcntl.LOCK_EX,
+        )
+        try:
+            file.write(
+                line
+            )
+            file.flush()
+        finally:
+            fcntl.flock(
+                file.fileno(),
+                fcntl.LOCK_UN,
+            )
 
 
 def load_subscriptions():
@@ -526,6 +577,51 @@ def meal_today_cooked():
 
     frozen = made - eaten
 
+    action_key = (
+        f"{date.today().isoformat()}:"
+        f"{recipe_name.lower()}"
+    )
+
+    force_record = (
+        request.form.get(
+            "force_record",
+            "0",
+        )
+        == "1"
+    )
+
+    with edit_json(
+        MEAL_ACTIONS_FILE,
+        {
+            "actions": {},
+        },
+    ) as meal_actions:
+        actions = meal_actions.setdefault(
+            "actions",
+            {},
+        )
+
+        if (
+            action_key in actions
+            and not force_record
+        ):
+            flash(
+                "This meal has already been recorded today. "
+                "Use 'Record again' only if that is intentional."
+            )
+            return redirect(
+                url_for("index")
+            )
+
+        actions[action_key] = {
+            "recorded_at": datetime.now(
+                timezone.utc
+            ).isoformat(),
+            "portions_made": made,
+            "portions_eaten": eaten,
+            "frozen": frozen,
+        }
+
     record_cooked(
         recipe_name
     )
@@ -547,6 +643,11 @@ def meal_today_cooked():
             f"Recorded {recipe_name} as cooked. "
             f"{eaten} eaten, nothing added to freezer."
         )
+
+    audit_event(
+        "meal_recorded",
+        f"{recipe_name}; made={made}; eaten={eaten}; frozen={frozen}",
+    )
 
     return redirect(
         url_for("index")
@@ -578,6 +679,10 @@ def freezer_eat_one(index):
         return ("Freezer item has no name", 400)
 
     if use_freezer_portion(name):
+        audit_event(
+            "freezer_portion_used",
+            name,
+        )
         flash(
             f"Used one freezer portion of {name}."
         )
@@ -663,6 +768,13 @@ def printer_settings_update():
         settings
     )
 
+    audit_event(
+        "printer_settings_changed",
+        printer_connection_label(
+            settings
+        ),
+    )
+
     flash(
         "Printer connection settings saved."
     )
@@ -676,6 +788,14 @@ def printer_settings_update():
 @login_required
 def printer_test():
     status = check_printer_connection()
+
+    audit_event(
+        "printer_connection_test",
+        (
+            "ok " if status["ok"] else "failed "
+        )
+        + status["label"],
+    )
 
     if status["ok"]:
         flash(
@@ -1178,6 +1298,50 @@ def tesco_search():
     return redirect(_tesco_search_url(item))
 
 
+def _rotate_log(
+    path,
+    max_bytes=1_000_000,
+    backups=3,
+):
+    path = Path(
+        path
+    )
+
+    if (
+        not path.exists()
+        or path.stat().st_size
+        < max_bytes
+    ):
+        return
+
+    for index in range(
+        backups,
+        0,
+        -1,
+    ):
+        source = (
+            path
+            if index == 1
+            else path.with_name(
+                path.name
+                + f".{index - 1}"
+            )
+        )
+
+        destination = path.with_name(
+            path.name
+            + f".{index}"
+        )
+
+        if source.exists():
+            destination.unlink(
+                missing_ok=True
+            )
+            source.replace(
+                destination
+            )
+
+
 def _start_print_command(command_args):
     lock = (
         PROJECT_ROOT
@@ -1221,6 +1385,10 @@ def _start_print_command(command_args):
             )
 
     try:
+        _rotate_log(
+            log_file
+        )
+
         log_handle = open(
             log_file,
             "a",
@@ -1271,6 +1439,14 @@ def _start_print_command(command_args):
             repr(error),
         )
         return False, "Could not start receipt."
+
+    audit_event(
+        "print_started",
+        " ".join(
+            command_args
+        )
+        or "full receipt",
+    )
 
     return True, None
 
