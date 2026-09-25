@@ -31,6 +31,52 @@ DEFAULT_CATEGORIES = [
 
 EXCLUDED_CATEGORIES = {"TRANSFER", "SAVINGS", "CREDIT CARD PAYMENT", "INCOME"}
 
+FIXED_COMMITMENT_TERMS = (
+    "ROBERT THOMAS RENT",
+    "BIRMINGHAM CITY CO",
+    "SEVERN TRENT WATER",
+    "SCOTTISHPOWER",
+    "CAR INSURANCE",
+    "HOMEPROTECTDIRECT",
+    "SKY SUBSCRIPTION",
+    "TNT SPORTS",
+    "SPOTIFY",
+    "SMARTY.CO.UK",
+    "ONE.COM",
+)
+
+
+def everyday_spending_transactions(
+    transactions: list[dict],
+) -> list[dict]:
+    """
+    Spending excluding known fixed monthly
+    commitments.
+
+    This is for spending/trend reporting only.
+    It does not alter total outgoings.
+    """
+
+    result = []
+
+    for tx in transactions or []:
+
+        description = str(
+            tx.get("spend_description")
+            or _transaction_description(tx)
+            or ""
+        ).upper()
+
+        if any(
+            term in description
+            for term in FIXED_COMMITMENT_TERMS
+        ):
+            continue
+
+        result.append(tx)
+
+    return result
+
 def _normalise_merchant(value: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^A-Z0-9 &'-]", " ", (value or "").upper())).strip()
 
@@ -115,97 +161,230 @@ def _transaction_description(tx: dict) -> str:
     ).strip()
 
 
-def clean_spending_transactions(transactions: list[dict]) -> list[dict]:
+def clean_spending_transactions(
+    transactions: list[dict],
+) -> list[dict]:
     """
-    Return one canonical list of genuine spending transactions.
+    Return genuine external spending transactions.
 
-    Excludes incoming money, refunds/reversals, internal transfers, savings
-    movements, credit-card repayments and obvious duplicates.  Each returned
-    item includes spend_amount, spend_date and spend_description while retaining
-    the original provider fields used by the category analyser.
+    Excludes:
+      - income / credits
+      - refunds
+      - internal transfers
+      - savings movements
+      - credit-card repayments
+      - duplicates
     """
+
     cleaned = []
     seen = set()
 
     exclusion_terms = (
+        # Generic transfers
         "INTERNAL TRANSFER",
         "TRANSFER BETWEEN",
         "TRANSFER TO",
         "TRANSFER FROM",
+
+        # Savings
         "SAVINGS TRANSFER",
         "MOVE TO SAVINGS",
+        "HLAM REGULAR SAVIN",
+
+        # Credit-card repayments
         "CREDIT CARD PAYMENT",
         "CARD REPAYMENT",
         "AMEX PAYMENT",
         "AMERICAN EXPRESS PAYMENT",
+        "AMERICAN EXP",
+
+        # Known own-account transfer
+        "JOSEPH THOMAS MONZO",
+
+        # Provider wording
         "PAYMENT RECEIVED",
     )
-    refund_terms = ("REFUND", "REVERSAL", "REVERSED")
+
+    refund_terms = (
+        "REFUND",
+        "REVERSAL",
+        "REVERSED",
+    )
 
     for tx in transactions or []:
-        if not isinstance(tx, dict):
+
+        if not isinstance(
+            tx,
+            dict,
+        ):
             continue
 
-        raw_amount = tx.get("amount", 0)
-        if isinstance(raw_amount, dict):
-            raw_amount = raw_amount.get("amount", 0)
+        raw_amount = tx.get(
+            "amount",
+            0,
+        )
+
+        if isinstance(
+            raw_amount,
+            dict,
+        ):
+            raw_amount = raw_amount.get(
+                "amount",
+                0,
+            )
+
         try:
-            amount = float(raw_amount or 0)
-        except (TypeError, ValueError):
+            amount = float(
+                raw_amount or 0
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
             continue
 
         tx_type = str(
-            tx.get("type") or tx.get("transaction_type") or ""
+            tx.get("type")
+            or tx.get("transaction_type")
+            or ""
         ).upper()
-        description = _transaction_description(tx)
-        description_upper = _normalise_merchant(description)
 
-        # TrueLayer commonly marks outgoing transactions as DEBIT.  For sources
-        # using signed values, a negative amount is also treated as outgoing.
-        if amount >= 0 and tx_type not in {"DEBIT", "CARD_PAYMENT"}:
+        description = (
+            _transaction_description(tx)
+        )
+
+        description_upper = (
+            _normalise_merchant(
+                description
+            )
+        )
+
+        # --------------------------------------
+        # INCOMING MONEY
+        # --------------------------------------
+
+        if (
+            amount >= 0
+            and tx_type
+            not in {
+                "DEBIT",
+                "CARD_PAYMENT",
+            }
+        ):
             continue
+
+        # --------------------------------------
+        # REFUNDS
+        # --------------------------------------
 
         if tx.get("is_refund"):
             continue
-        if any(term in description_upper for term in refund_terms):
-            continue
-        if any(term in description_upper for term in exclusion_terms):
+
+        if any(
+            term in description_upper
+            for term in refund_terms
+        ):
             continue
 
+        # --------------------------------------
+        # TRANSFERS / SAVINGS / CARD PAYMENTS
+        # --------------------------------------
+
+        if any(
+            term in description_upper
+            for term in exclusion_terms
+        ):
+            continue
+
+        # --------------------------------------
+        # CATEGORY EXCLUSIONS
+        # --------------------------------------
+
         category = str(
-            tx.get("category") or tx.get("transaction_category") or ""
+            tx.get("category")
+            or tx.get(
+                "transaction_category"
+            )
+            or ""
         ).upper().strip()
+
         if category in EXCLUDED_CATEGORIES:
             continue
 
+        # --------------------------------------
+        # DATE
+        # --------------------------------------
+
         tx_date = _parse_date(tx)
+
         if tx_date is None:
             continue
 
-        spend_amount = abs(amount)
-        transaction_id = tx.get("transaction_id") or tx.get("id")
-        provider = str(tx.get("provider") or tx.get("bank") or "").upper()
+        spend_amount = abs(
+            amount
+        )
+
+        # --------------------------------------
+        # DUPLICATES
+        # --------------------------------------
+
+        transaction_id = (
+            tx.get("transaction_id")
+            or tx.get("id")
+        )
+
+        provider = str(
+            tx.get("provider")
+            or tx.get("bank")
+            or ""
+        ).upper()
 
         if transaction_id:
-            duplicate_key = ("ID", provider, str(transaction_id))
+
+            duplicate_key = (
+                "ID",
+                provider,
+                str(transaction_id),
+            )
+
         else:
+
             duplicate_key = (
                 "FALLBACK",
                 provider,
                 tx_date.isoformat(),
-                round(spend_amount, 2),
+                round(
+                    spend_amount,
+                    2,
+                ),
                 description_upper,
             )
 
         if duplicate_key in seen:
             continue
-        seen.add(duplicate_key)
+
+        seen.add(
+            duplicate_key
+        )
 
         item = dict(tx)
-        item["spend_amount"] = spend_amount
-        item["spend_date"] = tx_date.isoformat()
-        item["spend_description"] = description
-        cleaned.append(item)
+
+        item["spend_amount"] = (
+            spend_amount
+        )
+
+        item["spend_date"] = (
+            tx_date.isoformat()
+        )
+
+        item["spend_description"] = (
+            description
+        )
+
+        cleaned.append(
+            item
+        )
 
     return cleaned
 
@@ -267,33 +446,146 @@ def debug_spending_transactions(
     days: int = 30,
     as_of: date | None = None,
 ) -> None:
-    """Print the transactions behind the headline spend total to the console."""
     if days <= 0:
         return
-    as_of = as_of or date.today()
-    start = as_of - timedelta(days=days - 1)
-    rows = []
-    for tx in transactions or []:
-        d = _parse_date(tx)
-        if d is None or not (start <= d <= as_of):
-            continue
-        try:
-            amount = float(tx.get("spend_amount", _amount(tx)) or 0)
-        except (TypeError, ValueError):
-            continue
-        rows.append((d, amount, tx.get("spend_description") or _transaction_description(tx)))
 
-    rows.sort(key=lambda row: row[0])
-    print("\n" + "=" * 60)
+    as_of = as_of or date.today()
+
+    start = (
+        as_of
+        - timedelta(days=days - 1)
+    )
+
+    rows = []
+
+    for tx in transactions or []:
+
+        d = _parse_date(tx)
+
+        if (
+            d is None
+            or not (
+                start <= d <= as_of
+            )
+        ):
+            continue
+
+        try:
+            amount = float(
+                tx.get(
+                    "spend_amount",
+                    _amount(tx),
+                )
+                or 0
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+            continue
+
+        description = (
+            tx.get("spend_description")
+            or _transaction_description(tx)
+        )
+
+        rows.append(
+            (
+                d,
+                amount,
+                description,
+            )
+        )
+
+    # Biggest first rather than date order.
+    rows.sort(
+        key=lambda row: row[1],
+        reverse=True,
+    )
+
+    total = sum(
+        row[1]
+        for row in rows
+    )
+
+    print()
+    print("=" * 70)
     print("SPENDING DEBUG - LAST 30 DAYS")
-    print("=" * 60)
-    total = 0.0
-    for d, amount, description in rows:
-        total += amount
-        print(f"{d.isoformat()} £{amount:>9.2f} {description}")
-    print("-" * 60)
-    print(f"TOTAL: £{total:.2f}")
-    print("=" * 60 + "\n")
+    print(
+        f"{start} -> {as_of}"
+    )
+    print("=" * 70)
+
+    running = 0.0
+
+    for (
+        d,
+        amount,
+        description,
+    ) in rows:
+
+        running += amount
+
+        percentage = (
+            amount / total * 100
+            if total
+            else 0
+        )
+
+        print(
+            f"{d.isoformat()} "
+            f"£{amount:>9.2f} "
+            f"{percentage:>5.1f}%  "
+            f"{description}"
+        )
+
+    print("-" * 70)
+
+    print(
+        f"TRANSACTIONS: {len(rows)}"
+    )
+
+    print(
+        f"TOTAL:        £{total:.2f}"
+    )
+
+    # Also show large transactions separately.
+    large = [
+        row
+        for row in rows
+        if row[1] >= 100
+    ]
+
+    print()
+    print("TRANSACTIONS >= £100")
+    print("-" * 70)
+
+    large_total = 0.0
+
+    for d, amount, description in large:
+
+        large_total += amount
+
+        print(
+            f"{d.isoformat()} "
+            f"£{amount:>9.2f} "
+            f"{description}"
+        )
+
+    print("-" * 70)
+
+    print(
+        f"LARGE TOTAL:  £{large_total:.2f}"
+    )
+
+    print(
+        f"OTHER TOTAL:  "
+        f"£{total - large_total:.2f}"
+    )
+
+    print("=" * 70)
+    print()
 
 def _window_totals(
     transactions: list[dict],

@@ -4,7 +4,16 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
+
 import requests
+
+
+_ROUTE_CACHE = {}
+
+
+def clear_route_cache():
+    """Clear cached route responses before a new receipt run."""
+    _ROUTE_CACHE.clear()
 
 ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
 

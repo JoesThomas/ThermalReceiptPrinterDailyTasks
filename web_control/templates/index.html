@@ -1,0 +1,903 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta
+        name="viewport"
+        content="width=device-width,initial-scale=1"
+    >
+
+    <title>Receipt Control</title>
+
+    <style>
+        body {
+            font-family: system-ui;
+            background: #eee;
+            margin: 0;
+            color: #171717;
+        }
+
+        main {
+            max-width: 720px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        header,
+        .option,
+        .routine {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        section {
+            background: white;
+            padding: 20px;
+            margin: 16px 0;
+            border-radius: 14px;
+        }
+
+        .option,
+        .routine {
+            padding: 11px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .muted,
+        small {
+            color: #666;
+        }
+
+        input,
+        select,
+        button {
+            font: inherit;
+            padding: 9px;
+        }
+
+        input,
+        select {
+            box-sizing: border-box;
+            max-width: 100%;
+        }
+
+        .primary {
+            width: 100%;
+            font-weight: 700;
+            padding: 13px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .flash {
+            background: #e5f2e5;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+
+        /* ================================
+           INSTALMENTS
+           ================================ */
+
+        .instalment {
+            margin-top: 16px;
+            padding: 16px;
+            border: 1px solid #e5e5e5;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+
+        .instalment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .instalment-header h3 {
+            margin: 0 0 4px 0;
+        }
+
+        .balance {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .balance strong {
+            display: block;
+            font-size: 1.15rem;
+        }
+
+        .instalment input {
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        .schedule {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #ddd;
+        }
+
+        .schedule h4 {
+            margin: 0 0 8px 0;
+        }
+
+        .schedule-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 6px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .history {
+            margin-top: 14px;
+        }
+
+        .history summary {
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .save-instalment {
+            margin-top: 16px;
+            width: 100%;
+            font-weight: 700;
+        }
+
+
+        @media(max-width:560px) {
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .routine {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .instalment-header {
+                flex-direction: column;
+            }
+
+            .balance {
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<main>
+
+    <!-- HEADER -->
+
+    <header>
+        <div>
+            <h1>Receipt Control</h1>
+            <div class="muted">
+                Daily receipt printer
+            </div>
+        </div>
+
+        <form
+            method="post"
+            action="{{ url_for('logout') }}"
+        >
+            <button>Sign out</button>
+        </form>
+    </header>
+
+
+    <!-- FLASH MESSAGES -->
+
+    {% with messages=get_flashed_messages() %}
+        {% for m in messages %}
+            <div class="flash">
+                {{ m }}
+            </div>
+        {% endfor %}
+    {% endwith %}
+
+
+    <!-- RECEIPT SETTINGS -->
+
+    <form
+        method="post"
+        action="{{ url_for('save') }}"
+    >
+
+        <section>
+
+            <h2>Next receipt</h2>
+
+            <p class="muted">
+                One-shot requests reset after
+                successful processing.
+            </p>
+
+            {% for key,label in [
+                ('finance_check','Finance check'),
+                ('food_shop','Food shop'),
+                ('shopping_list','Shopping list')
+            ] %}
+
+                <label class="option">
+
+                    <span>
+                        {{ label }}
+                    </span>
+
+                    <input
+                        type="checkbox"
+                        name="{{ key }}"
+                        {% if settings.one_shot[key] %}
+                            checked
+                        {% endif %}
+                    >
+
+                </label>
+
+            {% endfor %}
+
+        </section>
+
+
+        <section>
+
+            <h2>Daily receipt</h2>
+
+            {% for key,label in [
+                ('calendar','Calendar'),
+                ('deliveries','Deliveries'),
+                ('weather','Weather'),
+                ('national_news','National news'),
+                ('local_news','Birmingham news'),
+                ('villa','Villa match information'),
+                ('villa_trains','Villa match-day trains')
+            ] %}
+
+                <label class="option">
+
+                    <span>
+                        {{ label }}
+                    </span>
+
+                    <input
+                        type="checkbox"
+                        name="{{ key }}"
+                        {% if settings.features[key] %}
+                            checked
+                        {% endif %}
+                    >
+
+                </label>
+
+            {% endfor %}
+
+        </section>
+
+
+        <section>
+
+            <h2>Output</h2>
+
+            <label class="option">
+
+                <span>
+                    Weather detail
+                </span>
+
+                <select name="weather_detail">
+
+                    {% for v in [
+                        'auto',
+                        'compact',
+                        'full'
+                    ] %}
+
+                        <option
+                            value="{{ v }}"
+                            {% if settings.display.weather_detail == v %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ v|title }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </label>
+
+
+            <label class="option">
+
+                <span>
+                    News stories
+                </span>
+
+                <input
+                    type="number"
+                    name="news_count"
+                    min="1"
+                    max="10"
+                    value="{{ settings.display.news_count }}"
+                >
+
+            </label>
+
+
+            <label class="option">
+
+                <span>
+                    Earlier journeys
+                </span>
+
+                <input
+                    type="number"
+                    name="earlier_journeys"
+                    min="0"
+                    max="5"
+                    value="{{ settings.display.earlier_journeys }}"
+                >
+
+            </label>
+
+        </section>
+
+
+        <button class="primary">
+            Save settings
+        </button>
+
+    </form>
+
+
+    <!-- ROUTINES -->
+
+    <section>
+
+        <h2>Routines</h2>
+
+        <p class="muted">
+            Due routines are added to the receipt
+            as tick-box tasks.
+        </p>
+
+
+        {% for r in routines %}
+
+            <div class="routine">
+
+                <div>
+
+                    <strong>
+                        {{ r.name }}
+                    </strong>
+
+                    <br>
+
+                    <small>
+
+                        {% if r.schedule_type == 'weekly' %}
+
+                            Every {{ r.weekday|title }}
+
+                        {% else %}
+
+                            Every {{ r.interval_days }} days
+
+                        {% endif %}
+
+                        · Next {{ r.next_due_display }}
+
+                        {% if not r.enabled %}
+                            · Disabled
+                        {% endif %}
+
+                    </small>
+
+                </div>
+
+
+                <div class="actions">
+
+                    <form
+                        method="post"
+                        action="{{ url_for(
+                            'routine_done',
+                            routine_id=r.id
+                        ) }}"
+                    >
+                        <button>
+                            Done
+                        </button>
+                    </form>
+
+
+                    <form
+                        method="post"
+                        action="{{ url_for(
+                            'routine_toggle',
+                            routine_id=r.id
+                        ) }}"
+                    >
+
+                        <input
+                            type="hidden"
+                            name="enabled"
+                            value="{{
+                                '0'
+                                if r.enabled
+                                else '1'
+                            }}"
+                        >
+
+                        <button>
+                            {{
+                                'Disable'
+                                if r.enabled
+                                else 'Enable'
+                            }}
+                        </button>
+
+                    </form>
+
+
+                    <form
+                        method="post"
+                        action="{{ url_for(
+                            'routine_delete',
+                            routine_id=r.id
+                        ) }}"
+                        onsubmit="
+                            return confirm(
+                                'Delete this routine?'
+                            )
+                        "
+                    >
+
+                        <button>
+                            Delete
+                        </button>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        {% else %}
+
+            <p>
+                No routines configured.
+            </p>
+
+        {% endfor %}
+
+
+        <h3>Add routine</h3>
+
+
+        <form
+            method="post"
+            action="{{ url_for('routine_add') }}"
+        >
+
+            <div class="grid">
+
+                <label>
+                    Name
+                    <br>
+
+                    <input
+                        name="name"
+                        placeholder="Laundry"
+                        required
+                    >
+                </label>
+
+
+                <label>
+                    Type
+                    <br>
+
+                    <select name="schedule_type">
+                        <option value="weekly">
+                            Fixed weekday
+                        </option>
+
+                        <option value="interval">
+                            After completion
+                        </option>
+                    </select>
+                </label>
+
+
+                <label>
+                    Weekday
+                    <br>
+
+                    <select name="weekday">
+
+                        {% for d in weekdays %}
+
+                            <option value="{{ d }}">
+                                {{ d|title }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+                </label>
+
+
+                <label>
+                    Interval days
+                    <br>
+
+                    <input
+                        type="number"
+                        name="interval_days"
+                        min="1"
+                        value="7"
+                    >
+                </label>
+
+
+                <label>
+                    Show days before
+                    <br>
+
+                    <input
+                        type="number"
+                        name="show_days_before"
+                        min="0"
+                        value="0"
+                    >
+                </label>
+
+            </div>
+
+            <p>
+                <button>
+                    Add routine
+                </button>
+            </p>
+
+        </form>
+
+    </section>
+
+
+    <!-- ========================================
+         INSTALMENTS
+         ======================================== -->
+
+    <section>
+
+        <h2>Instalments</h2>
+
+        <p class="muted">
+            Temporary payment commitments.
+            Changes are used by the next finance receipt.
+        </p>
+
+
+        {% if subscriptions.instalments %}
+
+            {% for item in subscriptions.instalments %}
+
+                <form
+                    method="post"
+                    action="{{ url_for(
+                        'instalment_update',
+                        index=loop.index0
+                    ) }}"
+                    class="instalment"
+                >
+
+                    <div class="instalment-header">
+
+                        <div>
+
+                            <h3>
+                                {{ item.name }}
+                            </h3>
+
+                            {% if item.next_payment %}
+
+                                <small>
+                                    Next payment:
+                                    {{ item.next_payment }}
+                                </small>
+
+                            {% endif %}
+
+                        </div>
+
+
+                        {% if item.remaining_balance is not none %}
+
+                            <div class="balance">
+
+                                <small>
+                                    Remaining
+                                </small>
+
+                                <strong>
+                                    £{{ "%.2f"|format(
+                                        item.remaining_balance
+                                    ) }}
+                                </strong>
+
+                            </div>
+
+                        {% endif %}
+
+                    </div>
+
+
+                    <div class="grid">
+
+                        <label>
+                            Name
+                            <br>
+
+                            <input
+                                type="text"
+                                name="name"
+                                value="{{ item.name }}"
+                                required
+                            >
+                        </label>
+
+
+                        <label>
+                            Regular payment (£)
+                            <br>
+
+                            <input
+                                type="number"
+                                name="amount"
+                                min="0"
+                                step="0.01"
+                                value="{{
+                                    item.amount
+                                    if item.amount is not none
+                                    else ''
+                                }}"
+                            >
+                        </label>
+
+
+                        <label>
+                            Original total (£)
+                            <br>
+
+                            <input
+                                type="number"
+                                name="total_price"
+                                min="0"
+                                step="0.01"
+                                value="{{
+                                    item.total_price
+                                    if item.total_price is not none
+                                    else ''
+                                }}"
+                            >
+                        </label>
+
+
+                        <label>
+                            Paid to date (£)
+                            <br>
+
+                            <input
+                                type="number"
+                                name="paid_to_date"
+                                min="0"
+                                step="0.01"
+                                value="{{
+                                    item.paid_to_date
+                                    if item.paid_to_date is not none
+                                    else ''
+                                }}"
+                            >
+                        </label>
+
+
+                        <label>
+                            Remaining balance (£)
+                            <br>
+
+                            <input
+                                type="number"
+                                name="remaining_balance"
+                                min="0"
+                                step="0.01"
+                                value="{{
+                                    item.remaining_balance
+                                    if item.remaining_balance is not none
+                                    else ''
+                                }}"
+                            >
+                        </label>
+
+
+                        <label>
+                            Payments remaining
+                            <br>
+
+                            <input
+                                type="number"
+                                name="payments_remaining"
+                                min="0"
+                                step="1"
+                                value="{{
+                                    item.payments_remaining
+                                    if item.payments_remaining is not none
+                                    else ''
+                                }}"
+                            >
+                        </label>
+
+
+                        <label>
+                            Next payment
+                            <br>
+
+                            <input
+                                type="date"
+                                name="next_payment"
+                                value="{{ item.next_payment or '' }}"
+                            >
+                        </label>
+
+                    </div>
+
+
+                    <!-- SCHEDULE -->
+
+                    {% if item.schedule %}
+
+                        <div class="schedule">
+
+                            <h4>
+                                Payment schedule
+                            </h4>
+
+                            {% for payment in item.schedule %}
+
+                                <div class="schedule-row">
+
+                                    <span>
+                                        {{ payment.date }}
+                                    </span>
+
+                                    <strong>
+                                        £{{ "%.2f"|format(
+                                            payment.amount
+                                        ) }}
+                                    </strong>
+
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+
+                    {% endif %}
+
+
+                    <!-- HISTORY -->
+
+                    {% if item.history %}
+
+                        <details class="history">
+
+                            <summary>
+                                Payment history
+                                ({{ item.history|length }})
+                            </summary>
+
+                            <div class="schedule">
+
+                                {% for payment in item.history %}
+
+                                    <div class="schedule-row">
+
+                                        <span>
+
+                                            {{ payment.date }}
+
+                                            {% if payment.type %}
+                                                · {{ payment.type|title }}
+                                            {% endif %}
+
+                                        </span>
+
+                                        <strong>
+                                            £{{ "%.2f"|format(
+                                                payment.amount
+                                            ) }}
+                                        </strong>
+
+                                    </div>
+
+                                {% endfor %}
+
+                            </div>
+
+                        </details>
+
+                    {% endif %}
+
+
+                    <button
+                        type="submit"
+                        class="save-instalment"
+                    >
+                        Save {{ item.name }}
+                    </button>
+
+                </form>
+
+            {% endfor %}
+
+        {% else %}
+
+            <p>
+                No instalments configured.
+            </p>
+
+        {% endif %}
+
+    </section>
+
+
+    <!-- PRINTER -->
+
+    <section>
+
+        <h2>Printer</h2>
+
+        <form
+            method="post"
+            action="{{ url_for('print_now') }}"
+        >
+
+            <button class="primary">
+                Print receipt now
+            </button>
+
+        </form>
+
+    </section>
+
+
+</main>
+
+</body>
+
+</html>

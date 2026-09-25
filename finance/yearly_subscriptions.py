@@ -7,7 +7,7 @@ from pathlib import Path
 DEFAULT_FILE = (
     Path(__file__).resolve().parent.parent
     / "data"
-    / "yearly_subscriptions.json"
+    / "subscriptions.json"
 )
 
 

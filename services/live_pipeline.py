@@ -5,6 +5,9 @@ from services.vehicle_status import (
     get_vehicle_status,
     expiring_vehicle_items,
 )
+from services.subscriptions import (
+    update_subscriptions_from_transactions,
+)
 import email
 import imaplib
 import traceback
@@ -52,10 +55,35 @@ from icalendar import Calendar
 import recurring_ical_events
 from escpos.printer import Usb
 import meal_planner as meals
-from calendar_travel import travel_options, sensible_chained_origin
-from finance.receipt import print_integrated_finance
+from calendar_travel import (
+    travel_options,
+    sensible_chained_origin,
+    clear_route_cache,
+)
 
+from finance.receipt import (
+    print_integrated_finance,
+)
 
+from receipt_settings import (
+    load_receipt_settings,
+    feature_enabled,
+    display_value,
+    one_shot_requested,
+    consume_one_shot,
+    finance_requested,
+    food_shop_requested,
+    shopping_list_requested,
+)
+
+from routines import (
+    due_routines,
+)
+
+from services.villa import (
+    get_aston_villa_match_today,
+    print_villa_matchday,
+)
 
 # ============================================================
 # PRIVATE CONFIGURATION
@@ -70,6 +98,28 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 PASSWORDS_FILE = BASE_DIR / "passwords.json"
 
+SUBSCRIPTIONS_FILE = (
+    BASE_DIR
+    / "data"
+    / "subscriptions.json"
+)
+
+# ============================================================
+# ROUTE CACHE
+# ============================================================
+
+_ROUTE_CACHE = {}
+
+
+def clear_route_cache():
+    """
+    Clear cached Google Routes responses.
+
+    Called once at the start of each receipt run so duplicate
+    route requests within the same run can reuse results without
+    carrying stale journey data into the next run.
+    """
+    _ROUTE_CACHE.clear()
 
 def load_private_config():
     """
@@ -735,327 +785,6 @@ def _rail_time(
 
     except ValueError:
         return None
-
-def get_villa_matchday_trains(
-    kickoff,
-):
-    """
-    Get Bournville -> Aston trains for the two
-    hours before kick-off.
-
-    Only trains that leave within the match-day
-    window are returned.
-    """
-
-    if not TRANSPORT_API_APP_ID:
-        raise RuntimeError(
-            "TransportAPI app ID not configured."
-        )
-
-    if not TRANSPORT_API_APP_KEY:
-        raise RuntimeError(
-            "TransportAPI app key not configured."
-        )
-
-    window_start = (
-        kickoff
-        - timedelta(
-            hours=MATCH_TRAIN_WINDOW_HOURS
-        )
-    )
-
-    services = (
-        _transportapi_bournville_departures(
-            window_start
-        )
-    )
-
-    trains = []
-
-    for service in services:
-        departure = _rail_time(
-            kickoff.date(),
-            service.get(
-                "aimed_departure_time"
-            ),
-        )
-
-        if not departure:
-            continue
-
-        if departure < window_start:
-            continue
-
-        if departure >= kickoff:
-            continue
-
-        expected_text = (
-            service.get(
-                "expected_departure_time"
-            )
-            or service.get(
-                "aimed_departure_time"
-            )
-        )
-
-        expected_departure = _rail_time(
-            kickoff.date(),
-            expected_text,
-        )
-
-        trains.append({
-            "departure": departure,
-            "expected_departure": (
-                expected_departure
-            ),
-            "platform": (
-                service.get("platform")
-                or "-"
-            ),
-            "status": (
-                service.get("status")
-                or ""
-            ),
-            "service": service,
-        })
-
-    trains.sort(
-        key=lambda item: item[
-            "departure"
-        ]
-    )
-
-    return trains
-
-
-def get_aston_villa_match_today():
-    """Return today's Aston Villa fixture, or None when Villa are not playing."""
-    if not FOOTBALL_DATA_API_KEY:
-        return None
-
-    london = ZoneInfo("Europe/London")
-    today = datetime.now(london).date()
-
-    response = requests.get(
-        f"https://api.football-data.org/v4/teams/{ASTON_VILLA_TEAM_ID}/matches",
-        headers={"X-Auth-Token": FOOTBALL_DATA_API_KEY},
-        params={
-            "dateFrom": today.isoformat(),
-            "dateTo": today.isoformat(),
-        },
-        timeout=15,
-    )
-    response.raise_for_status()
-
-    for match in response.json().get("matches", []):
-        utc_date = match.get("utcDate")
-        if not utc_date:
-            continue
-
-        try:
-            kickoff = datetime.fromisoformat(
-                str(utc_date).replace("Z", "+00:00")
-            ).astimezone(london)
-        except (TypeError, ValueError):
-            continue
-
-        if kickoff.date() != today:
-            continue
-
-        home = match.get("homeTeam") or {}
-        away = match.get("awayTeam") or {}
-        competition = match.get("competition") or {}
-
-        return {
-            "kickoff": kickoff,
-            "home_team": home.get("name", ""),
-            "away_team": away.get("name", ""),
-            "competition": competition.get("name", ""),
-            "is_home": home.get("id") == ASTON_VILLA_TEAM_ID,
-        }
-
-    return None
-
-def print_villa_matchday_trains(
-    printer,
-    match,
-):
-    if not match:
-        return
-
-    home_team = str(
-        match.get(
-            "home_team",
-            ""
-        )
-    ).strip().lower()
-
-    if home_team not in (
-        "aston villa",
-        "aston villa fc",
-    ):
-        return
-
-    kickoff = match.get(
-        "kickoff"
-    )
-
-    if not isinstance(
-        kickoff,
-        datetime,
-    ):
-        return
-
-    try:
-        trains = (
-            get_villa_matchday_trains(
-                kickoff
-            )
-        )
-
-    except Exception as error:
-        print(
-            "Villa trains error:",
-            repr(error),
-        )
-
-        _print_section_error(
-            printer,
-            "MATCH DAY TRAINS",
-            "TIMETABLE UNAVAILABLE",
-        )
-
-        return
-
-    print_line(
-        printer,
-        "=",
-    )
-
-    printer.set(
-        bold=True
-    )
-
-    left(
-        printer,
-        "VILLA - MATCH DAY",
-    )
-
-    printer.set(
-        bold=False
-    )
-
-    away_team = printer_safe_text(
-        match.get(
-            "away_team",
-            "OPPOSITION",
-        )
-    )
-
-    left(
-        printer,
-        (
-            "ASTON VILLA v "
-            f"{away_team.upper()}"
-        ),
-    )
-
-    left(
-        printer,
-        (
-            f"KICK OFF: "
-            f"{kickoff.strftime('%H:%M')}"
-        ),
-    )
-
-    print_line(
-        printer,
-        "-",
-    )
-
-    printer.set(
-        bold=True
-    )
-
-    left(
-        printer,
-        "BOURNVILLE -> ASTON",
-    )
-
-    printer.set(
-        bold=False
-    )
-
-    left(
-        printer,
-        "TRAINS IN 2 HOURS BEFORE KICK-OFF",
-    )
-
-    print_line(
-        printer,
-        "-",
-    )
-
-    if not trains:
-        left(
-            printer,
-            "NO SUITABLE TRAINS FOUND",
-        )
-
-    else:
-        left(
-            printer,
-            "DEP    EXPECTED   PLAT",
-        )
-
-        for train in trains:
-            departure = train[
-                "departure"
-            ].strftime("%H:%M")
-
-            expected = train.get(
-                "expected_departure"
-            )
-
-            if expected:
-                expected = (
-                    expected.strftime(
-                        "%H:%M"
-                    )
-                )
-            else:
-                expected = "--:--"
-
-            platform = str(
-                train.get(
-                    "platform",
-                    "-"
-                )
-            )
-
-            left(
-                printer,
-                (
-                    f"{departure:<7}"
-                    f"{expected:<11}"
-                    f"{platform}"
-                ),
-            )
-
-    print_line(
-        printer,
-        "-",
-    )
-
-    left(
-        printer,
-        "RAIL DATA: TRANSPORTAPI",
-    )
-
-    print_line(
-        printer,
-        "=",
-    )
 
 # ============================================================
 # UPCOMING DELIVERIES
@@ -4254,6 +3983,669 @@ def finance_quick_summary(
 
     return lines
 
+def load_subscriptions():
+    if not SUBSCRIPTIONS_FILE.exists():
+        return {
+            "monthly": [],
+            "yearly": [],
+            "instalments": [],
+        }
+
+    try:
+        with SUBSCRIPTIONS_FILE.open(
+            "r",
+            encoding="utf-8",
+        ) as file:
+            data = json.load(file)
+
+    except (
+        OSError,
+        json.JSONDecodeError,
+    ) as error:
+        print(
+            "Subscription file error:",
+            repr(error),
+        )
+
+        return {
+            "monthly": [],
+            "yearly": [],
+            "instalments": [],
+        }
+
+    if not isinstance(data, dict):
+        return {
+            "monthly": [],
+            "yearly": [],
+            "instalments": [],
+        }
+
+    data.setdefault("monthly", [])
+    data.setdefault("yearly", [])
+    data.setdefault("instalments", [])
+
+    return data
+
+
+def subscription_was_paid(
+    subscription,
+    transactions,
+    today,
+):
+    """
+    Return True when a transaction matching this
+    subscription exists in the current month.
+
+    Matches using:
+      - merchant description
+      - expected amount, when configured
+    """
+
+    match_terms = (
+        subscription.get(
+            "match",
+            []
+        )
+    )
+
+    if isinstance(
+            match_terms,
+            str,
+    ):
+        match_terms = [
+            match_terms
+        ]
+
+    match_terms = [
+        str(term).strip().lower()
+        for term in match_terms
+        if str(term).strip()
+    ]
+
+    expected_amount = (
+        subscription.get("amount")
+    )
+
+    try:
+        if expected_amount is not None:
+            expected_amount = float(
+                expected_amount
+            )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+        expected_amount = None
+
+    for transaction in transactions:
+
+        # --------------------------------------
+        # DATE
+        # --------------------------------------
+
+        timestamp = transaction.get(
+            "timestamp"
+        )
+
+        if not timestamp:
+            continue
+
+        try:
+            transaction_date = (
+                datetime.fromisoformat(
+                    str(timestamp).replace(
+                        "Z",
+                        "+00:00",
+                    )
+                ).date()
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+            continue
+
+        # Only inspect the current month.
+        if (
+            transaction_date.year
+            != today.year
+            or transaction_date.month
+            != today.month
+        ):
+            continue
+
+        # --------------------------------------
+        # DESCRIPTION
+        # --------------------------------------
+
+        transaction_name = str(
+            transaction.get("merchant_name")
+            or transaction.get("description")
+            or ""
+        ).strip().lower()
+
+        if not any(
+                term in transaction_name
+                for term in match_terms
+        ):
+            continue
+
+        # --------------------------------------
+        # AMOUNT
+        # --------------------------------------
+
+        if expected_amount is not None:
+
+            try:
+                transaction_amount = abs(
+                    float(
+                        transaction.get(
+                            "amount",
+                            0,
+                        )
+                    )
+                )
+
+            except (
+                TypeError,
+                ValueError,
+            ):
+                continue
+
+            # Allow tiny rounding differences.
+            if (
+                abs(
+                    transaction_amount
+                    - expected_amount
+                )
+                > 0.01
+            ):
+                continue
+
+        # Merchant and amount matched.
+        return True
+
+    return False
+
+def build_subscription_status(
+    transactions,
+):
+    today = datetime.now(
+        ZoneInfo("Europe/London")
+    ).date()
+
+    subscriptions = (
+        load_subscriptions()
+    )
+
+    monthly = []
+
+    for subscription in (
+        subscriptions.get(
+            "monthly",
+            []
+        )
+    ):
+        item = dict(
+            subscription
+        )
+
+        item["paid"] = (
+            subscription_was_paid(
+                subscription,
+                transactions,
+                today,
+            )
+        )
+
+        monthly.append(
+            item
+        )
+
+    return {
+        "monthly": monthly,
+        "yearly": subscriptions.get(
+            "yearly",
+            [],
+        ),
+    }
+
+def print_subscription_changes(
+    printer,
+    changes,
+):
+    if not changes:
+        return
+
+    print_line(
+        printer,
+        "-",
+    )
+
+    printer.set(
+        bold=True
+    )
+
+    left(
+        printer,
+        "BILL CHANGES",
+    )
+
+    printer.set(
+        bold=False
+    )
+
+    for change in changes:
+
+        name = printer_safe_text(
+            change.get(
+                "name",
+                "SUBSCRIPTION",
+            )
+        ).upper()
+
+        old_amount = float(
+            change.get(
+                "old_amount",
+                0,
+            )
+        )
+
+        new_amount = float(
+            change.get(
+                "new_amount",
+                0,
+            )
+        )
+
+        difference = float(
+            change.get(
+                "difference",
+                0,
+            )
+        )
+
+        percentage = float(
+            change.get(
+                "percentage",
+                0,
+            )
+        )
+
+        left(
+            printer,
+            name[:40],
+        )
+
+        left(
+            printer,
+            (
+                f"  £{old_amount:.2f}"
+                f" -> "
+                f"£{new_amount:.2f}"
+            ),
+        )
+
+        left(
+            printer,
+            (
+                f"  {difference:+.2f} GBP"
+                f"  "
+                f"{percentage:+.1f}%"
+            ),
+        )
+
+def print_instalment_status(printer, subscriptions_data):
+    instalments = subscriptions_data.get(
+        "instalments",
+        []
+    )
+
+    if not instalments:
+        return
+
+    printer.set(bold=True)
+    left(printer, "INSTALMENTS")
+    printer.set(bold=False)
+
+    monthly_total = 0.0
+    known_balance = 0.0
+
+    for item in instalments:
+        name = printer_safe_text(
+            str(item.get("name", "INSTALMENT"))
+        )
+
+        amount = _safe_amount(
+            item.get("amount")
+        )
+
+        monthly_total += amount
+
+        balance = item.get("remaining_balance")
+        payments_left = item.get("payments_remaining")
+
+        left(
+            printer,
+            f"{name[:24]}"
+        )
+
+        if payments_left is not None:
+            left(
+                printer,
+                (
+                    f" £{amount:.2f}/mo"
+                    f"   {payments_left} payments left"
+                )
+            )
+        else:
+            left(
+                printer,
+                f" £{amount:.2f}/mo"
+            )
+
+        if balance is not None:
+            balance = _safe_amount(balance)
+            known_balance += balance
+
+            left(
+                printer,
+                f" £{balance:.2f} remaining"
+            )
+
+    print_line(printer, "-")
+
+    left(
+        printer,
+        f"INSTALMENTS / MONTH   £{monthly_total:.2f}"
+    )
+
+    if known_balance > 0:
+        left(
+            printer,
+            f"KNOWN BALANCE         £{known_balance:.2f}"
+        )
+
+
+
+def print_subscription_status(
+    printer,
+    left,
+    print_line,
+    transactions,
+):
+    status = build_subscription_status(
+        transactions
+    )
+
+    monthly = status.get(
+        "monthly",
+        [],
+    )
+
+    if not monthly:
+        return
+
+    paid = []
+    due = []
+
+    for item in monthly:
+        try:
+            amount = float(
+                item.get("amount", 0)
+                or 0
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
+            amount = 0.0
+
+        row = {
+            "name": str(
+                item.get(
+                    "name",
+                    "Subscription",
+                )
+            ),
+            "amount": amount,
+            "category": item.get(
+                "category",
+                "",
+            ),
+        }
+
+        if item.get("paid"):
+            paid.append(row)
+        else:
+            due.append(row)
+
+    paid_total = sum(
+        item["amount"]
+        for item in paid
+    )
+
+    due_bills = sum(
+        item["amount"]
+        for item in due
+        if item["category"] != "savings"
+    )
+
+    due_savings = sum(
+        item["amount"]
+        for item in due
+        if item["category"] == "savings"
+    )
+
+    remaining_total = (
+        due_bills
+        + due_savings
+    )
+
+    # ==========================================
+    # HEADER
+    # ==========================================
+
+    print_line(
+        printer,
+        "=",
+    )
+
+    printer.set(
+        bold=True
+    )
+
+    left(
+        printer,
+        "MONTHLY COMMITMENTS",
+    )
+
+    printer.set(
+        bold=False
+    )
+
+    print_line(
+        printer,
+        "-",
+    )
+
+    # ==========================================
+    # PAID
+    # ==========================================
+
+    printer.set(
+        bold=True
+    )
+
+    left(
+        printer,
+        "PAID",
+    )
+
+    printer.set(
+        bold=False
+    )
+
+    if paid:
+        for item in paid:
+
+            name = item["name"]
+
+            # Shorter receipt-friendly names.
+            display_names = {
+                "HLAM Regular Saving":
+                    "HLAM",
+                "Severn Trent Water":
+                    "Water",
+                "Birmingham City Council":
+                    "Council Tax",
+            }
+
+            name = display_names.get(
+                name,
+                name,
+            )
+
+            left(
+                printer,
+                (
+                    f"{name[:22]:<22}"
+                    f"£{item['amount']:>8.2f}"
+                ),
+            )
+
+    else:
+        left(
+            printer,
+            "None",
+        )
+
+    print_line(
+        printer,
+        "-",
+    )
+
+    printer.set(
+        bold=True
+    )
+
+    left(
+        printer,
+        (
+            f"{'PAID TOTAL':<22}"
+            f"£{paid_total:>8.2f}"
+        ),
+    )
+
+    printer.set(
+        bold=False
+    )
+
+    # ==========================================
+    # DUE
+    # ==========================================
+
+    left(
+        printer,
+        "",
+    )
+
+    printer.set(
+        bold=True
+    )
+
+    left(
+        printer,
+        "DUE",
+    )
+
+    printer.set(
+        bold=False
+    )
+
+    if due:
+        for item in due:
+
+            name = item["name"]
+
+            display_names = {
+                "HLAM Regular Saving":
+                    "HLAM",
+                "Severn Trent Water":
+                    "Water",
+                "Birmingham City Council":
+                    "Council Tax",
+            }
+
+            name = display_names.get(
+                name,
+                name,
+            )
+
+            left(
+                printer,
+                (
+                    f"{name[:22]:<22}"
+                    f"£{item['amount']:>8.2f}"
+                ),
+            )
+
+    else:
+        left(
+            printer,
+            "None",
+        )
+
+    print_line(
+        printer,
+        "-",
+    )
+
+    # Only show the bills/savings split when
+    # something is actually outstanding.
+    if due:
+
+        if due_bills:
+            left(
+                printer,
+                (
+                    f"{'BILLS DUE':<22}"
+                    f"£{due_bills:>8.2f}"
+                ),
+            )
+
+        if due_savings:
+            left(
+                printer,
+                (
+                    f"{'SAVINGS DUE':<22}"
+                    f"£{due_savings:>8.2f}"
+                ),
+            )
+
+    printer.set(
+        bold=True
+    )
+
+    left(
+        printer,
+        (
+            f"{'REMAINING':<22}"
+            f"£{remaining_total:>8.2f}"
+        ),
+    )
+
+    printer.set(
+        bold=False
+    )
+
+    print_line(
+        printer,
+        "=",
+    )
+
 def print_financial_status(
     printer,
     balances,
@@ -4820,7 +5212,6 @@ def print_financial_status(
     # ====================================
     # SUBSCRIPTIONS
     # ====================================
-
     regular_payments = (
         load_regular_payments()
     )
@@ -8551,69 +8942,140 @@ def _print_section_error(
 
 
 def run_live_pipeline():
-    print("Connecting to thermal printer...")
+
+    print(
+        "Connecting to thermal printer..."
+    )
+
+    # ==========================================
+    # CONTROL SETTINGS
+    # ==========================================
+
+    settings = (
+        load_receipt_settings()
+    )
+
+    clear_route_cache()
 
     printer = Usb(
         PRINTER_VENDOR_ID,
         PRINTER_PRODUCT_ID,
     )
-    printer.profile.profile_data["media"]["width"]["pixels"] = 576
+
+    printer.profile.profile_data[
+        "media"
+    ]["width"]["pixels"] = 576
+
     setup_printer(printer)
     print_header(printer)
 
-    # --------------------------------------------------------
+    # ==========================================
     # WEATHER
-    # --------------------------------------------------------
-    try:
-        print("Downloading Stirchley weather...")
-        weather = get_weather()
-        print_weather(printer, weather)
+    # ==========================================
 
-    except Exception as error:
-        print("Weather error:", repr(error))
-        _print_section_error(
-            printer,
-            "WEATHER ERROR",
-        )
-
-    # --------------------------------------------------------
-    # NATIONAL NEWS
-    # --------------------------------------------------------
-    try:
-        print("Downloading today's UK news...")
-        headlines = get_top_news_headlines(
-            NEWS_HEADLINES
-        )
-        print_news(
-            printer,
-            headlines,
-        )
-
-    except Exception as error:
-        print("UK news error:", repr(error))
-        # Optional detail section: omit from paper when unavailable.
-
-    # --------------------------------------------------------
-    # BIRMINGHAM NEWS
-    # --------------------------------------------------------
-    try:
-        print("Downloading today's Birmingham news...")
-        local_headlines = (
-            get_birmingham_news_headlines(
-                LOCAL_NEWS_HEADLINES
+    if feature_enabled(
+        settings,
+        "weather",
+    ):
+        try:
+            print(
+                "Downloading Stirchley weather..."
             )
-        )
-        print_local_news(
-            printer,
-            local_headlines,
-        )
 
-    except Exception as error:
-        print(
-            "Birmingham news error:",
-            repr(error),
-        )
-        # Optional detail section: omit from paper when unavailable.
+            weather = get_weather()
+
+            print_weather(
+                printer,
+                weather,
+            )
+
+        except Exception as error:
+            print(
+                "Weather error:",
+                repr(error),
+            )
+
+            _print_section_error(
+                printer,
+                "WEATHER ERROR",
+            )
+
+    # ==========================================
+    # NATIONAL NEWS
+    # ==========================================
+
+    if feature_enabled(
+        settings,
+        "national_news",
+    ):
+        try:
+            news_count = int(
+                display_value(
+                    settings,
+                    "news_count",
+                    NEWS_HEADLINES,
+                )
+            )
+
+            print(
+                "Downloading today's UK news..."
+            )
+
+            headlines = (
+                get_top_news_headlines(
+                    news_count
+                )
+            )
+
+            print_news(
+                printer,
+                headlines,
+            )
+
+        except Exception as error:
+            print(
+                "UK news error:",
+                repr(error),
+            )
+
+    # ==========================================
+    # BIRMINGHAM NEWS
+    # ==========================================
+
+    if feature_enabled(
+        settings,
+        "local_news",
+    ):
+        try:
+            news_count = int(
+                display_value(
+                    settings,
+                    "news_count",
+                    LOCAL_NEWS_HEADLINES,
+                )
+            )
+
+            print(
+                "Downloading today's "
+                "Birmingham news..."
+            )
+
+            local_headlines = (
+                get_birmingham_news_headlines(
+                    news_count
+                )
+            )
+
+            print_local_news(
+                printer,
+                local_headlines,
+            )
+
+        except Exception as error:
+            print(
+                "Birmingham news error:",
+                repr(error),
+            )
 
     # ==========================================
     # CUT RECEIPT
@@ -8623,7 +9085,13 @@ def run_live_pipeline():
         printer
     )
 
-    print("Checking vehicle MOT/tax...")
+    # ==========================================
+    # VEHICLE CHECK
+    # ==========================================
+
+    print(
+        "Checking vehicle MOT/tax..."
+    )
 
     print_vehicle_expiry_checks(
         printer,
@@ -8631,74 +9099,112 @@ def run_live_pipeline():
         dvla_api_key,
     )
 
-    try:
-        villa_match = (
-            get_aston_villa_match_today()
-        )
+    # ==========================================
+    # VILLA
+    # ==========================================
 
-        if villa_match:
-            print_villa_matchday_trains(
-                printer,
-                villa_match,
+    if feature_enabled(
+            settings,
+            "villa",
+    ):
+        try:
+            villa_match = (
+                get_aston_villa_match_today(
+                    FOOTBALL_DATA_API_KEY
+                )
             )
 
-    except Exception as error:
-        print(
-            "Villa match-day error:",
-            repr(error),
-        )
+            if villa_match:
+                print_villa_matchday(
+                    printer,
+                    villa_match,
 
-    # --------------------------------------------------------
+                    include_trains=(
+                        feature_enabled(
+                            settings,
+                            "villa_trains",
+                        )
+                    ),
+
+                    transport_app_id=(
+                        TRANSPORT_API_APP_ID
+                    ),
+
+                    transport_app_key=(
+                        TRANSPORT_API_APP_KEY
+                    ),
+
+                    left=left,
+                    centre=centre,
+                    line=print_line,
+                    safe_text=printer_safe_text,
+                )
+
+        except Exception as error:
+            print(
+                "Villa match-day error:",
+                repr(error),
+            )
+
+    # ==========================================
     # CALENDAR
-    # --------------------------------------------------------
+    # ==========================================
 
     events = []
     upcoming_events = []
 
-    try:
-        print(
-            "Downloading Google Calendar..."
-        )
+    if feature_enabled(
+        settings,
+        "calendar",
+    ):
+        try:
+            print(
+                "Downloading Google Calendar..."
+            )
 
-        # Today's events for the actual
-        # Calendar receipt section.
-        events = get_calendar_events(
-            CALENDAR_ICAL_URL,
-            days_ahead=0,
-        )
+            events = get_calendar_events(
+                CALENDAR_ICAL_URL,
+                days_ahead=0,
+            )
 
-        # Today + next 3 days for automatic
-        # reminders such as therapy payment.
-        upcoming_events = get_calendar_events(
-            CALENDAR_ICAL_URL,
-            days_ahead=3,
-        )
+            upcoming_events = (
+                get_calendar_events(
+                    CALENDAR_ICAL_URL,
+                    days_ahead=3,
+                )
+            )
 
-        print_calendar(
-            printer,
-            events,
-        )
+            print_calendar(
+                printer,
+                events,
+            )
 
-    except Exception as error:
-        print(
-            "Calendar error:",
-            repr(error),
-        )
-        _print_section_error(
-            printer,
-            "CALENDAR ERROR",
-        )
+        except Exception as error:
+            print(
+                "Calendar error:",
+                repr(error),
+            )
 
-    # --------------------------------------------------------
-    # TO-DO + CONDITIONAL CHECKLISTS / FINANCE
-    # --------------------------------------------------------
+            _print_section_error(
+                printer,
+                "CALENDAR ERROR",
+            )
+
+    # ==========================================
+    # GOOGLE DOC / TO-DO
+    # ==========================================
+
     document_1 = ""
-    finance_requested = False
 
     try:
-        print("Downloading Google Doc #1...")
-        document_1 = get_google_doc_text(
-            GOOGLE_DOC_1_URL
+        print(
+            "Downloading Google Doc #1..."
+        )
+
+        document_1 = (
+            get_google_doc_text(
+                GOOGLE_DOC_1_URL
+            )
         )
 
         print_google_doc(
@@ -8712,45 +9218,178 @@ def run_live_pipeline():
             "Document 1 error:",
             repr(error),
         )
+
         traceback.print_exc()
 
-    if document_1:
-        if food_shop_requested(document_1):
-            try:
-                print("Food shop check requested...")
-                food_shop_text = get_google_doc_text(
-                    FOOD_SHOP_GOOGLE_DOC_URL
-                )
-                print_food_shop_check(
-                    printer,
-                    food_shop_text,
-                )
+    # ==========================================
+    # TRIGGERS
+    # ==========================================
 
-            except Exception as error:
-                print(
-                    "Food shop error:",
-                    repr(error),
-                )
-                _print_section_error(
-                    printer,
-                    "FOOD SHOP ERROR",
-                    "ITEM LIST UNAVAILABLE",
-                )
-
-        finance_requested = finance_check_requested(
+    doc_finance = (
+        finance_requested(
             document_1
         )
+    )
 
-    if should_print_subscriptions():
+    doc_food_shop = (
+        food_shop_requested(
+            document_1
+        )
+    )
+
+    doc_shopping_list = (
+        shopping_list_requested(
+            document_1
+        )
+    )
+
+    web_finance = (
+        one_shot_requested(
+            settings,
+            "finance_check",
+        )
+    )
+
+    web_food_shop = (
+        one_shot_requested(
+            settings,
+            "food_shop",
+        )
+    )
+
+    web_shopping_list = (
+        one_shot_requested(
+            settings,
+            "shopping_list",
+        )
+    )
+
+    today = datetime.now(
+        ZoneInfo("Europe/London")
+    ).date()
+
+    # Keep scheduled finance independent
+    # of Google Doc punctuation.
+    scheduled_finance = (
+        today.weekday() == 6
+    )
+
+    should_run_finance = (
+        scheduled_finance
+        or doc_finance
+        or web_finance
+    )
+
+    should_run_food_shop = (
+        doc_food_shop
+        or web_food_shop
+    )
+
+    should_run_shopping_list = (
+        doc_shopping_list
+        or web_shopping_list
+    )
+
+    # ==========================================
+    # FOOD SHOP
+    # ==========================================
+
+    if should_run_food_shop:
+
+        food_shop_success = False
+
         try:
             print(
-                "Sunday subscriptions check requested..."
+                "Food shop requested..."
             )
+
+            food_shop_text = (
+                get_google_doc_text(
+                    FOOD_SHOP_GOOGLE_DOC_URL
+                )
+            )
+
+            print_food_shop_check(
+                printer,
+                food_shop_text,
+            )
+
+            food_shop_success = True
+
+        except Exception as error:
+            print(
+                "Food shop error:",
+                repr(error),
+            )
+
+            traceback.print_exc()
+
+            _print_section_error(
+                printer,
+                "FOOD SHOP ERROR",
+                "ITEM LIST UNAVAILABLE",
+            )
+
+        if (
+                food_shop_success
+                and web_food_shop
+        ):
+            consume_one_shot(
+                settings,
+                "food_shop",
+            )
+
+    # ==========================================
+    # SHOPPING LIST
+    # ==========================================
+
+    if should_run_shopping_list:
+
+        shopping_list_success = False
+
+        try:
+            print(
+                "Shopping list requested..."
+            )
+
+            shopping_list_success = True
+
+        except Exception as error:
+            print(
+                "Shopping list error:",
+                repr(error),
+            )
+
+            traceback.print_exc()
+
+            _print_section_error(
+                printer,
+                "SHOPPING LIST ERROR",
+                "SHOPPING LIST UNAVAILABLE",
+            )
+
+        if (
+            shopping_list_success
+            and web_shopping_list
+        ):
+            consume_one_shot(
+                settings,
+                "shopping_list",
+            )
+
+    # ==========================================
+    # SUNDAY SUBSCRIPTIONS
+    # ==========================================
+
+    if should_print_subscriptions():
+
+        try:
             subscriptions_text = (
                 get_google_doc_text(
                     SUBSCRIPTIONS_GOOGLE_DOC_URL
                 )
             )
+
             print_subscriptions(
                 printer,
                 subscriptions_text,
@@ -8761,90 +9400,96 @@ def run_live_pipeline():
                 "Subscriptions error:",
                 repr(error),
             )
-            _print_section_error(
-                printer,
-                "SUBSCRIPTIONS ERROR",
-                "LIST UNAVAILABLE",
+
+    # ==========================================
+    # DELIVERIES
+    # ==========================================
+
+    if feature_enabled(
+        settings,
+        "deliveries",
+    ):
+        try:
+            print(
+                "Checking upcoming deliveries..."
             )
 
-    # --------------------------------------------------------
-    # UPCOMING DELIVERIES
-    # --------------------------------------------------------
+            deliveries = (
+                get_upcoming_deliveries()
+            )
+
+            print_upcoming_deliveries(
+                printer,
+                deliveries,
+            )
+
+        except Exception as error:
+            print(
+                "Delivery error:",
+                repr(error),
+            )
+
+    # ==========================================
+    # EXERCISES
+    # ==========================================
+
     try:
-        print("Checking upcoming deliveries...")
-        deliveries = get_upcoming_deliveries()
-        print_upcoming_deliveries(
-            printer,
-            deliveries,
+        document_2 = (
+            get_google_doc_text(
+                GOOGLE_DOC_2_URL
+            )
         )
 
-    except Exception as error:
-        print("Delivery error:", repr(error))
-        _print_section_error(
-            printer,
-            "DELIVERY ERROR",
-        )
-
-    # --------------------------------------------------------
-    # RANDOM DOC / EXERCISES
-    # --------------------------------------------------------
-    try:
-        print("Downloading Google Doc #2...")
-        document_2 = get_google_doc_text(
-            GOOGLE_DOC_2_URL
-        )
         print_random_document_lines(
             printer,
             document_2,
         )
 
     except Exception as error:
-        print("Document 2 error:", repr(error))
-        _print_section_error(
-            printer,
-            "EXERCISES ERROR",
+        print(
+            "Document 2 error:",
+            repr(error),
         )
 
+    # ==========================================
+    # CUT DAILY ACTIONS
+    # ==========================================
+
+    cut_receipt_section(
+        printer
+    )
 
     # ==========================================
-    # CUT: END OF DAILY ACTIONS
-    # ==========================================
-    cut_receipt_section(printer)
-
-    # --------------------------------------------------------
     # MEAL PLANNER
-    # --------------------------------------------------------
-    try:
-        today = datetime.now(
-            ZoneInfo("Europe/London")
-        ).date()
+    # ==========================================
 
-        # Saturday: generate and print the coming Sunday-Saturday plan.
+    try:
         if today.weekday() == 5:
+
             meals.generate_week(
                 meals.sunday_for(today),
             )
+
             meals.print_weekly_overview(
                 printer,
                 left,
                 print_line,
             )
+
             meals.print_shopping_list(
                 printer,
                 left,
                 print_line,
             )
 
-        # Sunday: print only the useful make/buy prep jobs derived
-        # from the actual recipes selected for the current week.
         if today.weekday() == 6:
+
             meals.print_sunday_prep(
                 printer,
                 left,
                 print_line,
             )
 
-        # Every day: today's dinner + nutrition/allergens + tomorrow's lunch.
         meals.print_today_recipe(
             printer,
             left,
@@ -8856,34 +9501,45 @@ def run_live_pipeline():
             "Meal planner error:",
             repr(error),
         )
+
         traceback.print_exc()
-        _print_section_error(
-            printer,
-            "MEAL PLAN ERROR",
-            "PLAN UNAVAILABLE",
-        )
 
+    print_footer(
+        printer
+    )
 
-    # ==========================================
-    # CUT: END OF FOOD RECEIPT
-    # ==========================================
-    print_footer(printer)
     printer.cut()
 
+    # ==========================================
+    # FINANCE - SEPARATE RECEIPT
+    # ==========================================
 
-    # --------------------------------------------------------
-    # FINANCE - OWN RECEIPT, ONLY WHEN REQUESTED
-    # --------------------------------------------------------
-    if finance_requested:
+    if should_run_finance:
+
+        finance_success = False
+
         try:
-            print("Finance check requested...")
-            balances = get_account_balances()
+            print(
+                "Finance check requested..."
+            )
 
-            # Collect raw finance data here. Cleaning and spending analysis
-            # are owned by finance/receipt.py and finance_trends.py.
-            finance_data = get_regular_finance_data()
+            subscription_changes = []
 
-            if isinstance(finance_data, tuple) and len(finance_data) >= 5:
+            balances = (
+                get_account_balances()
+            )
+
+            finance_data = (
+                get_regular_finance_data()
+            )
+
+            if (
+                isinstance(
+                    finance_data,
+                    tuple,
+                )
+                and len(finance_data) >= 5
+            ):
                 (
                     transactions,
                     direct_debits,
@@ -8891,6 +9547,13 @@ def run_live_pipeline():
                     subscriptions,
                     spending_summary,
                 ) = finance_data[:5]
+
+                subscription_changes = (
+                    update_subscriptions_from_transactions(
+                        transactions
+                    )
+                )
+
             else:
                 transactions = []
                 direct_debits = []
@@ -8899,7 +9562,9 @@ def run_live_pipeline():
                 spending_summary = {}
 
             print_integrated_finance(
-                printer, left, print_line,
+                printer,
+                left,
+                print_line,
                 balances=balances,
                 transactions=transactions,
                 direct_debits=direct_debits,
@@ -8907,12 +9572,67 @@ def run_live_pipeline():
                 subscriptions=subscriptions,
                 spending_summary=spending_summary,
             )
-        except Exception as error:
-            print("Finance check error:", repr(error))
-            traceback.print_exc()
-            _print_section_error(printer, "FINANCE ERROR", "FINANCE DATA UNAVAILABLE")
 
-        print_footer(printer)
+            print_subscription_changes(
+                printer,
+                subscription_changes,
+            )
+
+            # Reload after transaction matching because
+            # subscriptions.json may just have been updated.
+            subscriptions_data = (
+                load_subscriptions()
+            )
+
+            # Reload after transaction matching because
+            # subscriptions.json may just have been updated.
+            subscriptions_data = (
+                load_subscriptions()
+            )
+
+            print_subscription_status(
+                printer,
+                left,
+                print_line,
+                transactions,
+            )
+
+            print_instalment_status(
+                printer,
+                subscriptions_data,
+            )
+
+            finance_success = True
+
+        except Exception as error:
+            print(
+                "Finance check error:",
+                repr(error),
+            )
+
+            traceback.print_exc()
+
+            _print_section_error(
+                printer,
+                "FINANCE ERROR",
+                "FINANCE DATA UNAVAILABLE",
+            )
+
+        if (
+            finance_success
+            and web_finance
+        ):
+            consume_one_shot(
+                settings,
+                "finance_check",
+            )
+
+        print_footer(
+            printer
+        )
+
         printer.cut()
 
-    print("Receipt printed successfully.")
+    print(
+        "Receipt printed successfully."
+    )

@@ -16,7 +16,7 @@ from finance_trends import (
     debug_spending_transactions,
     completed_periods_to_save, period_analysis, save_snapshot,
     load_snapshot, add_savings_growth_to_analysis,
-    savings_growth_receipt_lines, period_receipt_lines,
+    savings_growth_receipt_lines, period_receipt_lines, everyday_spending_transactions,
 )
 from finance_period_helpers import previous_period_label
 from savings_runway import (
@@ -43,41 +43,105 @@ def _money(v):
     v = float(v or 0)
     return f"-£{abs(v):,.2f}" if v < 0 else f"£{v:,.2f}"
 
-def _payment_date(item):
-    for key in ("next_date", "date", "payment_date", "due_date"):
-        value = item.get(key)
-        if value:
-            if hasattr(value, "strftime"):
-                return value.strftime("%d %b").upper()
-            text = str(value)
-            try:
-                return datetime.fromisoformat(text.replace("Z","+00:00")).strftime("%d %b").upper()
-            except Exception:
-                return text[:10].upper()
-    return ""
+def print_line(
+    printer,
+    char="-",
+    width=40,
+):
+    printer.text(
+        (char * width) + "\n"
+    )
 
 def print_integrated_finance(
-    printer, left, line, balances, transactions,
-    direct_debits=None, standing_orders=None, subscriptions=None,
+    printer,
+    left,
+    line,
+    balances,
+    transactions,
+    direct_debits=None,
+    standing_orders=None,
+    subscriptions=None,
     spending_summary=None,
 ):
-    direct_debits = direct_debits or []
-    standing_orders = standing_orders or []
-    subscriptions = subscriptions or []
-    spending_summary = spending_summary or {}
-    transactions = transactions or []
 
-    hsbc = float(balances.get("HSBC", {}).get("available", 0) or 0)
-    monzo = float(balances.get("MONZO", {}).get("available", 0) or 0)
-    amex = float(balances.get("AMEX", {}).get("current", 0) or 0)
-    available_cash = hsbc + monzo - amex
+    direct_debits = (
+        direct_debits or []
+    )
 
-    savings_data = load_savings(SAVINGS_FILE)
-    st = savings_totals(savings_data)
-    net_cash = available_cash + st["net_cash"]
+    standing_orders = (
+        standing_orders or []
+    )
 
-    investment_data = load_investments(
-        INVESTMENTS_FILE
+    subscriptions = (
+        subscriptions or []
+    )
+
+    spending_summary = (
+        spending_summary or {}
+    )
+
+    transactions = (
+        transactions or []
+    )
+
+    # ==========================================
+    # BALANCES
+    # ==========================================
+
+    hsbc = float(
+        balances
+        .get("HSBC", {})
+        .get("available", 0)
+        or 0
+    )
+
+    monzo = float(
+        balances
+        .get("MONZO", {})
+        .get("available", 0)
+        or 0
+    )
+
+    amex = float(
+        balances
+        .get("AMEX", {})
+        .get("current", 0)
+        or 0
+    )
+
+    available_cash = (
+        hsbc
+        + monzo
+        - amex
+    )
+
+    # ==========================================
+    # SAVINGS
+    # ==========================================
+
+    savings_data = (
+        load_savings(
+            SAVINGS_FILE
+        )
+    )
+
+    st = savings_totals(
+        savings_data
+    )
+
+    net_cash = (
+        available_cash
+        + st["net_cash"]
+    )
+
+    # ==========================================
+    # INVESTMENTS
+    # ==========================================
+
+    investment_data = (
+        load_investments(
+            INVESTMENTS_FILE
+        )
     )
 
     investment_summary = (
@@ -92,36 +156,145 @@ def print_integrated_finance(
         )
     )
 
-    # Use one cleaned transaction set for the headline total, category trends
-    # and baseline. This prevents transfers, savings movements, repayments and
-    # duplicates from inflating LAST 30 DAYS.
-    clean_transactions = clean_spending_transactions(transactions)
-    last30 = spending_total(clean_transactions, days=30)
-    usual = usual_30_day_spend(clean_transactions)
-    monthly_spend = usual or last30
-    overall_change = ((last30 - usual) / usual * 100) if usual > 0 else None
+    # ==========================================
+    # SPENDING
+    # ==========================================
+
+    clean_transactions = clean_spending_transactions(
+        transactions
+    )
+
+    everyday_transactions = (
+        everyday_spending_transactions(
+            clean_transactions
+        )
+    )
+
+    # Everything genuinely spent,
+    # including rent and bills.
+    total_outgoings = spending_total(
+        clean_transactions,
+        days=30,
+    )
+
+    # Variable/day-to-day spending.
+    last30 = spending_total(
+        everyday_transactions,
+        days=30,
+    )
+
+    # Historical comparison should compare
+    # like-for-like everyday spending.
+    usual = usual_30_day_spend(
+        everyday_transactions
+    )
+
+    fixed_commitments = max(
+        0.0,
+        total_outgoings - last30,
+    )
+
+    monthly_spend = (
+        usual
+        or last30
+    )
+
+    overall_change = (
+        (
+            (last30 - usual)
+            / usual
+            * 100
+        )
+        if usual > 0
+        else None
+    )
 
     if DEBUG_SPENDING:
-        debug_spending_transactions(clean_transactions, days=30)
-
-    line(printer, "="); left(printer, "FINANCE"); line(printer, "=")
-    left(printer, "ACCOUNTS"); line(printer, "-")
-    left(printer, f"{'HSBC CURRENT':<27}{_money(hsbc):>15}")
-    left(printer, f"{'MONZO':<27}{_money(monzo):>15}")
-    left(printer, f"{'AMEX':<27}{_money(-amex):>15}")
-
-    if st["accounts"]:
-        line(
-            printer,
-            "-",
+        debug_spending_transactions(
+            clean_transactions,
+            days=30,
         )
 
-        for x in savings_receipt_lines(
+    # ==========================================
+    # HEADER
+    # ==========================================
+
+    line(
+        printer,
+        "=",
+    )
+
+    printer.set(
+        bold=True,
+        align="center",
+    )
+
+    printer.text(
+        "FINANCE\n"
+    )
+
+    printer.set(
+        bold=False,
+        align="left",
+    )
+
+    line(
+        printer,
+        "=",
+    )
+
+    # ==========================================
+    # ACCOUNTS
+    # ==========================================
+
+    left(
+        printer,
+        "ACCOUNTS",
+    )
+
+    line(
+        printer,
+        "-",
+    )
+
+    left(
+        printer,
+        (
+            f"{'HSBC CURRENT':<27}"
+            f"{_money(hsbc):>15}"
+        ),
+    )
+
+    left(
+        printer,
+        (
+            f"{'MONZO':<27}"
+            f"{_money(monzo):>15}"
+        ),
+    )
+
+    left(
+        printer,
+        (
+            f"{'AMEX':<27}"
+            f"{_money(-amex):>15}"
+        ),
+    )
+
+    # ==========================================
+    # SAVINGS
+    # ==========================================
+
+    if st["accounts"]:
+
+        for text in (
+            savings_receipt_lines(
                 savings_data
+            )
         ):
             left(
                 printer,
-                x,
+                text,
             )
 
     line(
@@ -131,23 +304,21 @@ def print_integrated_finance(
 
     left(
         printer,
-        "NET CASH",
+        (
+            f"{'NET CASH':<27}"
+            f"{_money(net_cash):>15}"
+        ),
     )
 
-    left(
-        printer,
-        f"{'':<27}{_money(net_cash):>15}",
-    )
-
-    # ------------------------------------------
+    # ==========================================
     # INVESTMENTS
-    # ------------------------------------------
+    # ==========================================
 
-    if investment_data["accounts"]:
-        line(
-            printer,
-            "-",
-        )
+    if investment_data[
+        "accounts"
+    ]:
+
+        printer.text("\n")
 
         left(
             printer,
@@ -159,9 +330,12 @@ def print_integrated_finance(
             "-",
         )
 
-        for account in investment_data[
-            "accounts"
-        ]:
+        for account in (
+            investment_data[
+                "accounts"
+            ]
+        ):
+
             name = str(
                 account.get(
                     "name",
@@ -177,9 +351,10 @@ def print_integrated_finance(
                     )
                     or 0
                 )
+
             except (
-                    TypeError,
-                    ValueError,
+                TypeError,
+                ValueError,
             ):
                 value = 0.0
 
@@ -190,6 +365,11 @@ def print_integrated_finance(
                     f"{_money(value):>15}"
                 ),
             )
+
+        line(
+            printer,
+            "-",
+        )
 
         left(
             printer,
@@ -215,155 +395,310 @@ def print_integrated_finance(
             ),
         )
 
-        if (
-                investment_summary[
-                    "gain_pct"
-                ]
-                is not None
-        ):
+        gain_pct = (
+            investment_summary[
+                "gain_pct"
+            ]
+        )
+
+        if gain_pct is not None:
+
             left(
                 printer,
                 (
                     f"{'RETURN':<27}"
-                    f"{investment_summary['gain_pct']:>+14.1f}%"
+                    f"{gain_pct:>+14.1f}%"
                 ),
             )
 
         if (
-                investment_age is not None
-                and investment_age > 30
+            investment_age is not None
+            and investment_age > 30
         ):
             left(
                 printer,
                 (
                     f"VALUE {investment_age} "
-                    f"DAYS OLD"
+                    "DAYS OLD"
                 ),
             )
 
-    payments = []
-    for item in direct_debits + standing_orders + subscriptions:
-        name = str(item.get("name") or item.get("description") or "PAYMENT").upper()[:18]
-        try: amount = abs(float(item.get("amount", 0) or 0))
-        except Exception: amount = 0
-        payments.append((name, amount, _payment_date(item)))
-    if payments:
-        line(printer, "-"); left(printer, "UPCOMING PAYMENTS"); line(printer, "-")
-        left(printer, f"{'NAME':<18}{'AMOUNT':>12}{'DATE':>12}")
-        for name, amount, due in payments[:12]:
-            left(printer, f"{name:<18}{_money(amount):>12}{due:>12}")
+    # ==========================================
+    # SPENDING
+    # ==========================================
 
-    line(printer, "-"); left(printer, "SPENDING"); line(printer, "-")
-    left(printer, f"{'LAST 30 DAYS':<27}{_money(last30):>15}")
-    left(printer, f"{'USUAL 30 DAYS':<27}{_money(usual):>15}")
-    if overall_change is not None:
-        left(printer, f"{'CHANGE':<27}{overall_change:>+14.1f}%")
+    printer.text("\n")
 
-    rules = load_rules(RULES_FILE)
-    trends = category_trends(clean_transactions, rules, minimum_current_spend=20.0)
+    left(
+        printer,
+        "SPENDING - LAST 30 DAYS",
+    )
+
+    print_line(
+        printer,
+        "-",
+    )
+
+    left(
+        printer,
+        (
+            f"EVERYDAY SPEND"
+            f"{_money(last30):>20}"
+        ),
+    )
+
+    left(
+        printer,
+        (
+            f"FIXED COMMITMENTS"
+            f"{_money(fixed_commitments):>17}"
+        ),
+    )
+
+    left(
+        printer,
+        (
+            f"TOTAL OUTGOINGS"
+            f"{_money(total_outgoings):>19}"
+        ),
+    )
+
+    print_line(
+        printer,
+        "-",
+    )
+
+    left(
+        printer,
+        (
+            f"3 MONTH AVG"
+            f"{_money(usual):>23}"
+        ),
+    )
+
+    if usual > 0:
+        change_pct = (
+                (last30 - usual)
+                / usual
+                * 100.0
+        )
+
+        left(
+            printer,
+            (
+                f"CHANGE"
+                f"{change_pct:>27.1f}%"
+            ),
+        )
+
+    # ==========================================
+    # CATEGORY TRENDS
+    # ==========================================
+
+    rules = load_rules(
+        RULES_FILE
+    )
+
+    trends = category_trends(
+        clean_transactions,
+        rules,
+        minimum_current_spend=20.0,
+    )
+
     if trends:
-        line(printer, "-")
-        for x in receipt_trend_lines(trends):
-            # Skip duplicated largest-changes block on the everyday receipt.
-            if x == "LARGEST CHANGES":
+
+        line(
+            printer,
+            "-",
+        )
+
+        for text in (
+            receipt_trend_lines(
+                trends
+            )
+        ):
+
+            if (
+                text
+                == "LARGEST CHANGES"
+            ):
                 break
-            left(printer, x.replace("SPENDING TRENDS", "SPENDING BY CATEGORY")
-                           .replace("30 DAYS     VS 90D", "30 DAYS       VS USUAL"))
+
+            text = (
+                text
+                .replace(
+                    "SPENDING TRENDS",
+                    "SPENDING BY CATEGORY",
+                )
+                .replace(
+                    "30 DAYS     VS 90D",
+                    "30 DAYS       VS USUAL",
+                )
+            )
+
+            left(
+                printer,
+                text,
+            )
+
+    # ==========================================
+    # RUNWAY
+    # ==========================================
 
     if monthly_spend > 0:
-        line(printer, "-")
-        for x in runway_receipt_lines(available_cash, savings_data, monthly_spend):
-            left(printer, x)
 
-    # -------------------------------------------------
-    # QUARTERLY / YEARLY ANALYSIS
-    # -------------------------------------------------
-    #
-    # Only runs when a quarter/year has just completed.
-    #
+        printer.text("\n")
+
+        for text in (
+            runway_receipt_lines(
+                available_cash,
+                savings_data,
+                monthly_spend,
+            )
+        ):
+            left(
+                printer,
+                text,
+            )
+
+    # ==========================================
+    # QUARTER / YEAR REVIEW
+    # ==========================================
 
     today = datetime.now(
-        ZoneInfo("Europe/London")
+        ZoneInfo(
+            "Europe/London"
+        )
     ).date()
 
-    for kind, period_date in completed_periods_to_save(
-            today
+    for (
+        kind,
+        period_date,
+    ) in completed_periods_to_save(
+        today
     ):
-        analysis = period_analysis(
-            clean_transactions,
-            rules,
-            kind,
-            period_date,
+
+        analysis = (
+            period_analysis(
+                clean_transactions,
+                rules,
+                kind,
+                period_date,
+            )
         )
 
-        # ---------------------------------------------
-        # SAVINGS SNAPSHOT
-        # ---------------------------------------------
-
-        current_savings = savings_snapshot(
-            savings_data
+        current_savings = (
+            savings_snapshot(
+                savings_data
+            )
         )
 
-        prev_label = previous_period_label(
-            kind,
-            analysis["label"],
+        prev_label = (
+            previous_period_label(
+                kind,
+                analysis["label"],
+            )
         )
 
-        previous = load_snapshot(
-            HISTORY_FILE,
-            prev_label,
+        previous = (
+            load_snapshot(
+                HISTORY_FILE,
+                prev_label,
+            )
         )
 
-        analysis = add_savings_growth_to_analysis(
-            analysis,
-            current_savings,
-            previous,
+        analysis = (
+            add_savings_growth_to_analysis(
+                analysis,
+                current_savings,
+                previous,
+            )
         )
 
-        # ---------------------------------------------
-        # INVESTMENT SNAPSHOT
-        # ---------------------------------------------
-
-        current_investments = investment_snapshot(
-            investment_data
+        current_investments = (
+            investment_snapshot(
+                investment_data
+            )
         )
-
-        # ---------------------------------------------
-        # SAVE COMPLETE PERIOD SNAPSHOT
-        # ---------------------------------------------
 
         save_snapshot(
             HISTORY_FILE,
             analysis,
-            investment_snapshot=current_investments,
+            investment_snapshot=
+                current_investments,
         )
-
-        # ---------------------------------------------
-        # PRINT PERIOD ANALYSIS
-        # ---------------------------------------------
 
         line(
             printer,
             "=",
         )
 
-        for x in period_receipt_lines(
+        for text in (
+            period_receipt_lines(
                 analysis
+            )
         ):
             left(
                 printer,
-                x,
+                text,
             )
 
-        for x in savings_growth_receipt_lines(
+        for text in (
+            savings_growth_receipt_lines(
                 analysis
+            )
         ):
             left(
                 printer,
-                x,
+                text,
             )
 
-    line(printer, "="); left(printer, "SUMMARY"); line(printer, "-")
-    left(printer, f"{'NET CASH':<27}{_money(net_cash):>15}")
+    # ==========================================
+    # SUMMARY
+    # ==========================================
+
+    line(
+        printer,
+        "=",
+    )
+
+    printer.set(
+        bold=True
+    )
+
+    left(
+        printer,
+        "SUMMARY",
+    )
+
+    printer.set(
+        bold=False
+    )
+
+    line(
+        printer,
+        "-",
+    )
+
+    left(
+        printer,
+        (
+            f"{'NET CASH':<27}"
+            f"{_money(net_cash):>15}"
+        ),
+    )
+
     if overall_change is not None:
-        left(printer, f"{'SPENDING CHANGE':<27}{overall_change:>+14.1f}%")
+
+        left(
+            printer,
+            (
+                f"{'SPENDING CHANGE':<27}"
+                f"{overall_change:>+14.1f}%"
+            ),
+        )
+
+    line(
+        printer,
+        "=",
+    )

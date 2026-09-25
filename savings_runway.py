@@ -65,7 +65,7 @@ def savings_receipt_lines(data: dict) -> list[str]:
     t = savings_totals(data)
     if not t["accounts"]:
         return []
-    lines = ["SAVINGS", "-" * 42]
+    lines = [" " * 42,"SAVINGS"]
     for a in t["accounts"]:
         lines.append(f"{a['name'][:27].upper():<27}{money(a['balance']):>15}")
     lines.append(f"{'TOTAL':<27}{money(t['total']):>15}")
