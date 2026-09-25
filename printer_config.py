@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ipaddress
 import json
+import os
 import socket
 from copy import deepcopy
 from pathlib import Path
@@ -107,6 +109,54 @@ def _parse_int(value, default):
         return default
 
 
+def validate_network_host(host):
+    """
+    Only allow literal private/local IPs by default.
+
+    Hostnames can be explicitly allow-listed with:
+        RECEIPT_PRINTER_ALLOWED_HOSTS=printer.local,192.168.1.50
+    """
+    host = str(host or "").strip()
+
+    if not host:
+        return False, "Network printer host is not configured."
+
+    allowed = {
+        item.strip().lower()
+        for item in os.environ.get(
+            "RECEIPT_PRINTER_ALLOWED_HOSTS",
+            "",
+        ).split(",")
+        if item.strip()
+    }
+
+    if host.lower() in allowed:
+        return True, ""
+
+    try:
+        address = ipaddress.ip_address(
+            host
+        )
+    except ValueError:
+        return (
+            False,
+            "Use a private/local printer IP address, "
+            "or explicitly allow-list this hostname.",
+        )
+
+    if not (
+        address.is_private
+        or address.is_loopback
+        or address.is_link_local
+    ):
+        return (
+            False,
+            "Network printer must use a private/local IP address.",
+        )
+
+    return True, ""
+
+
 def printer_connection_label(settings=None):
     settings = (
         settings
@@ -193,11 +243,15 @@ def check_printer_connection(settings=None):
             9100,
         )
 
-        if not host:
+        valid_host, host_error = validate_network_host(
+            host
+        )
+
+        if not valid_host:
             return {
                 "ok": False,
                 "connection": "network",
-                "message": "Network printer host is not configured.",
+                "message": host_error,
                 "label": printer_connection_label(settings),
             }
 
@@ -315,9 +369,13 @@ def create_printer(settings=None):
             9100,
         )
 
-        if not host:
+        valid_host, host_error = validate_network_host(
+            host
+        )
+
+        if not valid_host:
             raise RuntimeError(
-                "Network printer host is not configured."
+                host_error
             )
 
         return Network(
