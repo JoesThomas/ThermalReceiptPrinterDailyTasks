@@ -5,6 +5,8 @@ import json
 from datetime import timedelta
 from functools import wraps
 from pathlib import Path
+from urllib.parse import quote_plus
+from urllib.request import urlopen
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
@@ -73,6 +75,85 @@ def save_subscriptions(data):
     temp_file.replace(
         SUBSCRIPTIONS_FILE
     )
+
+
+PROJECT_PASSWORDS_FILE = (
+    PROJECT_ROOT / "passwords.json"
+)
+
+
+def _google_doc_id(value):
+    text = str(value or "").strip()
+
+    if not text:
+        return ""
+
+    if "/document/d/" in text:
+        return (
+            text.split("/document/d/", 1)[1]
+            .split("/", 1)[0]
+            .strip()
+        )
+
+    return text
+
+
+def load_food_shop_items():
+    """
+    Load the configured food-shop Google Doc for the
+    Receipt Control page without importing the printer
+    pipeline.
+    """
+    if not PROJECT_PASSWORDS_FILE.exists():
+        return [], "Project passwords.json is missing."
+
+    try:
+        private = json.loads(
+            PROJECT_PASSWORDS_FILE.read_text(
+                encoding="utf-8"
+            )
+        )
+
+        document_value = (
+            private
+            .get("google_docs", {})
+            .get("food_shop_url", "")
+        )
+
+        document_id = _google_doc_id(
+            document_value
+        )
+
+        if not document_id:
+            return [], (
+                "Food-shop Google Doc is not configured."
+            )
+
+        export_url = (
+            "https://docs.google.com/document/d/"
+            f"{document_id}/export?format=txt"
+        )
+
+        with urlopen(
+            export_url,
+            timeout=15,
+        ) as response:
+            text = response.read().decode(
+                "utf-8",
+                errors="replace",
+            )
+
+        items = [
+            line.strip()
+            for line in text.splitlines()
+            if line.strip()
+        ]
+
+        return items, None
+
+    except Exception as error:
+        return [], str(error)
+
 
 # ============================================================
 # PASSWORD
@@ -282,27 +363,10 @@ def index():
             else "NOT SET"
         )
 
-    food_shop_items = []
-    food_shop_error = None
-
-    try:
-        from services.live_pipeline import (
-            FOOD_SHOP_GOOGLE_DOC_URL,
-            get_google_doc_text,
-        )
-
-        food_shop_text = get_google_doc_text(
-            FOOD_SHOP_GOOGLE_DOC_URL
-        )
-
-        food_shop_items = [
-            line.strip()
-            for line in food_shop_text.splitlines()
-            if line.strip()
-        ]
-
-    except Exception as error:
-        food_shop_error = str(error)
+    (
+        food_shop_items,
+        food_shop_error,
+    ) = load_food_shop_items()
 
     return render_template(
         "index.html",
@@ -393,8 +457,6 @@ PRINT_PAGES = {
 
 
 def _tesco_search_url(item):
-    from urllib.parse import quote_plus
-
     return (
         "https://www.tesco.com/groceries/en-GB/search"
         f"?query={quote_plus(str(item).strip())}"
