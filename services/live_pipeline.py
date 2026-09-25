@@ -53,7 +53,7 @@ import requests
 from PIL import Image, ImageDraw, ImageFont
 from icalendar import Calendar
 import recurring_ical_events
-from escpos.printer import Usb
+from printer_config import create_printer
 import meal_planner as meals
 from calendar_travel import (
     travel_options,
@@ -8961,10 +8961,7 @@ def run_live_pipeline(
 
     clear_route_cache()
 
-    printer = Usb(
-        PRINTER_VENDOR_ID,
-        PRINTER_PRODUCT_ID,
-    )
+    printer = create_printer()
 
     printer.profile.profile_data[
         "media"
