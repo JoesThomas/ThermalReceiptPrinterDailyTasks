@@ -844,53 +844,56 @@ def freezer_add():
         "",
     ).strip()
 
-    data = load_freezer()
-    items = data["items"]
-
-    existing = next(
-        (
-            item
-            for item in items
-            if str(
-                item.get(
-                    "name",
-                    "",
-                )
-            ).strip().lower()
-            == name.lower()
-        ),
-        None,
-    )
-
-    if existing:
-        existing["portions"] = (
-            int(
-                existing.get(
-                    "portions",
-                    0,
-                )
-                or 0
-            )
-            + portions
+    with edit_json(
+        FREEZER_FILE,
+        {
+            "items": [],
+        },
+    ) as data:
+        items = data.setdefault(
+            "items",
+            [],
         )
 
-        if source:
-            existing["source"] = source
+        existing = next(
+            (
+                item
+                for item in items
+                if str(
+                    item.get(
+                        "name",
+                        "",
+                    )
+                ).strip().lower()
+                == name.lower()
+            ),
+            None,
+        )
 
-    else:
-        from datetime import date
+        if existing:
+            existing["portions"] = (
+                int(
+                    existing.get(
+                        "portions",
+                        0,
+                    )
+                    or 0
+                )
+                + portions
+            )
 
-        items.append({
-            "name": name,
-            "portions": portions,
-            "source": source or "manual",
-            "added": date.today().isoformat(),
-        })
+            if source:
+                existing[
+                    "source"
+                ] = source
 
-    _save_json_file(
-        FREEZER_FILE,
-        data,
-    )
+        else:
+            items.append({
+                "name": name,
+                "portions": portions,
+                "source": source or "manual",
+                "added": date.today().isoformat(),
+            })
 
     flash(
         f"Freezer updated: {name}."
@@ -904,14 +907,6 @@ def freezer_add():
 @app.post("/freezer/<int:index>/update")
 @login_required
 def freezer_update(index):
-    data = load_freezer()
-    items = data["items"]
-
-    if index < 0 or index >= len(items):
-        return ("Freezer item not found", 404)
-
-    item = items[index]
-
     name = request.form.get(
         "name",
         "",
@@ -935,20 +930,37 @@ def freezer_update(index):
         flash("Freezer portions must be a number.")
         return redirect(url_for("index"))
 
-    item["name"] = name
-    item["portions"] = portions
-    item["source"] = request.form.get(
-        "source",
-        item.get(
-            "source",
-            "",
-        ),
-    ).strip()
-
-    _save_json_file(
+    with edit_json(
         FREEZER_FILE,
-        data,
-    )
+        {
+            "items": [],
+        },
+    ) as data:
+        items = data.setdefault(
+            "items",
+            [],
+        )
+
+        if (
+            index < 0
+            or index >= len(items)
+        ):
+            return (
+                "Freezer item not found",
+                404,
+            )
+
+        item = items[index]
+
+        item["name"] = name
+        item["portions"] = portions
+        item["source"] = request.form.get(
+            "source",
+            item.get(
+                "source",
+                "",
+            ),
+        ).strip()
 
     flash(
         f"Freezer item updated: {name}."
@@ -962,25 +974,34 @@ def freezer_update(index):
 @app.post("/freezer/<int:index>/delete")
 @login_required
 def freezer_delete(index):
-    data = load_freezer()
-    items = data["items"]
-
-    if index < 0 or index >= len(items):
-        return ("Freezer item not found", 404)
-
-    name = str(
-        items[index].get(
-            "name",
-            "item",
-        )
-    )
-
-    del items[index]
-
-    _save_json_file(
+    with edit_json(
         FREEZER_FILE,
-        data,
-    )
+        {
+            "items": [],
+        },
+    ) as data:
+        items = data.setdefault(
+            "items",
+            [],
+        )
+
+        if (
+            index < 0
+            or index >= len(items)
+        ):
+            return (
+                "Freezer item not found",
+                404,
+            )
+
+        name = str(
+            items[index].get(
+                "name",
+                "item",
+            )
+        )
+
+        del items[index]
 
     flash(
         f"Removed from freezer: {name}."
@@ -1011,13 +1032,17 @@ def pantry_item_update():
         == "1"
     )
 
-    data = load_pantry()
-    data["items"][name] = present
-
-    _save_json_file(
+    with edit_json(
         PANTRY_FILE,
-        data,
-    )
+        {
+            "items": {},
+        },
+    ) as data:
+        items = data.setdefault(
+            "items",
+            {},
+        )
+        items[name] = present
 
     flash(
         f"Pantry updated: {name}."
@@ -1031,27 +1056,34 @@ def pantry_item_update():
 @app.post("/pantry/<path:item_name>/delete")
 @login_required
 def pantry_item_delete(item_name):
-    data = load_pantry()
-
-    existing = next(
-        (
-            key
-            for key in data["items"]
-            if key.lower()
-            == item_name.lower()
-        ),
-        None,
-    )
-
-    if existing is None:
-        return ("Pantry item not found", 404)
-
-    del data["items"][existing]
-
-    _save_json_file(
+    with edit_json(
         PANTRY_FILE,
-        data,
-    )
+        {
+            "items": {},
+        },
+    ) as data:
+        items = data.setdefault(
+            "items",
+            {},
+        )
+
+        existing = next(
+            (
+                key
+                for key in items
+                if key.lower()
+                == item_name.lower()
+            ),
+            None,
+        )
+
+        if existing is None:
+            return (
+                "Pantry item not found",
+                404,
+            )
+
+        del items[existing]
 
     flash(
         f"Removed pantry item: {existing}."
