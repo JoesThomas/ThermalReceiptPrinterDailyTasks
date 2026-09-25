@@ -458,7 +458,7 @@ PRINT_PAGES = {
 
 def _tesco_search_url(item):
     return (
-        "https://www.tesco.com/groceries/en-GB/search"
+        "https://www.tesco.com/shop/en-GB/search"
         f"?query={quote_plus(str(item).strip())}"
     )
 
