@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from data_store import edit_json, read_json, write_json
+
 TZ = ZoneInfo("Europe/London")
 ROOT = Path(__file__).resolve().parent
 BASE_DIR = ROOT.parent
@@ -33,19 +35,17 @@ RECEIPT_WIDTH = 42
 
 
 def _load(path: Path, default: Any) -> Any:
-    try:
-        with path.open("r", encoding="utf-8") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return default
+    return read_json(
+        path,
+        default,
+    )
 
 
 def _save(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    with tmp.open("w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    tmp.replace(path)
+    write_json(
+        path,
+        data,
+    )
 
 
 def recipes() -> list[dict]:
@@ -330,34 +330,129 @@ def estimate_week_cost(plan: dict) -> dict:
     return {"home_meals": round(recipe_cost, 2), "takeaway_eating_out": round(extras, 2), "total": round(recipe_cost + extras, 2)}
 
 
-def record_cooked(recipe_name: str, when: date | None = None) -> None:
-    when = when or datetime.now(TZ).date()
-    history = _load(HISTORY_FILE, {})
-    item = history.setdefault(recipe_name, {"times_cooked": 0})
-    item["times_cooked"] = int(item.get("times_cooked", 0)) + 1
-    item["last_cooked"] = when.isoformat()
-    _save(HISTORY_FILE, history)
+def record_cooked(
+    recipe_name: str,
+    when: date | None = None,
+) -> None:
+    when = (
+        when
+        or datetime.now(TZ).date()
+    )
+
+    with edit_json(
+        HISTORY_FILE,
+        {},
+    ) as history:
+        item = history.setdefault(
+            recipe_name,
+            {
+                "times_cooked": 0,
+            },
+        )
+
+        item["times_cooked"] = (
+            int(
+                item.get(
+                    "times_cooked",
+                    0,
+                )
+            )
+            + 1
+        )
+
+        item[
+            "last_cooked"
+        ] = when.isoformat()
 
 
-def add_freezer_portions(name: str, portions: int, source: str = "batch cook") -> None:
-    data = _load(FREEZER_FILE, {"items": []})
-    items = data.setdefault("items", [])
-    existing = next((x for x in items if x.get("name") == name), None)
-    if existing:
-        existing["portions"] = int(existing.get("portions", 0)) + portions
-    else:
-        items.append({"name": name, "portions": portions, "source": source, "added": datetime.now(TZ).date().isoformat()})
-    _save(FREEZER_FILE, data)
+def add_freezer_portions(
+    name: str,
+    portions: int,
+    source: str = "batch cook",
+) -> None:
+    with edit_json(
+        FREEZER_FILE,
+        {
+            "items": [],
+        },
+    ) as data:
+        items = data.setdefault(
+            "items",
+            [],
+        )
+
+        existing = next(
+            (
+                item
+                for item in items
+                if str(
+                    item.get(
+                        "name",
+                        "",
+                    )
+                ).lower()
+                == name.lower()
+            ),
+            None,
+        )
+
+        if existing:
+            existing["portions"] = (
+                int(
+                    existing.get(
+                        "portions",
+                        0,
+                    )
+                )
+                + portions
+            )
+        else:
+            items.append({
+                "name": name,
+                "portions": portions,
+                "source": source,
+                "added": datetime.now(
+                    TZ
+                ).date().isoformat(),
+            })
 
 
-def use_freezer_portion(name: str) -> bool:
-    data = _load(FREEZER_FILE, {"items": []})
-    for item in data.get("items", []):
-        if item.get("name", "").lower() == name.lower() and int(item.get("portions", 0)) > 0:
-            item["portions"] -= 1
-            _save(FREEZER_FILE, data)
-            return True
-    return False
+def use_freezer_portion(
+    name: str,
+) -> bool:
+    used = False
+
+    with edit_json(
+        FREEZER_FILE,
+        {
+            "items": [],
+        },
+    ) as data:
+        for item in data.get(
+            "items",
+            [],
+        ):
+            if (
+                str(
+                    item.get(
+                        "name",
+                        "",
+                    )
+                ).lower()
+                == name.lower()
+                and int(
+                    item.get(
+                        "portions",
+                        0,
+                    )
+                )
+                > 0
+            ):
+                item["portions"] -= 1
+                used = True
+                break
+
+    return used
 
 
 def set_override(day: date, meal_type: str, name: str = "", estimated_cost: float = 0.0, note: str = "", scope: str = "dinner") -> None:
