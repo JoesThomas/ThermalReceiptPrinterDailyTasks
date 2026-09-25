@@ -19,6 +19,11 @@ def parse_args():
     parser.add_argument("--validate", action="store_true", help="Validate JSON and recipe data, then exit.")
     parser.add_argument("--health", action="store_true", help="Run local health checks, then exit.")
     parser.add_argument("--finance", action="store_true", help="Simulate a finance-requested run.")
+    parser.add_argument(
+        "--only",
+        choices=("information", "actions", "food", "finance"),
+        help="Print only one live receipt page for debugging/testing.",
+    )
     return parser.parse_args()
 
 
@@ -84,7 +89,10 @@ def main():
         return
 
     logger.info("Launching modular live receipt pipeline.")
-    run_live(finance_requested=args.finance)
+    run_live(
+        finance_requested=args.finance,
+        only_page=args.only,
+    )
 
 
 if __name__ == "__main__":
