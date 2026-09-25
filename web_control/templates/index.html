@@ -266,6 +266,33 @@
             margin: 10px 0;
         }
 
+        .meal-card {
+            border: 1px solid #e5e5e5;
+            background: #fafafa;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 12px;
+        }
+
+        .meal-card h3 {
+            margin-top: 0;
+        }
+
+        .meal-stats {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin: 8px 0 14px 0;
+        }
+
+        .meal-stats span {
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 999px;
+            padding: 5px 9px;
+            font-size: .9rem;
+        }
+
         .inventory-card form {
             margin: 0;
         }
@@ -1041,6 +1068,121 @@
     </section>
 
 
+    <!-- TODAY'S MEAL -->
+
+    <section>
+
+        <h2>Today's meal</h2>
+
+        {% if today_meal_error %}
+
+            <p>
+                Meal planner unavailable:
+                {{ today_meal_error }}
+            </p>
+
+        {% elif not today_meal %}
+
+            <p>
+                No meal planned for today.
+            </p>
+
+        {% elif today_meal.kind == 'recipe' %}
+
+            {% set recipe = today_meal.recipe %}
+
+            <div class="meal-card">
+
+                <h3>
+                    {{ recipe.name }}
+                </h3>
+
+                <p class="muted">
+                    {{ recipe.overview or '' }}
+                </p>
+
+                <div class="meal-stats">
+                    <span>
+                        {{ recipe.total_minutes or '?' }} min
+                    </span>
+                    <span>
+                        Serves {{ recipe.servings or 1 }}
+                    </span>
+                    {% if recipe.nutrition_per_serving %}
+                        <span>
+                            ~{{ recipe.nutrition_per_serving.calories or '?' }}
+                            kcal
+                        </span>
+                    {% endif %}
+                </div>
+
+                <form
+                    method="post"
+                    action="{{ url_for('meal_today_cooked') }}"
+                >
+
+                    <div class="connection-fields">
+
+                        <label>
+                            Portions made
+                            <input
+                                type="number"
+                                min="1"
+                                name="portions_made"
+                                value="{{ recipe.servings or 1 }}"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            Portions eaten
+                            <input
+                                type="number"
+                                min="0"
+                                name="portions_eaten"
+                                value="1"
+                                required
+                            >
+                        </label>
+
+                    </div>
+
+                    <p class="muted">
+                        Any portions made but not eaten
+                        will be added automatically to
+                        data/freezer.json.
+                    </p>
+
+                    <button>
+                        Confirm cooked meal
+                    </button>
+
+                </form>
+
+            </div>
+
+        {% else %}
+
+            <div class="meal-card">
+                <h3>
+                    {{ today_meal.name or 'Planned meal' }}
+                </h3>
+
+                <p class="muted">
+                    {{ today_meal.overview or '' }}
+                </p>
+
+                <p>
+                    Planned type:
+                    {{ today_meal.kind|replace('_', ' ')|title }}
+                </p>
+            </div>
+
+        {% endif %}
+
+    </section>
+
+
     <!-- KITCHEN INVENTORY -->
 
     <section>
@@ -1107,20 +1249,40 @@
 
                     </form>
 
-                    <form
-                        method="post"
-                        action="{{ url_for(
-                            'freezer_delete',
-                            index=loop.index0
-                        ) }}"
-                        onsubmit="
-                            return confirm(
-                                'Remove this freezer item?'
-                            )
-                        "
-                    >
-                        <button>Delete</button>
-                    </form>
+                    <div class="inventory-actions">
+
+                        <form
+                            method="post"
+                            action="{{ url_for(
+                                'freezer_eat_one',
+                                index=loop.index0
+                            ) }}"
+                        >
+                            <button
+                                {% if (item.portions or 0)|int <= 0 %}
+                                    disabled
+                                {% endif %}
+                            >
+                                Ate one
+                            </button>
+                        </form>
+
+                        <form
+                            method="post"
+                            action="{{ url_for(
+                                'freezer_delete',
+                                index=loop.index0
+                            ) }}"
+                            onsubmit="
+                                return confirm(
+                                    'Remove this freezer item?'
+                                )
+                            "
+                        >
+                            <button>Delete</button>
+                        </form>
+
+                    </div>
 
                 </div>
 
