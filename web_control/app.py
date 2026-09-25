@@ -281,16 +281,37 @@ def index():
             else "NOT SET"
         )
 
+    food_shop_items = []
+    food_shop_error = None
+
+    try:
+        from services.live_pipeline import (
+            FOOD_SHOP_GOOGLE_DOC_URL,
+            get_google_doc_text,
+        )
+
+        food_shop_text = get_google_doc_text(
+            FOOD_SHOP_GOOGLE_DOC_URL
+        )
+
+        food_shop_items = [
+            line.strip()
+            for line in food_shop_text.splitlines()
+            if line.strip()
+        ]
+
+    except Exception as error:
+        food_shop_error = str(error)
+
     return render_template(
         "index.html",
         settings=settings,
         routines=routines,
         weekdays=WEEKDAYS,
         subscriptions=subscriptions,
+        food_shop_items=food_shop_items,
+        food_shop_error=food_shop_error,
     )
-    for item in routines:
-        due = next_due_date(item); item["next_due_display"] = due.strftime("%a %d %b").upper() if due else "NOT SET"
-    return render_template("index.html", settings=settings, routines=routines, weekdays=WEEKDAYS)
 
 def _checked(name): return request.form.get(name) == "on"
 
@@ -361,6 +382,145 @@ def _run_receipt_job(
             missing_ok=True
         )
 
+
+PRINT_PAGES = {
+    "information": "Information (header, weather, news)",
+    "actions": "Actions (calendar, to-do, food shop, deliveries, exercises)",
+    "food": "Food / meal planner",
+    "finance": "Finance",
+}
+
+
+def _tesco_search_url(item):
+    from urllib.parse import quote_plus
+
+    return (
+        "https://www.tesco.com/groceries/en-GB/search"
+        f"?query={quote_plus(str(item).strip())}"
+    )
+
+
+@app.get("/tesco/search")
+@login_required
+def tesco_search():
+    item = request.args.get("item", "").strip()
+
+    if not item:
+        flash("Choose a food-shop item first.")
+        return redirect(url_for("index"))
+
+    return redirect(_tesco_search_url(item))
+
+
+def _start_print_command(command_args):
+    lock = (
+        PROJECT_ROOT
+        / "data"
+        / ".print_now.lock"
+    )
+
+    log_file = (
+        PROJECT_ROOT
+        / "logs"
+        / "web_print.log"
+    )
+
+    lock.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    log_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    if lock.exists():
+        try:
+            pid = int(
+                lock.read_text(
+                    encoding="utf-8"
+                ).strip()
+            )
+            os.kill(pid, 0)
+            return False, "A receipt job is already running."
+        except (
+            ValueError,
+            ProcessLookupError,
+            PermissionError,
+            OSError,
+        ):
+            lock.unlink(
+                missing_ok=True
+            )
+
+    try:
+        log_handle = open(
+            log_file,
+            "a",
+            encoding="utf-8",
+        )
+
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                str(PROJECT_ROOT / "main.py"),
+                *command_args,
+            ],
+            cwd=PROJECT_ROOT,
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+
+        log_handle.close()
+
+        lock.write_text(
+            str(process.pid),
+            encoding="utf-8",
+        )
+
+    except Exception as error:
+        lock.unlink(
+            missing_ok=True
+        )
+        print(
+            "Web print error:",
+            repr(error),
+        )
+        return False, "Could not start receipt."
+
+    return True, None
+
+
+@app.post("/print-page")
+@login_required
+def print_page():
+    page = request.form.get(
+        "page",
+        "",
+    ).strip().lower()
+
+    if page not in PRINT_PAGES:
+        return ("Unknown receipt page", 400)
+
+    started, error = _start_print_command(
+        ["--only", page]
+    )
+
+    if not started:
+        flash(error)
+        return redirect(url_for("index"))
+
+    flash(
+        f"{PRINT_PAGES[page]} receipt started."
+    )
+
+    return redirect(
+        url_for("index")
+    )
+
+
 @app.post("/print-now")
 @login_required
 def print_now():
@@ -421,59 +581,10 @@ def print_now():
                 missing_ok=True
             )
 
-    # ----------------------------------------
-    # Start receipt
-    # ----------------------------------------
+    started, error = _start_print_command([])
 
-    command = (
-        f"{sys.executable!r} "
-        f"{str(PROJECT_ROOT / 'main.py')!r}; "
-        f"status=$?; "
-        f"rm -f {str(lock)!r}; "
-        f"exit $status"
-    )
-
-    try:
-        log_handle = open(
-            log_file,
-            "a",
-            encoding="utf-8",
-        )
-
-        process = subprocess.Popen(
-            [
-                "/bin/sh",
-                "-c",
-                command,
-            ],
-            cwd=PROJECT_ROOT,
-            stdout=log_handle,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-        )
-
-        log_handle.close()
-
-        # Store the process PID in the lock.
-        lock.write_text(
-            str(process.pid),
-            encoding="utf-8",
-        )
-
-    except Exception as error:
-        lock.unlink(
-            missing_ok=True
-        )
-
-        print(
-            "Web print error:",
-            repr(error),
-        )
-
-        flash(
-            "Could not start receipt."
-        )
-
+    if not started:
+        flash(error)
         return redirect(
             url_for("index")
         )
