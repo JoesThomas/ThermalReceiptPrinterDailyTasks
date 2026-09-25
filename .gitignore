@@ -199,3 +199,9 @@ dist/
 
 # Personal regular payment data
 regular_payments.txt
+/data/yearly_subscriptions.json
+# Generated personal meal plans
+meal_plans/
+
+# Saved browser/webpage assets
+Write Python Weather Receipt Script_files/
