@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import ipaddress
-import json
 import os
 import socket
 from copy import deepcopy
 from pathlib import Path
+
+from data_store import read_json, write_json
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 SETTINGS_FILE = PROJECT_ROOT / "data" / "printer_settings.json"
@@ -46,20 +47,10 @@ def _merge(defaults, supplied):
 
 
 def load_printer_settings():
-    if not SETTINGS_FILE.exists():
-        return deepcopy(DEFAULT_SETTINGS)
-
-    try:
-        raw = json.loads(
-            SETTINGS_FILE.read_text(
-                encoding="utf-8"
-            )
-        )
-    except (
-        OSError,
-        json.JSONDecodeError,
-    ):
-        return deepcopy(DEFAULT_SETTINGS)
+    raw = read_json(
+        SETTINGS_FILE,
+        deepcopy(DEFAULT_SETTINGS),
+    )
 
     return _merge(
         DEFAULT_SETTINGS,
@@ -68,26 +59,12 @@ def load_printer_settings():
 
 
 def save_printer_settings(settings):
-    SETTINGS_FILE.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    temp = SETTINGS_FILE.with_suffix(
-        ".tmp"
-    )
-
-    temp.write_text(
-        json.dumps(
+    write_json(
+        SETTINGS_FILE,
+        _merge(
+            DEFAULT_SETTINGS,
             settings,
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-
-    temp.replace(
-        SETTINGS_FILE
+        ),
     )
 
 
