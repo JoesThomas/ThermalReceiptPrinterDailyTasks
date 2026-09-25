@@ -361,6 +361,7 @@
             method="post"
             action="{{ url_for('logout') }}"
         >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button>Sign out</button>
         </form>
     </header>
@@ -416,6 +417,7 @@
         method="post"
         action="{{ url_for('save') }}"
     >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <section>
 
@@ -621,6 +623,7 @@
                             routine_id=r.id
                         ) }}"
                     >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button>
                             Done
                         </button>
@@ -634,6 +637,7 @@
                             routine_id=r.id
                         ) }}"
                     >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <input
                             type="hidden"
@@ -668,6 +672,7 @@
                             )
                         "
                     >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <button>
                             Delete
@@ -695,6 +700,7 @@
             method="post"
             action="{{ url_for('routine_add') }}"
         >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="grid">
 
@@ -808,6 +814,7 @@
                     ) }}"
                     class="instalment"
                 >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="instalment-header">
 
@@ -1120,6 +1127,7 @@
                     method="post"
                     action="{{ url_for('meal_today_cooked') }}"
                 >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="connection-fields">
 
@@ -1211,6 +1219,7 @@
                             index=loop.index0
                         ) }}"
                     >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <div class="connection-fields">
 
@@ -1258,6 +1267,7 @@
                                 index=loop.index0
                             ) }}"
                         >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button
                                 {% if (item.portions or 0)|int <= 0 %}
                                     disabled
@@ -1279,6 +1289,7 @@
                                 )
                             "
                         >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button>Delete</button>
                         </form>
 
@@ -1299,6 +1310,7 @@
                 action="{{ url_for('freezer_add') }}"
                 class="inventory-form"
             >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <div class="connection-fields">
 
@@ -1364,6 +1376,7 @@
                                 'pantry_item_update'
                             ) }}"
                         >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input
                                 type="hidden"
                                 name="name"
@@ -1386,6 +1399,7 @@
                                 item_name=name
                             ) }}"
                         >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button>Delete</button>
                         </form>
 
@@ -1406,6 +1420,7 @@
                 action="{{ url_for('pantry_item_update') }}"
                 class="inventory-form"
             >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="connection-fields">
                     <label>
                         Name
@@ -1562,6 +1577,7 @@
                     method="post"
                     action="{{ url_for('print_page') }}"
                 >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input
                         type="hidden"
                         name="page"
@@ -1600,6 +1616,7 @@
                 method="post"
                 action="{{ url_for('printer_test') }}"
             >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button>
                     Test connection
                 </button>
@@ -1610,6 +1627,7 @@
             method="post"
             action="{{ url_for('printer_settings_update') }}"
         >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <label class="option">
                 <span>Connection type</span>
@@ -1698,6 +1716,7 @@
             method="post"
             action="{{ url_for('print_now') }}"
         >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <button class="primary">
                 Print receipt now
