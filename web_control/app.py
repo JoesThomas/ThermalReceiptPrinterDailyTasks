@@ -20,6 +20,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from receipt_settings import load_receipt_settings, save_receipt_settings
 from data_store import JsonDataError, edit_json, read_json, write_json
 from state_store import (
+    StateStoreError,
     add_freezer_item,
     begin_meal_action,
     complete_meal_action,
@@ -365,6 +366,17 @@ def load_food_shop_items():
 
     except Exception as error:
         return [], str(error)
+
+
+@app.errorhandler(StateStoreError)
+def handle_state_store_error(error):
+    return (
+        render_template(
+            "data_error.html",
+            error_message=str(error),
+        ),
+        500,
+    )
 
 
 @app.errorhandler(JsonDataError)
