@@ -2,7 +2,7 @@ from __future__ import annotations
 from copy import deepcopy
 from pathlib import Path
 
-from state_store import get_state, set_state
+from state_store import get_state, set_state, update_state
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 SETTINGS_FILE = PROJECT_ROOT / "data" / "receipt_settings.json"
@@ -49,29 +49,44 @@ def display_value(settings, name, default=None): return settings.get("display", 
 def one_shot_requested(settings, name): return bool(settings.get("one_shot", {}).get(name, False))
 
 def consume_one_shot(settings, name):
-    stored = load_receipt_settings()
-    one_shot = stored.setdefault(
-        "one_shot",
-        {},
+    def mutate(stored):
+        merged = _merge(
+            DEFAULT_SETTINGS,
+            stored,
+        )
+
+        one_shot = merged.setdefault(
+            "one_shot",
+            {},
+        )
+
+        if not one_shot.get(
+            name,
+            False,
+        ):
+            return False
+
+        one_shot[name] = False
+        stored.clear()
+        stored.update(
+            merged
+        )
+
+        return True
+
+    consumed = update_state(
+        "receipt_settings",
+        deepcopy(DEFAULT_SETTINGS),
+        mutate,
     )
 
-    if not one_shot.get(
-        name,
-        False,
-    ):
-        return False
+    if consumed:
+        settings.setdefault(
+            "one_shot",
+            {},
+        )[name] = False
 
-    one_shot[name] = False
-    save_receipt_settings(
-        stored
-    )
-
-    settings.setdefault(
-        "one_shot",
-        {},
-    )[name] = False
-
-    return True
+    return consumed
 
 def google_doc_commands(todo_text):
     """Only complete Google Doc lines ending in '.' are treated as commands."""
