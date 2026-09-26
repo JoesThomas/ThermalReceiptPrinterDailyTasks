@@ -1193,6 +1193,109 @@ def delete_meal_action(
         )
 
 
+def backup_database_if_due(
+    *,
+    max_age_hours=24,
+    keep=7,
+):
+    """
+    Create a consistent SQLite backup when the newest
+    backup is older than max_age_hours.
+
+    Intended for the web process, not the print hot path.
+    """
+    backup_dir = (
+        DATA_DIR
+        / "backups"
+        / "sqlite"
+    )
+
+    backup_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    existing = sorted(
+        backup_dir.glob(
+            "receipt_control-*.db"
+        ),
+        key=lambda path:
+            path.stat().st_mtime,
+        reverse=True,
+    )
+
+    now = datetime.now(
+        timezone.utc
+    )
+
+    if existing:
+        newest_time = datetime.fromtimestamp(
+            existing[0].stat().st_mtime,
+            tz=timezone.utc,
+        )
+
+        age_hours = (
+            now
+            - newest_time
+        ).total_seconds() / 3600
+
+        if age_hours < max_age_hours:
+            return existing[0]
+
+    stamp = now.strftime(
+        "%Y%m%dT%H%M%SZ"
+    )
+
+    destination = (
+        backup_dir
+        / f"receipt_control-{stamp}.db"
+    )
+
+    source = _connect()
+    target = sqlite3.connect(
+        destination
+    )
+
+    try:
+        source.backup(
+            target
+        )
+    finally:
+        target.close()
+        source.close()
+
+    try:
+        os.chmod(
+            destination,
+            0o600,
+        )
+    except OSError:
+        pass
+
+    existing = sorted(
+        backup_dir.glob(
+            "receipt_control-*.db"
+        ),
+        key=lambda path:
+            path.stat().st_mtime,
+        reverse=True,
+    )
+
+    for old in existing[
+        max(
+            1,
+            int(
+                keep
+            ),
+        ):
+    ]:
+        old.unlink(
+            missing_ok=True
+        )
+
+    return destination
+
+
 def database_health():
     with _connect() as connection:
         integrity = connection.execute(
