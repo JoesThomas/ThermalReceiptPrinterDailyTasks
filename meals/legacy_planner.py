@@ -15,6 +15,13 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from data_store import edit_json, read_json, write_json
+from state_store import (
+    add_freezer_item,
+    get_pantry_items,
+    use_freezer_named,
+)
+
 TZ = ZoneInfo("Europe/London")
 ROOT = Path(__file__).resolve().parent
 BASE_DIR = ROOT.parent
@@ -33,19 +40,17 @@ RECEIPT_WIDTH = 42
 
 
 def _load(path: Path, default: Any) -> Any:
-    try:
-        with path.open("r", encoding="utf-8") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return default
+    return read_json(
+        path,
+        default,
+    )
 
 
 def _save(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    with tmp.open("w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    tmp.replace(path)
+    write_json(
+        path,
+        data,
+    )
 
 
 def recipes() -> list[dict]:
@@ -240,13 +245,36 @@ def _normalise_item(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _pantry_has(ingredient: str) -> bool:
-    pantry = _load(PANTRY_FILE, {})
-    items = pantry.get("items", {}) if isinstance(pantry, dict) else {}
-    needle = _normalise_item(ingredient)
+def _pantry_has(
+    ingredient: str,
+    items: dict | None = None,
+) -> bool:
+    items = (
+        items
+        if items is not None
+        else get_pantry_items()
+    )
+
+    needle = _normalise_item(
+        ingredient
+    )
+
     for key, value in items.items():
-        if value and (_normalise_item(key) in needle or needle in _normalise_item(key)):
+        if (
+            value
+            and (
+                _normalise_item(
+                    key
+                )
+                in needle
+                or needle
+                in _normalise_item(
+                    key
+                )
+            )
+        ):
             return True
+
     return False
 
 
@@ -259,28 +287,128 @@ def _section(ingredient: str) -> str:
     return "TINNED / DRY"
 
 
-def build_shopping_list(plan: dict) -> dict[str, list[str]]:
-    grouped: dict[str, list[str]] = defaultdict(list)
+def build_shopping_list(
+    plan: dict,
+) -> dict[str, list[str]]:
+    grouped: dict[
+        str,
+        list[str],
+    ] = defaultdict(
+        list
+    )
+
     seen = set()
-    for meal in plan.get("meals", []):
-        if meal.get("kind") != "recipe":
+
+    # One SQLite read for the entire shopping-list build.
+    # This avoids a database/file lookup per ingredient.
+    pantry_items = get_pantry_items()
+
+    for meal in plan.get(
+        "meals",
+        [],
+    ):
+        if meal.get(
+            "kind"
+        ) != "recipe":
             continue
-        r = meal["recipe"]
-        for item in r.get("ingredients", []):
-            key = _normalise_item(item)
-            if key and key not in seen and not _pantry_has(item):
-                grouped[_section(item)].append(item)
-                seen.add(key)
-        meal_day = date.fromisoformat(meal["date"])
-        next_day = meal_day + timedelta(days=1)
-        lunch_override = _override_for(next_day, "lunch")
-        lunch = {} if lunch_override and lunch_override.get("type") in {"buy_lunch", "eat_out"} else r.get("lunch", {})
-        for item in lunch.get("extra_ingredients", []):
-            key = _normalise_item(item)
-            if key and key not in seen and not _pantry_has(item):
-                grouped[_section(item)].append(item)
-                seen.add(key)
-    return dict(grouped)
+
+        recipe = meal[
+            "recipe"
+        ]
+
+        for item in recipe.get(
+            "ingredients",
+            [],
+        ):
+            key = _normalise_item(
+                item
+            )
+
+            if (
+                key
+                and key not in seen
+                and not _pantry_has(
+                    item,
+                    pantry_items,
+                )
+            ):
+                grouped[
+                    _section(
+                        item
+                    )
+                ].append(
+                    item
+                )
+                seen.add(
+                    key
+                )
+
+        meal_day = date.fromisoformat(
+            meal[
+                "date"
+            ]
+        )
+
+        next_day = (
+            meal_day
+            + timedelta(
+                days=1
+            )
+        )
+
+        lunch_override = _override_for(
+            next_day,
+            "lunch",
+        )
+
+        lunch = (
+            {}
+            if (
+                lunch_override
+                and lunch_override.get(
+                    "type"
+                )
+                in {
+                    "buy_lunch",
+                    "eat_out",
+                }
+            )
+            else recipe.get(
+                "lunch",
+                {},
+            )
+        )
+
+        for item in lunch.get(
+            "extra_ingredients",
+            [],
+        ):
+            key = _normalise_item(
+                item
+            )
+
+            if (
+                key
+                and key not in seen
+                and not _pantry_has(
+                    item,
+                    pantry_items,
+                )
+            ):
+                grouped[
+                    _section(
+                        item
+                    )
+                ].append(
+                    item
+                )
+                seen.add(
+                    key
+                )
+
+    return dict(
+        grouped
+    )
 
 
 def build_sunday_prep(plan: dict) -> list[dict]:
@@ -330,34 +458,62 @@ def estimate_week_cost(plan: dict) -> dict:
     return {"home_meals": round(recipe_cost, 2), "takeaway_eating_out": round(extras, 2), "total": round(recipe_cost + extras, 2)}
 
 
-def record_cooked(recipe_name: str, when: date | None = None) -> None:
-    when = when or datetime.now(TZ).date()
-    history = _load(HISTORY_FILE, {})
-    item = history.setdefault(recipe_name, {"times_cooked": 0})
-    item["times_cooked"] = int(item.get("times_cooked", 0)) + 1
-    item["last_cooked"] = when.isoformat()
-    _save(HISTORY_FILE, history)
+def record_cooked(
+    recipe_name: str,
+    when: date | None = None,
+) -> None:
+    when = (
+        when
+        or datetime.now(TZ).date()
+    )
+
+    with edit_json(
+        HISTORY_FILE,
+        {},
+    ) as history:
+        item = history.setdefault(
+            recipe_name,
+            {
+                "times_cooked": 0,
+            },
+        )
+
+        item["times_cooked"] = (
+            int(
+                item.get(
+                    "times_cooked",
+                    0,
+                )
+            )
+            + 1
+        )
+
+        item[
+            "last_cooked"
+        ] = when.isoformat()
 
 
-def add_freezer_portions(name: str, portions: int, source: str = "batch cook") -> None:
-    data = _load(FREEZER_FILE, {"items": []})
-    items = data.setdefault("items", [])
-    existing = next((x for x in items if x.get("name") == name), None)
-    if existing:
-        existing["portions"] = int(existing.get("portions", 0)) + portions
-    else:
-        items.append({"name": name, "portions": portions, "source": source, "added": datetime.now(TZ).date().isoformat()})
-    _save(FREEZER_FILE, data)
+def add_freezer_portions(
+    name: str,
+    portions: int,
+    source: str = "batch cook",
+) -> None:
+    add_freezer_item(
+        name,
+        portions,
+        source=source,
+        added=datetime.now(
+            TZ
+        ).date().isoformat(),
+    )
 
 
-def use_freezer_portion(name: str) -> bool:
-    data = _load(FREEZER_FILE, {"items": []})
-    for item in data.get("items", []):
-        if item.get("name", "").lower() == name.lower() and int(item.get("portions", 0)) > 0:
-            item["portions"] -= 1
-            _save(FREEZER_FILE, data)
-            return True
-    return False
+def use_freezer_portion(
+    name: str,
+) -> bool:
+    return use_freezer_named(
+        name
+    )
 
 
 def set_override(day: date, meal_type: str, name: str = "", estimated_cost: float = 0.0, note: str = "", scope: str = "dinner") -> None:

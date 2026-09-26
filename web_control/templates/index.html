@@ -192,6 +192,129 @@
             width: 100%;
         }
 
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 16px 0;
+        }
+
+        .dashboard-card {
+            background: white;
+            border-radius: 14px;
+            padding: 16px;
+            border: 1px solid #e7e7e7;
+        }
+
+        .dashboard-card strong {
+            display: block;
+            font-size: 1.25rem;
+            margin-top: 4px;
+        }
+
+        .status-row,
+        .inventory-row,
+        .file-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #888;
+            margin-right: 6px;
+        }
+
+        .status-dot.ok {
+            background: #2f8f46;
+        }
+
+        .status-dot.bad {
+            background: #b23a3a;
+        }
+
+        .connection-fields {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 12px 0;
+        }
+
+        .connection-fields label,
+        .inventory-form label {
+            display: block;
+        }
+
+        .connection-fields input,
+        .inventory-form input {
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        .inventory-card {
+            border: 1px solid #e5e5e5;
+            background: #fafafa;
+            border-radius: 10px;
+            padding: 12px;
+            margin: 10px 0;
+        }
+
+        .meal-card {
+            border: 1px solid #e5e5e5;
+            background: #fafafa;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 12px;
+        }
+
+        .meal-card h3 {
+            margin-top: 0;
+        }
+
+        .meal-stats {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin: 8px 0 14px 0;
+        }
+
+        .meal-stats span {
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 999px;
+            padding: 5px 9px;
+            font-size: .9rem;
+        }
+
+        .inventory-card form {
+            margin: 0;
+        }
+
+        .inventory-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .file-path {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: .85rem;
+            color: #666;
+        }
+
+        details > summary {
+            cursor: pointer;
+            font-weight: 700;
+        }
+
 
         @media(max-width:560px) {
 
@@ -210,6 +333,11 @@
 
             .balance {
                 text-align: left;
+            }
+
+            .dashboard-grid,
+            .connection-fields {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -233,6 +361,7 @@
             method="post"
             action="{{ url_for('logout') }}"
         >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button>Sign out</button>
         </form>
     </header>
@@ -249,12 +378,46 @@
     {% endwith %}
 
 
+    <!-- DASHBOARD -->
+
+    <div class="dashboard-grid">
+
+        <div class="dashboard-card">
+            <small>Printer</small>
+            <strong>{{ printer_settings.connection|upper }}</strong>
+            <span class="muted">
+                {{ printer_connection_label }}
+            </span>
+        </div>
+
+        <div class="dashboard-card">
+            <small>Freezer</small>
+            <strong>{{ freezer.items|length }}</strong>
+            <span class="muted">stored items</span>
+        </div>
+
+        <div class="dashboard-card">
+            <small>Pantry</small>
+            <strong>{{ pantry.items|length }}</strong>
+            <span class="muted">tracked items</span>
+        </div>
+
+        <div class="dashboard-card">
+            <small>Routines</small>
+            <strong>{{ routines|length }}</strong>
+            <span class="muted">configured</span>
+        </div>
+
+    </div>
+
+
     <!-- RECEIPT SETTINGS -->
 
     <form
         method="post"
         action="{{ url_for('save') }}"
     >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <section>
 
@@ -460,6 +623,7 @@
                             routine_id=r.id
                         ) }}"
                     >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button>
                             Done
                         </button>
@@ -473,6 +637,7 @@
                             routine_id=r.id
                         ) }}"
                     >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <input
                             type="hidden"
@@ -507,6 +672,7 @@
                             )
                         "
                     >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <button>
                             Delete
@@ -534,6 +700,7 @@
             method="post"
             action="{{ url_for('routine_add') }}"
         >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="grid">
 
@@ -647,6 +814,7 @@
                     ) }}"
                     class="instalment"
                 >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="instalment-header">
 
@@ -907,6 +1075,428 @@
     </section>
 
 
+    <!-- TODAY'S MEAL -->
+
+    <section>
+
+        <h2>Today's meal</h2>
+
+        {% if today_meal_error %}
+
+            <p>
+                Meal planner unavailable:
+                {{ today_meal_error }}
+            </p>
+
+        {% elif not today_meal %}
+
+            <p>
+                No meal planned for today.
+            </p>
+
+        {% elif today_meal.kind == 'recipe' %}
+
+            {% set recipe = today_meal.recipe %}
+
+            <div class="meal-card">
+
+                <h3>
+                    {{ recipe.name }}
+                </h3>
+
+                <p class="muted">
+                    {{ recipe.overview or '' }}
+                </p>
+
+                <div class="meal-stats">
+                    <span>
+                        {{ recipe.total_minutes or '?' }} min
+                    </span>
+                    <span>
+                        Serves {{ recipe.servings or 1 }}
+                    </span>
+                    {% if recipe.nutrition_per_serving %}
+                        <span>
+                            ~{{ recipe.nutrition_per_serving.calories or '?' }}
+                            kcal
+                        </span>
+                    {% endif %}
+                </div>
+
+                <form
+                    method="post"
+                    action="{{ url_for('meal_today_cooked') }}"
+                >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="connection-fields">
+
+                        <label>
+                            Portions made
+                            <input
+                                type="number"
+                                min="1"
+                                name="portions_made"
+                                value="{{ recipe.servings or 1 }}"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            Portions eaten
+                            <input
+                                type="number"
+                                min="0"
+                                name="portions_eaten"
+                                value="1"
+                                required
+                            >
+                        </label>
+
+                    </div>
+
+                    <p class="muted">
+                        Any portions made but not eaten
+                        will be added automatically to
+                        the freezer inventory database.
+                    </p>
+
+                    <label class="option">
+                        <span>
+                            Record again if already logged today
+                        </span>
+                        <input
+                            type="checkbox"
+                            name="force_record"
+                            value="1"
+                        >
+                    </label>
+
+                    <button>
+                        Confirm cooked meal
+                    </button>
+
+                </form>
+
+            </div>
+
+        {% else %}
+
+            <div class="meal-card">
+                <h3>
+                    {{ today_meal.name or 'Planned meal' }}
+                </h3>
+
+                <p class="muted">
+                    {{ today_meal.overview or '' }}
+                </p>
+
+                <p>
+                    Planned type:
+                    {{ today_meal.kind|replace('_', ' ')|title }}
+                </p>
+            </div>
+
+        {% endif %}
+
+    </section>
+
+
+    <!-- KITCHEN INVENTORY -->
+
+    <section>
+
+        <h2>Kitchen inventory</h2>
+
+        <p class="muted">
+            These edit the same SQLite inventory used by
+            the meal planner, so the website and receipt
+            process always see the same stock.
+        </p>
+
+        <details open>
+            <summary>
+                Freezer ({{ freezer.items|length }} items)
+            </summary>
+
+            {% for item in freezer.items %}
+
+                <div class="inventory-card">
+
+                    <form
+                        method="post"
+                        action="{{ url_for(
+                            'freezer_update',
+                            item_id=item.id
+                        ) }}"
+                    >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="connection-fields">
+
+                            <label>
+                                Name
+                                <input
+                                    name="name"
+                                    value="{{ item.name }}"
+                                    required
+                                >
+                            </label>
+
+                            <label>
+                                Portions
+                                <input
+                                    type="number"
+                                    min="0"
+                                    name="portions"
+                                    value="{{ item.portions or 0 }}"
+                                >
+                            </label>
+
+                        </div>
+
+                        <label>
+                            Source
+                            <input
+                                name="source"
+                                value="{{ item.source or '' }}"
+                            >
+                        </label>
+
+                        <div class="inventory-actions">
+                            <button>Save freezer item</button>
+                        </div>
+
+                    </form>
+
+                    <div class="inventory-actions">
+
+                        <form
+                            method="post"
+                            action="{{ url_for(
+                                'freezer_eat_one',
+                                item_id=item.id
+                            ) }}"
+                        >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button
+                                {% if (item.portions or 0)|int <= 0 %}
+                                    disabled
+                                {% endif %}
+                            >
+                                Ate one
+                            </button>
+                        </form>
+
+                        <form
+                            method="post"
+                            action="{{ url_for(
+                                'freezer_delete',
+                                index=loop.index0
+                            ) }}"
+                            onsubmit="
+                                return confirm(
+                                    'Remove this freezer item?'
+                                )
+                            "
+                        >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button>Delete</button>
+                        </form>
+
+                    </div>
+
+                </div>
+
+            {% else %}
+
+                <p>No freezer items saved.</p>
+
+            {% endfor %}
+
+            <h3>Add freezer item</h3>
+
+            <form
+                method="post"
+                action="{{ url_for('freezer_add') }}"
+                class="inventory-form"
+            >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="connection-fields">
+
+                    <label>
+                        Name
+                        <input
+                            name="name"
+                            placeholder="Chilli"
+                            required
+                        >
+                    </label>
+
+                    <label>
+                        Portions
+                        <input
+                            type="number"
+                            min="0"
+                            name="portions"
+                            value="1"
+                        >
+                    </label>
+
+                </div>
+
+                <label>
+                    Source
+                    <input
+                        name="source"
+                        placeholder="Batch cook"
+                    >
+                </label>
+
+                <button>Add to freezer</button>
+
+            </form>
+
+        </details>
+
+
+        <details>
+
+            <summary>
+                Pantry ({{ pantry.items|length }} items)
+            </summary>
+
+            {% for name,present in pantry.items.items() %}
+
+                <div class="inventory-row">
+
+                    <div>
+                        <strong>{{ name }}</strong>
+                        <br>
+                        <small>
+                            {{ 'In stock' if present else 'Out of stock' }}
+                        </small>
+                    </div>
+
+                    <div class="actions">
+
+                        <form
+                            method="post"
+                            action="{{ url_for(
+                                'pantry_item_update'
+                            ) }}"
+                        >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input
+                                type="hidden"
+                                name="name"
+                                value="{{ name }}"
+                            >
+                            <input
+                                type="hidden"
+                                name="present"
+                                value="{{ '0' if present else '1' }}"
+                            >
+                            <button>
+                                Mark {{ 'out' if present else 'in' }}
+                            </button>
+                        </form>
+
+                        <form
+                            method="post"
+                            action="{{ url_for(
+                                'pantry_item_delete',
+                                item_name=name
+                            ) }}"
+                        >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button>Delete</button>
+                        </form>
+
+                    </div>
+
+                </div>
+
+            {% else %}
+
+                <p>No pantry items saved.</p>
+
+            {% endfor %}
+
+            <h3>Add pantry item</h3>
+
+            <form
+                method="post"
+                action="{{ url_for('pantry_item_update') }}"
+                class="inventory-form"
+            >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="connection-fields">
+                    <label>
+                        Name
+                        <input
+                            name="name"
+                            placeholder="Olive oil"
+                            required
+                        >
+                    </label>
+
+                    <label>
+                        Status
+                        <select name="present">
+                            <option value="1">In stock</option>
+                            <option value="0">Out of stock</option>
+                        </select>
+                    </label>
+                </div>
+
+                <button>Add pantry item</button>
+            </form>
+
+        </details>
+
+    </section>
+
+
+    <!-- DATA HEALTH -->
+
+    <section>
+
+        <h2>Data health</h2>
+
+        <p class="muted">
+            Checks the SQLite state database plus the
+            remaining JSON data that has not been migrated yet.
+        </p>
+
+        {% for file in file_status %}
+
+            <div class="file-row">
+
+                <div>
+                    <strong>
+                        <span
+                            class="status-dot {{ 'ok' if file.valid else 'bad' }}"
+                        ></span>
+                        {{ file.label }}
+                    </strong>
+                    <div class="file-path">
+                        {{ file.path }}
+                    </div>
+                </div>
+
+                <small>
+                    {{ file.detail }}
+                </small>
+
+            </div>
+
+        {% endfor %}
+
+    </section>
+
+
     <!-- FOOD SHOP -->
 
     <section>
@@ -998,6 +1588,7 @@
                     method="post"
                     action="{{ url_for('print_page') }}"
                 >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input
                         type="hidden"
                         name="page"
@@ -1019,12 +1610,124 @@
 
     <section>
 
+        <h2>Printer connection</h2>
+
+        <div class="status-row">
+            <div>
+                <strong>
+                    {{ printer_settings.connection|upper }}
+                </strong>
+                <br>
+                <small>
+                    {{ printer_connection_label }}
+                </small>
+            </div>
+
+            <form
+                method="post"
+                action="{{ url_for('printer_test') }}"
+            >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button>
+                    Test connection
+                </button>
+            </form>
+        </div>
+
+        <form
+            method="post"
+            action="{{ url_for('printer_settings_update') }}"
+        >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <label class="option">
+                <span>Connection type</span>
+                <select name="connection">
+                    <option
+                        value="usb"
+                        {% if printer_settings.connection == 'usb' %}
+                            selected
+                        {% endif %}
+                    >
+                        USB
+                    </option>
+                    <option
+                        value="network"
+                        {% if printer_settings.connection == 'network' %}
+                            selected
+                        {% endif %}
+                    >
+                        Network
+                    </option>
+                </select>
+            </label>
+
+            <h3>USB</h3>
+
+            <div class="connection-fields">
+
+                <label>
+                    Vendor ID
+                    <input
+                        name="usb_vendor_id"
+                        value="{{ printer_settings.usb.vendor_id }}"
+                    >
+                </label>
+
+                <label>
+                    Product ID
+                    <input
+                        name="usb_product_id"
+                        value="{{ printer_settings.usb.product_id }}"
+                    >
+                </label>
+
+            </div>
+
+            <h3>Network</h3>
+
+            <div class="connection-fields">
+
+                <label>
+                    Printer IP / host
+                    <input
+                        name="network_host"
+                        placeholder="192.168.1.50"
+                        value="{{ printer_settings.network.host }}"
+                    >
+                </label>
+
+                <label>
+                    Port
+                    <input
+                        type="number"
+                        min="1"
+                        max="65535"
+                        name="network_port"
+                        value="{{ printer_settings.network.port }}"
+                    >
+                </label>
+
+            </div>
+
+            <button>
+                Save printer connection
+            </button>
+
+        </form>
+
+    </section>
+
+
+    <section>
+
         <h2>Printer</h2>
 
         <form
             method="post"
             action="{{ url_for('print_now') }}"
         >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <button class="primary">
                 Print receipt now
