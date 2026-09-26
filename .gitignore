@@ -87,3 +87,6 @@ data/meal_actions.json
 data/backups/
 data/*.lock
 logs/
+data/receipt_control.db
+data/receipt_control.db-wal
+data/receipt_control.db-shm
