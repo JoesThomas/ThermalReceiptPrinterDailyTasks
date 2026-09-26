@@ -1227,7 +1227,7 @@
                         method="post"
                         action="{{ url_for(
                             'freezer_update',
-                            index=loop.index0
+                            item_id=item.id
                         ) }}"
                     >
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -1275,7 +1275,7 @@
                             method="post"
                             action="{{ url_for(
                                 'freezer_eat_one',
-                                index=loop.index0
+                                item_id=item.id
                             ) }}"
                         >
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
