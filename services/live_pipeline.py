@@ -8946,6 +8946,7 @@ def run_live_pipeline(
     force_finance=False,
     only_page=None,
 ):
+    pipeline_started = perf_counter()
 
     print(
         "Connecting to thermal printer..."
@@ -9015,7 +9016,10 @@ def run_live_pipeline(
         or web_finance
     )
 
+    information_started = None
+
     if print_information_page:
+        information_started = perf_counter()
         print_header(printer)
 
     if print_information_page:
@@ -9135,7 +9139,15 @@ def run_live_pipeline(
             printer
         )
 
+        print(
+            "Information page: "
+            f"{perf_counter() - information_started:.2f}s"
+        )
+
+    actions_started = None
+
     if print_actions_page:
+        actions_started = perf_counter()
         # ==========================================
         # VEHICLE CHECK
         # ==========================================
@@ -9511,7 +9523,15 @@ def run_live_pipeline(
             printer
         )
 
+        print(
+            "Actions page: "
+            f"{perf_counter() - actions_started:.2f}s"
+        )
+
+    food_started = None
+
     if print_food_page:
+        food_started = perf_counter()
         # ==========================================
         # MEAL PLANNER
         # ==========================================
@@ -9563,6 +9583,11 @@ def run_live_pipeline(
 
         printer.cut()
 
+        print(
+            "Food page: "
+            f"{perf_counter() - food_started:.2f}s"
+        )
+
     # ==========================================
     # FINANCE - SEPARATE RECEIPT
     # ==========================================
@@ -9571,7 +9596,7 @@ def run_live_pipeline(
         print_finance_page
         and should_run_finance
     ):
-
+        finance_started = perf_counter()
         finance_success = False
 
         try:
@@ -9683,6 +9708,12 @@ def run_live_pipeline(
 
         printer.cut()
 
+        print(
+            "Finance page: "
+            f"{perf_counter() - finance_started:.2f}s"
+        )
+
     print(
-        "Receipt printed successfully."
+        "Receipt printed successfully in "
+        f"{perf_counter() - pipeline_started:.2f}s."
     )
