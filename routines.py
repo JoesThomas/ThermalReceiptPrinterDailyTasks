@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from pathlib import Path
 from uuid import uuid4
 
-from data_store import edit_json, read_json
-
-PROJECT_ROOT = Path(__file__).resolve().parent
-ROUTINES_FILE = PROJECT_ROOT / "data" / "routines.json"
+from state_store import (
+    add_routine_row,
+    delete_routine_row,
+    list_routines,
+    set_routine_completed,
+    set_routine_enabled,
+)
 
 WEEKDAYS = (
     "monday",
@@ -21,17 +23,7 @@ WEEKDAYS = (
 
 
 def load_routines():
-    data = read_json(
-        ROUTINES_FILE,
-        [],
-    )
-
-    if not isinstance(data, list):
-        raise ValueError(
-            "data/routines.json must contain a JSON list."
-        )
-
-    return data
+    return list_routines()
 
 
 def add_routine(
@@ -43,33 +35,29 @@ def add_routine(
     show_days_before=0,
     enabled=True,
 ):
-    with edit_json(
-        ROUTINES_FILE,
-        [],
-    ) as routines:
-        item = {
-            "id": uuid4().hex,
-            "name": str(name).strip(),
-            "enabled": bool(enabled),
-            "schedule_type": schedule_type,
-            "weekday": weekday,
-            "interval_days": interval_days,
-            "show_days_before": max(
-                0,
-                int(
-                    show_days_before
-                    or 0
-                ),
+    item = {
+        "id": uuid4().hex,
+        "name": str(name).strip(),
+        "enabled": bool(enabled),
+        "schedule_type": schedule_type,
+        "weekday": weekday,
+        "interval_days": interval_days,
+        "show_days_before": max(
+            0,
+            int(
+                show_days_before
+                or 0
             ),
-            "start_date": date.today().isoformat(),
-            "last_completed": None,
-        }
+        ),
+        "start_date": date.today().isoformat(),
+        "last_completed": None,
+    }
 
-        routines.append(
-            item
-        )
+    add_routine_row(
+        item
+    )
 
-        return item
+    return item
 
 
 def _as_date(value):
@@ -251,72 +239,25 @@ def mark_done(
         or date.today()
     )
 
-    found = False
-
-    with edit_json(
-        ROUTINES_FILE,
-        [],
-    ) as routines:
-        for item in routines:
-            if (
-                item.get("id")
-                == routine_id
-            ):
-                item[
-                    "last_completed"
-                ] = completed_on.isoformat()
-
-                found = True
-                break
-
-    return found
+    return set_routine_completed(
+        routine_id,
+        completed_on.isoformat(),
+    )
 
 
 def delete_routine(
     routine_id,
 ):
-    removed = False
-
-    with edit_json(
-        ROUTINES_FILE,
-        [],
-    ) as routines:
-        for index in range(
-            len(routines) - 1,
-            -1,
-            -1,
-        ):
-            if (
-                routines[index].get(
-                    "id"
-                )
-                == routine_id
-            ):
-                del routines[index]
-                removed = True
-
-    return removed
+    return delete_routine_row(
+        routine_id
+    )
 
 
 def set_enabled(
     routine_id,
     enabled,
 ):
-    found = False
-
-    with edit_json(
-        ROUTINES_FILE,
-        [],
-    ) as routines:
-        for item in routines:
-            if (
-                item.get("id")
-                == routine_id
-            ):
-                item["enabled"] = bool(
-                    enabled
-                )
-                found = True
-                break
-
-    return found
+    return set_routine_enabled(
+        routine_id,
+        enabled,
+    )
