@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import threading
 from copy import deepcopy
@@ -30,6 +31,14 @@ def _connect():
         DB_FILE,
         timeout=3.0,
     )
+
+    try:
+        os.chmod(
+            DB_FILE,
+            0o600,
+        )
+    except OSError:
+        pass
 
     connection.row_factory = sqlite3.Row
     if not _SCHEMA_READY:
