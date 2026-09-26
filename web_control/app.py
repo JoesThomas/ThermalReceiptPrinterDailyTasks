@@ -19,6 +19,21 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 from receipt_settings import load_receipt_settings, save_receipt_settings
 from data_store import JsonDataError, edit_json, read_json, write_json
+from state_store import (
+    add_freezer_item,
+    begin_meal_action,
+    complete_meal_action,
+    database_health,
+    delete_freezer_item,
+    delete_meal_action,
+    delete_pantry_item,
+    get_pantry_items,
+    list_freezer_items,
+    set_pantry_item,
+    update_freezer_item,
+    update_state,
+    use_freezer_item,
+)
 from routines import WEEKDAYS, add_routine, delete_routine, load_routines, mark_done, next_due_date, set_enabled
 from printer_config import (
     check_printer_connection,
@@ -176,52 +191,47 @@ def _save_json_file(path, value):
 
 
 def load_freezer():
-    data = _load_json_file(
-        FREEZER_FILE,
-        {"items": []},
-    )
-
-    if not isinstance(data, dict):
-        data = {"items": []}
-
-    items = data.get("items")
-
-    if not isinstance(items, list):
-        items = []
-
-    data["items"] = items
-    return data
+    return {
+        "items":
+            list_freezer_items(),
+    }
 
 
 def load_pantry():
-    data = _load_json_file(
-        PANTRY_FILE,
-        {"items": {}},
-    )
-
-    if not isinstance(data, dict):
-        data = {"items": {}}
-
-    items = data.get("items")
-
-    if not isinstance(items, dict):
-        items = {}
-
-    data["items"] = items
-    return data
+    return {
+        "items":
+            get_pantry_items(),
+    }
 
 
 def data_file_status():
-    files = [
-        ("Freezer", FREEZER_FILE),
-        ("Pantry", PANTRY_FILE),
-        ("Routines", ROUTINES_DATA_FILE),
-        ("Receipt settings", RECEIPT_SETTINGS_FILE),
-        ("Printer settings", PRINTER_SETTINGS_FILE),
-        ("Subscriptions", SUBSCRIPTIONS_FILE),
-    ]
+    database = database_health()
 
-    output = []
+    output = [{
+        "label": "Receipt database",
+        "path": "data/receipt_control.db",
+        "exists": True,
+        "valid": database["ok"],
+        "detail": (
+            "SQLite OK · "
+            f"{database['counts']['freezer']} freezer · "
+            f"{database['counts']['pantry']} pantry · "
+            f"{database['counts']['routines']} routines"
+        ),
+    }]
+
+    files = [
+        (
+            "Subscriptions",
+            SUBSCRIPTIONS_FILE,
+        ),
+        (
+            "Recipe history",
+            PROJECT_ROOT
+            / "data"
+            / "recipe_history.json",
+        ),
+    ]
 
     for label, path in files:
         exists = path.exists()
@@ -241,27 +251,28 @@ def data_file_status():
                     (dict, list),
                 )
 
-                if isinstance(value, dict):
-                    if "items" in value:
-                        items = value.get("items")
-                        if isinstance(items, dict):
-                            detail = f"{len(items)} items"
-                        elif isinstance(items, list):
-                            detail = f"{len(items)} items"
-                        else:
-                            detail = "items has invalid format"
-                            valid = False
-                    else:
-                        detail = f"{len(value)} top-level fields"
-
-                elif isinstance(value, list):
-                    detail = f"{len(value)} records"
+                if isinstance(
+                    value,
+                    dict,
+                ):
+                    detail = (
+                        f"{len(value)} top-level fields"
+                    )
+                elif isinstance(
+                    value,
+                    list,
+                ):
+                    detail = (
+                        f"{len(value)} records"
+                    )
 
             except (
                 OSError,
                 json.JSONDecodeError,
             ) as error:
-                detail = str(error)
+                detail = str(
+                    error
+                )
 
         output.append({
             "label": label,
@@ -591,38 +602,22 @@ def meal_today_cooked():
         == "1"
     )
 
-    with edit_json(
-        MEAL_ACTIONS_FILE,
-        {
-            "actions": {},
-        },
-    ) as meal_actions:
-        actions = meal_actions.setdefault(
-            "actions",
-            {},
+    started = begin_meal_action(
+        action_key,
+        portions_made=made,
+        portions_eaten=eaten,
+        frozen=frozen,
+        replace=force_record,
+    )
+
+    if not started:
+        flash(
+            "This meal has already been recorded today. "
+            "Use 'Record again' only if that is intentional."
         )
-
-        if (
-            action_key in actions
-            and not force_record
-        ):
-            flash(
-                "This meal has already been recorded today. "
-                "Use 'Record again' only if that is intentional."
-            )
-            return redirect(
-                url_for("index")
-            )
-
-        actions[action_key] = {
-            "status": "processing",
-            "recorded_at": datetime.now(
-                timezone.utc
-            ).isoformat(),
-            "portions_made": made,
-            "portions_eaten": eaten,
-            "frozen": frozen,
-        }
+        return redirect(
+            url_for("index")
+        )
 
     try:
         record_cooked(
@@ -637,36 +632,14 @@ def meal_today_cooked():
             )
 
     except Exception:
-        with edit_json(
-            MEAL_ACTIONS_FILE,
-            {
-                "actions": {},
-            },
-        ) as meal_actions:
-            meal_actions.setdefault(
-                "actions",
-                {},
-            ).pop(
-                action_key,
-                None,
-            )
+        delete_meal_action(
+            action_key
+        )
         raise
 
-    with edit_json(
-        MEAL_ACTIONS_FILE,
-        {
-            "actions": {},
-        },
-    ) as meal_actions:
-        actions = meal_actions.setdefault(
-            "actions",
-            {},
-        )
-
-        if action_key in actions:
-            actions[action_key][
-                "status"
-            ] = "completed"
+    complete_meal_action(
+        action_key
+    )
 
     if frozen:
         flash(
@@ -689,19 +662,28 @@ def meal_today_cooked():
     )
 
 
-@app.post("/freezer/<int:index>/eat-one")
+@app.post("/freezer/<int:item_id>/eat-one")
 @login_required
-def freezer_eat_one(index):
-    data = load_freezer()
-    items = data.get(
-        "items",
-        [],
+def freezer_eat_one(item_id):
+    items = list_freezer_items()
+
+    item = next(
+        (
+            entry
+            for entry in items
+            if int(
+                entry["id"]
+            )
+            == item_id
+        ),
+        None,
     )
 
-    if index < 0 or index >= len(items):
-        return ("Freezer item not found", 404)
-
-    item = items[index]
+    if item is None:
+        return (
+            "Freezer item not found",
+            404,
+        )
 
     name = str(
         item.get(
@@ -710,10 +692,9 @@ def freezer_eat_one(index):
         )
     ).strip()
 
-    if not name:
-        return ("Freezer item has no name", 400)
-
-    if use_freezer_portion(name):
+    if use_freezer_item(
+        item_id
+    ):
         audit_event(
             "freezer_portion_used",
             name,
@@ -856,8 +837,12 @@ def freezer_add():
     ).strip()
 
     if not name:
-        flash("Enter a freezer item name.")
-        return redirect(url_for("index"))
+        flash(
+            "Enter a freezer item name."
+        )
+        return redirect(
+            url_for("index")
+        )
 
     try:
         portions = max(
@@ -870,64 +855,29 @@ def freezer_add():
             ),
         )
     except ValueError:
-        flash("Freezer portions must be a number.")
-        return redirect(url_for("index"))
+        flash(
+            "Freezer portions must be a number."
+        )
+        return redirect(
+            url_for("index")
+        )
 
     source = request.form.get(
         "source",
         "",
     ).strip()
 
-    with edit_json(
-        FREEZER_FILE,
-        {
-            "items": [],
-        },
-    ) as data:
-        items = data.setdefault(
-            "items",
-            [],
-        )
+    add_freezer_item(
+        name,
+        portions,
+        source=source or "manual",
+        added=date.today().isoformat(),
+    )
 
-        existing = next(
-            (
-                item
-                for item in items
-                if str(
-                    item.get(
-                        "name",
-                        "",
-                    )
-                ).strip().lower()
-                == name.lower()
-            ),
-            None,
-        )
-
-        if existing:
-            existing["portions"] = (
-                int(
-                    existing.get(
-                        "portions",
-                        0,
-                    )
-                    or 0
-                )
-                + portions
-            )
-
-            if source:
-                existing[
-                    "source"
-                ] = source
-
-        else:
-            items.append({
-                "name": name,
-                "portions": portions,
-                "source": source or "manual",
-                "added": date.today().isoformat(),
-            })
+    audit_event(
+        "freezer_item_added",
+        name,
+    )
 
     flash(
         f"Freezer updated: {name}."
@@ -938,17 +888,21 @@ def freezer_add():
     )
 
 
-@app.post("/freezer/<int:index>/update")
+@app.post("/freezer/<int:item_id>/update")
 @login_required
-def freezer_update(index):
+def freezer_update(item_id):
     name = request.form.get(
         "name",
         "",
     ).strip()
 
     if not name:
-        flash("Freezer item name cannot be empty.")
-        return redirect(url_for("index"))
+        flash(
+            "Freezer item name cannot be empty."
+        )
+        return redirect(
+            url_for("index")
+        )
 
     try:
         portions = max(
@@ -961,40 +915,33 @@ def freezer_update(index):
             ),
         )
     except ValueError:
-        flash("Freezer portions must be a number.")
-        return redirect(url_for("index"))
-
-    with edit_json(
-        FREEZER_FILE,
-        {
-            "items": [],
-        },
-    ) as data:
-        items = data.setdefault(
-            "items",
-            [],
+        flash(
+            "Freezer portions must be a number."
+        )
+        return redirect(
+            url_for("index")
         )
 
-        if (
-            index < 0
-            or index >= len(items)
-        ):
-            return (
-                "Freezer item not found",
-                404,
-            )
-
-        item = items[index]
-
-        item["name"] = name
-        item["portions"] = portions
-        item["source"] = request.form.get(
+    updated = update_freezer_item(
+        item_id,
+        name=name,
+        portions=portions,
+        source=request.form.get(
             "source",
-            item.get(
-                "source",
-                "",
-            ),
-        ).strip()
+            "",
+        ).strip(),
+    )
+
+    if not updated:
+        return (
+            "Freezer item not found",
+            404,
+        )
+
+    audit_event(
+        "freezer_item_updated",
+        name,
+    )
 
     flash(
         f"Freezer item updated: {name}."
@@ -1005,37 +952,48 @@ def freezer_update(index):
     )
 
 
-@app.post("/freezer/<int:index>/delete")
+@app.post("/freezer/<int:item_id>/delete")
 @login_required
-def freezer_delete(index):
-    with edit_json(
-        FREEZER_FILE,
-        {
-            "items": [],
-        },
-    ) as data:
-        items = data.setdefault(
-            "items",
-            [],
+def freezer_delete(item_id):
+    items = list_freezer_items()
+
+    item = next(
+        (
+            entry
+            for entry in items
+            if int(
+                entry["id"]
+            )
+            == item_id
+        ),
+        None,
+    )
+
+    if item is None:
+        return (
+            "Freezer item not found",
+            404,
         )
 
-        if (
-            index < 0
-            or index >= len(items)
-        ):
-            return (
-                "Freezer item not found",
-                404,
-            )
+    name = str(
+        item.get(
+            "name",
+            "item",
+        )
+    )
 
-        name = str(
-            items[index].get(
-                "name",
-                "item",
-            )
+    if not delete_freezer_item(
+        item_id
+    ):
+        return (
+            "Freezer item not found",
+            404,
         )
 
-        del items[index]
+    audit_event(
+        "freezer_item_deleted",
+        name,
+    )
 
     flash(
         f"Removed from freezer: {name}."
@@ -1055,8 +1013,12 @@ def pantry_item_update():
     ).strip()
 
     if not name:
-        flash("Enter a pantry item name.")
-        return redirect(url_for("index"))
+        flash(
+            "Enter a pantry item name."
+        )
+        return redirect(
+            url_for("index")
+        )
 
     present = (
         request.form.get(
@@ -1066,17 +1028,15 @@ def pantry_item_update():
         == "1"
     )
 
-    with edit_json(
-        PANTRY_FILE,
-        {
-            "items": {},
-        },
-    ) as data:
-        items = data.setdefault(
-            "items",
-            {},
-        )
-        items[name] = present
+    set_pantry_item(
+        name,
+        present,
+    )
+
+    audit_event(
+        "pantry_item_updated",
+        f"{name}; present={present}",
+    )
 
     flash(
         f"Pantry updated: {name}."
@@ -1090,37 +1050,21 @@ def pantry_item_update():
 @app.post("/pantry/<path:item_name>/delete")
 @login_required
 def pantry_item_delete(item_name):
-    with edit_json(
-        PANTRY_FILE,
-        {
-            "items": {},
-        },
-    ) as data:
-        items = data.setdefault(
-            "items",
-            {},
+    if not delete_pantry_item(
+        item_name
+    ):
+        return (
+            "Pantry item not found",
+            404,
         )
 
-        existing = next(
-            (
-                key
-                for key in items
-                if key.lower()
-                == item_name.lower()
-            ),
-            None,
-        )
-
-        if existing is None:
-            return (
-                "Pantry item not found",
-                404,
-            )
-
-        del items[existing]
+    audit_event(
+        "pantry_item_deleted",
+        item_name,
+    )
 
     flash(
-        f"Removed pantry item: {existing}."
+        f"Removed pantry item: {item_name}."
     )
 
     return redirect(
@@ -1328,14 +1272,7 @@ def _checked(name): return request.form.get(name) == "on"
 @app.post("/save")
 @login_required
 def save():
-    with edit_json(
-        RECEIPT_SETTINGS_FILE,
-        {
-            "features": {},
-            "one_shot": {},
-            "display": {},
-        },
-    ) as settings:
+    def mutate(settings):
         features = settings.setdefault(
             "features",
             {},
@@ -1429,6 +1366,12 @@ def save():
                 "earlier_journeys"
             ] = 3
 
+    update_state(
+        "receipt_settings",
+        load_receipt_settings(),
+        mutate,
+    )
+
     audit_event(
         "receipt_settings_updated"
     )
@@ -1455,18 +1398,17 @@ def clear_one_shot(name):
             404,
         )
 
-    with edit_json(
-        RECEIPT_SETTINGS_FILE,
-        {
-            "features": {},
-            "one_shot": {},
-            "display": {},
-        },
-    ) as settings:
+    def mutate(settings):
         settings.setdefault(
             "one_shot",
             {},
         )[name] = False
+
+    update_state(
+        "receipt_settings",
+        load_receipt_settings(),
+        mutate,
+    )
 
     audit_event(
         "one_shot_cleared",
