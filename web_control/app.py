@@ -21,6 +21,7 @@ from receipt_settings import load_receipt_settings, save_receipt_settings
 from data_store import JsonDataError, edit_json, read_json, write_json
 from state_store import (
     StateStoreError,
+    backup_database_if_due,
     add_freezer_item,
     begin_meal_action,
     complete_meal_action,
@@ -46,7 +47,6 @@ from meal_planner import (
     add_freezer_portions,
     get_meal,
     record_cooked,
-    use_freezer_portion,
 )
 
 app = Flask(__name__)
@@ -62,33 +62,11 @@ SUBSCRIPTIONS_FILE = (
     PROJECT_ROOT / "data" / "subscriptions.json"
 )
 
-FREEZER_FILE = (
-    PROJECT_ROOT / "data" / "freezer.json"
-)
-
-PANTRY_FILE = (
-    PROJECT_ROOT / "data" / "pantry.json"
-)
-
-ROUTINES_DATA_FILE = (
-    PROJECT_ROOT / "data" / "routines.json"
-)
-
-RECEIPT_SETTINGS_FILE = (
-    PROJECT_ROOT / "data" / "receipt_settings.json"
-)
-
-PRINTER_SETTINGS_FILE = (
-    PROJECT_ROOT / "data" / "printer_settings.json"
-)
-
-MEAL_ACTIONS_FILE = (
-    PROJECT_ROOT / "data" / "meal_actions.json"
-)
-
 AUDIT_LOG_FILE = (
     PROJECT_ROOT / "logs" / "audit.log"
 )
+
+_database_backup_checked = False
 
 
 def audit_event(action, detail=""):
@@ -1231,6 +1209,19 @@ def logout(): session.clear(); return redirect(url_for("login"))
 @app.get("/")
 @login_required
 def index():
+    global _database_backup_checked
+
+    if not _database_backup_checked:
+        try:
+            backup_database_if_due()
+        except Exception as error:
+            audit_event(
+                "database_backup_failed",
+                str(error),
+            )
+        finally:
+            _database_backup_checked = True
+
     settings = load_receipt_settings()
     routines = load_routines()
     subscriptions = load_subscriptions()
