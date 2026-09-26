@@ -6,7 +6,7 @@ import socket
 from copy import deepcopy
 from pathlib import Path
 
-from data_store import read_json, write_json
+from state_store import get_state, set_state
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 SETTINGS_FILE = PROJECT_ROOT / "data" / "printer_settings.json"
@@ -47,8 +47,8 @@ def _merge(defaults, supplied):
 
 
 def load_printer_settings():
-    raw = read_json(
-        SETTINGS_FILE,
+    raw = get_state(
+        "printer_settings",
         deepcopy(DEFAULT_SETTINGS),
     )
 
@@ -59,8 +59,8 @@ def load_printer_settings():
 
 
 def save_printer_settings(settings):
-    write_json(
-        SETTINGS_FILE,
+    set_state(
+        "printer_settings",
         _merge(
             DEFAULT_SETTINGS,
             settings,
