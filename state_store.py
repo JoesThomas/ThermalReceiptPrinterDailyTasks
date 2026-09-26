@@ -32,9 +32,11 @@ def _connect():
     )
 
     connection.row_factory = sqlite3.Row
-    connection.execute(
-        "PRAGMA journal_mode=WAL"
-    )
+    if not _SCHEMA_READY:
+        connection.execute(
+            "PRAGMA journal_mode=WAL"
+        )
+
     connection.execute(
         "PRAGMA synchronous=NORMAL"
     )
@@ -593,6 +595,70 @@ def set_state(namespace, value):
             namespace,
             value,
         )
+
+
+def update_state(
+    namespace,
+    default,
+    updater,
+):
+    """
+    Atomically read, mutate and write one JSON-backed
+    state namespace inside a SQLite transaction.
+    """
+    connection = _connect()
+
+    try:
+        connection.execute(
+            "BEGIN IMMEDIATE"
+        )
+
+        row = connection.execute(
+            """
+            SELECT value_json
+            FROM app_state
+            WHERE namespace = ?
+            """,
+            (
+                namespace,
+            ),
+        ).fetchone()
+
+        if row is None:
+            value = deepcopy(
+                default
+            )
+        else:
+            try:
+                value = json.loads(
+                    row[
+                        "value_json"
+                    ]
+                )
+            except json.JSONDecodeError as error:
+                raise StateStoreError(
+                    f"Invalid state stored for {namespace}: {error}"
+                ) from error
+
+        result = updater(
+            value
+        )
+
+        _set_state_on_connection(
+            connection,
+            namespace,
+            value,
+        )
+
+        connection.commit()
+        return result
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        connection.close()
 
 
 def list_routines():
