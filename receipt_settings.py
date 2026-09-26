@@ -2,7 +2,7 @@ from __future__ import annotations
 from copy import deepcopy
 from pathlib import Path
 
-from data_store import edit_json, read_json, write_json
+from state_store import get_state, set_state
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 SETTINGS_FILE = PROJECT_ROOT / "data" / "receipt_settings.json"
@@ -24,19 +24,24 @@ def _merge(defaults, supplied):
     return result
 
 def load_receipt_settings():
-    raw = read_json(
-        SETTINGS_FILE,
+    raw = get_state(
+        "receipt_settings",
         deepcopy(DEFAULT_SETTINGS),
     )
+
     return _merge(
         DEFAULT_SETTINGS,
         raw,
     )
 
+
 def save_receipt_settings(settings):
-    write_json(
-        SETTINGS_FILE,
-        settings,
+    set_state(
+        "receipt_settings",
+        _merge(
+            DEFAULT_SETTINGS,
+            settings,
+        ),
     )
 
 def feature_enabled(settings, name, default=True): return bool(settings.get("features", {}).get(name, default))
@@ -44,40 +49,29 @@ def display_value(settings, name, default=None): return settings.get("display", 
 def one_shot_requested(settings, name): return bool(settings.get("one_shot", {}).get(name, False))
 
 def consume_one_shot(settings, name):
-    consumed = False
+    stored = load_receipt_settings()
+    one_shot = stored.setdefault(
+        "one_shot",
+        {},
+    )
 
-    with edit_json(
-        SETTINGS_FILE,
-        deepcopy(DEFAULT_SETTINGS),
-    ) as stored:
-        merged = _merge(
-            DEFAULT_SETTINGS,
-            stored,
-        )
+    if not one_shot.get(
+        name,
+        False,
+    ):
+        return False
 
-        one_shot = merged.setdefault(
-            "one_shot",
-            {},
-        )
+    one_shot[name] = False
+    save_receipt_settings(
+        stored
+    )
 
-        if one_shot.get(
-            name,
-            False,
-        ):
-            one_shot[name] = False
-            stored.clear()
-            stored.update(
-                merged
-            )
-            consumed = True
+    settings.setdefault(
+        "one_shot",
+        {},
+    )[name] = False
 
-    if consumed:
-        settings.setdefault(
-            "one_shot",
-            {},
-        )[name] = False
-
-    return consumed
+    return True
 
 def google_doc_commands(todo_text):
     """Only complete Google Doc lines ending in '.' are treated as commands."""
