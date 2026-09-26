@@ -1158,7 +1158,7 @@
                     <p class="muted">
                         Any portions made but not eaten
                         will be added automatically to
-                        data/freezer.json.
+                        the freezer inventory database.
                     </p>
 
                     <label class="option">
@@ -1209,9 +1209,9 @@
         <h2>Kitchen inventory</h2>
 
         <p class="muted">
-            These edit the same data files used by the
-            meal planner, so you can confirm stock is
-            actually being saved.
+            These edit the same SQLite inventory used by
+            the meal planner, so the website and receipt
+            process always see the same stock.
         </p>
 
         <details open>
@@ -1466,8 +1466,8 @@
         <h2>Data health</h2>
 
         <p class="muted">
-            Confirms the local JSON files exist and
-            contain valid JSON.
+            Checks the SQLite state database plus the
+            remaining JSON data that has not been migrated yet.
         </p>
 
         {% for file in file_status %}
