@@ -198,3 +198,21 @@ private `data/subscriptions.json` if one was entered there. Festival ticket
 instalments remain entertainment spending; their monthly payment and outstanding
 balance are shown separately when configured. Personal payee names and
 unidentified merchants belong only in private category overrides.
+
+For a purchase whose category depends on the *item* rather than the merchant,
+put a one-off rule in the ignored `data/finance_categories.json`:
+
+```json
+{
+  "transactions": [
+    {"date": "YYYY-MM-DD", "amount": 22.00,
+     "merchant": "EXAMPLE SHOP", "category": "GIFTS"}
+  ]
+}
+```
+
+A one-off rule matches the date, absolute amount and merchant text together.
+It overrides merchant-wide categories for that transaction only. Merge it with
+any existing private merchant rules; do not replace your whole file. If there
+are two purchases at the same merchant for the same amount on the same day,
+this format will match both and needs a more specific transaction identifier.

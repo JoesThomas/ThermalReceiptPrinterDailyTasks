@@ -61,6 +61,19 @@ class FinanceCategoryTests(unittest.TestCase):
         )
         self.assertEqual(result, [{'merchant': 'PERSON NAME PAYMENT', 'amount': 220.0}])
 
+    def test_one_off_gift_override_does_not_relabel_later_merchant_purchases(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'categories.json'
+            path.write_text(json.dumps({'transactions': [{
+                'date': '2026-09-18', 'amount': 22.00,
+                'merchant': 'NOSTALGIA.CO.UK', 'category': 'GIFTS',
+            }]}))
+            rules = load_rules(path)
+        base = {'description': 'NOSTALGIA.CO.UK EDINBURGH', 'amount': -22.00}
+        self.assertEqual(categorise_transaction({**base, 'date': '2026-09-18'}, rules), 'GIFTS')
+        self.assertEqual(categorise_transaction({**base, 'date': '2026-10-18'}, rules), 'OTHER')
+        self.assertEqual(categorise_transaction({**base, 'date': '2026-09-18', 'amount': -21}, rules), 'OTHER')
+
     def test_rules_change_category_but_not_total_spend_or_fixed_commitments(self):
         raw = [
             {'date': '2026-09-10', 'amount': -750, 'type': 'DEBIT',

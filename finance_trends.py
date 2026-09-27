@@ -20,6 +20,7 @@ DEFAULT_CATEGORIES = [
     "TRANSPORT",
     "ENTERTAINMENT",
     "SHOPPING",
+    "GIFTS",
     "HOUSEHOLD",
     "HOUSING",
     "INSURANCE",
@@ -158,7 +159,28 @@ def categorise_transaction(tx: dict, rules: dict) -> str:
         str(tx.get("merchant_name") or tx.get("merchant") or tx.get("description") or "")
     )
 
+    # Private, one-off rules override broad merchant categories. The date,
+    # merchant and amount must all match, so later visits remain independent.
+    tx_date = _parse_date(tx)
+    for rule in rules.get("transactions", []):
+        if not isinstance(rule, dict):
+            continue
+        expected_merchant = _normalise_merchant(str(rule.get("merchant") or ""))
+        try:
+            expected_date = date.fromisoformat(str(rule["date"]))
+            expected_amount = float(rule["amount"])
+        except (KeyError, ValueError, TypeError):
+            continue
+        if (expected_merchant and expected_merchant in merchant
+                and tx_date == expected_date
+                and math.isclose(_amount(tx), abs(expected_amount), abs_tol=0.005)):
+            category = str(rule.get("category") or "").upper().strip()
+            if category:
+                return category
+
     for needle, category in rules.items():
+        if needle == "transactions":
+            continue
         normalised = _normalise_merchant(needle)
         if not normalised:
             continue
