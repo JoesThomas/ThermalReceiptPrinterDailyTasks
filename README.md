@@ -142,8 +142,13 @@ matches, ignoring case and punctuation. If the display names differ, add
 `"monthly_commitment_name": "Exact monthly list name"` to the instalment or
 debt entry. Add `"match": ["bank transaction wording"]` to a repayment
 entry if you want a transaction to mark this month's instalment as paid;
-without a match, the receipt conservatively lists it as due. The paid check
-uses the existing account transactions and the recorded repayment amount.
+without a match, the receipt conservatively lists it as due. Repayments named
+Amazon automatically match `AMAZON.CO.UK` transactions at the exact monthly
+payment amount, so ordinary Amazon purchases at other amounts are excluded.
+The paid check uses the existing account transactions and the recorded repayment amount.
+Netflix is included as a monthly subscription at the latest charge amount
+when a Netflix payment appears in the last 45 days; an explicit monthly Netflix
+entry takes precedence. This inferred entry disappears if charges stop.
 No repayment is automatically turned into a dated payday commitment: add an
 individual or recurring date to `commitments` if it needs to affect the
 before-payday allowance.

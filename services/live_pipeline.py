@@ -65,7 +65,7 @@ from finance.receipt import (
     print_integrated_finance,
     load_finance_settings,
 )
-from finance.commitments import repayment_commitments, summarize_monthly_commitments
+from finance.commitments import inferred_netflix_commitment, repayment_commitments, summarize_monthly_commitments
 
 from receipt_settings import (
     load_receipt_settings,
@@ -4090,34 +4090,15 @@ def subscription_was_paid(
         # DATE
         # --------------------------------------
 
-        timestamp = transaction.get(
-            "timestamp"
-        )
-
-        if not timestamp:
-            continue
-
-        try:
-            transaction_date = (
-                datetime.fromisoformat(
-                    str(timestamp).replace(
-                        "Z",
-                        "+00:00",
-                    )
-                ).date()
-            )
-
-        except (
-            TypeError,
-            ValueError,
-        ):
+        payment_date = transaction_date(transaction)
+        if payment_date is None:
             continue
 
         # Only inspect the current month.
         if (
-            transaction_date.year
+            payment_date.year
             != today.year
-            or transaction_date.month
+            or payment_date.month
             != today.month
         ):
             continue
@@ -4126,16 +4107,16 @@ def subscription_was_paid(
         # DESCRIPTION
         # --------------------------------------
 
-        transaction_name = str(
-            transaction.get("merchant_name")
-            or transaction.get("description")
-            or ""
-        ).strip().lower()
+        transaction_name = " ".join(str(transaction.get(field) or "")
+                                    for field in ("merchant_name", "description")).lower()
 
         if not any(
                 term in transaction_name
                 for term in match_terms
         ):
+            continue
+
+        if str(transaction.get("transaction_type", "")).upper() in ("CREDIT", "REFUND"):
             continue
 
         # --------------------------------------
@@ -4192,7 +4173,8 @@ def build_subscription_status(
 
     regular = list(subscriptions.get("monthly", []))
     repayments = repayment_commitments(subscriptions, finance_settings)
-    for subscription in regular + repayments:
+    netflix = inferred_netflix_commitment(regular, transactions, today)
+    for subscription in regular + repayments + ([netflix] if netflix else []):
         item = dict(
             subscription
         )

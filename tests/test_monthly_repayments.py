@@ -1,8 +1,28 @@
 import unittest
-from finance.commitments import repayment_commitments, summarize_monthly_commitments
+from datetime import date
+from finance.commitments import inferred_netflix_commitment, repayment_commitments, summarize_monthly_commitments
 
 
 class MonthlyRepaymentTests(unittest.TestCase):
+    def test_amazon_instalments_get_merchant_match_without_changing_other_repayments(self):
+        rows = repayment_commitments({
+            'monthly': [], 'instalments': [
+                {'name': 'Amazon monthly payments A', 'amount': 124.92, 'remaining_balance': 200},
+                {'name': 'Amazon monthly payments B', 'amount': 43.92, 'remaining_balance': 100},
+                {'name': 'Other loan', 'amount': 43.92, 'remaining_balance': 100},
+            ]}, {'debts': []})
+        self.assertEqual([item['match'] for item in rows],
+                         [['amazon.co.uk'], ['amazon.co.uk'], []])
+
+    def test_recent_netflix_charge_infers_commitment_once(self):
+        transactions = [{'date': '2026-09-25', 'description': 'NETFLIX.COM 203832 LND',
+                         'amount': -5.99, 'transaction_type': 'DEBIT'}]
+        inferred = inferred_netflix_commitment([], transactions, date(2026, 9, 27))
+        self.assertEqual((inferred['name'], inferred['amount'], inferred['match']),
+                         ('Netflix', 5.99, ['netflix']))
+        self.assertIsNone(inferred_netflix_commitment([inferred], transactions, date(2026, 9, 27)))
+        self.assertIsNone(inferred_netflix_commitment([], transactions, date(2026, 11, 15)))
+
     def test_adds_instalment_and_loan_without_counting_existing_monthly_row(self):
         subscriptions = {
             'monthly': [{'name': 'Rent', 'amount': 500},

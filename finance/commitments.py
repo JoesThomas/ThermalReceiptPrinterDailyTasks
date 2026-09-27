@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+from datetime import date, datetime, timedelta
 import re
 
 
@@ -49,9 +50,48 @@ def repayment_commitments(subscriptions_data, settings):
             if item.get("payments_remaining") == 0:
                 continue
             known.add(key)
+            match = item.get("match", [])
+            # Amazon instalments have the same merchant as ordinary purchases;
+            # the paid check also requires the precise monthly payment amount.
+            if not match and "amazon" in _key(name):
+                match = ["amazon.co.uk"]
             result.append({"name": name, "amount": amount, "category": "repayment",
-                           "match": item.get("match", [])})
+                           "match": match})
     return result
+
+
+def inferred_netflix_commitment(monthly, transactions, today):
+    """Use a recent Netflix charge when no explicit monthly entry exists."""
+    if any(isinstance(item, dict) and (
+        "netflix" in _key(item.get("name"))
+        or "netflix" in str(item.get("match", "")).casefold()
+    ) for item in monthly):
+        return None
+    recent = []
+    for tx in transactions:
+        label = " ".join(str(tx.get(field) or "") for field in ("merchant_name", "description"))
+        if "netflix" not in label.casefold():
+            continue
+        raw_date = tx.get("timestamp") or tx.get("transaction_date") or tx.get("date")
+        try:
+            paid_on = (raw_date if isinstance(raw_date, date) and not isinstance(raw_date, datetime)
+                       else datetime.fromisoformat(str(raw_date).replace("Z", "+00:00")).date())
+            raw_amount = Decimal(str(tx.get("amount")))
+        except (ValueError, TypeError, InvalidOperation):
+            continue
+        if not raw_amount.is_finite() or raw_amount == 0:
+            continue
+        if str(tx.get("transaction_type", "")).upper() in ("CREDIT", "REFUND"):
+            continue
+        if raw_amount > 0 and not str(tx.get("transaction_type", "")).upper() in ("DEBIT", "CARD_PAYMENT"):
+            continue
+        if today - timedelta(days=45) <= paid_on <= today:
+            recent.append((paid_on, abs(raw_amount)))
+    if not recent:
+        return None
+    amount = float(max(recent, key=lambda row: row[0])[1])
+    return {"name": "Netflix", "amount": amount, "category": "subscription",
+            "match": ["netflix"]}
 
 
 def summarize_monthly_commitments(monthly):
