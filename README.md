@@ -105,3 +105,15 @@ schedule. The receipt shows that date beside the payday calculation and warns
 if it is missing, in the future or more than 30 days old. The date does not
 claim that bank balances were refreshed. Rolling a recurring payment assumes it
 still applies at the configured amount; update or remove it when that changes.
+
+### Finance source labels
+
+The finance receipt marks figures with a compact legend: `[B]` is a bank balance
+from TrueLayer, `[F]` is a stored value from a local finance, savings,
+instalment or investment file, `[C]` is calculated from those inputs, and `[E]`
+is a forward estimate. The 30-day spending section uses bank transactions and
+calculated totals; payday and future cash figures depend on dated file entries.
+A bank label identifies its source, not its age or a guarantee that the bank
+updated that figure today. The `reviewed_on` date covers manual payment settings
+only. Monthly commitment labels indicate whether a stored bill was matched to
+bank activity; an unmatched item may still need checking.

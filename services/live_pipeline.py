@@ -4230,7 +4230,7 @@ def print_subscription_changes(
 
     left(
         printer,
-        "BILL CHANGES",
+        "BILL CHANGES [B+F]",
     )
 
     printer.set(
@@ -4459,7 +4459,7 @@ def print_subscription_status(
 
     left(
         printer,
-        "MONTHLY COMMITMENTS",
+        "MONTHLY COMMITMENTS [F+B]",
     )
 
     printer.set(
@@ -4481,7 +4481,7 @@ def print_subscription_status(
 
     left(
         printer,
-        "PAID",
+        "PAID [BANK MATCH]",
     )
 
     printer.set(
@@ -4558,7 +4558,7 @@ def print_subscription_status(
 
     left(
         printer,
-        "DUE",
+        "DUE [FILE / NO BANK MATCH]",
     )
 
     printer.set(

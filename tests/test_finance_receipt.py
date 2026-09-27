@@ -2,6 +2,7 @@ import unittest
 from datetime import date
 from decimal import Decimal
 from finance.receipt import (calculate_debt_and_payday, _amount_rows,
+                             print_integrated_finance,
                              _calendar_occurrence, _forecast_events)
 
 class FinanceReceiptTests(unittest.TestCase):
@@ -22,6 +23,40 @@ class FinanceReceiptTests(unittest.TestCase):
         self.assertEqual(result['net_liquid'], Decimal('800.00'))
         self.assertEqual(result['safe'], Decimal('700.00'))
         self.assertEqual(result['daily'], Decimal('140.00'))
+
+    def test_receipt_identifies_bank_file_and_estimate_sources(self):
+        import finance.receipt as receipt
+        previous_debug = receipt.DEBUG_SPENDING
+        receipt.DEBUG_SPENDING = False
+        class Printer:
+            def __init__(self):
+                self.lines = []
+            def text(self, value):
+                self.lines.extend(value.splitlines())
+            def set(self, **kwargs):
+                pass
+        printer = Printer()
+        import tempfile
+        import json
+        from pathlib import Path
+        settings = {'reviewed_on': '2026-09-27', 'next_payday': '2026-10-30',
+                    'debts': [{'name': 'Plan', 'type': 'payment_plan', 'balance': 100}]}
+        try:
+            with tempfile.TemporaryDirectory() as folder:
+                path = Path(folder) / 'finance.json'
+                path.write_text(json.dumps(settings), encoding='utf-8')
+                print_integrated_finance(
+                    printer, lambda p, value: p.text(value + '\n'),
+                    lambda p, char='-': p.text(char * 40 + '\n'),
+                    {'HSBC': {'available': 500}, 'MONZO': {'available': 100},
+                     'AMEX': {'current': 50}}, transactions=[],
+                    finance_settings_file=path, today=date(2026, 9, 27))
+        finally:
+            receipt.DEBUG_SPENDING = previous_debug
+        self.assertTrue(any('HSBC [B]' in line for line in printer.lines))
+        self.assertTrue(any('PLAN [F]' in line for line in printer.lines))
+        self.assertTrue(any('SAFE TO SPEND [E]' in line for line in printer.lines))
+        self.assertTrue(all(len(line) <= 40 for line in printer.lines))
 
     def test_long_name_keeps_amount_and_fits_receipt(self):
         rows = _amount_rows('Very long payment plan description on paper', 123.45)

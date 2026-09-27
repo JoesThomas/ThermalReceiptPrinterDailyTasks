@@ -147,7 +147,8 @@ def _forecast_events(events, today, end):
 
 
 def calculate_debt_and_payday(cash, amex, instalments, settings, today):
-    debts = [{"name": "AMEX", "type": "credit_card", "balance": _decimal(amex)}]
+    debts = [{"name": "AMEX", "type": "credit_card", "balance": _decimal(amex),
+              "source": "B"}]
     existing_names = {"amex"}
     for item in instalments:
         balance = item.get("remaining_balance")
@@ -158,13 +159,13 @@ def calculate_debt_and_payday(cash, amex, instalments, settings, today):
             continue
         existing_names.add(name.casefold())
         debts.append({"name": name, "type": "payment_plan", "balance": _decimal(balance),
-                      "monthly_payment": item.get("amount")})
+                      "monthly_payment": item.get("amount"), "source": "F"})
     for item in settings.get("debts", []):
         name = str(item["name"])
         if name.casefold() in existing_names:
             continue
         existing_names.add(name.casefold())
-        debts.append({**item, "balance": _decimal(item["balance"])})
+        debts.append({**item, "balance": _decimal(item["balance"]), "source": "F"})
     if any(debt["balance"] < 0 for debt in debts):
         raise ValueError("Debt balance cannot be negative")
     short = sum((d["balance"] for d in debts if d.get("type") != "mortgage"), Decimal(0))
@@ -381,36 +382,38 @@ def print_integrated_finance(
         "=",
     )
 
-    # Cash, debt and payday each answer a different question.
+    # B = bank data; F = stored file; C = arithmetic; E = estimate.
+    left(printer, "B BANK  F FILE  C CALC  E ESTIMATE")
+    printer.text("\n")
     left(printer, "CASH NOW")
     print_line(printer)
     for label, value in (("HSBC", hsbc), ("MONZO", monzo)):
-        left(printer, _amount_line(label, value))
+        left(printer, _amount_line(f"{label} [B]", value))
     print_line(printer)
-    left(printer, _amount_line("AVAILABLE CASH", available_cash))
+    left(printer, _amount_line("AVAILABLE CASH [C]", available_cash))
 
     printer.text("\n")
     left(printer, "AMOUNTS OWED")
     print_line(printer)
     for debt in debt_summary["debts"]:
         if debt["balance"]:
-            for row in _amount_rows(debt["name"], debt["balance"]):
+            for row in _amount_rows(f"{debt['name']} [{debt['source']}]", debt["balance"]):
                 left(printer, row)
             if debt.get("monthly_payment") is not None:
-                left(printer, _amount_line("  MONTHLY", debt["monthly_payment"]))
+                left(printer, _amount_line("  MONTHLY [F]", debt["monthly_payment"]))
     print_line(printer)
-    left(printer, _amount_line("SHORT-TERM DEBT", debt_summary["short_term"]))
-    left(printer, _amount_line("NET LIQUID", debt_summary["net_liquid"]))
+    left(printer, _amount_line("SHORT-TERM DEBT [C]", debt_summary["short_term"]))
+    left(printer, _amount_line("NET LIQUID [C]", debt_summary["net_liquid"]))
     if debt_summary["long_term"]:
-        left(printer, _amount_line("LONG-TERM DEBT", debt_summary["long_term"]))
+        left(printer, _amount_line("LONG-TERM DEBT [C]", debt_summary["long_term"]))
     for debt in debt_summary["debts"]:
         if debt.get("original_amount") is not None:
             repaid = max(Decimal(0), _decimal(debt["original_amount"]) - debt["balance"])
-            for row in _amount_rows(debt["name"] + " REPAID", repaid):
+            for row in _amount_rows(debt["name"] + " REPAID [C]", repaid):
                 left(printer, row)
 
     printer.text("\n")
-    left(printer, "UNTIL PAYDAY")
+    left(printer, "UNTIL PAYDAY [E]")
     print_line(printer)
     if debt_summary.get("payday"):
         reviewed_on = finance_settings.get("reviewed_on")
@@ -423,11 +426,11 @@ def print_integrated_finance(
         else:
             left(printer, "! MANUAL INPUTS NOT REVIEWED")
         left(printer, f"{debt_summary['payday']:%d %b %Y} | {debt_summary['days']} DAYS")
-        left(printer, _amount_line("DATED PAYMENTS DUE", debt_summary["committed"]))
-        left(printer, _amount_line("BUFFER", debt_summary["buffer"]))
+        left(printer, _amount_line("DATED PAYMENTS [C]", debt_summary["committed"]))
+        left(printer, _amount_line("BUFFER [F]", debt_summary["buffer"]))
         print_line(printer)
-        left(printer, _amount_line("SAFE TO SPEND", debt_summary["safe"]))
-        left(printer, _amount_line("PER DAY", debt_summary["daily"]))
+        left(printer, _amount_line("SAFE TO SPEND [E]", debt_summary["safe"]))
+        left(printer, _amount_line("PER DAY [E]", debt_summary["daily"]))
         if debt_summary["safe"] < 0:
             left(printer, "! PAYMENTS EXCEED CASH")
         minimum = finance_settings.get("minimum_balance_warning")
@@ -437,18 +440,18 @@ def print_integrated_finance(
         for item in debt_summary["commitments"]:
             if item["amount"] >= cutoff:
                 left(printer, f"DUE {item['due_date'][5:]}: {item['name'][:26]}")
-                left(printer, _amount_line("  PAYMENT", item["amount"]))
+                left(printer, _amount_line("  PAYMENT [F]", item["amount"]))
     else:
         left(printer, "SET NEXT_PAYDAY FOR FORECAST")
 
     if st["accounts"]:
         printer.text("\n")
-        left(printer, "SAVINGS")
+        left(printer, "SAVINGS [F]")
         print_line(printer)
         for account in st["accounts"]:
-            for row in _amount_rows(account["name"], account["balance"]):
+            for row in _amount_rows(f"{account['name']} [F]", account["balance"]):
                 left(printer, row)
-        left(printer, _amount_line("NET CASH + SAVINGS", net_cash))
+        left(printer, _amount_line("NET CASH + SAVINGS [C]", net_cash))
 
     # ==========================================
     # INVESTMENTS
@@ -462,7 +465,7 @@ def print_integrated_finance(
 
         left(
             printer,
-            "INVESTMENTS",
+            "INVESTMENTS [F]",
         )
 
         line(
@@ -498,7 +501,7 @@ def print_integrated_finance(
             ):
                 value = 0.0
 
-            for row in _amount_rows(name, value):
+            for row in _amount_rows(f"{name} [F]", value):
                 left(printer, row)
 
         line(
@@ -511,7 +514,7 @@ def print_integrated_finance(
             ("CONTRIBUTED", investment_summary["contributions"]),
             ("GAIN / LOSS", investment_summary["gain"]),
         ):
-            left(printer, _amount_line(label, value))
+            left(printer, _amount_line(f"{label} [C]", value))
         gain_pct = investment_summary["gain_pct"]
         if gain_pct is not None:
             left(printer, f"RETURN {gain_pct:+.1f}%")
@@ -536,7 +539,7 @@ def print_integrated_finance(
 
     left(
         printer,
-        "SPENDING - LAST 30 DAYS",
+        "SPENDING - BANK TX [C]",
     )
 
     print_line(
@@ -619,17 +622,10 @@ def print_integrated_finance(
 
         printer.text("\n")
 
-        for text in (
-            runway_receipt_lines(
-                float(debt_summary["net_liquid"]),
-                savings_data,
-                monthly_spend,
-            )
+        for text in runway_receipt_lines(
+            float(debt_summary["net_liquid"]), savings_data, monthly_spend,
         ):
-            left(
-                printer,
-                text,
-            )
+            left(printer, "RUNWAY [E]" if text == "RUNWAY" else text)
 
     # ==========================================
     # QUARTER / YEAR REVIEW
@@ -697,6 +693,7 @@ def print_integrated_finance(
             "=",
         )
 
+        left(printer, "PERIOD REVIEW [C]: BANK TX + FILE")
         for text in (
             period_receipt_lines(
                 analysis
@@ -726,13 +723,13 @@ def print_integrated_finance(
         printer.text("\n")
         left(printer, "NEXT 30 DAYS - LISTED EVENTS")
         print_line(printer)
-        left(printer, _amount_line("KNOWN CASH CHANGE", change))
-        left(printer, _amount_line("CASH AFTER EVENTS", _decimal(available_cash) + change))
+        left(printer, _amount_line("KNOWN CASH CHANGE [C]", change))
+        left(printer, _amount_line("CASH AFTER EVENTS [E]", _decimal(available_cash) + change))
 
     goals = finance_settings.get("savings_goals", [])
     if goals:
         printer.text("\n")
-        left(printer, "SAVINGS GOALS")
+        left(printer, "SAVINGS GOALS [F]")
         print_line(printer)
         for goal in goals:
             for row in _amount_rows(str(goal["name"]), goal["saved"]):
