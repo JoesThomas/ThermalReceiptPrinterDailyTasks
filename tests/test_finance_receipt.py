@@ -1,7 +1,8 @@
 import unittest
 from datetime import date
 from decimal import Decimal
-from finance.receipt import calculate_debt_and_payday, _amount_rows
+from finance.receipt import (calculate_debt_and_payday, _amount_rows,
+                             _calendar_occurrence, _forecast_events)
 
 class FinanceReceiptTests(unittest.TestCase):
     def test_live_amex_and_instalment_take_precedence(self):
@@ -31,6 +32,40 @@ class FinanceReceiptTests(unittest.TestCase):
         self.assertEqual(_amount_rows('Known cash change', -500)[0],
                          'KNOWN CASH CHANGE               -£500.00')
         self.assertEqual(_amount_rows('Credit', 0)[0][-5:], '£0.00')
+
+    def test_monthly_payday_and_bill_roll_without_losing_day_31(self):
+        settings = {
+            'next_payday': '2026-01-31', 'payday_repeat': 'monthly',
+            'commitments': [{'name': 'Bill', 'due_date': '2026-01-31',
+                             'repeat': 'monthly', 'amount': 25}],
+        }
+        result = calculate_debt_and_payday(100, 0, [], settings, date(2026, 2, 28))
+        self.assertEqual(result['payday'], date(2026, 3, 31))
+        self.assertEqual([item['due_date'] for item in result['commitments']],
+                         ['2026-02-28'])
+        self.assertEqual(result['safe'], Decimal('75.00'))
+        self.assertEqual(_calendar_occurrence(date(2026, 1, 31),
+                         date(2026, 4, 1), 'monthly'), date(2026, 4, 30))
+
+    def test_recurring_bills_are_counted_each_time_before_payday(self):
+        settings = {'next_payday': '2026-04-30',
+                    'commitments': [{'name': 'Plan', 'due_date': '2026-01-15',
+                                     'repeat': 'monthly', 'amount': 20}]}
+        result = calculate_debt_and_payday(100, 0, [], settings, date(2026, 2, 1))
+        self.assertEqual(result['committed'], Decimal('60.00'))
+        self.assertEqual([item['due_date'] for item in result['commitments']],
+                         ['2026-02-15', '2026-03-15', '2026-04-15'])
+
+    def test_yearly_leap_day_restores_in_leap_year(self):
+        self.assertEqual(_calendar_occurrence(date(2024, 2, 29),
+            date(2025, 2, 1), 'yearly'), date(2025, 2, 28))
+        self.assertEqual(_calendar_occurrence(date(2024, 2, 29),
+            date(2028, 2, 1), 'yearly'), date(2028, 2, 29))
+
+    def test_monthly_forecast_events_roll_too(self):
+        events = [{'date': '2026-10-01', 'repeat': 'monthly', 'amount': -500}]
+        upcoming = _forecast_events(events, date(2026, 11, 27), date(2026, 12, 27))
+        self.assertEqual([item['date'] for item in upcoming], ['2026-12-01'])
 
     def test_expired_payday_does_not_print_allowance(self):
         result = calculate_debt_and_payday(100, 0, [],

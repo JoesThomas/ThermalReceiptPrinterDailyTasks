@@ -6,6 +6,7 @@ from finance.investments import (
     investment_snapshot,
 )
 from datetime import date, datetime, timedelta
+from calendar import monthrange
 from decimal import Decimal, InvalidOperation
 import json
 from pathlib import Path
@@ -92,6 +93,59 @@ def load_finance_settings(path=FINANCE_SETTINGS_FILE):
     return data
 
 
+def _calendar_occurrence(anchor, today, repeat):
+    """First occurrence on/after today, anchored to the original calendar day."""
+    if repeat == "once":
+        return anchor if anchor >= today else None
+    if repeat == "monthly":
+        months = max(0, (today.year - anchor.year) * 12 + today.month - anchor.month)
+        while True:
+            year, month_zero = divmod(anchor.year * 12 + anchor.month - 1 + months, 12)
+            candidate = date(year, month_zero + 1,
+                             min(anchor.day, monthrange(year, month_zero + 1)[1]))
+            if candidate >= today and candidate >= anchor:
+                return candidate
+            months += 1
+    if repeat == "yearly":
+        year = max(anchor.year, today.year)
+        while True:
+            candidate = date(year, anchor.month,
+                             min(anchor.day, monthrange(year, anchor.month)[1]))
+            if candidate >= today and candidate >= anchor:
+                return candidate
+            year += 1
+    raise ValueError(f"Unsupported payment repeat: {repeat!r}")
+
+
+def _due_commitments(settings, today, payday):
+    due = []
+    for item in settings.get("commitments", []):
+        anchor = date.fromisoformat(item["due_date"])
+        repeat = item.get("repeat", "once")
+        occurrence = _calendar_occurrence(anchor, today, repeat)
+        while occurrence is not None and occurrence < payday:
+            due.append({**item, "due_date": occurrence.isoformat(),
+                        "amount": _decimal(item["amount"])})
+            if repeat == "once":
+                break
+            occurrence = _calendar_occurrence(anchor, occurrence + timedelta(days=1), repeat)
+    return sorted(due, key=lambda item: item["due_date"])
+
+
+def _forecast_events(events, today, end):
+    upcoming = []
+    for item in events:
+        anchor = date.fromisoformat(item["date"])
+        repeat = item.get("repeat", "once")
+        occurrence = _calendar_occurrence(anchor, today, repeat)
+        while occurrence is not None and occurrence <= end:
+            upcoming.append({**item, "date": occurrence.isoformat()})
+            if repeat == "once":
+                break
+            occurrence = _calendar_occurrence(anchor, occurrence + timedelta(days=1), repeat)
+    return sorted(upcoming, key=lambda item: item["date"])
+
+
 def calculate_debt_and_payday(cash, amex, instalments, settings, today):
     debts = [{"name": "AMEX", "type": "credit_card", "balance": _decimal(amex)}]
     existing_names = {"amex"}
@@ -118,12 +172,13 @@ def calculate_debt_and_payday(cash, amex, instalments, settings, today):
     result = {"debts": debts, "short_term": short, "long_term": long,
               "net_liquid": _decimal(cash) - short}
     if settings.get("next_payday"):
-        payday = date.fromisoformat(settings["next_payday"])
-        days = (payday - today).days
+        payday = _calendar_occurrence(
+            date.fromisoformat(settings["next_payday"]), today + timedelta(days=1),
+            settings.get("payday_repeat", "once")
+        )
+        days = (payday - today).days if payday is not None else 0
         if days > 0:
-            commitments = [{**item, "amount": _decimal(item["amount"])}
-                           for item in settings.get("commitments", [])
-                           if today <= date.fromisoformat(item["due_date"]) < payday]
+            commitments = _due_commitments(settings, today, payday)
             committed = sum((item["amount"] for item in commitments), Decimal(0))
             buffer = _decimal(settings.get("emergency_buffer", 0))
             safe = _decimal(cash) - committed - buffer
@@ -358,6 +413,15 @@ def print_integrated_finance(
     left(printer, "UNTIL PAYDAY")
     print_line(printer)
     if debt_summary.get("payday"):
+        reviewed_on = finance_settings.get("reviewed_on")
+        if reviewed_on:
+            reviewed = date.fromisoformat(reviewed_on)
+            age = (today - reviewed).days
+            left(printer, f"MANUAL INPUTS CHECKED {reviewed:%d %b %Y}".upper())
+            if age < 0 or age > 30:
+                left(printer, "! REVIEW PAYMENT DATES / AMOUNTS")
+        else:
+            left(printer, "! MANUAL INPUTS NOT REVIEWED")
         left(printer, f"{debt_summary['payday']:%d %b %Y} | {debt_summary['days']} DAYS")
         left(printer, _amount_line("DATED PAYMENTS DUE", debt_summary["committed"]))
         left(printer, _amount_line("BUFFER", debt_summary["buffer"]))
@@ -657,8 +721,7 @@ def print_integrated_finance(
     events = finance_settings.get("forecast_events", [])
     if events:
         end = today + timedelta(days=30)
-        upcoming = [item for item in events
-                    if today <= date.fromisoformat(item["date"]) <= end]
+        upcoming = _forecast_events(events, today, end)
         change = sum((_decimal(item["amount"]) for item in upcoming), Decimal(0))
         printer.text("\n")
         left(printer, "NEXT 30 DAYS - LISTED EVENTS")

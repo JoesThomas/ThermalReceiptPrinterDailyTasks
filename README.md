@@ -87,3 +87,21 @@ spending. If a bill is in `commitments` and `forecast_events`, the two sections
 answer separate questions and are not summed together. Refresh dated entries
 after payments and payday. Optional `savings_goals` display saved and target
 amounts.
+
+### Rolling dates and review date
+
+Set `payday_repeat` to `monthly` to calculate the next payday from the original
+`next_payday` date without editing the file each month. Add `repeat: "monthly"`
+or `repeat: "yearly"` to a dated commitment; omit it for a one-time payment.
+Add the same `repeat` field to a `forecast_events` row to roll that dated
+cash movement in the 30-day forecast. An occurrence on payday is excluded from
+the before-payday budget. Dates on
+29–31 use the last day of shorter months and return to their original day in
+later months. Rolling happens when printing and does not rewrite your settings.
+If payday moves for a weekend or bank holiday, update the anchor date manually.
+
+Set `reviewed_on` to the date you last checked the *manual* payment amounts and
+schedule. The receipt shows that date beside the payday calculation and warns
+if it is missing, in the future or more than 30 days old. The date does not
+claim that bank balances were refreshed. Rolling a recurring payment assumes it
+still applies at the configured amount; update or remove it when that changes.
