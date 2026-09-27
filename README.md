@@ -168,3 +168,24 @@ spending reaches £25 in the last 30 days. Person-to-person payments and
 ambiguous merchant names intentionally remain `OTHER` until you add a private
 rule based on what the purchase actually was. Do not put personal payee names
 in the public repository.
+
+## Receipt Control server address
+
+`web_control/run_waitress.py` listens on `0.0.0.0:5050` by default. If startup
+fails with `Address already in use`, check for an existing instance on macOS:
+
+```bash
+lsof -nP -iTCP:5050 -sTCP:LISTEN
+```
+
+Stop the process you recognise as an old Receipt Control server, or use another
+port without editing the script:
+
+```bash
+RECEIPT_WEB_PORT=5051 python web_control/run_waitress.py
+```
+
+Use `RECEIPT_WEB_HOST=127.0.0.1` to bind only on this computer. Other socket
+errors now include the address and a relevant diagnostic. The final line of the
+Python traceback (`OSError: [Errno ...] ...`) determines which bind error
+occurred.
