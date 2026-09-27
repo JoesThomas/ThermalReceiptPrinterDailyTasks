@@ -63,7 +63,9 @@ from calendar_travel import (
 
 from finance.receipt import (
     print_integrated_finance,
+    load_finance_settings,
 )
+from finance.commitments import repayment_commitments, summarize_monthly_commitments
 
 from receipt_settings import (
     load_receipt_settings,
@@ -4175,23 +4177,22 @@ def subscription_was_paid(
 
 def build_subscription_status(
     transactions,
+    subscriptions_data=None,
+    finance_settings=None,
+    today=None,
 ):
-    today = datetime.now(
+    today = today or datetime.now(
         ZoneInfo("Europe/London")
     ).date()
 
-    subscriptions = (
-        load_subscriptions()
-    )
+    subscriptions = subscriptions_data if subscriptions_data is not None else load_subscriptions()
+    finance_settings = finance_settings if finance_settings is not None else load_finance_settings()
 
     monthly = []
 
-    for subscription in (
-        subscriptions.get(
-            "monthly",
-            []
-        )
-    ):
+    regular = list(subscriptions.get("monthly", []))
+    repayments = repayment_commitments(subscriptions, finance_settings)
+    for subscription in regular + repayments:
         item = dict(
             subscription
         )
@@ -4379,9 +4380,11 @@ def print_subscription_status(
     left,
     print_line,
     transactions,
+    subscriptions_data=None,
 ):
     status = build_subscription_status(
-        transactions
+        transactions,
+        subscriptions_data=subscriptions_data,
     )
 
     monthly = status.get(
@@ -4392,61 +4395,14 @@ def print_subscription_status(
     if not monthly:
         return
 
-    paid = []
-    due = []
-
-    for item in monthly:
-        try:
-            amount = float(
-                item.get("amount", 0)
-                or 0
-            )
-        except (
-            TypeError,
-            ValueError,
-        ):
-            amount = 0.0
-
-        row = {
-            "name": str(
-                item.get(
-                    "name",
-                    "Subscription",
-                )
-            ),
-            "amount": amount,
-            "category": item.get(
-                "category",
-                "",
-            ),
-        }
-
-        if item.get("paid"):
-            paid.append(row)
-        else:
-            due.append(row)
-
-    paid_total = sum(
-        item["amount"]
-        for item in paid
-    )
-
-    due_bills = sum(
-        item["amount"]
-        for item in due
-        if item["category"] != "savings"
-    )
-
-    due_savings = sum(
-        item["amount"]
-        for item in due
-        if item["category"] == "savings"
-    )
-
-    remaining_total = (
-        due_bills
-        + due_savings
-    )
+    summary = summarize_monthly_commitments(monthly)
+    paid = summary["paid"]
+    due = summary["due"]
+    paid_total = summary["paid_total"]
+    due_bills = summary["due_bills"]
+    due_savings = summary["due_savings"]
+    due_repayments = summary["due_repayments"]
+    remaining_total = summary["remaining_total"]
 
     # ==========================================
     # HEADER
@@ -4626,6 +4582,15 @@ def print_subscription_status(
                 (
                     f"{'SAVINGS DUE':<22}"
                     f"£{due_savings:>8.2f}"
+                ),
+            )
+
+        if due_repayments:
+            left(
+                printer,
+                (
+                    f"{'REPAYMENTS DUE':<22}"
+                    f"£{due_repayments:>8.2f}"
                 ),
             )
 
@@ -9592,6 +9557,7 @@ def run_live_pipeline(
                 left,
                 print_line,
                 transactions,
+                subscriptions_data=subscriptions_data,
             )
 
             finance_success = True

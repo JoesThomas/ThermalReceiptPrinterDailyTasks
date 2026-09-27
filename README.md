@@ -127,3 +127,23 @@ pages, previews, videos and promotional headlines. Local stories may be fewer
 than three when the feed has no suitable recent articles; unavailable news
 sections are omitted. The control page has a Sport news toggle and a separate
 sport story count (default 3). General UK news remains unchanged.
+
+### Monthly repayments in commitments
+
+`MONTHLY COMMITMENTS` includes monthly bill/subscription entries, instalment
+payments from `data/subscriptions.json`, and `monthly_payment` on debts in
+`data/finance_settings.json` (including a mortgage). It prints a separate
+`REPAYMENTS DUE` subtotal and includes unpaid repayments in `REMAINING`.
+Outstanding *balances* stay in `AMOUNTS OWED` and are not added to the monthly
+total. Fully repaid entries (zero remaining balance) are omitted.
+
+A repayment already in the `monthly` list is not added again when its name
+matches, ignoring case and punctuation. If the display names differ, add
+`"monthly_commitment_name": "Exact monthly list name"` to the instalment or
+debt entry. Add `"match": ["bank transaction wording"]` to a repayment
+entry if you want a transaction to mark this month's instalment as paid;
+without a match, the receipt conservatively lists it as due. The paid check
+uses the existing account transactions and the recorded repayment amount.
+No repayment is automatically turned into a dated payday commitment: add an
+individual or recurring date to `commitments` if it needs to affect the
+before-payday allowance.
