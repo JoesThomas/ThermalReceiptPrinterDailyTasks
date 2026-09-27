@@ -1,9 +1,31 @@
 import unittest
 from datetime import date
-from finance.commitments import inferred_netflix_commitment, repayment_commitments, summarize_monthly_commitments
+from finance.commitments import inferred_netflix_commitment, matching_repayment_transaction, repayment_commitments, summarize_monthly_commitments
 
 
 class MonthlyRepaymentTests(unittest.TestCase):
+    def test_matches_next_month_payment_day_and_amount_without_merchant(self):
+        plans = repayment_commitments({'monthly': [], 'instalments': [
+            {'name': 'Payment option A', 'amount': 124.92, 'next_payment': '2026-10-21'},
+            {'name': 'Payment option B', 'amount': 43.92, 'next_payment': '2026-10-18'},
+        ]}, {'debts': []})
+        txs = [
+            {'date': '2026-09-21', 'description': 'AMAZON.CO.UK', 'amount': -124.92},
+            {'date': '2026-09-18', 'description': 'AMAZON.CO.UK', 'amount': -43.92},
+        ]
+        self.assertEqual(matching_repayment_transaction(plans[0], txs, date(2026, 9, 27)), 0)
+        self.assertEqual(matching_repayment_transaction(plans[1], txs, date(2026, 9, 27), {0}), 1)
+
+    def test_date_fallback_rejects_wrong_day_refund_and_reused_transaction(self):
+        item = {'amount': 43.92, 'next_payment': '2026-10-18'}
+        txs = [
+            {'date': '2026-09-12', 'amount': -43.92},
+            {'date': '2026-09-18', 'amount': 43.92, 'transaction_type': 'CREDIT'},
+            {'date': '2026-09-18', 'amount': -43.92},
+        ]
+        self.assertEqual(matching_repayment_transaction(item, txs, date(2026, 9, 27)), 2)
+        self.assertIsNone(matching_repayment_transaction(item, txs, date(2026, 9, 27), {2}))
+
     def test_amazon_instalments_get_merchant_match_without_changing_other_repayments(self):
         rows = repayment_commitments({
             'monthly': [], 'instalments': [

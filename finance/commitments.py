@@ -56,8 +56,50 @@ def repayment_commitments(subscriptions_data, settings):
             if not match and "amazon" in _key(name):
                 match = ["amazon.co.uk"]
             result.append({"name": name, "amount": amount, "category": "repayment",
-                           "match": match})
+                           "match": match, "next_payment": item.get("next_payment"),
+                           "due_date": item.get("due_date")})
     return result
+
+
+def repayment_due_day(item, today):
+    """Find this month's instalment day from its next scheduled payment."""
+    import calendar
+    anchor = item.get("next_payment") or item.get("due_date")
+    try:
+        scheduled = date.fromisoformat(str(anchor)[:10])
+    except (TypeError, ValueError):
+        return None
+    day = min(scheduled.day, calendar.monthrange(today.year, today.month)[1])
+    return date(today.year, today.month, day)
+
+
+def matching_repayment_transaction(item, transactions, today, used=()):
+    """Find a debit with the scheduled day and precise amount, within two days."""
+    scheduled = repayment_due_day(item, today)
+    amount = _positive_amount(item.get("amount"))
+    if scheduled is None or amount is None:
+        return None
+    for index, tx in enumerate(transactions):
+        if index in used:
+            continue
+        raw_date = tx.get("timestamp") or tx.get("transaction_date") or tx.get("date")
+        try:
+            paid_on = (raw_date if isinstance(raw_date, date) and not isinstance(raw_date, datetime)
+                       else datetime.fromisoformat(str(raw_date).replace("Z", "+00:00")).date())
+            paid_amount = Decimal(str(tx.get("amount")))
+        except (ValueError, TypeError, InvalidOperation):
+            continue
+        if paid_on.year != today.year or paid_on.month != today.month:
+            continue
+        if abs((paid_on - scheduled).days) > 2 or paid_on > today:
+            continue
+        if not paid_amount.is_finite() or abs(abs(paid_amount) - Decimal(str(amount))) > Decimal("0.01"):
+            continue
+        kind = str(tx.get("transaction_type", "")).upper()
+        if kind in ("CREDIT", "REFUND") or (paid_amount > 0 and kind not in ("DEBIT", "CARD_PAYMENT")):
+            continue
+        return index
+    return None
 
 
 def inferred_netflix_commitment(monthly, transactions, today):

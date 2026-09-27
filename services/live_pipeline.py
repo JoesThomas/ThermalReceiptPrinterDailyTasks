@@ -65,7 +65,7 @@ from finance.receipt import (
     print_integrated_finance,
     load_finance_settings,
 )
-from finance.commitments import inferred_netflix_commitment, repayment_commitments, summarize_monthly_commitments
+from finance.commitments import inferred_netflix_commitment, matching_repayment_transaction, repayment_commitments, summarize_monthly_commitments
 
 from receipt_settings import (
     load_receipt_settings,
@@ -4038,6 +4038,10 @@ def subscription_was_paid(
     transactions,
     today,
 ):
+    return matching_subscription_transaction(subscription, transactions, today) is not None
+
+
+def matching_subscription_transaction(subscription, transactions, today, used=()):
     """
     Return True when a transaction matching this
     subscription exists in the current month.
@@ -4084,7 +4088,9 @@ def subscription_was_paid(
     ):
         expected_amount = None
 
-    for transaction in transactions:
+    for index, transaction in enumerate(transactions):
+        if index in used:
+            continue
 
         # --------------------------------------
         # DATE
@@ -4100,6 +4106,7 @@ def subscription_was_paid(
             != today.year
             or payment_date.month
             != today.month
+            or payment_date > today
         ):
             continue
 
@@ -4152,9 +4159,9 @@ def subscription_was_paid(
                 continue
 
         # Merchant and amount matched.
-        return True
+        return index
 
-    return False
+    return None
 
 def build_subscription_status(
     transactions,
@@ -4174,18 +4181,18 @@ def build_subscription_status(
     regular = list(subscriptions.get("monthly", []))
     repayments = repayment_commitments(subscriptions, finance_settings)
     netflix = inferred_netflix_commitment(regular, transactions, today)
+    used = set()
     for subscription in regular + repayments + ([netflix] if netflix else []):
         item = dict(
             subscription
         )
 
-        item["paid"] = (
-            subscription_was_paid(
-                subscription,
-                transactions,
-                today,
-            )
-        )
+        matched = matching_subscription_transaction(subscription, transactions, today, used)
+        if matched is None and subscription.get("category") == "repayment":
+            matched = matching_repayment_transaction(subscription, transactions, today, used)
+        item["paid"] = matched is not None
+        if matched is not None:
+            used.add(matched)
 
         monthly.append(
             item

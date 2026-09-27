@@ -146,6 +146,10 @@ without a match, the receipt conservatively lists it as due. Repayments named
 Amazon automatically match `AMAZON.CO.UK` transactions at the exact monthly
 payment amount, so ordinary Amazon purchases at other amounts are excluded.
 The paid check uses the existing account transactions and the recorded repayment amount.
+When a repayment has a `next_payment` or `due_date`, a debit with the same amount
+within two days of that day of the month can also verify payment even if the
+merchant wording differs. A transaction can verify only one commitment;
+repayments without a scheduled date or matching merchant stay due.
 Netflix is included as a monthly subscription at the latest charge amount
 when a Netflix payment appears in the last 45 days; an explicit monthly Netflix
 entry takes precedence. This inferred entry disappears if charges stop.
