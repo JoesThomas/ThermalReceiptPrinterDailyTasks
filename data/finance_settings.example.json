@@ -1,0 +1,20 @@
+{
+  "next_payday": "2026-10-30",
+  "emergency_buffer": 300,
+  "minimum_balance_warning": 100,
+  "large_payment_threshold": 250,
+  "debts": [
+    {"name": "Example loan", "type": "loan", "balance": 1400, "original_amount": 2000, "monthly_payment": 100},
+    {"name": "Example mortgage", "type": "mortgage", "balance": 180000, "original_amount": 200000, "monthly_payment": 950}
+  ],
+  "commitments": [
+    {"name": "Example rent", "due_date": "2026-10-01", "amount": 500}
+  ],
+  "forecast_events": [
+    {"date": "2026-10-01", "amount": -500},
+    {"date": "2026-10-30", "amount": 2300}
+  ],
+  "savings_goals": [
+    {"name": "Emergency fund", "saved": 250, "target": 1000}
+  ]
+}

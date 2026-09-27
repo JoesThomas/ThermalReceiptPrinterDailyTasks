@@ -82,3 +82,5 @@ env/
 
 *.tmp
 *.log
+# Personal debt, payday and payment data
+data/finance_settings.json

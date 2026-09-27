@@ -9620,6 +9620,8 @@ def run_live_pipeline(
                 subscriptions = []
                 spending_summary = {}
 
+            # Read the existing instalment balances before printing the summary.
+            subscriptions_data = load_subscriptions()
             print_integrated_finance(
                 printer,
                 left,
@@ -9630,6 +9632,7 @@ def run_live_pipeline(
                 standing_orders=standing_orders,
                 subscriptions=subscriptions,
                 spending_summary=spending_summary,
+                instalments=subscriptions_data.get("instalments", []),
             )
 
             print_subscription_changes(
@@ -9648,11 +9651,6 @@ def run_live_pipeline(
                 left,
                 print_line,
                 transactions,
-            )
-
-            print_instalment_status(
-                printer,
-                subscriptions_data,
             )
 
             finance_success = True

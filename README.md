@@ -63,3 +63,27 @@ Run live printer:
 
 The live external collectors remain in `legacy_main.py`; the newer modules are
 separated so they can continue to be migrated out cleanly.
+
+## Debt and payday receipt
+
+The finance receipt shows live HSBC and Monzo cash, live Amex debt, and any
+instalment balances in `data/subscriptions.json`. It separates short-term debt
+from a future mortgage. The `NET LIQUID` figure subtracts short-term debt from
+cash. Existing savings, investments, spending, runway and period reviews still
+print below the new cash/debt/payday summary.
+
+Copy `data/finance_settings.example.json` to `data/finance_settings.json` and
+replace the example values with your own. This private file is ignored by Git.
+Add other debts (including a mortgage), a future `next_payday`, a protected
+buffer, and individual dated `commitments`. Do not duplicate Amex or an existing
+instalment name: live Amex and known instalment balances take precedence. Enter
+payments due before payday, not the entire card or loan balance. The daily
+allowance is cash minus listed commitments and the buffer, divided by days left.
+Without a future payday the receipt says the forecast is unconfigured.
+
+`forecast_events` are separate signed cash changes over the next 30 days. Only
+listed events contribute to that projection; it does not estimate discretionary
+spending. If a bill is in `commitments` and `forecast_events`, the two sections
+answer separate questions and are not summed together. Refresh dated entries
+after payments and payday. Optional `savings_goals` display saved and target
+amounts.
