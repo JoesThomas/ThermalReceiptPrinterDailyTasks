@@ -68,6 +68,8 @@ DEFAULT_MERCHANT_RULES = {
     "200 DEGREES": "EATING OUT",
     "LOAF BAKERY": "EATING OUT",
     "GREGGS": "EATING OUT",
+    "LEMONWORLD": "EATING OUT",
+    "STIR STORE": "EATING OUT",
     "BOUTIQUE HAIR": "PERSONAL CARE",
     "ODEON CINEMAS": "ENTERTAINMENT",
     "VIRGIN EXPERIENCE DAYS": "ENTERTAINMENT",
@@ -81,6 +83,7 @@ DEFAULT_MERCHANT_RULES = {
     "NETFLIX": "SUBSCRIPTIONS",
     "SMARTY.CO.UK": "SUBSCRIPTIONS",
     "ONE.COM": "SUBSCRIPTIONS",
+    "JOBGETHER.COM": "SUBSCRIPTIONS",
 }
 
 FIXED_COMMITMENT_TERMS = (
@@ -685,7 +688,7 @@ def _window_totals(
 
 def uncategorised_merchants(
     transactions: list[dict], rules: dict, *, as_of: date | None = None,
-    days: int = 30, minimum_amount: float = 25.0, limit: int = 3,
+    days: int = 30, minimum_amount: float = 20.0, limit: int = 3,
 ) -> list[dict]:
     """Largest uncategorised merchants, summed across the recent window."""
     as_of = as_of or date.today()

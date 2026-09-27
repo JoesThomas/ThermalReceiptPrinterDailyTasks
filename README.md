@@ -164,7 +164,7 @@ trends and quarterly/yearly comparisons. A private
 
 The rules change category labels, not transaction totals. The finance receipt
 prints up to three merchants in `CATEGORY CHECK - OTHER` when uncategorised
-spending reaches £25 in the last 30 days. Person-to-person payments and
+spending reaches £20 in the last 30 days. Person-to-person payments and
 ambiguous merchant names intentionally remain `OTHER` until you add a private
 rule based on what the purchase actually was. Do not put personal payee names
 in the public repository.
@@ -189,3 +189,12 @@ Use `RECEIPT_WEB_HOST=127.0.0.1` to bind only on this computer. Other socket
 errors now include the address and a relevant diagnostic. The final line of the
 Python traceback (`OSError: [Errno ...] ...`) determines which bind error
 occurred.
+
+The clarified merchants `LEMONWORLD` (coffee shop), `STIR STORE` (bar) and
+`JOBGETHER.COM` (a cancelled subscription) have general category rules. Its
+historical transaction remains a subscription expense, but this category rule
+does not create a future commitment. Remove any cancelled Jobgether entry from
+private `data/subscriptions.json` if one was entered there. Festival ticket
+instalments remain entertainment spending; their monthly payment and outstanding
+balance are shown separately when configured. Personal payee names and
+unidentified merchants belong only in private category overrides.

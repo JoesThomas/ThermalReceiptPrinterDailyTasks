@@ -26,13 +26,16 @@ class FinanceCategoryTests(unittest.TestCase):
             'NETFLIX.COM 203832 LND': 'SUBSCRIPTIONS',
             'TRAINLINE.COM 744825 LONDON': 'TRANSPORT',
             'TRUCK FESTIV 12867NOTTINGHAM': 'ENTERTAINMENT',
+            'SQ *LEMONWORLD Birmingham': 'EATING OUT',
+            'Stir Store Birmingham': 'EATING OUT',
+            'JOBGETHER.COM BRUSSELS': 'SUBSCRIPTIONS',
         }
         for merchant, expected in examples.items():
             with self.subTest(merchant=merchant):
                 self.assertEqual(categorise_transaction({'description': merchant}, rules), expected)
         self.assertEqual(categorise_transaction({'description': 'PERSON NAME PAYMENT'}, rules), 'OTHER')
         self.assertEqual(categorise_transaction({'description': 'CAR RENTAL'}, rules), 'OTHER')
-        self.assertEqual(categorise_transaction({'description': 'SQ *LEMONWORLD Birmingham'}, rules), 'OTHER')
+        self.assertEqual(categorise_transaction({'description': 'NOSTALGIA.CO.UK EDINBURGH'}, rules), 'OTHER')
 
     def test_private_specific_override_precedes_built_in_generic_rule(self):
         with tempfile.TemporaryDirectory() as folder:

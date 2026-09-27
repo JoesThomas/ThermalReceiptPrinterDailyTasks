@@ -580,7 +580,7 @@ def print_integrated_finance(
 
     unknown = uncategorised_merchants(
         clean_transactions, rules, as_of=today,
-        minimum_amount=25.0, limit=3,
+        minimum_amount=20.0, limit=3,
     )
     if unknown:
         printer.text("\n")
