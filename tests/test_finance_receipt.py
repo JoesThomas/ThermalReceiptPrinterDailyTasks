@@ -27,6 +27,11 @@ class FinanceReceiptTests(unittest.TestCase):
         self.assertTrue(all(len(row) <= 40 for row in rows))
         self.assertTrue(any('£123.45' in row for row in rows))
 
+    def test_negative_amount_puts_minus_before_pound_sign(self):
+        self.assertEqual(_amount_rows('Known cash change', -500)[0],
+                         'KNOWN CASH CHANGE               -£500.00')
+        self.assertEqual(_amount_rows('Credit', 0)[0][-5:], '£0.00')
+
     def test_expired_payday_does_not_print_allowance(self):
         result = calculate_debt_and_payday(100, 0, [],
             {'next_payday': '2026-09-01'}, date(2026, 9, 30))

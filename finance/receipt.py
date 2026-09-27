@@ -67,7 +67,9 @@ def _decimal(value):
 
 def _amount_rows(label, value, width=40):
     label = str(label).upper().strip()
-    formatted = f"£{_decimal(value):,.2f}"
+    amount = _decimal(value)
+    formatted = (f"-£{abs(amount):,.2f}" if amount < 0
+                 else f"£{amount:,.2f}")
     if len(label) + len(formatted) + 1 <= width:
         return [label + formatted.rjust(width - len(label))]
     from textwrap import wrap
