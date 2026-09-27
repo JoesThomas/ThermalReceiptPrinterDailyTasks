@@ -13,7 +13,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from finance_trends import (
-    load_rules, category_trends, receipt_trend_lines,
+    load_rules, category_trends, uncategorised_merchants, receipt_trend_lines,
     clean_spending_transactions, spending_total, usual_30_day_spend,
     debug_spending_transactions,
     completed_periods_to_save, period_analysis, save_snapshot,
@@ -577,6 +577,20 @@ def print_integrated_finance(
         rules,
         minimum_current_spend=20.0,
     )
+
+    unknown = uncategorised_merchants(
+        clean_transactions, rules, as_of=today,
+        minimum_amount=25.0, limit=3,
+    )
+    if unknown:
+        printer.text("\n")
+        left(printer, "CATEGORY CHECK - OTHER [BANK TX]")
+        print_line(printer, "-")
+        for item in unknown:
+            for row in _amount_rows(item["merchant"][:24], item["amount"]):
+                left(printer, row)
+
+
 
     if trends:
 

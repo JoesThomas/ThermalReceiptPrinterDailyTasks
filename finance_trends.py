@@ -21,6 +21,9 @@ DEFAULT_CATEGORIES = [
     "ENTERTAINMENT",
     "SHOPPING",
     "HOUSEHOLD",
+    "HOUSING",
+    "INSURANCE",
+    "PERSONAL CARE",
     "BILLS & UTILITIES",
     "SUBSCRIPTIONS",
     "HEALTH",
@@ -31,8 +34,57 @@ DEFAULT_CATEGORIES = [
 
 EXCLUDED_CATEGORIES = {"TRANSFER", "SAVINGS", "CREDIT CARD PAYMENT", "INCOME"}
 
+# General merchant names from actual statements. Keep personal names and
+# ambiguous shops out of this public file; private rules can override these.
+DEFAULT_MERCHANT_RULES = {
+    "RENT": "HOUSING",
+    "BIRMINGHAM CITY CO": "BILLS & UTILITIES",
+    "SEVERN TRENT WATER": "BILLS & UTILITIES",
+    "SCOTTISHPOWER": "BILLS & UTILITIES",
+    "CAR INSURANCE": "INSURANCE",
+    "HOMEPROTECTDIRECT": "INSURANCE",
+    "TESCO PETROL": "TRANSPORT",
+    "TESCO PFS": "TRANSPORT",
+    "TRAINLINE": "TRANSPORT",
+    "TAXI": "TRANSPORT",
+    "AMZNMKTPLACE": "SHOPPING",
+    "AMAZON.CO.UK": "SHOPPING",
+    "VINTED": "SHOPPING",
+    "LAMPANDLIGHT": "HOUSEHOLD",
+    "SCREWFIX": "HOUSEHOLD",
+    "WICKES": "HOUSEHOLD",
+    "ALDI": "FOOD",
+    "CO-OP": "FOOD",
+    "TESCO STORES": "FOOD",
+    "STIRCHLEY FOOD": "FOOD",
+    "JUST EAT": "EATING OUT",
+    "DELIVEROO": "EATING OUT",
+    "ORIGINAL PATTY": "EATING OUT",
+    "EAT VIETNA": "EATING OUT",
+    "BRITISH OAK": "EATING OUT",
+    "BACCHUS BAR": "EATING OUT",
+    "TROCADERO BIRMINGHAM": "EATING OUT",
+    "ATTIC BREW": "EATING OUT",
+    "200 DEGREES": "EATING OUT",
+    "LOAF BAKERY": "EATING OUT",
+    "GREGGS": "EATING OUT",
+    "BOUTIQUE HAIR": "PERSONAL CARE",
+    "ODEON CINEMAS": "ENTERTAINMENT",
+    "VIRGIN EXPERIENCE DAYS": "ENTERTAINMENT",
+    "SKIDDLE": "ENTERTAINMENT",
+    "TRUCK FESTIV": "ENTERTAINMENT",
+    "TNT SPORTS": "SUBSCRIPTIONS",
+    "SKY SUBSCRIPTION": "SUBSCRIPTIONS",
+    "SETANTA.COM": "SUBSCRIPTIONS",
+    "SPOTIFY": "SUBSCRIPTIONS",
+    "ADOBE": "SUBSCRIPTIONS",
+    "NETFLIX": "SUBSCRIPTIONS",
+    "SMARTY.CO.UK": "SUBSCRIPTIONS",
+    "ONE.COM": "SUBSCRIPTIONS",
+}
+
 FIXED_COMMITMENT_TERMS = (
-    "ROBERT THOMAS RENT",
+    "RENT",
     "BIRMINGHAM CITY CO",
     "SEVERN TRENT WATER",
     "SCOTTISHPOWER",
@@ -40,6 +92,9 @@ FIXED_COMMITMENT_TERMS = (
     "HOMEPROTECTDIRECT",
     "SKY SUBSCRIPTION",
     "TNT SPORTS",
+    "SETANTA.COM",
+    "NETFLIX.COM",
+    "ADOBE",
     "SPOTIFY",
     "SMARTY.CO.UK",
     "ONE.COM",
@@ -67,9 +122,10 @@ def everyday_spending_transactions(
             or ""
         ).upper()
 
-        if any(
+        if re.search(r"\bRENT\b", description) or any(
             term in description
             for term in FIXED_COMMITMENT_TERMS
+            if term != "RENT"
         ):
             continue
 
@@ -81,13 +137,17 @@ def _normalise_merchant(value: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^A-Z0-9 &'-]", " ", (value or "").upper())).strip()
 
 def load_rules(path: Path) -> dict:
-    if not path.exists():
-        return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
+    """Load private overrides first, then fall back to built-in merchants."""
+    custom = {}
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                custom = data
+        except (OSError, json.JSONDecodeError):
+            pass
+    return {**custom, **{name: category for name, category in DEFAULT_MERCHANT_RULES.items()
+                        if name not in custom}}
 
 def categorise_transaction(tx: dict, rules: dict) -> str:
     explicit = str(tx.get("category") or tx.get("transaction_category") or "").upper().strip()
@@ -96,7 +156,12 @@ def categorise_transaction(tx: dict, rules: dict) -> str:
     )
 
     for needle, category in rules.items():
-        if _normalise_merchant(needle) in merchant:
+        normalised = _normalise_merchant(needle)
+        if not normalised:
+            continue
+        matches = (bool(re.search(r"\bRENT\b", merchant))
+                   if normalised == "RENT" else normalised in merchant)
+        if matches:
             return str(category).upper().strip()
 
     aliases = {
@@ -617,6 +682,35 @@ def _window_totals(
         totals[category] += amount
 
     return dict(totals)
+
+def uncategorised_merchants(
+    transactions: list[dict], rules: dict, *, as_of: date | None = None,
+    days: int = 30, minimum_amount: float = 25.0, limit: int = 3,
+) -> list[dict]:
+    """Largest uncategorised merchants, summed across the recent window."""
+    as_of = as_of or date.today()
+    start = as_of - timedelta(days=days - 1)
+    totals = defaultdict(float)
+    labels = {}
+    for tx in transactions:
+        when = _parse_date(tx)
+        if when is None or not start <= when <= as_of:
+            continue
+        if categorise_transaction(tx, rules) != "OTHER":
+            continue
+        label = _transaction_description(tx)
+        key = _normalise_merchant(label)
+        if not key:
+            continue
+        labels.setdefault(key, label)
+        totals[key] += float(tx.get("spend_amount", _amount(tx)) or 0)
+    ranked = sorted(
+        ((labels[key], round(amount, 2)) for key, amount in totals.items()
+         if amount >= minimum_amount),
+        key=lambda item: (-item[1], item[0]),
+    )
+    return [{"merchant": name, "amount": amount} for name, amount in ranked[:limit]]
+
 
 def category_trends(
     transactions: list[dict],

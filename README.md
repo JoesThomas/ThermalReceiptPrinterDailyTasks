@@ -147,3 +147,24 @@ uses the existing account transactions and the recorded repayment amount.
 No repayment is automatically turned into a dated payday commitment: add an
 individual or recurring date to `commitments` if it needs to affect the
 before-payday allowance.
+
+### Spending categories
+
+Built-in merchant rules now recognise common entries such as supermarkets,
+petrol, public transport, restaurants, utilities, rent, insurance, household
+shops, entertainment and subscriptions. They apply to the 30-day category
+trends and quarterly/yearly comparisons. A private
+`data/finance_categories.json` still overrides them; for example:
+
+```json
+{
+  "A SPECIFIC MERCHANT": "HOUSEHOLD"
+}
+```
+
+The rules change category labels, not transaction totals. The finance receipt
+prints up to three merchants in `CATEGORY CHECK - OTHER` when uncategorised
+spending reaches £25 in the last 30 days. Person-to-person payments and
+ambiguous merchant names intentionally remain `OTHER` until you add a private
+rule based on what the purchase actually was. Do not put personal payee names
+in the public repository.
