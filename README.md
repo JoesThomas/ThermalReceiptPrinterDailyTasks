@@ -6,7 +6,7 @@ back into the project.
 
 ## Physical receipts
 
-1. Daily Information — weather + 3 UK news summaries + 3 Birmingham/local summaries
+1. Daily Information — weather + 3 UK news summaries + up to 3 BBC Birmingham & Black Country stories + up to 3 BBC Sport stories
 2. Daily Actions — calendar, travel/leave-by, to-do, deliveries, other requested checks
 3. Food — daily recipe; Saturday plan/shopping; Sunday prep
 4. Finance — only when requested
@@ -16,7 +16,7 @@ back into the project.
 - Calendar addresses preserved from iCal
 - Driving, public transport and short walking options
 - Leave-by times and previous-event journey chaining
-- Three UK + three Birmingham/local news items with compact source-derived RSS summaries
+- Three UK items, BBC Birmingham & Black Country articles and BBC Sport articles with compact source-derived RSS summaries
 - Optional news disappears if unavailable
 - Finance uses £ formatting
 - Upcoming payments are one line: name / amount / date
@@ -117,3 +117,13 @@ A bank label identifies its source, not its age or a guarantee that the bank
 updated that figure today. The `reviewed_on` date covers manual payment settings
 only. Monthly commitment labels indicate whether a stored bill was matched to
 bank activity; an unmatched item may still need checking.
+
+## Local and sport news
+
+Local news uses the dedicated BBC Birmingham & Black Country RSS feed rather
+than broad search results. Sport uses the BBC Sport RSS feed and prints in its
+own section. Both require dated BBC article links and skip live pages, hub
+pages, previews, videos and promotional headlines. Local stories may be fewer
+than three when the feed has no suitable recent articles; unavailable news
+sections are omitted. The control page has a Sport news toggle and a separate
+sport story count (default 3). General UK news remains unchanged.

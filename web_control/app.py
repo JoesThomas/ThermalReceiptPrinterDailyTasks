@@ -384,7 +384,7 @@ def _checked(name): return request.form.get(name) == "on"
 @login_required
 def save():
     settings = load_receipt_settings()
-    for name in ("calendar", "deliveries", "weather", "national_news", "local_news", "villa", "villa_trains"):
+    for name in ("calendar", "deliveries", "weather", "national_news", "local_news", "sport_news", "villa", "villa_trains"):
         settings["features"][name] = _checked(name)
     for name in ("finance_check", "food_shop", "shopping_list"):
         if _checked(name): settings["one_shot"][name] = True
@@ -392,6 +392,8 @@ def save():
     settings["display"]["weather_detail"] = detail if detail in {"auto", "compact", "full"} else "auto"
     try: settings["display"]["news_count"] = max(1, min(10, int(request.form.get("news_count", 3))))
     except ValueError: settings["display"]["news_count"] = 3
+    try: settings["display"]["sport_count"] = max(1, min(5, int(request.form.get("sport_count", 3))))
+    except ValueError: settings["display"]["sport_count"] = 3
     try: settings["display"]["earlier_journeys"] = max(0, min(5, int(request.form.get("earlier_journeys", 3))))
     except ValueError: settings["display"]["earlier_journeys"] = 3
     save_receipt_settings(settings); flash("Settings saved."); return redirect(url_for("index"))

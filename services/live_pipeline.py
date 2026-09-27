@@ -84,6 +84,9 @@ from services.villa import (
     get_aston_villa_match_today,
     print_villa_matchday,
 )
+from services.news_feeds import (
+    BBC_LOCAL_FEED, BBC_SPORT_FEED, select_bbc_articles,
+)
 
 # ============================================================
 # PRIVATE CONFIGURATION
@@ -1982,6 +1985,7 @@ NEWS_RSS_URL = (
 )
 NEWS_HEADLINES = 3
 LOCAL_NEWS_HEADLINES = 3
+SPORT_NEWS_HEADLINES = 3
 LOCAL_NEWS_QUERY = "Birmingham"
 LOCAL_NEWS_RSS_URL = (
     "https://news.google.com/rss/search"
@@ -7282,6 +7286,7 @@ def _news_stories(
         title_el = item.find("title")
         desc_el = item.find("description")
         date_el = item.find("pubDate")
+        link_el = item.find("link")
 
         if (
             title_el is None
@@ -7378,6 +7383,7 @@ def _news_stories(
             "summary": summary,
             "published": published,
             "source": source,
+            "link": link_el.text.strip() if link_el is not None and link_el.text else "",
         })
 
         # Fetch a larger candidate pool.
@@ -7389,98 +7395,20 @@ def _news_stories(
 def get_top_news_headlines(number=3):
     return _news_stories(NEWS_RSS_URL, number)
 
-def get_birmingham_news_headlines(
-    number=5,
-):
-    """
-    Return up to `number` genuinely useful Birmingham
-    stories for the daily receipt.
-
-    It is deliberately acceptable to return fewer than
-    `number` stories when the available news is poor.
-    """
-
-    collected = []
-
-    # Fetch far more stories than we ultimately print.
-    # Filtering/ranking happens afterwards.
-    candidates_per_query = 12
-
-    for query in LOCAL_NEWS_QUERIES:
-
-        try:
-            stories = _news_stories(
-                LOCAL_NEWS_RSS_URL,
-                candidates_per_query,
-                {
-                    "q": query,
-                    "hl": "en-GB",
-                    "gl": "GB",
-                    "ceid": "GB:en",
-                },
-
-                # Daily briefing should contain recent
-                # material rather than old search results.
-                max_age_hours=48,
-            )
-
-            collected.extend(
-                stories
-            )
-
-        except Exception as error:
-            print(
-                "Local news query error:",
-                query,
-                repr(error),
-            )
-
-    # -------------------------------------------------
-    # REMOVE DUPLICATE COVERAGE
-    # -------------------------------------------------
-
-    unique = _deduplicate_news_stories(
-        collected
+def get_birmingham_news_headlines(number=3):
+    """Recent actual articles from BBC Birmingham & Black Country only."""
+    stories = _news_stories(BBC_LOCAL_FEED, number=25, max_age_hours=72)
+    return select_bbc_articles(
+        _deduplicate_news_stories(stories), "local", number
     )
 
-    # -------------------------------------------------
-    # SCORE FOR ACTUAL USEFULNESS
-    # -------------------------------------------------
 
-    ranked = _rank_birmingham_news(
-        unique
+def get_sport_news_headlines(number=3):
+    """Recent BBC Sport articles, leaving out live pages and previews."""
+    stories = _news_stories(BBC_SPORT_FEED, number=25, max_age_hours=48)
+    return select_bbc_articles(
+        _deduplicate_news_stories(stories), "sport", number
     )
-
-    # -------------------------------------------------
-    # DEBUG
-    # -------------------------------------------------
-    #
-    # Keep this temporarily. It will make tuning the
-    # scoring system much easier.
-    #
-
-    print(
-        "\n=== BIRMINGHAM NEWS RANKING ==="
-    )
-
-    for story in sorted(
-        unique,
-        key=_score_birmingham_story,
-        reverse=True,
-    )[:20]:
-
-        print(
-            f"{_score_birmingham_story(story):>4} | "
-            f"{story.get('headline', '')}"
-        )
-
-    print(
-        "================================\n"
-    )
-
-    # Crucially: DO NOT fill empty positions with
-    # low-quality stories.
-    return ranked[:number]
 
 def _print_news_stories(
     printer,
@@ -7545,7 +7473,10 @@ def print_news(printer, stories):
     _print_news_stories(printer, "UK NEWS", stories)
 
 def print_local_news(printer, stories):
-    _print_news_stories(printer, "BIRMINGHAM NEWS", stories)
+    _print_news_stories(printer, "BBC BIRMINGHAM / BLACK COUNTRY", stories)
+
+def print_sport_news(printer, stories):
+    _print_news_stories(printer, "SPORT", stories)
 
 # ============================================================
 # COMPACT PRINTER HELPERS
@@ -9129,6 +9060,16 @@ def run_live_pipeline(
                     "Birmingham news error:",
                     repr(error),
                 )
+
+        # ==========================================
+        # SPORT NEWS
+        # ==========================================
+        if feature_enabled(settings, "sport_news"):
+            try:
+                sport_count = int(display_value(settings, "sport_count", SPORT_NEWS_HEADLINES))
+                print_sport_news(printer, get_sport_news_headlines(sport_count))
+            except Exception as error:
+                print("Sport news error:", repr(error))
 
         # ==========================================
         # CUT RECEIPT

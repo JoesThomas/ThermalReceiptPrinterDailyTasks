@@ -301,7 +301,8 @@
                 ('deliveries','Deliveries'),
                 ('weather','Weather'),
                 ('national_news','National news'),
-                ('local_news','Birmingham news'),
+                ('local_news','BBC Birmingham & Black Country'),
+                ('sport_news','Sport news'),
                 ('villa','Villa match information'),
                 ('villa_trains','Villa match-day trains')
             ] %}
@@ -377,6 +378,12 @@
 
             </label>
 
+
+            <label class="option">
+                <span>Sport stories</span>
+                <input type="number" name="sport_count" min="1" max="5"
+                       value="{{ settings.display.sport_count }}">
+            </label>
 
             <label class="option">
 
