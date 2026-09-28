@@ -176,6 +176,17 @@ ambiguous merchant names intentionally remain `OTHER` until you add a private
 rule based on what the purchase actually was. Do not put personal payee names
 in the public repository.
 
+## Printer connection
+
+The daily receipt and web print actions use the configured network printer by
+default. The live preview uses a virtual printer and never sends data to the
+printer. To change the destination, set
+`RECEIPT_PRINTER_HOST` and optionally `RECEIPT_PRINTER_PORT` in the environment
+that launches the application. To return to USB printing, set
+`RECEIPT_PRINTER_CONNECTION=usb` (USB IDs `0x0416:0x5011`). The standalone
+`print_google_doc.py` has its own network connection setting. Reserve the
+printer's address on the router to avoid a later address conflict.
+
 ## Receipt Control server address
 
 Receipt Control now groups the main print actions at the top and links to

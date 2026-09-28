@@ -39,16 +39,23 @@ def run_live(
         return
 
     if os.environ.get("RECEIPT_WEB_CAPTURE") != "1":
-        run_live_pipeline(force_finance=finance_requested, only_page=only_page)
+        from receipt.printer import open_printer
+        original_usb = live_pipeline.Usb
+        live_pipeline.Usb = lambda *args, **kwargs: open_printer()
+        try:
+            run_live_pipeline(force_finance=finance_requested, only_page=only_page)
+        finally:
+            live_pipeline.Usb = original_usb
         return
 
     from receipt.capture import RecordingPrinter
+    from receipt.printer import open_printer
     original_usb = live_pipeline.Usb
     recorder = None
 
     def recording_usb(*args, **kwargs):
         nonlocal recorder
-        recorder = RecordingPrinter(original_usb(*args, **kwargs))
+        recorder = RecordingPrinter(open_printer())
         return recorder
 
     live_pipeline.Usb = recording_usb

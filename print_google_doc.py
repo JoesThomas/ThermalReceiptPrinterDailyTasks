@@ -18,7 +18,7 @@ PRINTER_TYPE = "auto"
 
 # Network settings. These are only used if network printing is selected
 # (or if auto mode cannot connect by USB).
-PRINTER_IP = "192.168.1.100"
+PRINTER_IP = "192.168.0.220"
 PRINTER_PORT = 9100
 
 # USB settings. Replace these with your printer's real USB IDs.
