@@ -19,6 +19,7 @@ def parse_args():
     parser.add_argument("--live-preview", action="store_true", help="Fetch live data and save a receipt preview without printing.")
     parser.add_argument("--validate", action="store_true", help="Validate JSON and recipe data, then exit.")
     parser.add_argument("--health", action="store_true", help="Run local health checks, then exit.")
+    parser.add_argument("--finance-debug", action="store_true", help="Print a redacted bank fetch and income diagnostic, without printing a receipt.")
     parser.add_argument("--finance", action="store_true", help="Simulate a finance-requested run.")
     parser.add_argument(
         "--only",
@@ -67,6 +68,11 @@ def build_demo_documents(day: date, finance_requested: bool) -> list[ReceiptDocu
 def main():
     args = parse_args()
     logger = configure_logging()
+
+    if args.finance_debug:
+        from finance_debug import run_finance_debug
+        run_finance_debug()
+        return
 
     if args.validate:
         errors = validate_project(FILES)
