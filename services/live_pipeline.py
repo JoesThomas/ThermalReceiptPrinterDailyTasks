@@ -1895,13 +1895,15 @@ FINANCE_SALARY_KEYWORDS = (
     "salary",
     "payroll",
     "wages",
-    "pay",
 )
 
 FINANCE_INTERNAL_TRANSFER_KEYWORDS = (
-    "transfer",
     "internal transfer",
     "own account",
+    "between my accounts",
+    "savings transfer",
+    "credit card payment",
+    "card repayment",
 )
 
 FINANCE_ESSENTIAL_KEYWORDS = (
@@ -6271,6 +6273,9 @@ def _is_incoming_transaction(tx):
         tx.get("transaction_category", "")
     ).upper()
 
+    if tx_type in {"DEBIT", "CARD_PAYMENT"}:
+        return False
+
     return (
         amount > 0
         or tx_type == "CREDIT"
@@ -6303,7 +6308,7 @@ def _looks_like_internal_transfer(tx):
     )
 
 
-def _looks_like_salary(tx):
+def _looks_like_salary(tx, salary_payee=""):
     text = " ".join(
         [
             str(tx.get("description", "")),
@@ -6311,13 +6316,13 @@ def _looks_like_salary(tx):
         ]
     ).lower()
 
-    return any(
-        keyword in text
-        for keyword in FINANCE_SALARY_KEYWORDS
-    )
+    if salary_payee and salary_payee.casefold() in text:
+        return True
+    return any(re.search(rf"\b{re.escape(keyword)}\b", text)
+               for keyword in FINANCE_SALARY_KEYWORDS)
 
 
-def analyse_incoming_payments(transactions):
+def analyse_incoming_payments(transactions, salary_payee=""):
     salary = []
     other = []
 
@@ -6342,7 +6347,7 @@ def analyse_incoming_payments(transactions):
             "date": tx_date,
         }
 
-        if _looks_like_salary(tx):
+        if _looks_like_salary(tx, salary_payee):
             salary.append(item)
         else:
             other.append(item)
@@ -6716,7 +6721,8 @@ def get_regular_finance_data():
 
     salary_incomings, other_incomings = (
         analyse_incoming_payments(
-            all_transactions
+            all_transactions,
+            salary_payee=load_receipt_settings().get("finance", {}).get("salary_payee", ""),
         )
     )
 
@@ -8138,6 +8144,7 @@ def therapy_paid_recently(settings, today):
     from receipt.therapy_payment import recent_therapy_payment
 
     options = settings.get("therapy_payment", {})
+    configured_payee = options.get("payee") or "Angeliki Ford"
     provider = options.get("provider", "MONZO")
     if provider not in ("MONZO", "HSBC"):
         provider = "MONZO"
@@ -8160,7 +8167,7 @@ def therapy_paid_recently(settings, today):
     with ThreadPoolExecutor(max_workers=4) as pool:
         futures = [pool.submit(fetch, account_id) for account_id in account_ids]
         for future in as_completed(futures):
-            if recent_therapy_payment(future.result(), payee=options.get("payee", ""), today=today):
+            if recent_therapy_payment(future.result(), payee=configured_payee, today=today):
                 for pending in futures:
                     pending.cancel()
                 return True

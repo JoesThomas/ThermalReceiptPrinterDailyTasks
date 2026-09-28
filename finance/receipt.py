@@ -83,6 +83,53 @@ def _amount_line(label, value):
     return _amount_rows(label, value)[0]
 
 
+def _recent_incoming_items(items, today):
+    cutoff = today - timedelta(days=30)
+    recent = []
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        paid_on = item.get("date")
+        try:
+            if isinstance(paid_on, datetime):
+                paid_on = paid_on.date()
+            elif isinstance(paid_on, str):
+                paid_on = date.fromisoformat(paid_on[:10])
+            amount = _decimal(item.get("amount"))
+        except (ValueError, TypeError):
+            continue
+        if isinstance(paid_on, date) and cutoff <= paid_on <= today and amount > 0:
+            recent.append({"date": paid_on, "name": str(item.get("name") or "INCOMING PAYMENT"),
+                           "amount": amount})
+    return sorted(recent, key=lambda item: (item["date"], item["name"]), reverse=True)
+
+
+def print_incoming_payments(printer, left, line, summary, total_outgoings, today):
+    """Show every reported incoming bank payment in the same 30-day window."""
+    salary = _recent_incoming_items(summary.get("salary_incomings"), today)
+    other = _recent_incoming_items(summary.get("other_incomings"), today)
+    salary_total = sum((item["amount"] for item in salary), Decimal(0))
+    other_total = sum((item["amount"] for item in other), Decimal(0))
+    total = salary_total + other_total
+
+    printer.text("\n")
+    left(printer, "INCOMING / LAST 30 DAYS [BANK TX]")
+    line(printer, "-")
+    for label, value in (("SALARY", salary_total), ("OTHER IN", other_total),
+                         ("TOTAL IN", total),
+                         ("AFTER OUTGOINGS", total - _decimal(total_outgoings))):
+        for row in _amount_rows(label, value):
+            left(printer, row)
+
+    for heading, items in (("SALARY PAYMENTS", salary), ("OTHER INCOMING PAYMENTS", other)):
+        line(printer, "-")
+        left(printer, f"{heading} ({len(items)})")
+        for item in items:
+            label = f"{item['date']:%d %b} {item['name']}"
+            for row in _amount_rows(label, item["amount"]):
+                left(printer, row)
+
+
 def load_finance_settings(path=FINANCE_SETTINGS_FILE):
     path = Path(path)
     if not path.exists():
@@ -557,12 +604,8 @@ def print_integrated_finance(
     if usual > 0:
         left(printer, f"CHANGE {(last30 - usual) / usual * 100:+.1f}%")
 
-    # Incomings are sourced from the existing 30-day account summary.
-    incoming = spending_summary.get("total_incoming_30_days")
-    if incoming is not None:
-        print_line(printer, "-")
-        left(printer, _amount_line("INCOME - 30 DAYS", incoming))
-        left(printer, _amount_line("INCOME LESS OUTGOINGS", float(incoming) - total_outgoings))
+    print_incoming_payments(printer, left, print_line, spending_summary,
+                            total_outgoings, today)
 
     # ==========================================
     # CATEGORY TRENDS

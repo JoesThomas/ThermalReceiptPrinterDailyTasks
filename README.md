@@ -27,6 +27,12 @@ transaction) and choose Monzo or HSBC. This private setting stays in the ignored
 `data/receipt_settings.json`. Bank access failures leave the reminder visible.
 The same completed payment also hides an exact "Pay for therapy." task in the
 Google Doc for that receipt.
+The therapy reference defaults to the payee provided for this receipt and can be
+changed in Receipt Control. Finance receipts show a dedicated 30-day incoming
+section: salary totals and payments, all other incoming payments, and the amount
+remaining after outgoings. Salary/payroll descriptions are recognised automatically;
+enter an employer bank reference under **Salary identification** if the bank uses a
+different name.
 
 ## Added since modular v3
 

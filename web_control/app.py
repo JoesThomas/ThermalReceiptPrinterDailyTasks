@@ -421,6 +421,8 @@ def save():
         settings["therapy_payment"]["payee"] = request.form["therapy_payee"].strip()[:80]
         provider = request.form.get("therapy_provider", "MONZO").upper()
         settings["therapy_payment"]["provider"] = provider if provider in {"MONZO", "HSBC"} else "MONZO"
+    if "salary_payee" in request.form:
+        settings["finance"]["salary_payee"] = request.form["salary_payee"].strip()[:80]
     save_receipt_settings(settings); flash("Settings saved."); return redirect(url_for("index"))
 
 @app.post("/one-shot/<name>/clear")

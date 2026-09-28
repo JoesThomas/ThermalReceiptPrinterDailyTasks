@@ -2,10 +2,34 @@ import unittest
 from datetime import date
 from decimal import Decimal
 from finance.receipt import (calculate_debt_and_payday, _amount_rows,
-                             print_integrated_finance,
+                             print_integrated_finance, print_incoming_payments,
                              _calendar_occurrence, _forecast_events)
 
 class FinanceReceiptTests(unittest.TestCase):
+    def test_incoming_section_lists_salary_and_every_other_payment_in_window(self):
+        lines = []
+        class Printer:
+            def text(self, value):
+                lines.extend(value.splitlines())
+        summary = {
+            'salary_incomings': [{'date': date(2026, 9, 20), 'name': 'Example Payroll', 'amount': 2000}],
+            'other_incomings': [
+                {'date': date(2026, 9, 28 - index), 'name': f'Other source {index}', 'amount': 10}
+                for index in range(7)
+            ] + [{'date': date(2026, 8, 1), 'name': 'Old income', 'amount': 500}],
+        }
+        print_incoming_payments(Printer(), lambda p, value: lines.append(value),
+                                lambda p, char: lines.append(char * 40),
+                                summary, 600, date(2026, 9, 28))
+        self.assertIn('SALARY PAYMENTS (1)', lines)
+        self.assertIn('OTHER INCOMING PAYMENTS (7)', lines)
+        self.assertTrue(any('£2,070.00' in row for row in lines))
+        self.assertTrue(any('£1,470.00' in row for row in lines))
+        self.assertTrue(all(any(f'OTHER SOURCE {index}' in row for row in lines)
+                            for index in range(7)))
+        self.assertFalse(any('OLD INCOME' in row for row in lines))
+        self.assertTrue(all(len(row) <= 40 for row in lines))
+
     def test_live_amex_and_instalment_take_precedence(self):
         settings = {
             'next_payday': '2026-10-05', 'emergency_buffer': 100,

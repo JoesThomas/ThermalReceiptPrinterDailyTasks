@@ -375,6 +375,13 @@
         </section>
 
 
+        <section>
+            <h2>Salary identification</h2>
+            <p class="muted">Salary and payroll references are recognised automatically. If your employer appears under a different name in bank transactions, enter that name here so its payments are listed under salary.</p>
+            <label>Salary bank reference<input name="salary_payee" maxlength="80" autocomplete="off" value="{{ settings.finance.salary_payee }}" placeholder="Employer name on bank payment"></label>
+        </section>
+
+
         <section id="receipt-location">
             <h2>Receipt location</h2>
             <p class="muted">The name and region appear in the receipt header and weather. Coordinates choose the weather forecast; the BBC RSS feed chooses the local headlines.</p>
