@@ -8522,6 +8522,9 @@ def run_live_pipeline(
         or web_finance
     )
 
+    from receipt.preview_progress import report as preview_progress
+    preview_progress("Gathering weather and news", 0, 4)
+
     if print_information_page:
         print_header(printer, location)
 
@@ -8654,6 +8657,7 @@ def run_live_pipeline(
             printer
         )
 
+    preview_progress("Gathering calendar and actions", 1, 4)
     if print_actions_page:
         # ==========================================
         # VEHICLE CHECK
@@ -8732,17 +8736,8 @@ def run_live_pipeline(
                     "Downloading Google Calendar..."
                 )
 
-                events = get_calendar_events(
-                    CALENDAR_ICAL_URL,
-                    days_ahead=0,
-                )
-
-                upcoming_events = (
-                    get_calendar_events(
-                        CALENDAR_ICAL_URL,
-                        days_ahead=3,
-                    )
-                )
+                upcoming_events = get_calendar_events(CALENDAR_ICAL_URL, days_ahead=3)
+                events = [event for event in upcoming_events if event["date"] == today]
 
                 print_calendar(
                     printer,
@@ -9029,6 +9024,7 @@ def run_live_pipeline(
             printer
         )
 
+    preview_progress("Preparing meals", 2, 4)
     if print_food_page:
         # ==========================================
         # MEAL PLANNER
@@ -9085,6 +9081,7 @@ def run_live_pipeline(
     # FINANCE - SEPARATE RECEIPT
     # ==========================================
 
+    preview_progress("Checking finances" if print_finance_page and should_run_finance else "Finishing receipt", 3, 4)
     if (
         print_finance_page
         and should_run_finance
@@ -9200,6 +9197,5 @@ def run_live_pipeline(
 
         printer.cut()
 
-    print(
-        "Receipt printed successfully."
-    )
+    preview_progress("Saving preview", 4, 4)
+    print("Receipt printed successfully.")

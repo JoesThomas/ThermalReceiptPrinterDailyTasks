@@ -3,7 +3,6 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    {% if preview_status and preview_status.state == 'running' %}<meta http-equiv="refresh" content="6">{% endif %}
     <title>Receipt preview · Receipt Control</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
 </head>
@@ -22,7 +21,13 @@
             <label><input type="checkbox" name="include_finance"> Include finance even if it is not scheduled today</label>
         </form>
         {% if preview_status %}
-            <p role="status">{% if preview_status.state == 'running' %}Fetching live data; this page refreshes automatically.{% elif preview_status.state == 'completed' %}Preview generated.{% elif preview_status.state == 'interrupted' %}Preview was interrupted. Try again.{% else %}Preview failed. Check logs/web_preview.log and try again.{% endif %}</p>
+            <p role="status" id="preview-message" aria-live="polite">{% if preview_status.state == 'running' %}{{ preview_status.stage or 'Starting receipt' }}{% elif preview_status.state == 'completed' %}Preview generated.{% elif preview_status.state == 'interrupted' %}Preview was interrupted. Try again.{% else %}Preview failed. Check logs/web_preview.log and try again.{% endif %}</p>
+            {% if preview_status.state == 'running' %}
+                <div id="preview-tracker" data-status-url="{{ url_for('live_preview_status_api') }}">
+                    <progress id="preview-progress" max="4" value="{{ preview_status.completed|default(0) }}" aria-label="Receipt sections completed"></progress>
+                    <small id="preview-count">{{ preview_status.completed|default(0) }} of 4 sections prepared</small>
+                </div>
+            {% endif %}
         {% endif %}
         <nav class="nav" aria-label="Receipt source">
             <a href="{{ url_for('preview', page=page, source='live') }}" {% if source == 'live' %}aria-current="page"{% endif %}>Live preview{% if has_live %} (saved){% endif %}</a>
@@ -56,5 +61,39 @@
         {% endfor %}
     </div>
 </main>
+{% if preview_status and preview_status.state == 'running' %}
+<script>
+(() => {
+    const tracker = document.getElementById('preview-tracker');
+    const message = document.getElementById('preview-message');
+    const progress = document.getElementById('preview-progress');
+    const count = document.getElementById('preview-count');
+    let polling = false;
+    async function update() {
+        if (polling) return;
+        polling = true;
+        try {
+            const response = await fetch(tracker.dataset.statusUrl, {cache: 'no-store'});
+            if (!response.ok) return;
+            const status = await response.json();
+            if (status.state !== 'running') {
+                if (status.state !== 'idle') location.reload();
+                return;
+            }
+            const done = Math.max(0, Math.min(4, Number(status.completed) || 0));
+            progress.value = done;
+            count.textContent = `${done} of 4 sections prepared`;
+            message.textContent = status.stage || 'Starting receipt';
+        } catch (_) {
+            message.textContent = 'Still generating; reconnecting to progress updates…';
+        } finally {
+            polling = false;
+        }
+    }
+    setInterval(update, 1500);
+    update();
+})();
+</script>
+{% endif %}
 </body>
 </html>

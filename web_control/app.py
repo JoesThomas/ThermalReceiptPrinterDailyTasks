@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import quote_plus
 from urllib.request import urlopen
 from zoneinfo import ZoneInfo
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -835,6 +835,12 @@ def load_live_preview_status():
         return status
     except (OSError, ValueError, KeyError, TypeError):
         return None
+
+
+@app.get("/preview/status")
+@login_required
+def live_preview_status_api():
+    return jsonify(load_live_preview_status() or {"state": "idle"})
 
 
 @app.post("/preview/generate")
