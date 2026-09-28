@@ -7499,7 +7499,7 @@ def print_temperature_graph(printer, readings):
     graph_max = int(max(temperatures)) + 1
     if graph_min == graph_max:
         graph_max += 1
-    image_width = 360
+    image_width = 288
     image_height = 190
     image = Image.new(
         "1",
@@ -7602,11 +7602,11 @@ def print_temperature_graph(printer, readings):
             - normalized * graph_height
         )
         points.append((x, y))
-        # Label every sixth hour so the labels remain legible.
+        # Label midnight and midday to keep the narrow graph clear.
         hour = int(
             reading["time"][:2]
         )
-        if hour % 6 == 0:
+        if hour % 12 == 0:
             draw.text(
                 (x - 7, x_axis + 6),
                 reading["time"][:2],

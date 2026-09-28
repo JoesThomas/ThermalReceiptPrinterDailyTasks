@@ -32,7 +32,7 @@ class NewsWeatherReceiptTests(unittest.TestCase):
         })
         graph(printer, [{"time": f"{hour:02d}:00", "temperature": float(hour)}
                         for hour in range(24)])
-        self.assertEqual(sizes, [(360, 190)])
+        self.assertEqual(sizes, [(288, 190)])
         self.assertEqual(alignment, ["center", "left"])
 
     def test_local_news_omits_description(self):
