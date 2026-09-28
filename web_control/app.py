@@ -1,12 +1,12 @@
 from __future__ import annotations
 import os, subprocess, sys
-import shlex
 import json
-from datetime import timedelta
+from datetime import timedelta, datetime
 from functools import wraps
 from pathlib import Path
 from urllib.parse import quote_plus
 from urllib.request import urlopen
+from zoneinfo import ZoneInfo
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
@@ -370,6 +370,7 @@ def index():
 
     return render_template(
         "index.html",
+        print_status=load_print_status(),
         settings=settings,
         routines=routines,
         weekdays=WEEKDAYS,
@@ -526,28 +527,9 @@ def _start_print_command(command_args):
             encoding="utf-8",
         )
 
-        command = [
-            sys.executable,
-            str(PROJECT_ROOT / "main.py"),
-            *command_args,
-        ]
-
-        shell_command = (
-            " ".join(
-                shlex.quote(part)
-                for part in command
-            )
-            + "; status=$?; "
-            + f"rm -f {shlex.quote(str(lock))}; "
-            + "exit $status"
-        )
-
         process = subprocess.Popen(
-            [
-                "/bin/sh",
-                "-c",
-                shell_command,
-            ],
+            [sys.executable, str(PROJECT_ROOT / "web_control" / "print_job.py"),
+             *command_args],
             cwd=PROJECT_ROOT,
             stdout=log_handle,
             stderr=subprocess.STDOUT,
@@ -572,6 +554,69 @@ def _start_print_command(command_args):
         return False, "Could not start receipt."
 
     return True, None
+
+
+def load_print_status():
+    path = PROJECT_ROOT / "data" / "web_print_status.json"
+    try:
+        status = json.loads(path.read_text(encoding="utf-8"))
+        if status.get("state") not in {"running", "completed", "failed"}:
+            return None
+        if status["state"] == "running":
+            lock = PROJECT_ROOT / "data" / ".print_now.lock"
+            try:
+                os.kill(int(lock.read_text(encoding="utf-8").strip()), 0)
+            except (OSError, ValueError):
+                status["state"] = "interrupted"
+        return status
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+@app.get("/preview")
+@login_required
+def preview():
+    from main import build_demo_documents
+    from receipt.renderer import render_text
+    page = request.args.get("page", "all")
+    if page not in {"all", *PRINT_PAGES}:
+        return ("Unknown receipt page", 400)
+    today = datetime.now(ZoneInfo("Europe/London")).date()
+    documents = build_demo_documents(today, True)
+    if page != "all":
+        documents = [document for document in documents if document.name == page]
+    content = "\n\n--- CUT ---\n\n".join(render_text(document) for document in documents)
+    return render_template("preview.html", content=content, page=page)
+
+
+@app.get("/finance-review")
+@login_required
+def finance_review():
+    from finance.commitments import matching_repayment_transaction
+    from services.live_pipeline import (build_subscription_status,
+                                        get_regular_finance_data,
+                                        matching_subscription_transaction)
+    today = datetime.now(ZoneInfo("Europe/London")).date()
+    try:
+        transactions = get_regular_finance_data()[0]
+        status = build_subscription_status(transactions, today=today)
+        used = set()
+        rows = []
+        for item in status["monthly"]:
+            index = matching_subscription_transaction(item, transactions, today, used)
+            method = "Merchant and amount"
+            if index is None and item.get("category") == "repayment":
+                index = matching_repayment_transaction(item, transactions, today, used)
+                method = "Payment date and amount"
+            if index is not None:
+                used.add(index)
+            tx = transactions[index] if index is not None else None
+            rows.append({"item": item, "transaction": tx, "method": method})
+        return render_template("finance_review.html", rows=rows, checked_at=today, error=None)
+    except Exception:
+        app.logger.exception("Could not load finance review")
+        return render_template("finance_review.html", rows=[], checked_at=today,
+                               error="Bank transactions are unavailable. Try again later."), 503
 
 
 @app.post("/print-page")

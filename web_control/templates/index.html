@@ -213,6 +213,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
 </head>
 
 <body>
@@ -223,6 +224,7 @@
 
     <header>
         <div>
+            <p class="eyebrow">Daily paper, your way</p>
             <h1>Receipt Control</h1>
             <div class="muted">
                 Daily receipt printer
@@ -248,6 +250,35 @@
         {% endfor %}
     {% endwith %}
 
+
+    <nav class="nav" aria-label="Page sections">
+        <a href="#overview">Overview</a><a href="#next-receipt">Next receipt</a>
+        <a href="#daily-receipt">Daily settings</a><a href="#routines">Routines</a>
+        <a href="#instalments">Instalments</a><a href="#food-shop">Food shop</a>
+        <a href="#printing">Printing</a>
+    </nav>
+    <section id="overview">
+        <p class="eyebrow">At a glance</p>
+        <h2>Ready for your next receipt</h2>
+        <div class="quick-actions">
+            <form method="post" action="{{ url_for('print_now') }}"><button class="primary">Print receipt</button></form>
+            <a class="button" href="{{ url_for('preview') }}">Preview layout</a>
+            <a class="button" href="{{ url_for('finance_review') }}">Review finances</a>
+        </div>
+        <p class="muted">Preview shows example content. Finance review checks live bank transactions.</p>
+        <div class="status-line" aria-live="polite">
+            <strong>Last print:</strong>
+            {% if print_status %}
+                <span class="badge {{ print_status.state }}">{{ print_status.state|title }}</span>
+                <span>{{ print_status.page|replace('_', ' ')|title }} · {{ print_status.updated_at[:16]|replace('T', ' ') }} UTC</span>
+            {% else %}
+                <span class="muted">No recent web print.</span>
+            {% endif %}
+        </div>
+        {% if print_status and print_status.state in ('failed','interrupted') %}
+            <p class="helper">Check <code>logs/web_print.log</code> for the error.</p>
+        {% endif %}
+    </section>
 
     <!-- RECEIPT SETTINGS -->
 
@@ -413,7 +444,7 @@
 
     <!-- ROUTINES -->
 
-    <section>
+    <section id="routines">
 
         <h2>Routines</h2>
 
@@ -632,13 +663,13 @@
          INSTALMENTS
          ======================================== -->
 
-    <section>
+    <section id="instalments">
 
         <h2>Instalments</h2>
 
         <p class="muted">
             Temporary payment commitments.
-            Changes are used by the next finance receipt.
+            Changes are used by the next finance receipt. Set the regular amount and next payment date to help verify a matching bank debit.
         </p>
 
 
@@ -916,7 +947,7 @@
 
     <!-- FOOD SHOP -->
 
-    <section>
+    <section id="food-shop">
 
         <h2>Food shop</h2>
 
@@ -983,13 +1014,12 @@
 
     <!-- DEBUG PRINTING -->
 
-    <section>
+    <section id="print-pages">
 
         <h2>Print individual page</h2>
 
         <p class="muted">
-            Print one physical receipt page for
-            debugging without running the other pages.
+            Print one physical receipt page for debugging. For a paper-free example, use the preview links below.
         </p>
 
         <div class="debug-grid">
@@ -1013,6 +1043,7 @@
                     <button>
                         Print {{ label }}
                     </button>
+                    <a class="section-link" href="{{ url_for('preview', page=key) }}">Example preview</a>
                 </form>
 
             {% endfor %}
@@ -1024,7 +1055,7 @@
 
     <!-- PRINTER -->
 
-    <section>
+    <section id="printing">
 
         <h2>Printer</h2>
 

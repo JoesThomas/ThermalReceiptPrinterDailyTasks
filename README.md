@@ -180,6 +180,14 @@ in the public repository.
 
 ## Receipt Control server address
 
+Receipt Control now groups the main print actions at the top and links to
+settings, routines, instalments and food shop on the same page. Its layout
+preview is explicitly sample content; it does not query live services or show
+the exact next print. Finance review fetches current bank transactions when
+opened and shows the transaction behind each monthly payment match. The print
+status reports whether the web print command is running, finished or failed;
+the detailed diagnostic log is `logs/web_print.log`.
+
 `web_control/run_waitress.py` listens on `0.0.0.0:5050` by default. If startup
 fails with `Address already in use`, check for an existing instance on macOS:
 

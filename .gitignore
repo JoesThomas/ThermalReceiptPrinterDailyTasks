@@ -46,6 +46,7 @@ pantry.json
 # ============================================================
 
 data/receipt_settings.json
+data/web_print_status.json
 
 meal_plans/
 data/meal_plans/
