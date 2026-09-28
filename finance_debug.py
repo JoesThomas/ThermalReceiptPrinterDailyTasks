@@ -10,6 +10,19 @@ def _safe_type(value):
     return kind if kind in {"CREDIT", "DEBIT", "CARD_PAYMENT", "MISSING"} else "OTHER"
 
 
+def _error_code(error):
+    try:
+        payload = error.response.json()
+    except (AttributeError, ValueError):
+        return "unknown"
+    value = payload.get("error") if isinstance(payload, dict) else None
+    # Restrict output to documented codes; never print provider response text.
+    allowed = {"invalid_date_range", "validation_error", "access_denied",
+               "sca_exceeded", "invalid_token", "unauthorized",
+               "provider_request_limit_exceeded"}
+    return value if isinstance(value, str) and value in allowed else "other"
+
+
 def run_finance_debug():
     from services import live_pipeline as finance
 
@@ -21,6 +34,7 @@ def run_finance_debug():
     transactions = []
     failures = 0
     successes = 0
+    probed = set()
     for provider in ("HSBC", "MONZO", "AMEX"):
         try:
             # The service prints raw provider errors, which may contain URLs
@@ -53,7 +67,27 @@ def run_finance_debug():
             except Exception as error:
                 failures += 1
                 code = getattr(getattr(error, "response", None), "status_code", None)
-                print(f"Source: provider={provider} source={index} stage=transactions http={code}")
+                print(f"Source: provider={provider} source={index} stage=transactions http={code} error={_error_code(error)}")
+                if code == 400 and provider not in probed:
+                    probed.add(provider)
+                    # Probe a smaller, ended-in-UTC window to distinguish date
+                    # validation from authorization or provider failures.
+                    probe_end = min(today, datetime.now(ZoneInfo("UTC")).date())
+                    probe_start = probe_end - timedelta(days=29)
+                    try:
+                        with redirect_stdout(StringIO()):
+                            items = finance._truelayer_transactions(
+                                token, "cards" if provider == "AMEX" else "accounts",
+                                account_id, probe_start, probe_end)
+                    except Exception as probe_error:
+                        probe_http = getattr(getattr(probe_error, "response", None), "status_code", None)
+                        print(f"Probe: provider={provider} source={index} window=30d "
+                              f"http={probe_http} error={_error_code(probe_error)}")
+                    else:
+                        successes += 1
+                        transactions.extend(items)
+                        print(f"Probe: provider={provider} source={index} window=30d "
+                              f"count={len(items)} credits={sum(finance._is_incoming_transaction(tx) for tx in items)}")
                 continue
             successes += 1
             transactions.extend(items)
