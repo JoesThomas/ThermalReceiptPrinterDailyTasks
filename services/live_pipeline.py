@@ -5913,24 +5913,38 @@ def _truelayer_transactions(
     from_date,
     to_date,
     timeout=20,
+    range_info=None,
 ):
-    response = requests.get(
-        (
-            f"{TRUELAYER_DATA_URL}/"
-            f"{endpoint_prefix}/{account_id}/transactions"
-        ),
-        headers={
-            "Authorization": f"Bearer {access_token}"
-        },
-        params={
-            "from": from_date.isoformat(),
-            "to": to_date.isoformat(),
-        },
-        timeout=timeout,
-    )
-    response.raise_for_status()
+    # London can be a day ahead of UTC shortly after midnight. Avoid
+    # asking providers for a future day or more than 90 inclusive days.
+    end = min(to_date, datetime.now(ZoneInfo("UTC")).date())
+    start = max(from_date, end - timedelta(days=89))
 
-    return response.json().get("results", [])
+    def fetch(first, last):
+        response = requests.get(
+            f"{TRUELAYER_DATA_URL}/{endpoint_prefix}/{account_id}/transactions",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"from": first.isoformat(), "to": last.isoformat()},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        return response.json().get("results", [])
+
+    try:
+        return fetch(start, end)
+    except requests.HTTPError as error:
+        response = getattr(error, "response", None)
+        try:
+            code = response.json().get("error")
+        except (AttributeError, ValueError):
+            code = None
+        if response is None or response.status_code != 400 or code != "invalid_date_range":
+            raise
+        # Some providers accept only a shorter transaction window.
+        # Preserve current-month bill matching and incoming payments.
+        if range_info is not None:
+            range_info["shortened"] = True
+        return fetch(max(from_date, end - timedelta(days=29)), end)
 
 
 def _truelayer_regular_payments(
@@ -6589,6 +6603,7 @@ def get_regular_finance_data():
     all_transactions = []
 
     provider_tokens = {}
+    transaction_range_info = {}
     fetch_attempted = 0
     fetch_succeeded = 0
     fetch_failed = 0
@@ -6684,6 +6699,7 @@ def get_regular_finance_data():
                         account_id,
                         from_date,
                         today,
+                        range_info=transaction_range_info,
                     )
                 )
                 fetch_succeeded += 1
@@ -6718,6 +6734,7 @@ def get_regular_finance_data():
                         card_id,
                         from_date,
                         today,
+                        range_info=transaction_range_info,
                     )
                 )
                 fetch_succeeded += 1
@@ -6746,15 +6763,16 @@ def get_regular_finance_data():
         standing_orders,
     )
 
+    average_days = 30 if transaction_range_info.get("shortened") else FINANCE_TRANSACTION_LOOKBACK_DAYS
     ninety_day_average = _monthlyised_spend(
         all_transactions,
-        FINANCE_TRANSACTION_LOOKBACK_DAYS,
+        average_days,
         essential_only=False,
     )
 
     essential_monthly_burn = _monthlyised_spend(
         all_transactions,
-        FINANCE_TRANSACTION_LOOKBACK_DAYS,
+        average_days,
         essential_only=True,
     )
 
@@ -6787,6 +6805,7 @@ def get_regular_finance_data():
     bank_data_status = ("unavailable" if not fetch_succeeded else
                         "partial" if fetch_failed else "complete")
     spending_summary = {
+        "average_period_days": average_days,
         "bank_data_status": bank_data_status,
         "bank_fetch_attempted": fetch_attempted,
         "bank_fetch_succeeded": fetch_succeeded,

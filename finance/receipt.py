@@ -624,7 +624,7 @@ def print_integrated_finance(
         ("EVERYDAY SPEND", last30),
         ("FIXED COMMITMENTS", fixed_commitments),
         ("TOTAL OUTGOINGS", total_outgoings),
-        ("3 MONTH AVG", usual),
+        ("30 DAY AVG" if spending_summary.get("average_period_days") == 30 else "3 MONTH AVG", usual),
     ):
         left(printer, _amount_line(label, value))
     if usual > 0:
