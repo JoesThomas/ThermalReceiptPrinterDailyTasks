@@ -7419,7 +7419,7 @@ def print_news(printer, stories):
     _print_news_stories(printer, "UK NEWS", stories, include_summary=False)
 
 def print_local_news(printer, stories, label=DEFAULT_LOCATION["local_news_label"]):
-    _print_news_stories(printer, f"BBC {label.upper()}", stories)
+    _print_news_stories(printer, f"BBC {label.upper()}", stories, include_summary=False)
 
 def print_sport_news(printer, stories):
     _print_news_stories(printer, "SPORT", stories)
@@ -7482,7 +7482,7 @@ def print_temperature_graph(printer, readings):
     """
     Print a compact monochrome stepped-line temperature graph.
 
-    The six four-hour readings are connected using horizontal
+    The hourly readings are connected using horizontal
     steps with vertical transitions. This gives the receipt a
     vintage weather-station / chart-recorder appearance while
     remaining a bitmap, so no Unicode graph characters are sent
@@ -7602,7 +7602,7 @@ def print_temperature_graph(printer, readings):
             - normalized * graph_height
         )
         points.append((x, y))
-        # Four-hour time labels.
+        # Label every fourth hour to leave room for the hourly points.
         hour = int(
             reading["time"][:2]
         )
@@ -8275,10 +8275,10 @@ def print_weather(printer, weather, location=DEFAULT_LOCATION):
         interval_hours=4,
     )
 
-    # Graph gets twice as much resolution.
+    # Graph uses every forecast hour; text remains four-hourly.
     graph_readings = get_hourly_weather(
         weather,
-        interval_hours=2,
+        interval_hours=1,
     )
 
     print_line(printer, "=")
