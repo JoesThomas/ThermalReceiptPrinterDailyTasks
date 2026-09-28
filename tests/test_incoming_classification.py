@@ -43,6 +43,21 @@ class IncomingClassificationTests(unittest.TestCase):
         self.assertEqual({item['name'] for item in other},
                          {'Bank transfer from friend', 'PAYPAL reimbursement'})
 
+    def test_own_account_movements_are_excluded_but_rent_remains(self):
+        transactions = [
+            {'date': '2026-09-16', 'amount': 2.48, 'description': 'SAVING CHALLENGE (2026)'},
+            {'date': '2026-09-21', 'amount': 0.90, 'description': 'RAINY DAY'},
+            {'date': '2026-09-20', 'amount': 100, 'description': 'PAYMENT RECEIVED - THANK YOU',
+             '_source_provider': 'AMEX'},
+            {'date': '2026-09-17', 'amount': 10, 'description': 'MONZO-HCDSB'},
+            {'date': '2026-09-21', 'amount': 800, 'description': 'Rent payment'},
+            {'date': '2026-09-21', 'amount': 20, 'description': 'PAYMENT RECEIVED - THANK YOU'},
+        ]
+        salary, other = income_functions()(transactions)
+        self.assertEqual(salary, [])
+        self.assertEqual([(item['name'], item['amount']) for item in other],
+                         [('Rent payment', 800), ('PAYMENT RECEIVED - THANK YOU', 20)])
+
     def test_date_only_rent_credit_and_other_sources_are_retained(self):
         transactions = [
             {'date': '2026-09-28', 'amount': 800, 'transaction_type': 'CREDIT',

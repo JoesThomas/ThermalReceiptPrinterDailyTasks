@@ -6323,10 +6323,23 @@ def _looks_like_internal_transfer(tx):
         ]
     ).lower()
 
-    return any(
-        keyword in text
-        for keyword in FINANCE_INTERNAL_TRANSFER_KEYWORDS
-    )
+    if any(keyword in text for keyword in FINANCE_INTERNAL_TRANSFER_KEYWORDS):
+        return True
+
+    # User-confirmed transfers and pot credits; these are movements of
+    # existing money, rather than new income.
+    description = str(tx.get("description") or tx.get("merchant_name") or "").strip()
+    if (re.search(r"\bSAVING CHALLENGE(?: \(\d{4}\))?\b", description, re.I)
+            or re.search(r"\bRAINY DAY\b", description, re.I)
+            or re.search(r"\bMONZO-HCDSB\b", description, re.I)):
+        return True
+
+    # A card repayment is a positive card transaction, not income.
+    if (tx.get("_source_provider") == "AMEX"
+            and re.search(r"\bPAYMENT RECEIVED\s*[-–]?\s*THANK YOU\b",
+                          description, re.I)):
+        return True
+    return False
 
 
 def _looks_like_salary(tx, salary_payee=""):
@@ -6727,16 +6740,19 @@ def get_regular_finance_data():
         for card_id in card_ids:
             try:
                 fetch_attempted += 1
-                all_transactions.extend(
-                    _truelayer_transactions(
-                        amex_token,
-                        "cards",
-                        card_id,
-                        from_date,
-                        today,
-                        range_info=transaction_range_info,
-                    )
+                card_transactions = _truelayer_transactions(
+                    amex_token,
+                    "cards",
+                    card_id,
+                    from_date,
+                    today,
+                    range_info=transaction_range_info,
                 )
+                for transaction in card_transactions:
+                    all_transactions.append({
+                        **transaction,
+                        "_source_provider": "AMEX",
+                    })
                 fetch_succeeded += 1
             except requests.RequestException as error:
                 fetch_failed += 1
