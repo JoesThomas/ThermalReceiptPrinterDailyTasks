@@ -41,6 +41,7 @@ Install:
 
 from datetime import datetime, timedelta, date, time
 import os
+import math
 from io import BytesIO
 import random
 import re
@@ -7495,12 +7496,16 @@ def print_temperature_graph(printer, readings):
         r["temperature"]
         for r in readings
     ]
-    graph_min = int(min(temperatures)) - 1
-    graph_max = int(max(temperatures)) + 1
+    span = max(temperatures) - min(temperatures)
+    magnitude = 10 ** math.floor(math.log10(max(span / 4, 0.1)))
+    tick = next(magnitude * value for value in (1, 2, 5, 10)
+                if magnitude * value >= span / 4)
+    graph_min = math.floor(min(temperatures) / tick) * tick
+    graph_max = math.ceil(max(temperatures) / tick) * tick
     if graph_min == graph_max:
-        graph_max += 1
+        graph_max += tick
     image_width = 288
-    image_height = 190
+    image_height = 160
     image = Image.new(
         "1",
         (image_width, image_height),
@@ -7510,7 +7515,7 @@ def print_temperature_graph(printer, readings):
     left_margin = 38
     right_margin = 10
     top_margin = 8
-    bottom_margin = 28
+    bottom_margin = 32
     graph_width = (
         image_width
         - left_margin
@@ -7544,17 +7549,10 @@ def print_temperature_graph(printer, readings):
         width=1,
     )
     # Horizontal temperature reference lines.
-    for step in range(4):
-        value = (
-            graph_min
-            + (
-                graph_max - graph_min
-            ) * step / 3
-        )
-        y = int(
-            x_axis
-            - graph_height * step / 3
-        )
+    tick_count = round((graph_max - graph_min) / tick)
+    for step in range(tick_count + 1):
+        value = graph_min + tick * step
+        y = int(x_axis - graph_height * step / tick_count)
 
         # Dotted-looking reference line.
         for x in range(
@@ -7575,11 +7573,8 @@ def print_temperature_graph(printer, readings):
                 fill=0,
                 width=1,
             )
-            draw.text(
-            (3, y - 5),
-            f"{value:.0f}",
-            fill=0,
-        )
+        draw.text((2, y - 5), f"{value:g}", fill=0)
+    draw.text((left_margin + 4, 0), "C", fill=0)
     count = len(readings)
     if count == 1:
         spacing = graph_width
@@ -7602,16 +7597,17 @@ def print_temperature_graph(printer, readings):
             - normalized * graph_height
         )
         points.append((x, y))
-        # Label midnight and midday to keep the narrow graph clear.
+        # Show real observation hours, including the final 23:00 point.
         hour = int(
             reading["time"][:2]
         )
-        if hour % 12 == 0:
+        if hour % 6 == 0 or index == count - 1:
             draw.text(
-                (x - 7, x_axis + 6),
+                (max(0, min(x - 7, image_width - 16)), x_axis + 5),
                 reading["time"][:2],
                 fill=0,
             )
+    draw.text((image_width // 2 - 11, image_height - 10), "HOUR", fill=0)
 
     # Stepped trace:
     # horizontal at the old value, then vertical at the next

@@ -3,6 +3,7 @@ from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+import math
 from PIL import Image, ImageDraw
 
 
@@ -20,6 +21,19 @@ class NewsWeatherReceiptTests(unittest.TestCase):
     def test_temperature_graph_fits_receipt_and_centres_image(self):
         sizes = []
         alignment = []
+        labels = []
+        real_draw = ImageDraw.Draw
+
+        class LabelledDraw:
+            def __init__(self, image):
+                self.draw = real_draw(image)
+
+            def text(self, position, value, **kwargs):
+                labels.append(value)
+                self.draw.text(position, value, **kwargs)
+
+            def line(self, *args, **kwargs):
+                self.draw.line(*args, **kwargs)
 
         def capture(buffer):
             sizes.append(Image.open(BytesIO(buffer.getvalue())).size)
@@ -27,13 +41,15 @@ class NewsWeatherReceiptTests(unittest.TestCase):
         printer = SimpleNamespace(image=capture,
                                   set=lambda **kwargs: alignment.append(kwargs["align"]))
         graph = renderer("print_temperature_graph", {
-            "Image": Image, "ImageDraw": ImageDraw, "BytesIO": BytesIO,
+            "Image": Image, "ImageDraw": SimpleNamespace(Draw=LabelledDraw),
+            "BytesIO": BytesIO, "math": math,
             "printer_text": lambda *args: None,
         })
         graph(printer, [{"time": f"{hour:02d}:00", "temperature": float(hour)}
                         for hour in range(24)])
-        self.assertEqual(sizes, [(288, 190)])
+        self.assertEqual(sizes, [(288, 160)])
         self.assertEqual(alignment, ["center", "left"])
+        self.assertTrue({"C", "HOUR", "00", "06", "12", "18", "23"}.issubset(labels))
 
     def test_local_news_omits_description(self):
         lines = []
