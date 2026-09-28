@@ -52,7 +52,7 @@
                 </div>
                 <div class="paper-roll">
                     {% for block in receipt.blocks %}
-                        {% if block.image %}<img class="paper-image" src="{{ block.image }}" alt="Printed chart">
+                        {% if block.image %}<img class="paper-image" src="{{ block.image }}" style="width:{{ block.width_percent }}%" alt="Printed chart">
                         {% else %}<pre class="paper-text">{{ block.text }}</pre>{% endif %}
                     {% endfor %}
                     <div class="paper-cut">CUT</div>

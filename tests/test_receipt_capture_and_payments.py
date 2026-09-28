@@ -1,10 +1,13 @@
 import tempfile
 import unittest
+from io import BytesIO
+import base64
+from PIL import Image
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from receipt.capture import RecordingPrinter, load_capture
+from receipt.capture import RecordingPrinter, load_capture, receipt_blocks
 from receipt.visual_sample import example_pages
 from web_control.payments import monthly_payments
 
@@ -56,6 +59,13 @@ class MonthlyPaymentTests(unittest.TestCase):
 
 
 class ReceiptCaptureTests(unittest.TestCase):
+    def test_preview_images_follow_printer_dot_width(self):
+        buffer = BytesIO()
+        Image.new('1', (288, 190), 1).save(buffer, format='PNG')
+        encoded = 'data:image/png;base64,' + base64.b64encode(buffer.getvalue()).decode('ascii')
+        blocks = receipt_blocks('[[RECEIPT_IMAGE_0]]', [encoded])
+        self.assertEqual(blocks[0]['width_percent'], 50)
+
     def test_last_print_is_saved_per_page_and_keeps_older_pages(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / 'last.json'

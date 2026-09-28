@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import base64
+import binascii
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -119,7 +120,16 @@ def receipt_blocks(text, images=()):
         if position % 2:
             index = int(piece)
             if index < len(images) and str(images[index]).startswith("data:image/png;base64,"):
-                result.append({"image": images[index]})
+                image = images[index]
+                try:
+                    header = base64.b64decode(image.split(",", 1)[1][:32], validate=True)
+                    if header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
+                        raise ValueError("Invalid PNG header")
+                    width = int.from_bytes(header[16:20], "big")
+                    width_percent = min(100, max(1, width * 100 / 576))
+                except (ValueError, IndexError, binascii.Error):
+                    width_percent = 100
+                result.append({"image": image, "width_percent": width_percent})
             else:
                 result.append({"text": "[ PRINTED GRAPH / IMAGE ]"})
         elif piece:
