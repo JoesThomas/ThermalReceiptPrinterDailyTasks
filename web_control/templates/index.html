@@ -254,7 +254,7 @@
     <nav class="nav" aria-label="Page sections">
         <a href="#overview">Overview</a><a href="#next-receipt">Next receipt</a>
         <a href="#daily-receipt">Daily settings</a><a href="#routines">Routines</a>
-        <a href="#instalments">Instalments</a><a href="#food-shop">Food shop</a>
+        <a href="#instalments">Instalments</a><a href="#commitments">Commitments</a><a href="#food-shop">Food shop</a>
         <a href="#printing">Printing</a>
     </nav>
     <section id="overview">
@@ -279,6 +279,8 @@
             <p class="helper">Check <code>logs/web_print.log</code> for the error.</p>
         {% endif %}
     </section>
+
+    <section id="live-data"><p class="eyebrow">Live data</p><h2>Plan and review</h2><div class="quick-actions"><a class="button" href="{{ url_for('calendar_map') }}">Calendar map</a><a class="button" href="{{ url_for('meals_page') }}">Meals & recipes</a><a class="button" href="{{ url_for('tesco_list') }}">Tesco shopping review</a></div></section>
 
     <!-- RECEIPT SETTINGS -->
 
@@ -945,6 +947,8 @@
     </section>
 
 
+    <section id="commitments"><p class="eyebrow">Edit live data</p><h2>Monthly commitments</h2><p class="muted">Entries here appear on the finance receipt. Instalment balances remain in the separate section below; avoid entering the same repayment twice.</p>{% for item in subscriptions.monthly %}<div class="instalment"><form method="post" action="{{ url_for('commitment_update', index=loop.index0) }}"><div class="grid"><label>Name<input name="name" value="{{ item.name }}" required></label><label>Monthly amount (£)<input type="number" name="amount" min="0.01" step="0.01" value="{{ item.amount }}" required></label><label>Bank matching words (comma-separated)<input name="match" value="{{ (item.match or [])|join(', ') if item.match is not string else item.match }}"></label><label>Type<select name="category">{% for value in ['bill','subscription','savings','repayment'] %}<option value="{{ value }}" {% if item.category == value %}selected{% endif %}>{{ value|title }}</option>{% endfor %}</select></label></div><button>Save {{ item.name }}</button></form><form method="post" action="{{ url_for('commitment_delete', index=loop.index0) }}" onsubmit="return confirm('Remove this monthly commitment?')"><button>Remove</button></form></div>{% endfor %}<h3>Add monthly commitment</h3><form method="post" action="{{ url_for('commitment_add') }}"><div class="grid"><label>Name<input name="name" required></label><label>Monthly amount (£)<input type="number" name="amount" min="0.01" step="0.01" required></label><label>Bank matching words<input name="match" placeholder="e.g. netflix.com"></label><label>Type<select name="category"><option value="subscription">Subscription</option><option value="bill">Bill</option><option value="savings">Savings</option><option value="repayment">Repayment</option></select></label></div><button>Add commitment</button></form></section>
+
     <!-- FOOD SHOP -->
 
     <section id="food-shop">
@@ -956,6 +960,8 @@
             The Tesco site remains responsible for choosing
             the exact product and adding it to your basket.
         </p>
+
+        <p><a class="button" href="{{ url_for('tesco_list') }}">Review list for Tesco</a></p><details><summary>Edit items used by this page and the printed food shop</summary><p class="muted">Save to use a local list instead of the Google Doc. Put one item on each line.</p><form method="post" action="{{ url_for('food_shop_save') }}"><label for="shop-items">Shopping items</label><textarea id="shop-items" name="items" rows="8" style="width:100%">{{ food_shop_text }}</textarea><button>Save shopping list</button></form>{% if food_shop_is_local %}<form method="post" action="{{ url_for('food_shop_reset') }}"><button>Return to Google Doc</button></form>{% endif %}</details>
 
         {% if food_shop_error %}
 

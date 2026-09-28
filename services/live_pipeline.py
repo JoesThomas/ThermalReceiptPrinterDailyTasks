@@ -2225,8 +2225,8 @@ def get_google_doc_text(value):
     return response.text
 
 def get_random_lines(number_of_lines):
-    DOCUMENT_ID = "11SNp_UlxhLs6kHl0gzS5CDRL5gCsPzwBgkGXqJEhKUQ"
-    url = f"https://docs.google.com/document/d/{DOCUMENT_ID}/export?format=txt"
+    url = ("https://docs.google.com/document/d/"
+           f"{extract_google_doc_id(GOOGLE_DOC_2_URL)}/export?format=txt")
 
     try:
         response = requests.get(url)
@@ -9253,11 +9253,10 @@ def run_live_pipeline(
                     "Food shop requested..."
                 )
 
-                food_shop_text = (
-                    get_google_doc_text(
-                        FOOD_SHOP_GOOGLE_DOC_URL
-                    )
-                )
+                from web_control.live_data import food_shop_override
+                local_items = food_shop_override()
+                food_shop_text = ("\n".join(local_items) if local_items is not None
+                                  else get_google_doc_text(FOOD_SHOP_GOOGLE_DOC_URL))
 
                 print_food_shop_check(
                     printer,

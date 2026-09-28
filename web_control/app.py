@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os, subprocess, sys
 import json
+import math
 from datetime import timedelta, datetime
 from functools import wraps
 from pathlib import Path
@@ -14,6 +15,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 from receipt_settings import load_receipt_settings, save_receipt_settings
 from routines import WEEKDAYS, add_routine, delete_routine, load_routines, mark_done, next_due_date, set_enabled
+from web_control.live_data import (food_shop_override, save_food_shop, tesco_progress,
+                                   mark_tesco_item, meal_confirmation, confirm_meal,
+                                   clear_meal_confirmation, map_embed_url, map_link_url)
 
 app = Flask(__name__)
 
@@ -104,6 +108,9 @@ def load_food_shop_items():
     Receipt Control page without importing the printer
     pipeline.
     """
+    local_items = food_shop_override()
+    if local_items is not None:
+        return local_items, None
     if not PROJECT_PASSWORDS_FILE.exists():
         return [], "Project passwords.json is missing."
 
@@ -376,7 +383,9 @@ def index():
         weekdays=WEEKDAYS,
         subscriptions=subscriptions,
         food_shop_items=food_shop_items,
+        food_shop_text="\n".join(food_shop_items),
         food_shop_error=food_shop_error,
+        food_shop_is_local=food_shop_override() is not None,
     )
 
 def _checked(name): return request.form.get(name) == "on"
@@ -449,6 +458,206 @@ def _run_receipt_job(
         ).unlink(
             missing_ok=True
         )
+
+
+def _local_today():
+    return datetime.now(ZoneInfo("Europe/London")).date()
+
+
+def _recipe_items():
+    from meals import legacy_planner as meals
+    return meals, [recipe for recipe in meals.recipes() if recipe.get("name")]
+
+
+@app.get("/meals")
+@login_required
+def meals_page():
+    meals, recipes = _recipe_items()
+    today = _local_today()
+    try:
+        planned = meals.get_meal(today)
+        problem = None
+    except (RuntimeError, ValueError, OSError) as error:
+        planned, problem = None, str(error)
+    return render_template("meals.html", recipes=recipes, planned=planned,
+                           confirmed=meal_confirmation(today), today=today, error=problem)
+
+
+@app.post("/meals/plan")
+@login_required
+def change_today_meal():
+    meals, recipes = _recipe_items()
+    today = _local_today()
+    selected = next((item for item in recipes if item["name"] == request.form.get("recipe")), None)
+    if selected is None:
+        return ("Choose a recipe from the list", 400)
+    plan = meals.load_plan_for(today) or meals.generate_week(meals.current_week_sunday(today))
+    if not any(item.get("date") == today.isoformat() for item in plan.get("meals", [])):
+        return ("Today's meal is not in the plan", 400)
+    plan["meals"] = [({"date": today.isoformat(), "kind": "recipe", "recipe": selected}
+                     if item.get("date") == today.isoformat() else item)
+                     for item in plan["meals"]]
+    plan["shopping"] = meals.build_shopping_list(plan)
+    plan["prep"] = meals.build_sunday_prep(plan)
+    plan["estimated_cost"] = meals.estimate_week_cost(plan)
+    meals._save(meals.plan_path(meals.current_week_sunday(today)), plan)
+    flash("Today's recipe and meal shopping list updated.")
+    return redirect(url_for("meals_page"))
+
+
+@app.post("/meals/eaten")
+@login_required
+def meal_eaten():
+    _, recipes = _recipe_items()
+    name = request.form.get("recipe", "")
+    try:
+        confirm_meal(_local_today(), name, {recipe["name"] for recipe in recipes})
+    except ValueError:
+        return ("Choose a recipe from the list", 400)
+    flash("Meal confirmed as eaten.")
+    return redirect(url_for("meals_page"))
+
+
+@app.post("/meals/eaten/clear")
+@login_required
+def meal_eaten_clear():
+    clear_meal_confirmation(_local_today())
+    flash("Meal confirmation removed.")
+    return redirect(url_for("meals_page"))
+
+
+@app.get("/calendar-map")
+@login_required
+def calendar_map():
+    events, error = [], None
+    try:
+        private = json.loads(PROJECT_PASSWORDS_FILE.read_text(encoding="utf-8"))
+        ical_url = private.get("calendar", {}).get("ical_url")
+        if not ical_url:
+            raise ValueError("Calendar iCal URL is not configured.")
+        from services.live_pipeline import get_calendar_events
+        events = get_calendar_events(ical_url, days_ahead=7)
+        for event in events:
+            event["map_url"] = map_embed_url(event.get("location", ""))
+            event["map_link"] = map_link_url(event.get("location", ""))
+    except Exception:
+        app.logger.exception("Calendar map unavailable")
+        error = "Calendar events are unavailable. Check your iCal connection."
+    return render_template("calendar_map.html", events=events, error=error)
+
+
+@app.post("/food-shop/save")
+@login_required
+def food_shop_save():
+    try:
+        save_food_shop(request.form.get("items", ""))
+    except ValueError as error:
+        flash(str(error))
+    else:
+        flash("Shopping items saved for the next receipt and Tesco review.")
+    return redirect(url_for("index") + "#food-shop")
+
+
+@app.post("/food-shop/reset")
+@login_required
+def food_shop_reset():
+    from web_control.live_data import FOOD_SHOP_FILE
+    FOOD_SHOP_FILE.unlink(missing_ok=True)
+    flash("Using the Google Doc shopping list again.")
+    return redirect(url_for("index") + "#food-shop")
+
+
+def _tesco_list():
+    items, error = load_food_shop_items()
+    from meals import legacy_planner as meals
+    plan = meals.load_plan_for(_local_today())
+    if plan is None:
+        try:
+            meals.get_meal(_local_today())
+            plan = meals.load_plan_for(_local_today())
+        except (RuntimeError, ValueError, OSError):
+            plan = None
+    meal_items = [item for group in plan.get("shopping", {}).values() for item in group] if plan else []
+    return list(dict.fromkeys(items + meal_items)), error
+
+
+@app.get("/tesco")
+@login_required
+def tesco_list():
+    items, error = _tesco_list()
+    return render_template("tesco.html", items=items, error=error,
+                           progress=tesco_progress(items))
+
+
+@app.post("/tesco/progress")
+@login_required
+def tesco_mark():
+    items, _ = _tesco_list()
+    try:
+        mark_tesco_item(request.form.get("item", ""), items,
+                        request.form.get("added") == "1")
+    except ValueError:
+        return ("Item no longer exists in the shopping list", 400)
+    return redirect(url_for("tesco_list"))
+
+
+def _monthly_entry():
+    name = request.form.get("name", "").strip()
+    if not name or len(name) > 90:
+        raise ValueError("Enter a name up to 90 characters.")
+    amount = round(float(request.form.get("amount", "")), 2)
+    if not math.isfinite(amount) or amount <= 0 or amount > 100000:
+        raise ValueError("Enter a positive payment amount.")
+    match = [term.strip() for term in request.form.get("match", "").split(",") if term.strip()]
+    if len(match) > 6 or any(len(term) > 90 for term in match):
+        raise ValueError("Use up to six short bank matching terms.")
+    return {"name": name, "amount": amount, "match": match,
+            "category": request.form.get("category") if request.form.get("category") in
+            {"bill", "subscription", "savings", "repayment"} else "subscription"}
+
+
+@app.post("/commitment/add")
+@login_required
+def commitment_add():
+    try:
+        item = _monthly_entry()
+    except (ValueError, OverflowError):
+        flash("Enter a valid name, amount and matching terms.")
+        return redirect(url_for("index") + "#commitments")
+    data = load_subscriptions()
+    data["monthly"].append(item)
+    save_subscriptions(data)
+    flash("Monthly commitment added.")
+    return redirect(url_for("index") + "#commitments")
+
+
+@app.post("/commitment/<int:index>/update")
+@login_required
+def commitment_update(index):
+    data = load_subscriptions()
+    if index >= len(data["monthly"]):
+        return ("Commitment not found", 404)
+    try:
+        item = _monthly_entry()
+    except (ValueError, OverflowError):
+        flash("Enter a valid name, amount and matching terms.")
+        return redirect(url_for("index") + "#commitments")
+    data["monthly"][index].update(item)
+    save_subscriptions(data)
+    flash("Monthly commitment updated.")
+    return redirect(url_for("index") + "#commitments")
+
+
+@app.post("/commitment/<int:index>/delete")
+@login_required
+def commitment_delete(index):
+    data = load_subscriptions()
+    if index >= len(data["monthly"]):
+        return ("Commitment not found", 404)
+    data["monthly"].pop(index)
+    save_subscriptions(data)
+    flash("Monthly commitment removed.")
+    return redirect(url_for("index") + "#commitments")
 
 
 PRINT_PAGES = {

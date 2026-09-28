@@ -142,17 +142,15 @@ matches, ignoring case and punctuation. If the display names differ, add
 `"monthly_commitment_name": "Exact monthly list name"` to the instalment or
 debt entry. Add `"match": ["bank transaction wording"]` to a repayment
 entry if you want a transaction to mark this month's instalment as paid;
-without a match, the receipt conservatively lists it as due. Repayments named
-Amazon automatically match `AMAZON.CO.UK` transactions at the exact monthly
-payment amount, so ordinary Amazon purchases at other amounts are excluded.
+without a match, the receipt conservatively lists it as due. A recognised
+merchant can also be matched at the exact monthly payment amount.
 The paid check uses the existing account transactions and the recorded repayment amount.
 When a repayment has a `next_payment` or `due_date`, a debit with the same amount
 within two days of that day of the month can also verify payment even if the
 merchant wording differs. A transaction can verify only one commitment;
 repayments without a scheduled date or matching merchant stay due.
-Netflix is included as a monthly subscription at the latest charge amount
-when a Netflix payment appears in the last 45 days; an explicit monthly Netflix
-entry takes precedence. This inferred entry disappears if charges stop.
+An observed streaming subscription can be included at its latest charge amount
+when a recent payment exists; an explicit monthly entry takes precedence.
 No repayment is automatically turned into a dated payday commitment: add an
 individual or recurring date to `commitments` if it needs to affect the
 before-payday allowance.
@@ -188,6 +186,21 @@ opened and shows the transaction behind each monthly payment match. The print
 status reports whether the web print command is running, finished or failed;
 the detailed diagnostic log is `logs/web_print.log`.
 
+The control page also links to today's meal plan, a calendar map and Tesco
+shopping review. You can choose today's recipe from the recipe library; that
+updates the printed recipe and regenerates the plan's shopping items. Confirming
+a recipe eaten records that fact separately from cooking and can be undone.
+Calendar events and locations come from the read-only iCal feed; edit them in
+your calendar. The map sends a selected event's location to Google Maps.
+
+The food-shop editor saves a local list that replaces the Google Doc list on
+the control page and the printed food-shop section. Reset returns to the Doc.
+The Tesco review combines food-shop items and the current meal plan's shopping
+items; it opens Tesco searches for product selection and keeps a weekly local checklist.
+It cannot read or add products to your Tesco basket. Confirm each actual addition
+on Tesco before marking it on the checklist. Monthly commitments can be edited
+under their own section; instalment balances are edited separately.
+
 `web_control/run_waitress.py` listens on `0.0.0.0:5050` by default. If startup
 fails with `Address already in use`, check for an existing instance on macOS:
 
@@ -207,14 +220,10 @@ errors now include the address and a relevant diagnostic. The final line of the
 Python traceback (`OSError: [Errno ...] ...`) determines which bind error
 occurred.
 
-The clarified merchants `LEMONWORLD` (coffee shop), `STIR STORE` (bar) and
-`JOBGETHER.COM` (a cancelled subscription) have general category rules. Its
-historical transaction remains a subscription expense, but this category rule
-does not create a future commitment. Remove any cancelled Jobgether entry from
-private `data/subscriptions.json` if one was entered there. Festival ticket
-instalments remain entertainment spending; their monthly payment and outstanding
-balance are shown separately when configured. Personal payee names and
-unidentified merchants belong only in private category overrides.
+Category rules classify historical transactions without creating future
+commitments. Remove cancelled monthly entries from the private subscription
+file. Instalment spending and outstanding balances are shown separately when
+configured. Personal payee names belong only in private category overrides.
 
 For a purchase whose category depends on the *item* rather than the merchant,
 put a one-off rule in the ignored `data/finance_categories.json`:
