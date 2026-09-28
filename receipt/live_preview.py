@@ -10,7 +10,9 @@ import shutil
 
 class VirtualPrinter:
     """Implements the small ESC/POS surface used by the live pipeline."""
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        # The live pipeline calls Usb(vendor_id, product_id); ignore those
+        # hardware identifiers when rendering the receipt in memory.
         self.profile = SimpleNamespace(profile_data={"media": {"width": {"pixels": 576}}})
 
     def hw(self, *args, **kwargs):
