@@ -1,21 +1,20 @@
 # Thermal Receipt Printer — Complete Modular
 
 This is the complete merged project based on `thermal_receipt_modular_v3`, with
-the later calendar/travel, news, finance, savings and savings-growth work folded
+the later calendar, news, finance, savings and savings-growth work folded
 back into the project.
 
 ## Physical receipts
 
 1. Daily Information — weather + 3 UK news summaries + up to 3 BBC Birmingham & Black Country stories + up to 3 BBC Sport stories
-2. Daily Actions — calendar, travel/leave-by, to-do, deliveries, other requested checks
+2. Daily Actions — calendar events with locations, Villa match-day trains, to-do, deliveries, other requested checks
 3. Food — daily recipe; Saturday plan/shopping; Sunday prep
 4. Finance — only when requested
 
 ## Added since modular v3
 
-- Calendar addresses preserved from iCal
-- Driving, public transport and short walking options
-- Leave-by times and previous-event journey chaining
+- Calendar locations print beneath each event when present; ordinary event directions are omitted
+- Aston Villa home match train information remains on the receipt
 - Three UK items, BBC Birmingham & Black Country articles and BBC Sport articles with compact source-derived RSS summaries
 - Optional news disappears if unavailable
 - Finance uses £ formatting
