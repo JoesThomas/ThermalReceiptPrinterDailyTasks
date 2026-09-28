@@ -50,6 +50,7 @@ data/food_shop_override.json
 data/tesco_progress.json
 data/meals_eaten.json
 data/web_print_status.json
+data/last_web_receipt.json
 
 meal_plans/
 data/meal_plans/

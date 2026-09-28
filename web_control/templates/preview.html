@@ -1,1 +1,42 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Receipt preview · Receipt Control</title><link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}"></head><body><main><a class="section-link" href="{{ url_for('index') }}">← Back to control</a><header><p class="eyebrow">Paper-free example</p><h1>Receipt layout preview</h1><p class="muted">This uses sample content. It does not fetch today's weather, news, tasks or bank data, and it is not an exact preview of the next print.</p></header><nav class="nav" aria-label="Preview pages">{% for key,label in [('all','All pages'),('information','Information'),('actions','Actions'),('food','Food'),('finance','Finance')] %}<a href="{{ url_for('preview', page=key) }}" {% if page==key %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav><pre class="receipt-preview">{{ content }}</pre></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Receipt preview · Receipt Control</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
+</head>
+<body>
+<main>
+    <a class="section-link" href="{{ url_for('index') }}">← Back to control</a>
+    <header>
+        <p class="eyebrow">80 mm paper view</p>
+        <h1>Receipt preview</h1>
+        <p class="muted">See the last web-triggered print for each page. Pages that have not been printed yet show illustrative sample values. Printing images and some printer-specific formatting appear as placeholders.</p>
+    </header>
+    <nav class="nav" aria-label="Preview pages">
+        {% for key,label in [('all','All pages'),('information','Information'),('actions','Actions'),('food','Food'),('finance','Finance')] %}
+            <a href="{{ url_for('preview', page=key) }}" {% if page == key %}aria-current="page"{% endif %}>{{ label }}</a>
+        {% endfor %}
+    </nav>
+    <div class="receipt-gallery">
+        {% for receipt in pages %}
+            <section class="receipt-frame" aria-label="{{ receipt.name|title }} receipt">
+                <div class="receipt-meta">
+                    <strong>{{ receipt.name|title }} page</strong>
+                    {% if receipt.sample %}
+                        <span class="badge due">Illustrative example</span>
+                    {% else %}
+                        <span class="badge">Last printed {{ receipt.captured_at[:16]|replace('T', ' ') }} UTC</span>
+                    {% endif %}
+                </div>
+                <div class="paper-roll">
+                    <pre class="paper-text">{{ receipt.text }}</pre>
+                    <div class="paper-cut">CUT</div>
+                </div>
+            </section>
+        {% endfor %}
+    </div>
+</main>
+</body>
+</html>

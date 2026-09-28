@@ -16,6 +16,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from receipt_settings import load_receipt_settings, save_receipt_settings
 from routines import WEEKDAYS, add_routine, delete_routine, load_routines, mark_done, next_due_date, set_enabled
 from web_control.charts import finance_charts, instalment_progress
+from web_control.payments import external_payments, monthly_payments
 from web_control.live_data import (food_shop_override, save_food_shop, tesco_progress,
                                    mark_tesco_item, meal_confirmation, confirm_meal,
                                    clear_meal_confirmation, map_embed_url, map_link_url)
@@ -789,17 +790,19 @@ def load_print_status():
 @app.get("/preview")
 @login_required
 def preview():
-    from main import build_demo_documents
-    from receipt.renderer import render_text
+    from receipt.capture import PAGE_NAMES, load_capture
+    from receipt.visual_sample import example_pages
     page = request.args.get("page", "all")
     if page not in {"all", *PRINT_PAGES}:
         return ("Unknown receipt page", 400)
-    today = datetime.now(ZoneInfo("Europe/London")).date()
-    documents = build_demo_documents(today, True)
-    if page != "all":
-        documents = [document for document in documents if document.name == page]
-    content = "\n\n--- CUT ---\n\n".join(render_text(document) for document in documents)
-    return render_template("preview.html", content=content, page=page)
+    capture = load_capture() or {"pages": {}, "page_times": {}}
+    examples = example_pages(_local_today())
+    selected = PAGE_NAMES if page == "all" else (page,)
+    pages = [{"name": name, "text": capture["pages"].get(name) or examples[name],
+              "captured_at": capture.get("page_times", {}).get(name),
+              "sample": not bool(capture["pages"].get(name))}
+             for name in selected]
+    return render_template("preview.html", pages=pages, page=page)
 
 
 @app.get("/finance-review")
@@ -825,8 +828,11 @@ def finance_review():
                 used.add(index)
             tx = transactions[index] if index is not None else None
             rows.append({"item": item, "transaction": tx, "method": method})
-        charts = finance_charts(transactions, status["monthly"], today)
+        payments = external_payments(transactions)
+        charts = finance_charts(payments, status["monthly"], today)
+        month = monthly_payments(transactions, today)
         return render_template("finance_review.html", rows=rows, charts=charts,
+                               month=month,
                                checked_at=today, error=None)
     except Exception:
         app.logger.exception("Could not load finance review")

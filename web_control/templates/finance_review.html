@@ -17,6 +17,32 @@
     {% if error %}
         <section class="helper">{{ error }}</section>
     {% else %}
+        <section id="month-payments" aria-labelledby="month-payments-title">
+            <p class="eyebrow">Calendar month</p>
+            <h2 id="month-payments-title">All payments · {{ month.label }}</h2>
+            <p class="amount-headline">£{{ '%.2f'|format(month.total) }}</p>
+            <p class="muted">{{ month.count }} bank payments across {{ month.merchants|length }} merchants, from the connected accounts. Income, refunds, transfers and card repayments are excluded. Identical repeat purchases remain separate unless they share a bank transaction ID.</p>
+            {% if month.merchants %}
+                <div class="merchant-list">
+                    {% for merchant in month.merchants %}
+                        <details class="merchant-group">
+                            <summary>
+                                <span class="merchant-summary-name">{{ merchant.name }} <small>({{ merchant.count }})</small></span>
+                                <strong>£{{ '%.2f'|format(merchant.amount) }}</strong>
+                            </summary>
+                            <div class="merchant-payments">
+                                {% for payment in merchant.payments %}
+                                    <div class="merchant-payment">
+                                        <span><time datetime="{{ payment.date.isoformat() }}">{{ payment.date.strftime('%d %b') }}</time> · {{ payment.description }}</span>
+                                        <strong>£{{ '%.2f'|format(payment.amount) }}</strong>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </details>
+                    {% endfor %}
+                </div>
+            {% else %}<p>No payments found for this month.</p>{% endif %}
+        </section>
         <section aria-labelledby="commitment-chart-title">
             <p class="eyebrow">This month</p>
             <h2 id="commitment-chart-title">Monthly commitments</h2>

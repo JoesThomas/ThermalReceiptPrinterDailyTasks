@@ -179,9 +179,12 @@ in the public repository.
 ## Receipt Control server address
 
 Receipt Control now groups the main print actions at the top and links to
-settings, routines, instalments and food shop on the same page. Its layout
-preview is explicitly sample content; it does not query live services or show
-the exact next print. Finance review fetches current bank transactions when
+settings, routines, instalments and food shop on the same page. Its paper-width
+preview shows the last successful web-triggered print for each page. Pages
+without a captured print show clearly labelled illustrative examples; printer
+images and some formatting are placeholders. It does not trigger another live
+run or predict the exact next print. Captured text is stored only in the ignored
+local `data/last_web_receipt.json` file. Finance review fetches current bank transactions when
 opened and shows the transaction behind each monthly payment match. The print
 status reports whether the web print command is running, finished or failed;
 the detailed diagnostic log is `logs/web_print.log`.
@@ -207,6 +210,14 @@ the same cleaned transactions and private category rules as the receipt; each
 bar also has its exact amount in text. Instalment cards show repayment progress
 when a total and remaining balance are available. The charts use local CSS
 and require no external chart service.
+
+The finance review also shows all observed outgoings from the current calendar
+month, grouped by merchant, with each group's combined spend and an expandable
+list of dates and individual amounts. Identical same-day payments without a
+transaction ID remain separate; duplicated bank transaction IDs are removed.
+Income, refunds, internal transfers and card repayments are excluded. This
+calendar-month total is distinct from the rolling 30-day category chart and
+from future commitments.
 
 `web_control/run_waitress.py` listens on `0.0.0.0:5050` by default. If startup
 fails with `Address already in use`, check for an existing instance on macOS:
