@@ -417,6 +417,10 @@ def save():
     except ValueError: settings["display"]["news_count"] = 3
     try: settings["display"]["sport_count"] = max(1, min(5, int(request.form.get("sport_count", 3))))
     except ValueError: settings["display"]["sport_count"] = 3
+    if "therapy_payee" in request.form:
+        settings["therapy_payment"]["payee"] = request.form["therapy_payee"].strip()[:80]
+        provider = request.form.get("therapy_provider", "MONZO").upper()
+        settings["therapy_payment"]["provider"] = provider if provider in {"MONZO", "HSBC"} else "MONZO"
     save_receipt_settings(settings); flash("Settings saved."); return redirect(url_for("index"))
 
 @app.post("/one-shot/<name>/clear")

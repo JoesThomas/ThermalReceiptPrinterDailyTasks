@@ -361,6 +361,20 @@
         </section>
 
 
+        <section>
+            <h2>Therapy payment reminder</h2>
+            <p class="muted">When therapy is two or three days away, check recent bank payments before adding “Pay for therapy” to the receipt. Enter the payee as it appears in your bank.</p>
+            <div class="grid">
+                <label>Bank payment reference<input name="therapy_payee" maxlength="80" autocomplete="off" value="{{ settings.therapy_payment.payee }}" placeholder="Name or reference on bank payment"></label>
+                <label>Paying account<select name="therapy_provider">
+                    {% for provider in ['MONZO', 'HSBC'] %}
+                        <option value="{{ provider }}" {% if settings.therapy_payment.provider == provider %}selected{% endif %}>{{ provider|title }}</option>
+                    {% endfor %}
+                </select></label>
+            </div>
+        </section>
+
+
         <section id="receipt-location">
             <h2>Receipt location</h2>
             <p class="muted">The name and region appear in the receipt header and weather. Coordinates choose the weather forecast; the BBC RSS feed chooses the local headlines.</p>

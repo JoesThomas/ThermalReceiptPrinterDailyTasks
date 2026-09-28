@@ -5903,6 +5903,7 @@ def _truelayer_transactions(
     account_id,
     from_date,
     to_date,
+    timeout=20,
 ):
     response = requests.get(
         (
@@ -5916,7 +5917,7 @@ def _truelayer_transactions(
             "from": from_date.isoformat(),
             "to": to_date.isoformat(),
         },
-        timeout=20,
+        timeout=timeout,
     )
     response.raise_for_status()
 
@@ -8131,7 +8132,41 @@ def therapy_payment_due(events, today=None):
 
     return False
 
-def print_google_doc(printer, text, upcoming_events):
+def therapy_paid_recently(settings, today):
+    """Check only the selected bank's recent transactions when a reminder is due."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from receipt.therapy_payment import recent_therapy_payment
+
+    options = settings.get("therapy_payment", {})
+    provider = options.get("provider", "MONZO")
+    if provider not in ("MONZO", "HSBC"):
+        provider = "MONZO"
+    try:
+        token = _refresh_truelayer_access_token(
+            provider, _initial_truelayer_refresh_token(provider))
+        account_ids = _truelayer_account_ids(token)
+    except Exception as error:
+        print("Therapy payment check unavailable:", type(error).__name__)
+        return False
+
+    def fetch(account_id):
+        try:
+            return _truelayer_transactions(token, "accounts", account_id,
+                                           today - timedelta(days=2), today, timeout=5)
+        except Exception as error:
+            print("Therapy transaction unavailable:", type(error).__name__)
+            return []
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = [pool.submit(fetch, account_id) for account_id in account_ids]
+        for future in as_completed(futures):
+            if recent_therapy_payment(future.result(), payee=options.get("payee", ""), today=today):
+                for pending in futures:
+                    pending.cancel()
+                return True
+    return False
+
+def print_google_doc(printer, text, upcoming_events, therapy_paid=False):
     print_line(printer, "=")
 
     printer.set(bold=True)
@@ -8143,7 +8178,7 @@ def print_google_doc(printer, text, upcoming_events):
     # AUTOMATIC THERAPY PAYMENT REMINDER
     # ----------------------------------------
 
-    if therapy_payment_due(upcoming_events):
+    if therapy_payment_due(upcoming_events) and not therapy_paid:
         print_wrapped(
             printer,
             f"[ ] {printer_safe_text('Pay for therapy')}",
@@ -8160,6 +8195,8 @@ def print_google_doc(printer, text, upcoming_events):
         # Remove the full stop before printing.
         line = line[:-1].strip()
         if not line:
+            continue
+        if therapy_paid and line.casefold() == "pay for therapy":
             continue
         print_wrapped(
             printer,
@@ -8754,6 +8791,11 @@ def run_live_pipeline(
         # GOOGLE DOC / TO-DO
         # ==========================================
 
+        therapy_paid = False
+        if therapy_payment_due(upcoming_events, today):
+            preview_progress("Checking recent therapy payment", 1, 5)
+            therapy_paid = therapy_paid_recently(settings, today)
+
         document_1 = ""
 
         try:
@@ -8772,6 +8814,7 @@ def run_live_pipeline(
                 printer,
                 document_1,
                 upcoming_events,
+                therapy_paid=therapy_paid,
             )
 
         except Exception as error:

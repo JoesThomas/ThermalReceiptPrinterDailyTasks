@@ -19,8 +19,14 @@ Birmingham output. Choose a BBC regional RSS feed under
 out live blogs, hub pages and previews. UK headlines, BBC Sport and Aston
 Villa match-day trains remain separate from the local-news location.
 The automatic "Pay for therapy" checklist item appears only two or three days
-before a dated therapy event in the calendar; tasks explicitly written in the
-Google Doc remain under your control.
+before a dated therapy event in the calendar.
+Receipt Control can also omit this automatic reminder when a matching outgoing
+payment appears today or in the preceding two days. Under **Therapy payment
+reminder**, set the bank payment reference (payee name as shown on the bank
+transaction) and choose Monzo or HSBC. This private setting stays in the ignored
+`data/receipt_settings.json`. Bank access failures leave the reminder visible.
+The same completed payment also hides an exact "Pay for therapy." task in the
+Google Doc for that receipt.
 
 ## Added since modular v3
 
