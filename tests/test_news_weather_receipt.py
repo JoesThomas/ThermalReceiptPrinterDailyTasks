@@ -47,9 +47,10 @@ class NewsWeatherReceiptTests(unittest.TestCase):
         })
         graph(printer, [{"time": f"{hour:02d}:00", "temperature": float(hour)}
                         for hour in range(24)])
-        self.assertEqual(sizes, [(504, 160)])
+        self.assertEqual(sizes, [(440, 160)])
         self.assertEqual(alignment, ["center", "left"])
-        self.assertTrue({"HOUR", "00", "06", "12", "18", "23"}.issubset(labels))
+        self.assertTrue({"HOUR", "00", "03", "06", "09", "12", "15",
+                         "18", "21", "23"}.issubset(labels))
         self.assertTrue(any(value.endswith("C") for value in labels))
 
     def test_local_news_omits_description(self):

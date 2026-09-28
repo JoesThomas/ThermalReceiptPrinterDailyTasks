@@ -7504,8 +7504,8 @@ def print_temperature_graph(printer, readings):
     graph_max = math.ceil(max(temperatures) / tick) * tick
     if graph_min == graph_max:
         graph_max += tick
-    # The surrounding 42-character rules occupy about 504 printer dots.
-    image_width = 504
+    # Leave room inside the surrounding 42-character rules in the preview.
+    image_width = 440
     image_height = 160
     image = Image.new(
         "1",
@@ -7601,7 +7601,7 @@ def print_temperature_graph(printer, readings):
         hour = int(
             reading["time"][:2]
         )
-        if hour % 6 == 0 or index == count - 1:
+        if hour % 3 == 0 or index == count - 1:
             draw.text(
                 (max(0, min(x - 7, image_width - 16)), x_axis + 5),
                 reading["time"][:2],
