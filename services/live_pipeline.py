@@ -7357,6 +7357,7 @@ def _print_news_stories(
     printer,
     heading,
     stories,
+    include_summary=True,
 ):
     if not stories:
         return
@@ -7402,7 +7403,7 @@ def _print_news_stories(
             width=40,
         )
 
-        if _news_summary_is_useful(
+        if include_summary and _news_summary_is_useful(
             headline,
             summary,
         ):
@@ -7413,7 +7414,9 @@ def _print_news_stories(
             )
 
 def print_news(printer, stories):
-    _print_news_stories(printer, "UK NEWS", stories)
+    # Google News RSS descriptions are often a concatenation of other
+    # publishers' headlines, not an article summary.
+    _print_news_stories(printer, "UK NEWS", stories, include_summary=False)
 
 def print_local_news(printer, stories, label=DEFAULT_LOCATION["local_news_label"]):
     _print_news_stories(printer, f"BBC {label.upper()}", stories)
