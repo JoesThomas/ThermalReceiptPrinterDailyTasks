@@ -15,6 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 from receipt_settings import load_receipt_settings, save_receipt_settings
 from routines import WEEKDAYS, add_routine, delete_routine, load_routines, mark_done, next_due_date, set_enabled
+from web_control.charts import finance_charts, instalment_progress
 from web_control.live_data import (food_shop_override, save_food_shop, tesco_progress,
                                    mark_tesco_item, meal_confirmation, confirm_meal,
                                    clear_meal_confirmation, map_embed_url, map_link_url)
@@ -361,6 +362,9 @@ def index():
     settings = load_receipt_settings()
     routines = load_routines()
     subscriptions = load_subscriptions()
+    for item in subscriptions.get("instalments", []):
+        if isinstance(item, dict):
+            item["progress"] = instalment_progress(item)
 
     for item in routines:
         due = next_due_date(item)
@@ -821,7 +825,9 @@ def finance_review():
                 used.add(index)
             tx = transactions[index] if index is not None else None
             rows.append({"item": item, "transaction": tx, "method": method})
-        return render_template("finance_review.html", rows=rows, checked_at=today, error=None)
+        charts = finance_charts(transactions, status["monthly"], today)
+        return render_template("finance_review.html", rows=rows, charts=charts,
+                               checked_at=today, error=None)
     except Exception:
         app.logger.exception("Could not load finance review")
         return render_template("finance_review.html", rows=[], checked_at=today,

@@ -1,1 +1,92 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Finance review · Receipt Control</title><link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}"></head><body><main><a class="section-link" href="{{ url_for('index') }}">← Back to control</a><header><p class="eyebrow">Monthly commitments</p><h1>Finance review</h1><p class="muted">Checked {{ checked_at.strftime('%d %B %Y') }} against this month's bank transactions. Refresh the page to check again.</p></header>{% if error %}<section class="helper">{{ error }}</section>{% else %}<section><h2>Payment matches</h2><p class="muted">A due entry means no matching bank transaction was found; check it before treating it as unpaid.</p>{% for row in rows %}<div class="review-row"><div class="review-head"><strong>{{ row.item.name }}</strong><strong>£{{ '%.2f'|format(row.item.amount) }}</strong></div><p><span class="badge {{ 'paid' if row.transaction else 'due' }}">{{ 'Paid' if row.transaction else 'Needs checking' }}</span> <span class="muted">{{ row.item.category|title }}</span></p>{% if row.transaction %}<small>{{ row.method }} · {{ (row.transaction.timestamp or row.transaction.transaction_date or row.transaction.date or '')[:10] }} · {{ row.transaction.merchant_name or row.transaction.description or 'Bank transaction' }}</small>{% elif row.item.category == 'repayment' %}<small>{% if row.item.next_payment %}Expected payment day: {{ row.item.next_payment }}{% else %}Add a next payment date to enable date-and-amount matching.{% endif %}</small>{% endif %}</div>{% else %}<p>No monthly commitments configured.</p>{% endfor %}</section>{% endif %}</main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Finance review · Receipt Control</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
+</head>
+<body>
+<main>
+    <a class="section-link" href="{{ url_for('index') }}">← Back to control</a>
+    <header>
+        <p class="eyebrow">Monthly commitments</p>
+        <h1>Finance review</h1>
+        <p class="muted">Checked {{ checked_at.strftime('%d %B %Y') }} against bank transactions. Refresh the page to check again.</p>
+    </header>
+    {% if error %}
+        <section class="helper">{{ error }}</section>
+    {% else %}
+        <section aria-labelledby="commitment-chart-title">
+            <p class="eyebrow">This month</p>
+            <h2 id="commitment-chart-title">Monthly commitments</h2>
+            {% if charts.commitments.total > 0 %}
+                <figure class="chart-figure">
+                    <div class="stacked-bar" role="img" aria-label="Paid £{{ '%.2f'|format(charts.commitments.paid) }}; needs checking £{{ '%.2f'|format(charts.commitments.due) }}">
+                        {% if charts.commitments.paid > 0 %}<span class="stack-paid" style="width:{{ charts.commitments.paid_percent }}%"></span>{% endif %}
+                        {% if charts.commitments.due > 0 %}<span class="stack-due" style="width:{{ charts.commitments.due_percent }}%"></span>{% endif %}
+                    </div>
+                    <figcaption class="legend">
+                        <span><i class="legend-swatch paid"></i>Paid £{{ '%.2f'|format(charts.commitments.paid) }}</span>
+                        <span><i class="legend-swatch due"></i>Needs checking £{{ '%.2f'|format(charts.commitments.due) }}</span>
+                    </figcaption>
+                </figure>
+                <p class="muted">Total scheduled: £{{ '%.2f'|format(charts.commitments.total) }}. A missing bank match does not prove a payment is unpaid.</p>
+            {% else %}<p>No monthly commitments to chart.</p>{% endif %}
+        </section>
+        <section aria-labelledby="spending-chart-title">
+            <p class="eyebrow">Last 30 days</p>
+            <h2 id="spending-chart-title">Spending by category</h2>
+            {% if charts.categories %}
+                <p class="muted">Total £{{ '%.2f'|format(charts.spending_total) }} · Bars scale to the largest category. Transfers, income, refunds and duplicate transactions are excluded.</p>
+                <figure class="chart-figure">
+                    {% for category in charts.categories %}
+                        <div class="category-row">
+                            <div class="chart-label"><span>{{ category.name|title }}</span><strong>£{{ '%.2f'|format(category.amount) }}</strong></div>
+                            <div class="bar-track" role="img" aria-label="{{ category.name|title }} spending £{{ '%.2f'|format(category.amount) }}">
+                                <div class="bar-fill" style="width:{{ category.percent }}%"></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </figure>
+            {% else %}<p>No recent spending transactions to chart.</p>{% endif %}
+        </section>
+        <section aria-labelledby="weekly-chart-title">
+            <p class="eyebrow">Last four weeks</p>
+            <h2 id="weekly-chart-title">Weekly spending</h2>
+            <p class="muted">Each bar covers seven consecutive days. The most recent bar ends today; a short bar can mean transactions have not arrived yet.</p>
+            {% if charts.weekly_total > 0 %}
+                <figure class="chart-figure">
+                    <div class="weekly-chart">
+                        {% for week in charts.weeks %}
+                            <div class="weekly-column">
+                                <strong>£{{ '%.2f'|format(week.amount) }}</strong>
+                                <div class="weekly-track" role="img" aria-label="{{ week.label }}: £{{ '%.2f'|format(week.amount) }}">
+                                    <div class="weekly-fill" style="height:{{ week.percent }}%"></div>
+                                </div>
+                                <small>{{ week.label }}</small>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </figure>
+            {% else %}<p>No recent transactions to chart.</p>{% endif %}
+        </section>
+        <section>
+            <h2>Payment matches</h2>
+            <p class="muted">A due entry means no matching bank transaction was found; check it before treating it as unpaid.</p>
+            {% for row in rows %}
+                <div class="review-row">
+                    <div class="review-head"><strong>{{ row.item.name }}</strong><strong>£{{ '%.2f'|format(row.item.amount) }}</strong></div>
+                    <p><span class="badge {{ 'paid' if row.transaction else 'due' }}">{{ 'Paid' if row.transaction else 'Needs checking' }}</span> <span class="muted">{{ row.item.category|title }}</span></p>
+                    {% if row.transaction %}
+                        <small>{{ row.method }} · {{ (row.transaction.timestamp or row.transaction.transaction_date or row.transaction.date or '')[:10] }} · {{ row.transaction.merchant_name or row.transaction.description or 'Bank transaction' }}</small>
+                    {% elif row.item.category == 'repayment' %}
+                        <small>{% if row.item.next_payment %}Expected payment day: {{ row.item.next_payment }}{% else %}Add a next payment date to enable date-and-amount matching.{% endif %}</small>
+                    {% endif %}
+                </div>
+            {% else %}<p>No monthly commitments configured.</p>{% endfor %}
+        </section>
+    {% endif %}
+</main>
+</body>
+</html>

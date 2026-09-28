@@ -729,6 +729,13 @@
                     </div>
 
 
+                    {% if item.progress %}
+                    <figure class="repayment-progress">
+                        <progress value="{{ item.progress.paid }}" max="{{ item.progress.total }}" aria-label="{{ item.name }} repayment progress: {{ item.progress.percent }} percent paid"></progress>
+                        <figcaption><span>{{ item.progress.percent }}% repaid · £{{ '%.2f'|format(item.progress.paid) }} paid</span><span>£{{ '%.2f'|format(item.progress.remaining) }} remaining</span></figcaption>
+                    </figure>
+                    {% endif %}
+
                     <div class="grid">
 
                         <label>

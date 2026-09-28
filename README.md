@@ -201,6 +201,13 @@ It cannot read or add products to your Tesco basket. Confirm each actual additio
 on Tesco before marking it on the checklist. Monthly commitments can be edited
 under their own section; instalment balances are edited separately.
 
+Finance review includes a paid versus unverified commitments bar, 30-day
+spending by category, and four seven-day spending bars. The figures come from
+the same cleaned transactions and private category rules as the receipt; each
+bar also has its exact amount in text. Instalment cards show repayment progress
+when a total and remaining balance are available. The charts use local CSS
+and require no external chart service.
+
 `web_control/run_waitress.py` listens on `0.0.0.0:5050` by default. If startup
 fails with `Address already in use`, check for an existing instance on macOS:
 
