@@ -28,6 +28,8 @@ class FinanceCategoryTests(unittest.TestCase):
             'TRUCK FESTIV 12867NOTTINGHAM': 'ENTERTAINMENT',
             'SQ *LEMONWORLD Birmingham': 'EATING OUT',
             'Stir Store Birmingham': 'EATING OUT',
+            'SUMUP *BRUM TAP': 'EATING OUT',
+            'DEADBEAT': 'EATING OUT',
             'JOBGETHER.COM BRUSSELS': 'SUBSCRIPTIONS',
         }
         for merchant, expected in examples.items():
