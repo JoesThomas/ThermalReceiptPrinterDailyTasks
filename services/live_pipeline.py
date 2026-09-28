@@ -7602,7 +7602,7 @@ def print_temperature_graph(printer, readings):
             - normalized * graph_height
         )
         points.append((x, y))
-        # Label every fourth hour to leave room for the hourly points.
+        # Label every fourth hour so the labels remain legible.
         hour = int(
             reading["time"][:2]
         )
@@ -7640,17 +7640,6 @@ def print_temperature_graph(printer, readings):
                 width=3,
             )
 
-        # Small square markers make each actual observation clear.
-        for x, y in points:
-            draw.rectangle(
-                (
-                    x - 3,
-                    y - 3,
-                    x + 3,
-                    y + 3,
-                ),
-                fill=0,
-            )
     buffer = BytesIO()
     image.save(
         buffer,
