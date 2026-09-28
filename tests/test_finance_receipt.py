@@ -30,6 +30,26 @@ class FinanceReceiptTests(unittest.TestCase):
         self.assertFalse(any('OLD INCOME' in row for row in lines))
         self.assertTrue(all(len(row) <= 40 for row in lines))
 
+    def test_rent_and_winnings_are_grouped_without_losing_each_payment(self):
+        lines = []
+        class Printer:
+            def text(self, value):
+                lines.extend(value.splitlines())
+        summary = {'salary_incomings': [], 'other_incomings': [
+            {'date': date(2026, 9, 28), 'name': 'Rent from tenant', 'category': 'RENT RECEIVED', 'amount': 800},
+            {'date': date(2026, 9, 27), 'name': 'Premium Bonds', 'category': 'PREMIUM BONDS', 'amount': 25},
+            {'date': date(2026, 9, 26), 'name': 'Bet365', 'category': 'BET WINNINGS', 'amount': 35},
+            {'date': date(2026, 9, 25), 'name': 'Friend', 'category': 'FRIENDS / FAMILY', 'amount': 12},
+        ]}
+        print_incoming_payments(Printer(), lambda p, value: lines.append(value),
+                                lambda p, char: lines.append(char * 40),
+                                summary, 100, date(2026, 9, 28))
+        self.assertTrue(any('RENT RECEIVED (1)' in row and '£800.00' in row for row in lines))
+        self.assertTrue(any('28 SEP RENT FROM TENANT' in row and '£800.00' in row for row in lines))
+        self.assertTrue(any('TOTAL IN' in row and '£872.00' in row for row in lines))
+        self.assertTrue(any('£772.00' in row for row in lines))
+        self.assertTrue(all(len(row) <= 40 for row in lines))
+
     def test_live_amex_and_instalment_take_precedence(self):
         settings = {
             'next_payday': '2026-10-05', 'emergency_buffer': 100,

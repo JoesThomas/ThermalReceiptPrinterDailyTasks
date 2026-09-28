@@ -33,6 +33,10 @@ section: salary totals and payments, all other incoming payments, and the amount
 remaining after outgoings. Salary/payroll descriptions are recognised automatically;
 enter an employer bank reference under **Salary identification** if the bank uses a
 different name.
+Other incoming credits are grouped as rent received, Premium Bonds, friends or
+family repayments, betting winnings, or other income. Each payment is listed
+within the last 30 calendar days, including records supplied with a date instead
+of a full timestamp. A bank connection must return the credit for it to appear.
 
 ## Added since modular v3
 

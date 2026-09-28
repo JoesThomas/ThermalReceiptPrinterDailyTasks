@@ -5975,22 +5975,22 @@ def _transaction_name(tx):
 
 
 def _transaction_date(tx):
-    timestamp = tx.get("timestamp", "")
+    timestamp = tx.get("timestamp") or tx.get("transaction_date") or tx.get("date")
 
     if not timestamp:
         return None
 
     try:
-        return datetime.fromisoformat(
-            timestamp.replace("Z", "+00:00")
-        ).date()
-    except ValueError:
+        parsed = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
+        return (parsed.astimezone(ZoneInfo("Europe/London")).date()
+                if parsed.tzinfo else parsed.date())
+    except (ValueError, TypeError):
         try:
             return datetime.strptime(
-                timestamp[:10],
+                str(timestamp)[:10],
                 "%Y-%m-%d",
             ).date()
-        except ValueError:
+        except (ValueError, TypeError):
             return None
 
 
@@ -6322,6 +6322,22 @@ def _looks_like_salary(tx, salary_payee=""):
                for keyword in FINANCE_SALARY_KEYWORDS)
 
 
+def _other_incoming_category(tx):
+    text = " ".join(str(tx.get(key) or "") for key in
+                    ("description", "merchant_name", "reference")).casefold()
+    if re.search(r"\brent\b", text):
+        return "RENT RECEIVED"
+    if any(term in text for term in ("premium bond", "ns&i", "national savings")):
+        return "PREMIUM BONDS"
+    if any(term in text for term in ("bet365", "sky bet", "paddy power", "william hill",
+                                     "betfair", "betfred", "ladbrokes", "coral")) or \
+            re.search(r"\bbet(?:ting)? winnings?\b", text):
+        return "BET WINNINGS"
+    if any(term in text for term in ("repay", "reimburse", "paid back", "friend", "family")):
+        return "FRIENDS / FAMILY"
+    return "OTHER IN"
+
+
 def analyse_incoming_payments(transactions, salary_payee=""):
     salary = []
     other = []
@@ -6350,6 +6366,7 @@ def analyse_incoming_payments(transactions, salary_payee=""):
         if _looks_like_salary(tx, salary_payee):
             salary.append(item)
         else:
+            item["category"] = _other_incoming_category(tx)
             other.append(item)
 
     salary.sort(
@@ -6375,13 +6392,13 @@ def _incoming_total(items, days=None):
         ZoneInfo("Europe/London")
     ).date()
 
-    cutoff = today - timedelta(days=days)
+    cutoff = today - timedelta(days=days - 1)
 
     return sum(
         _safe_amount(item.get("amount"))
         for item in items
         if item.get("date")
-        and item["date"] >= cutoff
+        and cutoff <= item["date"] <= today
     )
 
 def get_truelayer_transactions(

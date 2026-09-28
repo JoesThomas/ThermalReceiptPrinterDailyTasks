@@ -84,7 +84,7 @@ def _amount_line(label, value):
 
 
 def _recent_incoming_items(items, today):
-    cutoff = today - timedelta(days=30)
+    cutoff = today - timedelta(days=29)
     recent = []
     for item in items or []:
         if not isinstance(item, dict):
@@ -100,6 +100,7 @@ def _recent_incoming_items(items, today):
             continue
         if isinstance(paid_on, date) and cutoff <= paid_on <= today and amount > 0:
             recent.append({"date": paid_on, "name": str(item.get("name") or "INCOMING PAYMENT"),
+                           "category": str(item.get("category") or "OTHER IN"),
                            "amount": amount})
     return sorted(recent, key=lambda item: (item["date"], item["name"]), reverse=True)
 
@@ -121,9 +122,24 @@ def print_incoming_payments(printer, left, line, summary, total_outgoings, today
         for row in _amount_rows(label, value):
             left(printer, row)
 
-    for heading, items in (("SALARY PAYMENTS", salary), ("OTHER INCOMING PAYMENTS", other)):
-        line(printer, "-")
-        left(printer, f"{heading} ({len(items)})")
+    line(printer, "-")
+    left(printer, f"SALARY PAYMENTS ({len(salary)})")
+    for item in salary:
+        label = f"{item['date']:%d %b} {item['name']}"
+        for row in _amount_rows(label, item["amount"]):
+            left(printer, row)
+
+    line(printer, "-")
+    left(printer, f"OTHER INCOMING PAYMENTS ({len(other)})")
+    categories = ("RENT RECEIVED", "PREMIUM BONDS", "FRIENDS / FAMILY",
+                  "BET WINNINGS", "OTHER IN")
+    for category in categories:
+        items = [item for item in other if item["category"] == category]
+        if not items:
+            continue
+        for row in _amount_rows(f"{category} ({len(items)})",
+                                sum((item["amount"] for item in items), Decimal(0))):
+            left(printer, row)
         for item in items:
             label = f"{item['date']:%d %b} {item['name']}"
             for row in _amount_rows(label, item["amount"]):
