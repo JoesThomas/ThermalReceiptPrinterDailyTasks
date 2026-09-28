@@ -180,11 +180,17 @@ in the public repository.
 
 Receipt Control now groups the main print actions at the top and links to
 settings, routines, instalments and food shop on the same page. Its paper-width
-preview shows the last successful web-triggered print for each page. Pages
-without a captured print show clearly labelled illustrative examples; printer
-images and some formatting are placeholders. It does not trigger another live
-run or predict the exact next print. Captured text is stored only in the ignored
-local `data/last_web_receipt.json` file. Finance review fetches current bank transactions when
+preview can generate a full receipt using current sources without printing or
+consuming one-shot requests. It stores the latest generated pages (including
+charts) locally in the ignored `data/live_receipt_preview.json`, so they remain
+available in the authenticated web interface while away from the printer.
+Choose **Include finance** to run the finance page outside its usual schedule.
+Generation happens in the background; the page updates when it finishes. You
+can also switch to the last successful web-triggered print stored in the ignored
+`data/last_web_receipt.json`. Pages without a captured result show clearly
+labelled illustrative examples. A preview reflects its generation time, so it
+may differ from a later print. Failed refreshes leave the previous saved preview
+available. Preview errors are logged in `logs/web_preview.log`. Finance review fetches current bank transactions when
 opened and shows the transaction behind each monthly payment match. The print
 status reports whether the web print command is running, finished or failed;
 the detailed diagnostic log is `logs/web_print.log`.

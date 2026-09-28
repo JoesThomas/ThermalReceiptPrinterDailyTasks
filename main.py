@@ -16,6 +16,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--date", help="Simulate YYYY-MM-DD instead of today's date.")
     parser.add_argument("--preview", action="store_true", help="Write receipt_preview.txt instead of printing.")
+    parser.add_argument("--live-preview", action="store_true", help="Fetch live data and save a receipt preview without printing.")
     parser.add_argument("--validate", action="store_true", help="Validate JSON and recipe data, then exit.")
     parser.add_argument("--health", action="store_true", help="Run local health checks, then exit.")
     parser.add_argument("--finance", action="store_true", help="Simulate a finance-requested run.")
@@ -92,6 +93,7 @@ def main():
     run_live(
         finance_requested=args.finance,
         only_page=args.only,
+        live_preview=args.live_preview,
     )
 
 

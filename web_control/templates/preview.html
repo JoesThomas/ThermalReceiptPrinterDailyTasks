@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    {% if preview_status and preview_status.state == 'running' %}<meta http-equiv="refresh" content="6">{% endif %}
     <title>Receipt preview · Receipt Control</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
 </head>
@@ -12,11 +13,25 @@
     <header>
         <p class="eyebrow">80 mm paper view</p>
         <h1>Receipt preview</h1>
-        <p class="muted">See the last web-triggered print for each page. Pages that have not been printed yet show illustrative sample values. Printing images and some printer-specific formatting appear as placeholders.</p>
+        <p class="muted">Generate a receipt from current data without printing. Your latest generated preview stays here so you can view it away from the printer. A saved web print is available separately.</p>
     </header>
+    {% with messages=get_flashed_messages() %}{% for message in messages %}<p class="flash">{{ message }}</p>{% endfor %}{% endwith %}
+    <section class="panel">
+        <form action="{{ url_for('generate_live_preview') }}" method="post">
+            <button class="primary" type="submit" {% if preview_status and preview_status.state == 'running' %}disabled{% endif %}>Generate live preview</button>
+            <label><input type="checkbox" name="include_finance"> Include finance even if it is not scheduled today</label>
+        </form>
+        {% if preview_status %}
+            <p role="status">{% if preview_status.state == 'running' %}Fetching live data; this page refreshes automatically.{% elif preview_status.state == 'completed' %}Preview generated.{% elif preview_status.state == 'interrupted' %}Preview was interrupted. Try again.{% else %}Preview failed. Check logs/web_preview.log and try again.{% endif %}</p>
+        {% endif %}
+        <nav class="nav" aria-label="Receipt source">
+            <a href="{{ url_for('preview', page=page, source='live') }}" {% if source == 'live' %}aria-current="page"{% endif %}>Live preview{% if has_live %} (saved){% endif %}</a>
+            <a href="{{ url_for('preview', page=page, source='printed') }}" {% if source == 'printed' %}aria-current="page"{% endif %}>Last web print{% if has_printed %} (saved){% endif %}</a>
+        </nav>
+    </section>
     <nav class="nav" aria-label="Preview pages">
         {% for key,label in [('all','All pages'),('information','Information'),('actions','Actions'),('food','Food'),('finance','Finance')] %}
-            <a href="{{ url_for('preview', page=key) }}" {% if page == key %}aria-current="page"{% endif %}>{{ label }}</a>
+            <a href="{{ url_for('preview', page=key, source=source) }}" {% if page == key %}aria-current="page"{% endif %}>{{ label }}</a>
         {% endfor %}
     </nav>
     <div class="receipt-gallery">
@@ -27,11 +42,14 @@
                     {% if receipt.sample %}
                         <span class="badge due">Illustrative example</span>
                     {% else %}
-                        <span class="badge">Last printed {{ receipt.captured_at[:16]|replace('T', ' ') }} UTC</span>
+                        <span class="badge">{{ 'Generated' if source == 'live' else 'Last printed' }} {{ receipt.captured_at[:16]|replace('T', ' ') }} UTC</span>
                     {% endif %}
                 </div>
                 <div class="paper-roll">
-                    <pre class="paper-text">{{ receipt.text }}</pre>
+                    {% for block in receipt.blocks %}
+                        {% if block.image %}<img class="paper-image" src="{{ block.image }}" alt="Printed chart">
+                        {% else %}<pre class="paper-text">{{ block.text }}</pre>{% endif %}
+                    {% endfor %}
                     <div class="paper-cut">CUT</div>
                 </div>
             </section>

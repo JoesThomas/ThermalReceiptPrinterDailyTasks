@@ -10,6 +10,7 @@ def run_live(
     *,
     finance_requested: bool = False,
     only_page: str | None = None,
+    live_preview: bool = False,
 ) -> None:
     """
     Run the live receipt pipeline.
@@ -18,6 +19,25 @@ def run_live(
     trigger/source. The keyword is retained so main.py has a stable modular API
     while individual collectors continue to be separated further.
     """
+    if live_preview:
+        from receipt.capture import LIVE_PREVIEW_FILE, RecordingPrinter
+        from receipt.live_preview import isolated_preview
+        recorder = None
+        with isolated_preview():
+            original_usb = live_pipeline.Usb
+            def virtual_capture(*args, **kwargs):
+                nonlocal recorder
+                recorder = RecordingPrinter(original_usb(*args, **kwargs))
+                return recorder
+            live_pipeline.Usb = virtual_capture
+            try:
+                run_live_pipeline(force_finance=finance_requested, only_page=only_page)
+            finally:
+                live_pipeline.Usb = original_usb
+        if recorder is not None:
+            recorder.save(only_page, path=LIVE_PREVIEW_FILE, replace=True)
+        return
+
     if os.environ.get("RECEIPT_WEB_CAPTURE") != "1":
         run_live_pipeline(force_finance=finance_requested, only_page=only_page)
         return

@@ -790,19 +790,75 @@ def load_print_status():
 @app.get("/preview")
 @login_required
 def preview():
-    from receipt.capture import PAGE_NAMES, load_capture
+    from receipt.capture import PAGE_NAMES, LIVE_PREVIEW_FILE, load_capture, receipt_blocks
     from receipt.visual_sample import example_pages
     page = request.args.get("page", "all")
     if page not in {"all", *PRINT_PAGES}:
         return ("Unknown receipt page", 400)
-    capture = load_capture() or {"pages": {}, "page_times": {}}
+    source = request.args.get("source", "live")
+    if source not in {"live", "printed"}:
+        return ("Unknown receipt source", 400)
+    live_capture = load_capture(LIVE_PREVIEW_FILE)
+    printed_capture = load_capture()
+    capture = (live_capture if source == "live" else printed_capture) or {"pages": {}, "page_times": {}}
     examples = example_pages(_local_today())
     selected = PAGE_NAMES if page == "all" else (page,)
     pages = [{"name": name, "text": capture["pages"].get(name) or examples[name],
+              "blocks": receipt_blocks(capture["pages"].get(name) or examples[name],
+                                       capture.get("page_images", {}).get(name, [])),
               "captured_at": capture.get("page_times", {}).get(name),
               "sample": not bool(capture["pages"].get(name))}
              for name in selected]
-    return render_template("preview.html", pages=pages, page=page)
+    return render_template("preview.html", pages=pages, page=page, source=source,
+                           preview_status=load_live_preview_status(),
+                           has_live=bool(live_capture), has_printed=bool(printed_capture))
+
+
+def load_live_preview_status():
+    path = PROJECT_ROOT / "data" / "live_preview_status.json"
+    try:
+        status = json.loads(path.read_text(encoding="utf-8"))
+        if status.get("state") not in {"running", "completed", "failed"}:
+            return None
+        if status["state"] == "running":
+            lock = PROJECT_ROOT / "data" / ".live_preview.lock"
+            try:
+                os.kill(int(lock.read_text(encoding="utf-8").strip()), 0)
+            except (OSError, ValueError):
+                status["state"] = "interrupted"
+        return status
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+@app.post("/preview/generate")
+@login_required
+def generate_live_preview():
+    lock = PROJECT_ROOT / "data" / ".live_preview.lock"
+    log_file = PROJECT_ROOT / "logs" / "web_preview.log"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    if lock.exists():
+        try:
+            os.kill(int(lock.read_text(encoding="utf-8").strip()), 0)
+            flash("A live preview is already being generated.")
+            return redirect(url_for("preview", source="live"))
+        except (OSError, ValueError):
+            lock.unlink(missing_ok=True)
+    try:
+        with log_file.open("a", encoding="utf-8") as log_handle:
+            args = ["--finance"] if request.form.get("include_finance") == "on" else []
+            process = subprocess.Popen(
+                [sys.executable, str(PROJECT_ROOT / "web_control" / "preview_job.py"), *args],
+                cwd=PROJECT_ROOT, stdout=log_handle, stderr=subprocess.STDOUT,
+                start_new_session=True)
+        lock.write_text(str(process.pid), encoding="utf-8")
+        flash("Fetching current receipt data. This may take a few minutes.")
+    except Exception:
+        app.logger.exception("Could not start live preview")
+        lock.unlink(missing_ok=True)
+        flash("Could not start live preview. Please try again.")
+    return redirect(url_for("preview", source="live"))
 
 
 @app.get("/finance-review")

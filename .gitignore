@@ -89,3 +89,5 @@ env/
 *.log
 # Personal debt, payday and payment data
 data/finance_settings.json
+data/live_receipt_preview.json
+data/live_preview_status.json
