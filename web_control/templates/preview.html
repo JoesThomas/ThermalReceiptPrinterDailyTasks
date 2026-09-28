@@ -21,12 +21,26 @@
             <label><input type="checkbox" name="include_finance"> Include finance even if it is not scheduled today</label>
         </form>
         {% if preview_status %}
-            <p role="status" id="preview-message" aria-live="polite">{% if preview_status.state == 'running' %}{{ preview_status.stage or 'Starting receipt' }}{% elif preview_status.state == 'completed' %}Preview generated.{% elif preview_status.state == 'interrupted' %}Preview was interrupted. Try again.{% else %}Preview failed. Check logs/web_preview.log and try again.{% endif %}</p>
             {% if preview_status.state == 'running' %}
-                <div id="preview-tracker" data-status-url="{{ url_for('live_preview_status_api') }}">
-                    <progress id="preview-progress" max="4" value="{{ preview_status.completed|default(0) }}" aria-label="Receipt sections completed"></progress>
-                    <small id="preview-count">{{ preview_status.completed|default(0) }} of 4 sections prepared</small>
+                <div class="preview-build" id="preview-tracker" data-status-url="{{ url_for('live_preview_status_api') }}" data-started-at="{{ preview_status.started_at or '' }}">
+                    <div class="preview-build-heading">
+                        <span class="preview-spinner" aria-hidden="true"></span>
+                        <div>
+                            <strong>Generating your receipt</strong>
+                            <p role="status" id="preview-message" aria-live="polite">{{ preview_status.stage or 'Starting receipt' }}</p>
+                        </div>
+                    </div>
+                    <progress id="preview-progress" max="5" value="{{ preview_status.completed|default(0) }}" aria-label="Generation stages completed"></progress>
+                    <div class="preview-build-meta"><small id="preview-count">{{ preview_status.completed|default(0) }} of 5 stages complete</small><small id="preview-elapsed">Working…</small></div>
+                    <ol class="preview-steps" id="preview-steps" aria-label="Receipt generation stages">
+                        {% for label in ['Weather and news', 'Actions and calendar', 'Meals', 'Finance and checks', 'Saving preview'] %}
+                            <li class="{{ 'done' if loop.index0 < preview_status.completed|default(0) else 'active' if loop.index0 == preview_status.completed|default(0) else 'queued' }}" {% if loop.index0 == preview_status.completed|default(0) %}aria-current="step"{% endif %}><span class="preview-step-mark" aria-hidden="true">{{ '✓' if loop.index0 < preview_status.completed|default(0) else loop.index }}</span><span>{{ label }}</span></li>
+                        {% endfor %}
+                    </ol>
+                    <p class="muted preview-build-note">The saved receipt below remains available while a new one is generated.</p>
                 </div>
+            {% else %}
+                <p role="status">{% if preview_status.state == 'completed' %}Preview generated.{% elif preview_status.state == 'interrupted' %}Preview was interrupted. Try again.{% else %}Preview failed. Check logs/web_preview.log and try again.{% endif %}</p>
             {% endif %}
         {% endif %}
         <nav class="nav" aria-label="Receipt source">
@@ -47,7 +61,7 @@
                     {% if receipt.sample %}
                         <span class="badge due">Illustrative example</span>
                     {% else %}
-                        <span class="badge">{{ 'Generated' if source == 'live' else 'Last printed' }} {{ receipt.captured_at[:16]|replace('T', ' ') }} UTC</span>
+                        <span class="badge">{{ 'Generated' if source == 'live' else 'Last printed' }} <time datetime="{{ receipt.captured_at }}">{{ receipt.captured_local or 'time unavailable' }}</time></span>
                     {% endif %}
                 </div>
                 <div class="paper-roll">
@@ -68,6 +82,14 @@
     const message = document.getElementById('preview-message');
     const progress = document.getElementById('preview-progress');
     const count = document.getElementById('preview-count');
+    const elapsed = document.getElementById('preview-elapsed');
+    const steps = [...document.querySelectorAll('#preview-steps li')];
+    let startedAt = Date.parse(tracker.dataset.startedAt);
+    if (!Number.isFinite(startedAt)) startedAt = Date.now();
+    function updateElapsed() {
+        const seconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+        elapsed.textContent = `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, '0')}s elapsed`;
+    }
     let polling = false;
     async function update() {
         if (polling) return;
@@ -80,10 +102,19 @@
                 if (status.state !== 'idle') location.reload();
                 return;
             }
-            const done = Math.max(0, Math.min(4, Number(status.completed) || 0));
+            const done = Math.max(0, Math.min(5, Number(status.completed) || 0));
             progress.value = done;
-            count.textContent = `${done} of 4 sections prepared`;
+            count.textContent = `${done} of 5 stages complete`;
             message.textContent = status.stage || 'Starting receipt';
+            const reportedStart = Date.parse(status.started_at);
+            if (Number.isFinite(reportedStart)) startedAt = reportedStart;
+            steps.forEach((step, index) => {
+                step.className = index < done ? 'done' : index === done ? 'active' : 'queued';
+                step.querySelector('.preview-step-mark').textContent = index < done ? '✓' : String(index + 1);
+                if (index === done) step.setAttribute('aria-current', 'step');
+                else step.removeAttribute('aria-current');
+            });
+            updateElapsed();
         } catch (_) {
             message.textContent = 'Still generating; reconnecting to progress updates…';
         } finally {
@@ -91,6 +122,7 @@
         }
     }
     setInterval(update, 1500);
+    setInterval(updateElapsed, 1000);
     update();
 })();
 </script>

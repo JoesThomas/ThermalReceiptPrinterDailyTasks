@@ -16,9 +16,17 @@ LOCK = ROOT / "data" / ".live_preview.lock"
 
 def save_status(state):
     STATUS.parent.mkdir(parents=True, exist_ok=True)
-    temporary = STATUS.with_suffix(".tmp")
-    temporary.write_text(json.dumps({"state": state,
-                                     "updated_at": datetime.now(timezone.utc).isoformat()}),
+    temporary = STATUS.with_name(f"{STATUS.name}.{os.getpid()}.tmp")
+    now = datetime.now(timezone.utc).isoformat()
+    previous = {}
+    try:
+        previous = json.loads(STATUS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        pass
+    temporary.write_text(json.dumps({"state": state, "stage": "Starting receipt" if state == "running" else state,
+                                     "completed": 0 if state == "running" else previous.get("completed", 0),
+                                     "total": 5, "started_at": now if state == "running" else previous.get("started_at", now),
+                                     "updated_at": now}),
                          encoding="utf-8")
     temporary.replace(STATUS)
 

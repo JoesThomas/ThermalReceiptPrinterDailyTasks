@@ -797,6 +797,7 @@ def load_print_status():
 @login_required
 def preview():
     from receipt.capture import PAGE_NAMES, LIVE_PREVIEW_FILE, load_capture, receipt_blocks
+    from receipt.local_time import uk_receipt_time
     from receipt.visual_sample import example_pages
     page = request.args.get("page", "all")
     if page not in {"all", *PRINT_PAGES}:
@@ -813,6 +814,7 @@ def preview():
               "blocks": receipt_blocks(capture["pages"].get(name) or examples[name],
                                        capture.get("page_images", {}).get(name, [])),
               "captured_at": capture.get("page_times", {}).get(name),
+              "captured_local": uk_receipt_time(capture.get("page_times", {}).get(name)),
               "sample": not bool(capture["pages"].get(name))}
              for name in selected]
     return render_template("preview.html", pages=pages, page=page, source=source,
@@ -858,6 +860,8 @@ def generate_live_preview():
         except (OSError, ValueError):
             lock.unlink(missing_ok=True)
     try:
+        from web_control.preview_job import save_status
+        save_status("running")
         with log_file.open("a", encoding="utf-8") as log_handle:
             args = ["--finance"] if request.form.get("include_finance") == "on" else []
             process = subprocess.Popen(
@@ -867,6 +871,8 @@ def generate_live_preview():
         lock.write_text(str(process.pid), encoding="utf-8")
         flash("Fetching current receipt data. This may take a few minutes.")
     except Exception:
+        from web_control.preview_job import save_status
+        save_status("failed")
         app.logger.exception("Could not start live preview")
         lock.unlink(missing_ok=True)
         flash("Could not start live preview. Please try again.")

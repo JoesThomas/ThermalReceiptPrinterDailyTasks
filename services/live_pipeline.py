@@ -8513,7 +8513,7 @@ def run_live_pipeline(
     )
 
     from receipt.preview_progress import report as preview_progress
-    preview_progress("Gathering weather and news", 0, 4)
+    preview_progress("Starting information page", 0, 5)
 
     if print_information_page:
         print_header(printer, location)
@@ -8528,6 +8528,7 @@ def run_live_pipeline(
             "weather",
         ):
             try:
+                preview_progress("Fetching weather forecast", 0, 5)
                 print(
                     f"Downloading {location['name']} weather..."
                 )
@@ -8560,6 +8561,7 @@ def run_live_pipeline(
             "national_news",
         ):
             try:
+                preview_progress("Fetching UK news", 0, 5)
                 news_count = int(
                     display_value(
                         settings,
@@ -8598,6 +8600,7 @@ def run_live_pipeline(
             "local_news",
         ):
             try:
+                preview_progress("Fetching local news", 0, 5)
                 news_count = int(
                     display_value(
                         settings,
@@ -8634,6 +8637,7 @@ def run_live_pipeline(
         # ==========================================
         if feature_enabled(settings, "sport_news"):
             try:
+                preview_progress("Fetching sport news", 0, 5)
                 sport_count = int(display_value(settings, "sport_count", SPORT_NEWS_HEADLINES))
                 print_sport_news(printer, get_sport_news_headlines(sport_count))
             except Exception as error:
@@ -8647,7 +8651,7 @@ def run_live_pipeline(
             printer
         )
 
-    preview_progress("Gathering calendar and actions", 1, 4)
+    preview_progress("Checking actions and events", 1, 5)
     if print_actions_page:
         # ==========================================
         # VEHICLE CHECK
@@ -8722,6 +8726,7 @@ def run_live_pipeline(
             "calendar",
         ):
             try:
+                preview_progress("Fetching calendar events", 1, 5)
                 print(
                     "Downloading Google Calendar..."
                 )
@@ -8752,6 +8757,7 @@ def run_live_pipeline(
         document_1 = ""
 
         try:
+            preview_progress("Fetching to-do list", 1, 5)
             print(
                 "Downloading Google Doc #1..."
             )
@@ -8855,6 +8861,7 @@ def run_live_pipeline(
             food_shop_success = False
 
             try:
+                preview_progress("Preparing food shop list", 1, 5)
                 print(
                     "Food shop requested..."
                 )
@@ -8939,6 +8946,7 @@ def run_live_pipeline(
         if should_print_subscriptions():
 
             try:
+                preview_progress("Fetching subscriptions", 1, 5)
                 subscriptions_text = (
                     get_google_doc_text(
                         SUBSCRIPTIONS_GOOGLE_DOC_URL
@@ -8965,6 +8973,7 @@ def run_live_pipeline(
             "deliveries",
         ):
             try:
+                preview_progress("Checking deliveries", 1, 5)
                 print(
                     "Checking upcoming deliveries..."
                 )
@@ -8989,6 +8998,7 @@ def run_live_pipeline(
         # ==========================================
 
         try:
+            preview_progress("Fetching exercises", 1, 5)
             document_2 = (
                 get_google_doc_text(
                     GOOGLE_DOC_2_URL
@@ -9014,7 +9024,7 @@ def run_live_pipeline(
             printer
         )
 
-    preview_progress("Preparing meals", 2, 4)
+    preview_progress("Preparing meals", 2, 5)
     if print_food_page:
         # ==========================================
         # MEAL PLANNER
@@ -9071,7 +9081,7 @@ def run_live_pipeline(
     # FINANCE - SEPARATE RECEIPT
     # ==========================================
 
-    preview_progress("Checking finances" if print_finance_page and should_run_finance else "Finishing receipt", 3, 4)
+    preview_progress("Checking finances" if print_finance_page and should_run_finance else "Final checks", 3, 5)
     if (
         print_finance_page
         and should_run_finance
@@ -9086,10 +9096,12 @@ def run_live_pipeline(
 
             subscription_changes = []
 
+            preview_progress("Fetching account balances", 3, 5)
             balances = (
                 get_account_balances()
             )
 
+            preview_progress("Fetching payments and commitments", 3, 5)
             finance_data = (
                 get_regular_finance_data()
             )
@@ -9124,6 +9136,7 @@ def run_live_pipeline(
 
             # Read the existing instalment balances before printing the summary.
             subscriptions_data = load_subscriptions()
+            preview_progress("Building finance summary", 3, 5)
             print_integrated_finance(
                 printer,
                 left,
@@ -9187,5 +9200,5 @@ def run_live_pipeline(
 
         printer.cut()
 
-    preview_progress("Saving preview", 4, 4)
+    preview_progress("Saving generated preview", 4, 5)
     print("Receipt printed successfully.")

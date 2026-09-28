@@ -36,6 +36,8 @@ def run_live(
                 live_pipeline.Usb = original_usb
         if recorder is not None:
             recorder.save(only_page, path=LIVE_PREVIEW_FILE, replace=True)
+        from receipt.preview_progress import report as preview_progress
+        preview_progress("Preview saved", 5, 5)
         return
 
     if os.environ.get("RECEIPT_WEB_CAPTURE") != "1":
