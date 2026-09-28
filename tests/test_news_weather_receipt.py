@@ -1,7 +1,9 @@
 import ast
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+from PIL import Image, ImageDraw
 
 
 SOURCE = ast.parse((Path(__file__).resolve().parents[1] / "services" / "live_pipeline.py").read_text())
@@ -15,6 +17,24 @@ def renderer(name, namespace):
 
 
 class NewsWeatherReceiptTests(unittest.TestCase):
+    def test_temperature_graph_fits_receipt_and_centres_image(self):
+        sizes = []
+        alignment = []
+
+        def capture(buffer):
+            sizes.append(Image.open(BytesIO(buffer.getvalue())).size)
+
+        printer = SimpleNamespace(image=capture,
+                                  set=lambda **kwargs: alignment.append(kwargs["align"]))
+        graph = renderer("print_temperature_graph", {
+            "Image": Image, "ImageDraw": ImageDraw, "BytesIO": BytesIO,
+            "printer_text": lambda *args: None,
+        })
+        graph(printer, [{"time": f"{hour:02d}:00", "temperature": float(hour)}
+                        for hour in range(24)])
+        self.assertEqual(sizes, [(360, 190)])
+        self.assertEqual(alignment, ["center", "left"])
+
     def test_local_news_omits_description(self):
         lines = []
         namespace = {"DEFAULT_LOCATION": {"local_news_label": "Birmingham"},
