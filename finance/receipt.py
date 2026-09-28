@@ -116,9 +116,17 @@ def print_incoming_payments(printer, left, line, summary, total_outgoings, today
     printer.text("\n")
     left(printer, "INCOMING / LAST 30 DAYS [BANK TX]")
     line(printer, "-")
-    for label, value in (("SALARY", salary_total), ("OTHER IN", other_total),
-                         ("TOTAL IN", total),
-                         ("AFTER OUTGOINGS", total - _decimal(total_outgoings))):
+    if summary.get("bank_data_status", "complete") != "complete":
+        left(printer, "BANK DATA INCOMPLETE")
+        left(printer, "INCOMING NOT VERIFIED")
+        if not salary and not other:
+            return
+    values = [("SALARY", salary_total), ("OTHER IN", other_total),
+              ("KNOWN IN" if summary.get("bank_data_status", "complete") != "complete"
+               else "TOTAL IN", total)]
+    if summary.get("bank_data_status", "complete") == "complete":
+        values.append(("AFTER OUTGOINGS", total - _decimal(total_outgoings)))
+    for label, value in values:
         for row in _amount_rows(label, value):
             left(printer, row)
 
@@ -609,6 +617,8 @@ def print_integrated_finance(
         printer,
         "-",
     )
+    if spending_summary.get("bank_data_status", "complete") != "complete":
+        left(printer, "BANK DATA INCOMPLETE")
 
     for label, value in (
         ("EVERYDAY SPEND", last30),

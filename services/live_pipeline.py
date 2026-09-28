@@ -4362,6 +4362,7 @@ def print_subscription_status(
     print_line,
     transactions,
     subscriptions_data=None,
+    bank_data_status="complete",
 ):
     status = build_subscription_status(
         transactions,
@@ -4499,7 +4500,8 @@ def print_subscription_status(
 
     left(
         printer,
-        "DUE [FILE / NO BANK MATCH]",
+        "UNVERIFIED [BANK DATA INCOMPLETE]" if bank_data_status != "complete"
+        else "DUE [FILE / NO BANK MATCH]",
     )
 
     printer.set(
@@ -4543,6 +4545,11 @@ def print_subscription_status(
         printer,
         "-",
     )
+
+    if bank_data_status != "complete":
+        left(printer, "CHECK BANK CONNECTION / CONSENT")
+        print_line(printer, "=")
+        return
 
     # Only show the bills/savings split when
     # something is actually outstanding.
@@ -6582,6 +6589,9 @@ def get_regular_finance_data():
     all_transactions = []
 
     provider_tokens = {}
+    fetch_attempted = 0
+    fetch_succeeded = 0
+    fetch_failed = 0
 
     for provider in (
             "HSBC",
@@ -6605,6 +6615,7 @@ def get_regular_finance_data():
             )
 
             provider_tokens[provider] = None
+            fetch_failed += 1
 
     # Bank accounts: transactions, DDs and standing orders.
     for provider in ("HSBC", "MONZO"):
@@ -6615,9 +6626,15 @@ def get_regular_finance_data():
         if not access_token:
             continue
 
-        for account_id in _truelayer_account_ids(
-            access_token
-        ):
+        try:
+            account_ids = _truelayer_account_ids(access_token)
+        except requests.RequestException as error:
+            print(f"{provider} account-list error:", error)
+            fetch_failed += 1
+            continue
+        if not account_ids:
+            fetch_failed += 1
+        for account_id in account_ids:
             try:
                 dd_items = _truelayer_regular_payments(
                     access_token,
@@ -6659,6 +6676,7 @@ def get_regular_finance_data():
                 )
 
             try:
+                fetch_attempted += 1
                 all_transactions.extend(
                     _truelayer_transactions(
                         access_token,
@@ -6668,7 +6686,9 @@ def get_regular_finance_data():
                         today,
                     )
                 )
+                fetch_succeeded += 1
             except requests.RequestException as error:
+                fetch_failed += 1
                 print(
                     f"{provider} transaction error:",
                     error,
@@ -6682,10 +6702,15 @@ def get_regular_finance_data():
 
     if amex_token:
 
-        for card_id in _truelayer_card_ids(
-            amex_token
-        ):
+        try:
+            card_ids = _truelayer_card_ids(amex_token)
+        except requests.RequestException as error:
+            print("AMEX card-list error:", error)
+            fetch_failed += 1
+            card_ids = []
+        for card_id in card_ids:
             try:
+                fetch_attempted += 1
                 all_transactions.extend(
                     _truelayer_transactions(
                         amex_token,
@@ -6695,7 +6720,9 @@ def get_regular_finance_data():
                         today,
                     )
                 )
+                fetch_succeeded += 1
             except requests.RequestException as error:
+                fetch_failed += 1
                 print(
                     "AMEX transaction error:",
                     error,
@@ -6757,7 +6784,12 @@ def get_regular_finance_data():
         - last_30_days
     )
 
+    bank_data_status = ("unavailable" if not fetch_succeeded else
+                        "partial" if fetch_failed else "complete")
     spending_summary = {
+        "bank_data_status": bank_data_status,
+        "bank_fetch_attempted": fetch_attempted,
+        "bank_fetch_succeeded": fetch_succeeded,
         "normal_monthly_burn": ninety_day_average,
         "essential_monthly_burn": essential_monthly_burn,
         "last_30_days": last_30_days,
@@ -9234,6 +9266,7 @@ def run_live_pipeline(
                 print_line,
                 transactions,
                 subscriptions_data=subscriptions_data,
+                bank_data_status=spending_summary.get("bank_data_status", "unavailable"),
             )
 
             finance_success = True
