@@ -7504,7 +7504,8 @@ def print_temperature_graph(printer, readings):
     graph_max = math.ceil(max(temperatures) / tick) * tick
     if graph_min == graph_max:
         graph_max += tick
-    image_width = 288
+    # The surrounding 42-character rules occupy about 504 printer dots.
+    image_width = 504
     image_height = 160
     image = Image.new(
         "1",
@@ -7573,8 +7574,7 @@ def print_temperature_graph(printer, readings):
                 fill=0,
                 width=1,
             )
-        draw.text((2, y - 5), f"{value:g}", fill=0)
-    draw.text((left_margin + 4, 0), "C", fill=0)
+        draw.text((2, y - 5), f"{value:g}C", fill=0)
     count = len(readings)
     if count == 1:
         spacing = graph_width
