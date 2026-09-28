@@ -8110,10 +8110,12 @@ def print_vehicle_expiry_checks(
                 ).upper(),
             )
 
-def therapy_payment_due(events):
-    """Return True when an upcoming calendar event is a therapy appointment."""
+def therapy_payment_due(events, today=None):
+    """Remind only two or three days before a dated therapy appointment."""
     if not events:
         return False
+
+    today = today or datetime.now(ZoneInfo("Europe/London")).date()
 
     for event in events:
         if not isinstance(event, dict):
@@ -8125,7 +8127,16 @@ def therapy_payment_due(events):
             or ""
         ).strip().lower()
 
-        if "therapy" in title:
+        event_day = event.get("date")
+        if isinstance(event_day, datetime):
+            event_day = event_day.date()
+        elif isinstance(event_day, str):
+            try:
+                event_day = date.fromisoformat(event_day[:10])
+            except ValueError:
+                continue
+
+        if "therapy" in title and isinstance(event_day, date) and (event_day - today).days in (2, 3):
             return True
 
     return False

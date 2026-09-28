@@ -11,7 +11,7 @@ DEFAULT_SETTINGS = {
     "location": DEFAULT_LOCATION,
     "features": {"calendar": True, "deliveries": True, "weather": True, "national_news": True, "local_news": True, "sport_news": True, "villa": True, "villa_trains": True},
     "one_shot": {"finance_check": False, "food_shop": False, "shopping_list": False},
-    "display": {"weather_detail": "auto", "news_count": 3, "sport_count": 3, "earlier_journeys": 3},
+    "display": {"weather_detail": "auto", "news_count": 3, "sport_count": 3},
 }
 
 def _merge(defaults, supplied):

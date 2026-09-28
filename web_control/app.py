@@ -417,8 +417,6 @@ def save():
     except ValueError: settings["display"]["news_count"] = 3
     try: settings["display"]["sport_count"] = max(1, min(5, int(request.form.get("sport_count", 3))))
     except ValueError: settings["display"]["sport_count"] = 3
-    try: settings["display"]["earlier_journeys"] = max(0, min(5, int(request.form.get("earlier_journeys", 3))))
-    except ValueError: settings["display"]["earlier_journeys"] = 3
     save_receipt_settings(settings); flash("Settings saved."); return redirect(url_for("index"))
 
 @app.post("/one-shot/<name>/clear")

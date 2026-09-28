@@ -18,6 +18,9 @@ Birmingham output. Choose a BBC regional RSS feed under
 `https://feeds.bbci.co.uk/news/` when changing area; the receipt still filters
 out live blogs, hub pages and previews. UK headlines, BBC Sport and Aston
 Villa match-day trains remain separate from the local-news location.
+The automatic "Pay for therapy" checklist item appears only two or three days
+before a dated therapy event in the calendar; tasks explicitly written in the
+Google Doc remain under your control.
 
 ## Added since modular v3
 
