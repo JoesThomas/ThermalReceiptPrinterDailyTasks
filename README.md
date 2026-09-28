@@ -11,6 +11,14 @@ back into the project.
 3. Food — daily recipe; Saturday plan/shopping; Sunday prep
 4. Finance — only when requested
 
+The **Receipt location** fields in Receipt Control set the name and region on
+the information receipt, the weather coordinates, and the BBC local news feed
+and heading. The default values reproduce the original Stirchley and
+Birmingham output. Choose a BBC regional RSS feed under
+`https://feeds.bbci.co.uk/news/` when changing area; the receipt still filters
+out live blogs, hub pages and previews. UK headlines, BBC Sport and Aston
+Villa match-day trains remain separate from the local-news location.
+
 ## Added since modular v3
 
 - Calendar locations print beneath each event when present; ordinary event directions are omitted

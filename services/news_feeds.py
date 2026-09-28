@@ -36,8 +36,10 @@ def is_bbc_article(story, section):
         # The dedicated regional feed establishes location. Require an article,
         # not its category landing page or a BBC Sport item.
         return bool(re.match(
-            r"^/news/(?:articles/[a-z0-9]+|uk-england-[a-z_]+-[0-9]{5,}|"
-            r"england/birmingham_and_black_country/articles/[a-z0-9]+)$", path
+            r"^/news/(?:articles/[a-z0-9]+|"
+            r"uk-(?:england|scotland|wales|northern-ireland)-[a-z0-9-]+-[0-9]{5,}|"
+            r"(?:england|scotland|wales|northern_ireland)/[a-z0-9_]+/articles/[a-z0-9]+)$",
+            path,
         ))
     if section == "sport":
         return bool(re.match(

@@ -14,6 +14,7 @@ from werkzeug.security import check_password_hash
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 from receipt_settings import load_receipt_settings, save_receipt_settings
+from receipt.location_settings import validate_location
 from routines import WEEKDAYS, add_routine, delete_routine, load_routines, mark_done, next_due_date, set_enabled
 from web_control.charts import finance_charts, instalment_progress
 from web_control.payments import external_payments, monthly_payments
@@ -399,6 +400,13 @@ def _checked(name): return request.form.get(name) == "on"
 @login_required
 def save():
     settings = load_receipt_settings()
+    if any(key in request.form for key in ("name", "region", "latitude", "longitude",
+                                           "local_news_label", "local_news_feed")):
+        try:
+            settings["location"] = validate_location(request.form)
+        except ValueError as error:
+            flash(str(error))
+            return redirect(url_for("index"))
     for name in ("calendar", "deliveries", "weather", "national_news", "local_news", "sport_news", "villa", "villa_trains"):
         settings["features"][name] = _checked(name)
     for name in ("finance_check", "food_shop", "shopping_list"):

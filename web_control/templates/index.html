@@ -334,7 +334,7 @@
                 ('deliveries','Deliveries'),
                 ('weather','Weather'),
                 ('national_news','National news'),
-                ('local_news','BBC Birmingham & Black Country'),
+                ('local_news','BBC local news'),
                 ('sport_news','Sport news'),
                 ('villa','Villa match information'),
                 ('villa_trains','Villa match-day trains')
@@ -358,6 +358,21 @@
 
             {% endfor %}
 
+        </section>
+
+
+        <section id="receipt-location">
+            <h2>Receipt location</h2>
+            <p class="muted">The name and region appear in the receipt header and weather. Coordinates choose the weather forecast; the BBC RSS feed chooses the local headlines.</p>
+            <div class="grid">
+                <label>Place name<input name="name" maxlength="18" required value="{{ settings.location.name }}"></label>
+                <label>Region<input name="region" maxlength="19" required value="{{ settings.location.region }}"></label>
+                <label>Latitude<input type="number" name="latitude" min="-90" max="90" step="any" required value="{{ settings.location.latitude }}"></label>
+                <label>Longitude<input type="number" name="longitude" min="-180" max="180" step="any" required value="{{ settings.location.longitude }}"></label>
+                <label>Local news heading<input name="local_news_label" maxlength="35" required value="{{ settings.location.local_news_label }}"></label>
+                <label>BBC local RSS feed<input type="url" name="local_news_feed" required value="{{ settings.location.local_news_feed }}"></label>
+            </div>
+            <p class="muted">Use a regional feed from feeds.bbci.co.uk/news/. Villa match-day information is controlled separately.</p>
         </section>
 
 

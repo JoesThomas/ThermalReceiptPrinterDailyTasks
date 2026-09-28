@@ -83,6 +83,7 @@ from services.villa import (
 from services.news_feeds import (
     BBC_LOCAL_FEED, BBC_SPORT_FEED, select_bbc_articles,
 )
+from receipt.location_settings import DEFAULT_LOCATION, validate_location
 
 # ============================================================
 # PRIVATE CONFIGURATION
@@ -371,12 +372,6 @@ FOOTBALL_DATA_API_KEY = private_value("football", "api_key")
 ASTON_VILLA_TEAM_ID = 58
 MATCH_TRAIN_WINDOW_HOURS = 2
 MATCH_ARRIVAL_BUFFER_MINUTES = 30
-
-# Stirchley, Birmingham.
-LATITUDE = 52.4294
-LONGITUDE = -1.92035
-LOCATION_NAME = "STIRCHLEY"
-LOCATION_REGION = "BIRMINGHAM, UK"
 
 # Compact 80mm receipt width.
 RECEIPT_WIDTH = 42
@@ -2084,12 +2079,12 @@ def weather_graphic(code):
     return ["    WEATHER UNKNOWN"]
 
 
-def get_weather():
+def get_weather(latitude=DEFAULT_LOCATION["latitude"], longitude=DEFAULT_LOCATION["longitude"]):
     url = "https://api.open-meteo.com/v1/forecast"
 
     params = {
-        "latitude": LATITUDE,
-        "longitude": LONGITUDE,
+        "latitude": latitude,
+        "longitude": longitude,
         "current": (
             "temperature_2m,"
             "relative_humidity_2m,"
@@ -7343,9 +7338,9 @@ def _news_stories(
 def get_top_news_headlines(number=3):
     return _news_stories(NEWS_RSS_URL, number)
 
-def get_birmingham_news_headlines(number=3):
-    """Recent actual articles from BBC Birmingham & Black Country only."""
-    stories = _news_stories(BBC_LOCAL_FEED, number=25, max_age_hours=72)
+def get_local_news_headlines(number=3, feed_url=BBC_LOCAL_FEED):
+    """Recent actual articles from the selected BBC regional feed."""
+    stories = _news_stories(feed_url, number=25, max_age_hours=72)
     return select_bbc_articles(
         _deduplicate_news_stories(stories), "local", number
     )
@@ -7420,8 +7415,8 @@ def _print_news_stories(
 def print_news(printer, stories):
     _print_news_stories(printer, "UK NEWS", stories)
 
-def print_local_news(printer, stories):
-    _print_news_stories(printer, "BBC BIRMINGHAM / BLACK COUNTRY", stories)
+def print_local_news(printer, stories, label=DEFAULT_LOCATION["local_news_label"]):
+    _print_news_stories(printer, f"BBC {label.upper()}", stories)
 
 def print_sport_news(printer, stories):
     _print_news_stories(printer, "SPORT", stories)
@@ -7666,7 +7661,7 @@ def print_temperature_graph(printer, readings):
 # RECEIPT SECTIONS
 # ============================================================
 
-def print_header(printer):
+def print_header(printer, location=DEFAULT_LOCATION):
     """Compact vintage machine-style header."""
 
     printer.set(
@@ -7684,7 +7679,7 @@ def print_header(printer):
         + "\n"
     )
     printer_text(printer,
-        f"{LOCATION_NAME} / {LOCATION_REGION}\n"
+        f"{location['name'].upper()} / {location['region'].upper()}\n"
     )
 
 def _route_distance_text(option):
@@ -8236,7 +8231,7 @@ def is_definitively_boring_weather(weather):
         return False
 
 
-def print_compact_weather(printer, weather):
+def print_compact_weather(printer, weather, location=DEFAULT_LOCATION):
     current = weather["current"]
     daily = weather["daily"]
     condition = weather_description(current["weather_code"])
@@ -8245,16 +8240,16 @@ def print_compact_weather(printer, weather):
 
     print_line(printer, "=")
     printer.set(bold=True)
-    left(printer, "WEATHER")
+    left(printer, f"WEATHER / {location['name'].upper()}")
     printer.set(bold=False)
     left(printer, f"{current['temperature_2m']:.1f}C  {condition}")
     left(printer, f"HIGH {high:.1f}C / LOW {low:.1f}C")
     left(printer, "DRY WITH LIGHT WINDS")
 
 
-def print_weather(printer, weather):
+def print_weather(printer, weather, location=DEFAULT_LOCATION):
     if is_definitively_boring_weather(weather):
-        print_compact_weather(printer, weather)
+        print_compact_weather(printer, weather, location)
         return
 
     current = weather["current"]
@@ -8276,8 +8271,8 @@ def print_weather(printer, weather):
     printer.set(bold=True)
     centre(printer, "WEATHER")
     printer.set(bold=False)
-    centre(printer, LOCATION_NAME)
-    centre(printer, LOCATION_REGION)
+    centre(printer, location["name"].upper())
+    centre(printer, location["region"].upper())
     print_line(printer)
 
     # Compact current weather graphic.
@@ -8455,6 +8450,7 @@ def run_live_pipeline(
     settings = (
         load_receipt_settings()
     )
+    location = validate_location(settings.get("location", DEFAULT_LOCATION))
 
     clear_route_cache()
 
@@ -8516,7 +8512,7 @@ def run_live_pipeline(
     )
 
     if print_information_page:
-        print_header(printer)
+        print_header(printer, location)
 
     if print_information_page:
         # ==========================================
@@ -8529,14 +8525,15 @@ def run_live_pipeline(
         ):
             try:
                 print(
-                    "Downloading Stirchley weather..."
+                    f"Downloading {location['name']} weather..."
                 )
 
-                weather = get_weather()
+                weather = get_weather(location["latitude"], location["longitude"])
 
                 print_weather(
                     printer,
                     weather,
+                    location,
                 )
 
             except Exception as error:
@@ -8589,7 +8586,7 @@ def run_live_pipeline(
                 )
 
         # ==========================================
-        # BIRMINGHAM NEWS
+        # LOCAL NEWS
         # ==========================================
 
         if feature_enabled(
@@ -8606,24 +8603,25 @@ def run_live_pipeline(
                 )
 
                 print(
-                    "Downloading today's "
-                    "Birmingham news..."
+                    f"Downloading {location['local_news_label']} news..."
                 )
 
                 local_headlines = (
-                    get_birmingham_news_headlines(
-                        news_count
+                    get_local_news_headlines(
+                        news_count,
+                        location["local_news_feed"],
                     )
                 )
 
                 print_local_news(
                     printer,
                     local_headlines,
+                    location["local_news_label"],
                 )
 
             except Exception as error:
                 print(
-                    "Birmingham news error:",
+                    "Local news error:",
                     repr(error),
                 )
 

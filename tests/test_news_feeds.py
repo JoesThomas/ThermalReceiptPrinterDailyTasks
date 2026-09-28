@@ -14,6 +14,9 @@ class NewsFeedTests(unittest.TestCase):
         article = story('Council approves new city centre housing plan',
                         'https://www.bbc.co.uk/news/articles/c1234567890')
         self.assertTrue(is_bbc_article(article, 'local'))
+        regional = story('Council approves plans for new coastal flood barriers',
+                         'https://www.bbc.co.uk/news/england/merseyside/articles/c1234567890')
+        self.assertTrue(is_bbc_article(regional, 'local'))
 
     def test_rejects_hubs_previews_live_and_other_publishers(self):
         cases = [
