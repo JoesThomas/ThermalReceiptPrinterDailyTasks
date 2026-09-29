@@ -4,6 +4,8 @@ import json
 
 from datetime import datetime
 from pathlib import Path
+from finance.yearly_subscriptions import annual_subscription_rows
+from zoneinfo import ZoneInfo
 
 
 PROJECT_ROOT = (
@@ -106,6 +108,7 @@ def _amount(transaction):
 def _date(transaction):
     value = (
         transaction.get("timestamp")
+        or transaction.get("transaction_date")
         or transaction.get("date")
     )
 
@@ -154,6 +157,14 @@ def _matches(
         if term
     )
 
+def _annual_amount_matches(subscription, transaction):
+    try:
+        amount = float(transaction.get("amount"))
+        expected = float(subscription.get("amount"))
+    except (TypeError, ValueError):
+        return False
+    return amount < 0 and abs(-amount - expected) <= 0.01
+
 def update_subscriptions_from_transactions(
     transactions,
 ):
@@ -181,6 +192,15 @@ def update_subscriptions_from_transactions(
             [],
         ):
 
+            annual_paid_date = None
+            if frequency == "yearly":
+                annual_paid_date = annual_subscription_rows(
+                    [subscription], transactions,
+                    datetime.now(ZoneInfo("Europe/London")).date()
+                )[0]["bank_paid_date"]
+                if annual_paid_date is None:
+                    continue
+
             matches = [
                 tx
                 for tx in transactions
@@ -188,6 +208,9 @@ def update_subscriptions_from_transactions(
                     subscription,
                     tx,
                 )
+                and (frequency != "yearly" or
+                     (_date(tx) == annual_paid_date.isoformat()
+                      and _annual_amount_matches(subscription, tx)))
             ]
 
             if not matches:

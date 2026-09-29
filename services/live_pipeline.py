@@ -61,6 +61,7 @@ from finance.receipt import (
     load_finance_settings,
 )
 from finance.commitments import inferred_netflix_commitment, matching_repayment_transaction, repayment_commitments, summarize_monthly_commitments
+from finance.yearly_subscriptions import annual_subscription_rows
 
 from receipt_settings import (
     load_receipt_settings,
@@ -4602,6 +4603,29 @@ def print_subscription_status(
         printer,
         "=",
     )
+
+def print_annual_subscription_status(printer, left, print_line, subscriptions_data,
+                                     transactions, today):
+    rows = annual_subscription_rows(subscriptions_data.get("yearly", []), transactions, today)
+    if not rows:
+        return
+    print_line(printer, "=")
+    left(printer, "ANNUAL SUBSCRIPTIONS [F+B]")
+    print_line(printer, "-")
+    for item in rows:
+        name = str(item.get("name") or "SUBSCRIPTION")[:25]
+        amount = float(item.get("amount") or 0)
+        left(printer, f"{name:<25}£{amount:>8.2f}")
+        renewal = item["next_renewal"]
+        left(printer, f"  NEXT {renewal:%d %b %Y}" if renewal else "  ADD RENEWAL DATE")
+        if item["bank_paid_date"]:
+            left(printer, f"  BANK MATCH {item['bank_paid_date']:%d %b %Y}")
+        else:
+            left(printer, "  PAYMENT UNVERIFIED")
+        if item["last_paid_date"]:
+            left(printer, f"  LAST RECORDED {item['last_paid_date']:%d %b %Y}")
+    print_line(printer, "=")
+
 
 def print_financial_status(
     printer,
@@ -9302,6 +9326,10 @@ def run_live_pipeline(
                 transactions,
                 subscriptions_data=subscriptions_data,
                 bank_data_status=spending_summary.get("bank_data_status", "unavailable"),
+            )
+
+            print_annual_subscription_status(
+                printer, left, print_line, subscriptions_data, transactions, today,
             )
 
             finance_success = True

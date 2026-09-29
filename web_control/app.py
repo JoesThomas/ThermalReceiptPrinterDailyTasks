@@ -2,7 +2,7 @@ from __future__ import annotations
 import os, subprocess, sys
 import json
 import math
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, date
 from functools import wraps
 from pathlib import Path
 from urllib.parse import quote_plus
@@ -678,6 +678,66 @@ def commitment_delete(index):
     return redirect(url_for("index") + "#commitments")
 
 
+def _annual_entry():
+    name = request.form.get("name", "").strip()
+    if not name or len(name) > 90:
+        raise ValueError("Enter a short name.")
+    amount = round(float(request.form.get("amount", "")), 2)
+    if not math.isfinite(amount) or not 0 < amount <= 100000:
+        raise ValueError("Enter a positive annual amount.")
+    renewal_date = date.fromisoformat(request.form.get("renewal_date", ""))
+    terms = [term.strip() for term in request.form.get("match", "").split(",") if term.strip()]
+    if len(terms) > 6 or any(len(term) > 90 for term in terms):
+        raise ValueError("Use up to six short bank matching terms.")
+    return {"name": name, "amount": amount,
+            "renewal_date": renewal_date.isoformat(), "match": terms,
+            "category": "subscription"}
+
+
+@app.post("/annual/add")
+@login_required
+def annual_add():
+    try:
+        item = _annual_entry()
+    except (ValueError, OverflowError):
+        flash("Enter a valid annual name, amount, renewal date and matching terms.")
+        return redirect(url_for("index") + "#annual-subscriptions")
+    data = load_subscriptions()
+    data["yearly"].append(item)
+    save_subscriptions(data)
+    flash("Annual subscription added.")
+    return redirect(url_for("index") + "#annual-subscriptions")
+
+
+@app.post("/annual/<int:index>/update")
+@login_required
+def annual_update(index):
+    data = load_subscriptions()
+    if index >= len(data["yearly"]):
+        return ("Annual subscription not found", 404)
+    try:
+        item = _annual_entry()
+    except (ValueError, OverflowError):
+        flash("Enter a valid annual name, amount, renewal date and matching terms.")
+        return redirect(url_for("index") + "#annual-subscriptions")
+    data["yearly"][index].update(item)
+    save_subscriptions(data)
+    flash("Annual subscription updated.")
+    return redirect(url_for("index") + "#annual-subscriptions")
+
+
+@app.post("/annual/<int:index>/delete")
+@login_required
+def annual_delete(index):
+    data = load_subscriptions()
+    if index >= len(data["yearly"]):
+        return ("Annual subscription not found", 404)
+    data["yearly"].pop(index)
+    save_subscriptions(data)
+    flash("Annual subscription removed.")
+    return redirect(url_for("index") + "#annual-subscriptions")
+
+
 PRINT_PAGES = {
     "information": "Information (header, weather, news)",
     "actions": "Actions (calendar, to-do, food shop, deliveries, exercises)",
@@ -890,6 +950,7 @@ def generate_live_preview():
 @login_required
 def finance_review():
     from finance.commitments import matching_repayment_transaction
+    from finance.yearly_subscriptions import annual_subscription_rows
     from services.live_pipeline import (build_subscription_status,
                                         analyse_incoming_payments,
                                         get_regular_finance_data,
@@ -900,6 +961,7 @@ def finance_review():
         transactions = finance_data[0]
         bank_data_status = finance_data[4].get("bank_data_status", "unavailable")
         status = build_subscription_status(transactions, today=today)
+        annual = annual_subscription_rows(status["yearly"], transactions, today)
         used = set()
         rows = []
         for item in status["monthly"]:
@@ -923,6 +985,7 @@ def finance_review():
         cash_flow = cash_flow_review(income, payments, today)
         return render_template("finance_review.html", rows=rows, charts=charts,
                                month=month, income=income, cash_flow=cash_flow,
+                               annual=annual,
                                bank_data_status=bank_data_status,
                                checked_at=today, error=None)
     except Exception:

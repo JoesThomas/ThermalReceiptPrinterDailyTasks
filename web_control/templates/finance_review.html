@@ -152,6 +152,23 @@
                 </figure>
             {% else %}<p>No recent transactions to chart.</p>{% endif %}
         </section>
+        <section aria-labelledby="annual-title">
+            <p class="eyebrow">Renewals</p>
+            <h2 id="annual-title">Annual subscriptions</h2>
+            <p class="muted">Shown separately from monthly commitments. A last recorded payment is history, not proof that the current renewal was paid.</p>
+            {% for item in annual %}
+                <div class="review-row">
+                    <div class="review-head"><strong>{{ item.name }}</strong><strong>£{{ '%.2f'|format(item.amount) }} / year</strong></div>
+                    <p>Next renewal: {% if item.next_renewal %}<time datetime="{{ item.next_renewal.isoformat() }}">{{ item.next_renewal.strftime('%d %b %Y') }}</time>{% else %}add a renewal date{% endif %}</p>
+                    {% if item.bank_paid_date %}
+                        <p><span class="badge paid">Bank matched {{ item.bank_paid_date.strftime('%d %b %Y') }}</span></p>
+                    {% else %}
+                        <p><span class="badge">Payment unverified</span></p>
+                    {% endif %}
+                    {% if item.last_paid_date %}<small>Last recorded payment: {{ item.last_paid_date.strftime('%d %b %Y') }}</small>{% endif %}
+                </div>
+            {% else %}<p>No annual subscriptions configured. Add them on the home page.</p>{% endfor %}
+        </section>
         <section>
             <h2>Payment matches</h2>
             <p class="muted">A due entry means no matching bank transaction was found; check it before treating it as unpaid.</p>
