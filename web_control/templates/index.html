@@ -263,7 +263,7 @@
         <div class="quick-actions">
             <form method="post" action="{{ url_for('print_now') }}"><button class="primary">Print receipt</button></form>
             <a class="button" href="{{ url_for('preview') }}">Preview layout</a>
-            <a class="button" href="{{ url_for('finance_review') }}">Review finances</a>
+            <a class="button" id="finance-review-link" href="{{ url_for('finance_review') }}">Review finances</a>
         </div>
         <p class="muted">Preview shows example content. Finance review checks live bank transactions.</p>
         <div class="status-line" aria-live="polite">
@@ -1108,6 +1108,32 @@
 
 </main>
 
+<div id="finance-review-loading" class="finance-review-loading" role="status" aria-live="polite" hidden>
+    <div class="finance-review-loading-card">
+        <span class="preview-spinner" aria-hidden="true"></span>
+        <div>
+            <strong>Loading finance review</strong>
+            <p>Fetching bank transactions and checking monthly payments…</p>
+        </div>
+    </div>
+</div>
+<script>
+    (() => {
+        const link = document.getElementById('finance-review-link');
+        const loading = document.getElementById('finance-review-loading');
+        if (!link || !loading) return;
+        link.addEventListener('click', event => {
+            if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey ||
+                event.shiftKey || event.altKey) return;
+            loading.hidden = false;
+            link.setAttribute('aria-busy', 'true');
+        });
+        window.addEventListener('pageshow', () => {
+            loading.hidden = true;
+            link.removeAttribute('aria-busy');
+        });
+    })();
+</script>
 </body>
 
 </html>
