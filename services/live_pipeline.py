@@ -4034,6 +4034,18 @@ def subscription_was_paid(
     return matching_subscription_transaction(subscription, transactions, today) is not None
 
 
+def monthly_contract_ended(subscription, today):
+    """The month containing the end date is the final scheduled month."""
+    value = subscription.get("end_date")
+    if not value:
+        return False
+    try:
+        final_day = date.fromisoformat(str(value))
+    except ValueError:
+        return False
+    return (today.year, today.month) > (final_day.year, final_day.month)
+
+
 def matching_subscription_transaction(subscription, transactions, today, used=()):
     """
     Return True when a transaction matching this
@@ -4172,10 +4184,12 @@ def build_subscription_status(
     monthly = []
 
     regular = list(subscriptions.get("monthly", []))
+    ended = [item for item in regular if monthly_contract_ended(item, today)]
+    active = [item for item in regular if not monthly_contract_ended(item, today)]
     repayments = repayment_commitments(subscriptions, finance_settings)
     netflix = inferred_netflix_commitment(regular, transactions, today)
     used = set()
-    for subscription in regular + repayments + ([netflix] if netflix else []):
+    for subscription in active + repayments + ([netflix] if netflix else []):
         item = dict(
             subscription
         )
@@ -4193,6 +4207,7 @@ def build_subscription_status(
 
     return {
         "monthly": monthly,
+        "ended": ended,
         "yearly": subscriptions.get(
             "yearly",
             [],
@@ -4462,6 +4477,8 @@ def print_subscription_status(
 
             for row in receipt_right_amount(name[:25], item["amount"]):
                 left(printer, row)
+            if item.get("end_date"):
+                left(printer, f"  CONTRACT ENDS {item['end_date']}")
 
     else:
         left(
@@ -4529,6 +4546,8 @@ def print_subscription_status(
 
             for row in receipt_right_amount(name[:25], item["amount"]):
                 left(printer, row)
+            if item.get("end_date"):
+                left(printer, f"  CONTRACT ENDS {item['end_date']}")
 
     else:
         left(

@@ -176,6 +176,7 @@
                 <div class="review-row">
                     <div class="review-head"><strong>{{ row.item.name }}</strong><strong>£{{ '%.2f'|format(row.item.amount) }}</strong></div>
                     <p><span class="badge {{ 'paid' if row.transaction else 'due' }}">{{ 'Paid' if row.transaction else 'Needs checking' }}</span> <span class="muted">{{ row.item.category|title }}</span></p>
+                    {% if row.item.end_date %}<p class="muted">Contract ends {{ row.item.end_date }}</p>{% endif %}
                     {% if row.transaction %}
                         <small>{{ row.method }} · {{ (row.transaction.timestamp or row.transaction.transaction_date or row.transaction.date or '')[:10] }} · {{ row.transaction.merchant_name or row.transaction.description or 'Bank transaction' }}</small>
                     {% elif row.item.category == 'repayment' %}
@@ -184,6 +185,15 @@
                 </div>
             {% else %}<p>No monthly commitments configured.</p>{% endfor %}
         </section>
+        {% if ended_contracts %}
+            <section aria-labelledby="ended-contracts-title">
+                <h2 id="ended-contracts-title">Ended contracts</h2>
+                <p class="muted">These remain editable on the home page, but are excluded from this month's commitments after their final contract month.</p>
+                {% for item in ended_contracts %}
+                    <div class="review-row"><div class="review-head"><strong>{{ item.name }}</strong><strong>£{{ '%.2f'|format(item.amount) }} / month</strong></div><small>Ended {{ item.end_date }}</small></div>
+                {% endfor %}
+            </section>
+        {% endif %}
     {% endif %}
 </main>
 </body>

@@ -629,7 +629,11 @@ def _monthly_entry():
     match = [term.strip() for term in request.form.get("match", "").split(",") if term.strip()]
     if len(match) > 6 or any(len(term) > 90 for term in match):
         raise ValueError("Use up to six short bank matching terms.")
+    end_date = request.form.get("end_date", "").strip()
+    if end_date:
+        end_date = date.fromisoformat(end_date).isoformat()
     return {"name": name, "amount": amount, "match": match,
+            "end_date": end_date or None,
             "category": request.form.get("category") if request.form.get("category") in
             {"bill", "subscription", "savings", "repayment"} else "subscription"}
 
@@ -986,6 +990,7 @@ def finance_review():
         return render_template("finance_review.html", rows=rows, charts=charts,
                                month=month, income=income, cash_flow=cash_flow,
                                annual=annual,
+                               ended_contracts=status["ended"],
                                bank_data_status=bank_data_status,
                                checked_at=today, error=None)
     except Exception:
