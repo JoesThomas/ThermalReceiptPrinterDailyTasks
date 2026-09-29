@@ -9,7 +9,7 @@ class WebServerStartupTests(unittest.TestCase):
         main(serve_fn=lambda app, **kwargs: calls.append(kwargs), application=object(),
              environ={'RECEIPT_WEB_HOST': '127.0.0.1', 'RECEIPT_WEB_PORT': '5051'})
         self.assertEqual(calls, [{'host': '127.0.0.1', 'port': 5051, 'threads': 4}])
-        self.assertEqual(server_address({}), ('0.0.0.0', 5050))
+        self.assertEqual(server_address({}), ('127.0.0.1', 5050))
 
     def test_invalid_port_fails_before_binding(self):
         for value in ('abc', '0', '65536'):

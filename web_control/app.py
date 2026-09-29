@@ -2,13 +2,17 @@ from __future__ import annotations
 import os, subprocess, sys
 import json
 import math
+import secrets
+import time
+from hmac import compare_digest
+from threading import Lock
 from datetime import timedelta, datetime, date
 from functools import wraps
 from pathlib import Path
 from urllib.parse import quote_plus
 from urllib.request import urlopen
 from zoneinfo import ZoneInfo
-from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -245,24 +249,49 @@ app.secret_key = (
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    PERMANENT_SESSION_LIFETIME=timedelta(
-        hours=12
-    ),
+    SESSION_COOKIE_SECURE=os.environ.get("RECEIPT_WEB_SECURE_COOKIE") == "1",
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
+    MAX_CONTENT_LENGTH=1024 * 1024,
 )
 
-if (
-    os.environ.get(
-        "RECEIPT_WEB_SECURE_COOKIE"
-    )
-    == "1"
-):
-    app.config[
-        "SESSION_COOKIE_SECURE"
-    ] = True
+
+def csrf_token():
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_urlsafe(32)
+    return session["csrf_token"]
 
 
-app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", PERMANENT_SESSION_LIFETIME=timedelta(hours=12))
-if os.environ.get("RECEIPT_WEB_SECURE_COOKIE") == "1": app.config["SESSION_COOKIE_SECURE"] = True
+app.jinja_env.globals["csrf_token"] = csrf_token
+
+
+@app.before_request
+def require_csrf():
+    if request.method == "POST":
+        supplied = request.form.get("csrf_token", "")
+        expected = session.get("csrf_token", "")
+        if not expected or not compare_digest(expected, supplied):
+            abort(403)
+
+
+# This is a per-process limit; use a shared store if running multiple workers.
+_login_attempts = {}
+_login_attempts_lock = Lock()
+_LOGIN_WINDOW = 15 * 60
+_LOGIN_MAX_ATTEMPTS = 5
+
+
+def _login_limited(address, failed=False):
+    now = time.monotonic()
+    with _login_attempts_lock:
+        attempts = [when for when in _login_attempts.get(address, ())
+                    if now - when < _LOGIN_WINDOW]
+        if failed:
+            attempts.append(now)
+        if attempts:
+            _login_attempts[address] = attempts
+        else:
+            _login_attempts.pop(address, None)
+        return len(attempts) >= _LOGIN_MAX_ATTEMPTS
 
 def login_required(view):
     @wraps(view)
@@ -343,6 +372,9 @@ def instalment_update(index):
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
+        address = request.remote_addr or "unknown"
+        if _login_limited(address):
+            return ("Too many sign-in attempts. Try again in 15 minutes.", 429)
         if check_password_hash(
                 load_password_hash(),
                 request.form.get(
@@ -350,8 +382,11 @@ def login():
                     "",
                 ),
         ):
+            with _login_attempts_lock:
+                _login_attempts.pop(address, None)
             session.clear(); session["authenticated"] = True; session.permanent = True
             return redirect(url_for("index"))
+        _login_limited(address, failed=True)
         flash("Incorrect password.")
     return render_template("login.html")
 

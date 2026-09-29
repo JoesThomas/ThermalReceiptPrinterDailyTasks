@@ -262,7 +262,16 @@ Income, refunds, internal transfers and card repayments are excluded. This
 calendar-month total is distinct from the rolling 30-day category chart and
 from future commitments.
 
-`web_control/run_waitress.py` listens on `0.0.0.0:5050` by default. If startup
+`web_control/run_waitress.py` listens on `127.0.0.1:5050` by default, so the
+control page is available only on this computer. To access it from another
+device, put it behind an HTTPS reverse proxy with authentication and set
+`RECEIPT_WEB_SECURE_COOKIE=1`. If you deliberately bind to a LAN address,
+set `RECEIPT_WEB_HOST` explicitly; plain HTTP on a shared network can expose
+the password and session. The control page requires a form token for each
+change and limits failed sign-ins to five per client address in 15 minutes.
+The limit is held in the server process and resets when it restarts.
+
+If startup
 fails with `Address already in use`, check for an existing instance on macOS:
 
 ```bash
@@ -276,8 +285,7 @@ port without editing the script:
 RECEIPT_WEB_PORT=5051 python web_control/run_waitress.py
 ```
 
-Use `RECEIPT_WEB_HOST=127.0.0.1` to bind only on this computer. Other socket
-errors now include the address and a relevant diagnostic. The final line of the
+Other socket errors include the address and a relevant diagnostic. The final line of the
 Python traceback (`OSError: [Errno ...] ...`) determines which bind error
 occurred.
 

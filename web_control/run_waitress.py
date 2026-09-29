@@ -7,7 +7,7 @@ import os
 
 def server_address(environ=None):
     environ = os.environ if environ is None else environ
-    host = environ.get("RECEIPT_WEB_HOST", "0.0.0.0").strip()
+    host = environ.get("RECEIPT_WEB_HOST", "127.0.0.1").strip()
     if not host:
         raise ValueError("RECEIPT_WEB_HOST must not be empty")
     raw_port = environ.get("RECEIPT_WEB_PORT", "5050")

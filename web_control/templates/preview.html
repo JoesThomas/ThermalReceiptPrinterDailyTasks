@@ -16,7 +16,7 @@
     </header>
     {% with messages=get_flashed_messages() %}{% for message in messages %}<p class="flash">{{ message }}</p>{% endfor %}{% endwith %}
     <section class="panel">
-        <form action="{{ url_for('generate_live_preview') }}" method="post">
+        <form action="{{ url_for('generate_live_preview') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="primary" type="submit" {% if preview_status and preview_status.state == 'running' %}disabled{% endif %}>Generate live preview</button>
             <label><input type="checkbox" name="include_finance"> Include finance even if it is not scheduled today</label>
         </form>
