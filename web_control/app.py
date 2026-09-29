@@ -805,6 +805,14 @@ def tesco_search():
 
 
 def _start_print_command(command_args):
+    with _print_start_lock:
+        return _start_print_command_locked(command_args)
+
+
+_print_start_lock = Lock()
+
+
+def _start_print_command_locked(command_args):
     lock = (
         PROJECT_ROOT
         / "data"

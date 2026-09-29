@@ -1,5 +1,8 @@
 import errno
+import sys
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 from web_control.run_waitress import main, server_address, bind_error_message
 
 
@@ -22,6 +25,15 @@ class WebServerStartupTests(unittest.TestCase):
         message = bind_error_message(error, '0.0.0.0', 5050)
         self.assertIn('lsof -nP -iTCP:5050 -sTCP:LISTEN', message)
         self.assertIn('RECEIPT_WEB_PORT=5051', message)
+
+    def test_real_server_starts_daily_scheduler(self):
+        calls = []
+        start_print = lambda args: (True, None)
+        with patch.dict(sys.modules, {'waitress': SimpleNamespace(serve=lambda *a, **k: calls.append('serve')),
+                                      'app': SimpleNamespace(_start_print_command=start_print)}), \
+             patch('web_control.scheduled_print.start_scheduler', side_effect=lambda fn: calls.append(fn)):
+            main(application=object(), environ={})
+        self.assertEqual(calls, [start_print, 'serve'])
 
 if __name__ == '__main__':
     unittest.main()

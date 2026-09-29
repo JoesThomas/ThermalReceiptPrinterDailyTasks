@@ -271,6 +271,14 @@ the password and session. The control page requires a form token for each
 change and limits failed sign-ins to five per client address in 15 minutes.
 The limit is held in the server process and resets when it restarts.
 
+While the Waitress server is running, it starts one full receipt print at
+**03:00 UK time** every day (including daylight saving changes). Starting the
+server after 03:00 waits until the next day. If another print is running at
+03:00, it retries every five minutes that day. The date of a launched scheduled
+job is kept in `data/.scheduled_print_date` so a server restart does not print
+twice. The usual receipt rules still decide whether to include finance. Print
+results appear in `data/web_print_status.json` and `logs/web_print.log`.
+
 If startup
 fails with `Address already in use`, check for an existing instance on macOS:
 

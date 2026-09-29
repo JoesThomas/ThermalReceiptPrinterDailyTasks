@@ -36,6 +36,7 @@ def bind_error_message(error, host, port):
 
 
 def main(serve_fn=None, application=None, environ=None):
+    real_server = serve_fn is None
     try:
         host, port = server_address(environ)
     except ValueError as exc:
@@ -48,6 +49,11 @@ def main(serve_fn=None, application=None, environ=None):
         application = app
     print(f"Receipt Control listening on {host}:{port}")
     try:
+        # Test callers inject a server; only the real Waitress process schedules prints.
+        if real_server:
+            from app import _start_print_command
+            from web_control.scheduled_print import start_scheduler
+            start_scheduler(_start_print_command)
         serve_fn(application, host=host, port=port, threads=4)
     except OSError as exc:
         raise SystemExit(bind_error_message(exc, host, port)) from exc
