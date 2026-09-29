@@ -13,8 +13,8 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from finance_trends import (
-    load_rules, category_trends, uncategorised_merchants, receipt_trend_lines,
-    clean_spending_transactions, spending_total, usual_30_day_spend,
+    load_rules, category_trends, uncategorised_merchants,
+    clean_spending_transactions, spending_total,
     debug_spending_transactions,
     completed_periods_to_save, period_analysis, save_snapshot,
     load_snapshot, add_savings_growth_to_analysis,
@@ -393,31 +393,12 @@ def print_integrated_finance(
         days=30,
     )
 
-    # Historical comparison should compare
-    # like-for-like everyday spending.
-    usual = usual_30_day_spend(
-        everyday_transactions
-    )
-
     fixed_commitments = max(
         0.0,
         total_outgoings - last30,
     )
 
-    monthly_spend = (
-        usual
-        or last30
-    )
-
-    overall_change = (
-        (
-            (last30 - usual)
-            / usual
-            * 100
-        )
-        if usual > 0
-        else None
-    )
+    monthly_spend = last30
 
     if DEBUG_SPENDING:
         debug_spending_transactions(
@@ -624,11 +605,9 @@ def print_integrated_finance(
         ("EVERYDAY SPEND", last30),
         ("FIXED COMMITMENTS", fixed_commitments),
         ("TOTAL OUTGOINGS", total_outgoings),
-        ("30 DAY AVG" if spending_summary.get("average_period_days") == 30 else "3 MONTH AVG", usual),
+
     ):
         left(printer, _amount_line(label, value))
-    if usual > 0:
-        left(printer, f"CHANGE {(last30 - usual) / usual * 100:+.1f}%")
 
     print_incoming_payments(printer, left, print_line, spending_summary,
                             total_outgoings, today)
@@ -661,41 +640,16 @@ def print_integrated_finance(
 
 
 
-    if trends:
-
-        line(
-            printer,
-            "-",
-        )
-
-        for text in (
-            receipt_trend_lines(
-                trends
-            )
-        ):
-
-            if (
-                text
-                == "LARGEST CHANGES"
-            ):
-                break
-
-            text = (
-                text
-                .replace(
-                    "SPENDING TRENDS",
-                    "SPENDING BY CATEGORY",
-                )
-                .replace(
-                    "30 DAYS     VS 90D",
-                    "30 DAYS       VS USUAL",
-                )
-            )
-
-            left(
-                printer,
-                text,
-            )
+    current_categories = [
+        row for row in trends if row["current"] > 0
+    ][:8]
+    if current_categories:
+        printer.text("\n")
+        left(printer, "SPENDING BY CATEGORY / 30 DAYS")
+        print_line(printer, "-")
+        for row in current_categories:
+            for amount_row in _amount_rows(row["category"], row["current"]):
+                left(printer, amount_row)
 
     # ==========================================
     # RUNWAY
