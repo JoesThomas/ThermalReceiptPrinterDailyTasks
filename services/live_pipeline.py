@@ -4357,6 +4357,15 @@ def print_instalment_status(printer, subscriptions_data):
 
 
 
+def receipt_right_amount(label, amount, width=40):
+    """Align a money value with the right end of the receipt rule."""
+    label = str(label).strip()
+    money = f"£{float(amount):,.2f}"
+    if len(label) + len(money) + 1 > width:
+        return [label[:width], money.rjust(width)]
+    return [label + money.rjust(width - len(label))]
+
+
 def print_subscription_status(
     printer,
     left,
@@ -4451,13 +4460,8 @@ def print_subscription_status(
                 name,
             )
 
-            left(
-                printer,
-                (
-                    f"{name[:22]:<22}"
-                    f"£{item['amount']:>8.2f}"
-                ),
-            )
+            for row in receipt_right_amount(name[:25], item["amount"]):
+                left(printer, row)
 
     else:
         left(
@@ -4474,13 +4478,8 @@ def print_subscription_status(
         bold=True
     )
 
-    left(
-        printer,
-        (
-            f"{'PAID TOTAL':<22}"
-            f"£{paid_total:>8.2f}"
-        ),
-    )
+    for row in receipt_right_amount("PAID TOTAL", paid_total):
+        left(printer, row)
 
     printer.set(
         bold=False
@@ -4528,13 +4527,8 @@ def print_subscription_status(
                 name,
             )
 
-            left(
-                printer,
-                (
-                    f"{name[:22]:<22}"
-                    f"£{item['amount']:>8.2f}"
-                ),
-            )
+            for row in receipt_right_amount(name[:25], item["amount"]):
+                left(printer, row)
 
     else:
         left(
@@ -4557,43 +4551,23 @@ def print_subscription_status(
     if due:
 
         if due_bills:
-            left(
-                printer,
-                (
-                    f"{'BILLS DUE':<22}"
-                    f"£{due_bills:>8.2f}"
-                ),
-            )
+            for row in receipt_right_amount("BILLS DUE", due_bills):
+                left(printer, row)
 
         if due_savings:
-            left(
-                printer,
-                (
-                    f"{'SAVINGS DUE':<22}"
-                    f"£{due_savings:>8.2f}"
-                ),
-            )
+            for row in receipt_right_amount("SAVINGS DUE", due_savings):
+                left(printer, row)
 
         if due_repayments:
-            left(
-                printer,
-                (
-                    f"{'REPAYMENTS DUE':<22}"
-                    f"£{due_repayments:>8.2f}"
-                ),
-            )
+            for row in receipt_right_amount("REPAYMENTS DUE", due_repayments):
+                left(printer, row)
 
     printer.set(
         bold=True
     )
 
-    left(
-        printer,
-        (
-            f"{'REMAINING':<22}"
-            f"£{remaining_total:>8.2f}"
-        ),
-    )
+    for row in receipt_right_amount("REMAINING", remaining_total):
+        left(printer, row)
 
     printer.set(
         bold=False
@@ -4615,7 +4589,8 @@ def print_annual_subscription_status(printer, left, print_line, subscriptions_da
     for item in rows:
         name = str(item.get("name") or "SUBSCRIPTION")[:25]
         amount = float(item.get("amount") or 0)
-        left(printer, f"{name:<25}£{amount:>8.2f}")
+        for row in receipt_right_amount(name, amount):
+            left(printer, row)
         renewal = item["next_renewal"]
         left(printer, f"  NEXT {renewal:%d %b %Y}" if renewal else "  ADD RENEWAL DATE")
         if item["bank_paid_date"]:
