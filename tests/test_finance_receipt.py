@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 from datetime import date
 from decimal import Decimal
 from finance.receipt import (calculate_debt_and_payday, _amount_rows,
@@ -6,6 +7,31 @@ from finance.receipt import (calculate_debt_and_payday, _amount_rows,
                              _calendar_occurrence, _forecast_events)
 
 class FinanceReceiptTests(unittest.TestCase):
+    def test_cash_runway_uses_bank_cash_and_total_spending_not_debt_net(self):
+        import finance.receipt as receipt
+        import tempfile
+        from pathlib import Path
+        captured = []
+        class Printer:
+            def text(self, value):
+                pass
+            def set(self, **kwargs):
+                pass
+        with tempfile.TemporaryDirectory() as folder:
+            settings = Path(folder) / 'settings.json'
+            settings.write_text('{}', encoding='utf-8')
+            with patch.object(receipt, 'spending_total', side_effect=[300.0, 200.0]), \
+                 patch.object(receipt, 'runway_receipt_lines',
+                              side_effect=lambda cash, savings, spending:
+                              captured.append((cash, spending)) or ['RUNWAY']):
+                receipt.print_integrated_finance(
+                    Printer(), lambda printer, value: None,
+                    lambda printer, char='-': None,
+                    {'HSBC': {'available': 500}, 'MONZO': {'available': 100},
+                     'AMEX': {'current': 900}}, transactions=[],
+                    finance_settings_file=settings, today=date(2026, 9, 29))
+        self.assertEqual(captured, [(600.0, 300.0)])
+
     def test_incoming_section_lists_salary_and_every_other_payment_in_window(self):
         lines = []
         class Printer:

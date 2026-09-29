@@ -398,8 +398,6 @@ def print_integrated_finance(
         total_outgoings - last30,
     )
 
-    monthly_spend = last30
-
     if DEBUG_SPENDING:
         debug_spending_transactions(
             clean_transactions,
@@ -655,14 +653,16 @@ def print_integrated_finance(
     # RUNWAY
     # ==========================================
 
-    if monthly_spend > 0:
+    if total_outgoings > 0:
 
         printer.text("\n")
-
+        left(printer, "RUNWAY [E]")
+        left(printer, _amount_line("30D SPEND BASIS [B]", total_outgoings))
         for text in runway_receipt_lines(
-            float(debt_summary["net_liquid"]), savings_data, monthly_spend,
+            available_cash, savings_data, total_outgoings,
         ):
-            left(printer, "RUNWAY [E]" if text == "RUNWAY" else text)
+            if text != "RUNWAY":
+                left(printer, text)
 
     # ==========================================
     # QUARTER / YEAR REVIEW
