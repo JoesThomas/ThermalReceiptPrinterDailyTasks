@@ -17,7 +17,8 @@ from receipt_settings import load_receipt_settings, save_receipt_settings
 from receipt.location_settings import validate_location
 from routines import WEEKDAYS, add_routine, delete_routine, load_routines, mark_done, next_due_date, set_enabled
 from web_control.charts import finance_charts, instalment_progress
-from web_control.payments import external_payments, monthly_payments
+from web_control.payments import (cash_flow_review, external_payments,
+                                  incoming_review, monthly_payments)
 from web_control.live_data import (food_shop_override, save_food_shop, tesco_progress,
                                    mark_tesco_item, meal_confirmation, confirm_meal,
                                    clear_meal_confirmation, map_embed_url, map_link_url)
@@ -890,11 +891,14 @@ def generate_live_preview():
 def finance_review():
     from finance.commitments import matching_repayment_transaction
     from services.live_pipeline import (build_subscription_status,
+                                        analyse_incoming_payments,
                                         get_regular_finance_data,
                                         matching_subscription_transaction)
     today = datetime.now(ZoneInfo("Europe/London")).date()
     try:
-        transactions = get_regular_finance_data()[0]
+        finance_data = get_regular_finance_data()
+        transactions = finance_data[0]
+        bank_data_status = finance_data[4].get("bank_data_status", "unavailable")
         status = build_subscription_status(transactions, today=today)
         used = set()
         rows = []
@@ -911,8 +915,15 @@ def finance_review():
         payments = external_payments(transactions)
         charts = finance_charts(payments, status["monthly"], today)
         month = monthly_payments(transactions, today)
+        salary, other = analyse_incoming_payments(
+            transactions,
+            salary_payee=load_receipt_settings().get("finance", {}).get("salary_payee", ""),
+        )
+        income = incoming_review(salary, other, today)
+        cash_flow = cash_flow_review(income, payments, today)
         return render_template("finance_review.html", rows=rows, charts=charts,
-                               month=month,
+                               month=month, income=income, cash_flow=cash_flow,
+                               bank_data_status=bank_data_status,
                                checked_at=today, error=None)
     except Exception:
         app.logger.exception("Could not load finance review")

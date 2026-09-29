@@ -17,9 +17,64 @@
     {% if error %}
         <section class="helper">{{ error }}</section>
     {% else %}
+        {% if bank_data_status != 'complete' %}
+            <section class="helper" role="status">Bank transaction data is {{ bank_data_status }}. Totals below include only payments the bank returned; missing matches may still have been paid.</section>
+        {% endif %}
+        <section aria-labelledby="cash-flow-title">
+            <p class="eyebrow">Last 30 days · bank transactions</p>
+            <h2 id="cash-flow-title">Money in and out</h2>
+            <div class="flow-totals">
+                <div><span>Income</span><strong>£{{ '%.2f'|format(cash_flow.income) }}</strong></div>
+                <div><span>Outgoings</span><strong>£{{ '%.2f'|format(cash_flow.outgoing) }}</strong></div>
+                <div><span>Net flow</span><strong class="{{ 'negative' if cash_flow.net < 0 else '' }}">{{ '-' if cash_flow.net < 0 else '+' }}£{{ '%.2f'|format(cash_flow.net|abs) }}</strong></div>
+            </div>
+            <p class="muted">Net flow is income minus recorded spending. Transfers between your accounts and Amex repayments are excluded from income.</p>
+            <h3>Weekly cash flow</h3>
+            <p class="muted">Four seven-day periods ending today. Bar lengths share one scale.</p>
+            <div class="flow-legend"><span><i class="legend-swatch paid"></i> Income</span><span><i class="legend-swatch due"></i> Outgoings</span></div>
+            <div class="flow-weeks">
+                {% for week in cash_flow.weeks %}
+                    <div class="flow-week">
+                        <strong>{{ week.label }}</strong>
+                        <div class="flow-track" role="img" aria-label="Income £{{ '%.2f'|format(week.income) }}">
+                            <span class="flow-fill income" style="width:{{ week.income_percent }}%"></span>
+                        </div>
+                        <small>In £{{ '%.2f'|format(week.income) }}</small>
+                        <div class="flow-track" role="img" aria-label="Outgoings £{{ '%.2f'|format(week.outgoing) }}">
+                            <span class="flow-fill outgoing" style="width:{{ week.outgoing_percent }}%"></span>
+                        </div>
+                        <small>Out £{{ '%.2f'|format(week.outgoing) }}</small>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+        <section aria-labelledby="incoming-title">
+            <p class="eyebrow">Credits from connected accounts</p>
+            <h2 id="incoming-title">Incoming payments</h2>
+            <p class="amount-headline">£{{ '%.2f'|format(income.total) }}</p>
+            <p class="muted">{{ income.recent|length }} payments in the last 30 days · £{{ '%.2f'|format(income.month_total) }} across {{ income.month_count }} payments this calendar month.</p>
+            {% if income.categories %}
+                <div class="merchant-list">
+                    {% for category in income.categories %}
+                        <details class="merchant-group">
+                            <summary>
+                                <span class="merchant-summary-name">{{ category.name }} <small>({{ category.count }})</small></span>
+                                <strong>£{{ '%.2f'|format(category.amount) }}</strong>
+                            </summary>
+                            <div class="bar-track" role="img" aria-label="{{ category.name }} income £{{ '%.2f'|format(category.amount) }}"><div class="bar-fill" style="width:{{ category.percent }}%"></div></div>
+                            <div class="merchant-payments">
+                                {% for payment in category.payments %}
+                                    <div class="merchant-payment"><span><time datetime="{{ payment.date.isoformat() }}">{{ payment.date.strftime('%d %b') }}</time> · {{ payment.name }}</span><strong>£{{ '%.2f'|format(payment.amount) }}</strong></div>
+                                {% endfor %}
+                            </div>
+                        </details>
+                    {% endfor %}
+                </div>
+            {% else %}<p>No incoming bank payments found in the last 30 days.</p>{% endif %}
+        </section>
         <section id="month-payments" aria-labelledby="month-payments-title">
             <p class="eyebrow">Calendar month</p>
-            <h2 id="month-payments-title">All payments · {{ month.label }}</h2>
+            <h2 id="month-payments-title">Outgoings · {{ month.label }}</h2>
             <p class="amount-headline">£{{ '%.2f'|format(month.total) }}</p>
             <p class="muted">{{ month.count }} bank payments across {{ month.merchants|length }} merchants, from the connected accounts. Income, refunds, transfers and card repayments are excluded. Identical repeat purchases remain separate unless they share a bank transaction ID.</p>
             {% if month.merchants %}
