@@ -26,6 +26,7 @@ from web_control.payments import (cash_flow_review, external_payments,
 from web_control.live_data import (food_shop_override, save_food_shop, tesco_progress,
                                    mark_tesco_item, meal_confirmation, confirm_meal,
                                    clear_meal_confirmation, map_embed_url, map_link_url)
+from web_control.to_buy import load_to_buy, save_to_buy
 
 app = Flask(__name__)
 
@@ -428,6 +429,7 @@ def index():
         food_shop_text="\n".join(food_shop_items),
         food_shop_error=food_shop_error,
         food_shop_is_local=food_shop_override() is not None,
+        to_buy_items=load_to_buy(),
     )
 
 def _checked(name): return request.form.get(name) == "on"
@@ -445,8 +447,10 @@ def save():
             return redirect(url_for("index"))
     for name in ("calendar", "deliveries", "weather", "national_news", "local_news", "sport_news", "villa", "villa_trains"):
         settings["features"][name] = _checked(name)
-    for name in ("finance_check", "food_shop", "shopping_list"):
+    for name in ("finance_check", "food_shop", "shopping_list", "to_buy"):
         if _checked(name): settings["one_shot"][name] = True
+    # Unlike existing requests, unticking To buy cancels its pending print.
+    settings["one_shot"]["to_buy"] = _checked("to_buy")
     detail = request.form.get("weather_detail", "auto")
     settings["display"]["weather_detail"] = detail if detail in {"auto", "compact", "full"} else "auto"
     try: settings["display"]["news_count"] = max(1, min(10, int(request.form.get("news_count", 3))))
@@ -464,7 +468,7 @@ def save():
 @app.post("/one-shot/<name>/clear")
 @login_required
 def clear_one_shot(name):
-    if name not in {"finance_check", "food_shop", "shopping_list"}: return ("Unknown request", 404)
+    if name not in {"finance_check", "food_shop", "shopping_list", "to_buy"}: return ("Unknown request", 404)
     settings = load_receipt_settings(); settings["one_shot"][name] = False; save_receipt_settings(settings)
     return redirect(url_for("index"))
 
@@ -618,6 +622,18 @@ def food_shop_reset():
     FOOD_SHOP_FILE.unlink(missing_ok=True)
     flash("Using the Google Doc shopping list again.")
     return redirect(url_for("index") + "#food-shop")
+
+
+@app.post("/to-buy/save")
+@login_required
+def to_buy_save():
+    try:
+        save_to_buy(request.form.get("items", ""))
+    except ValueError as error:
+        flash(str(error))
+    else:
+        flash("To buy list saved locally.")
+    return redirect(url_for("index") + "#to-buy")
 
 
 def _tesco_list():

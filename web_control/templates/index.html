@@ -254,7 +254,7 @@
     <nav class="nav" aria-label="Page sections">
         <a href="#overview">Overview</a><a href="#next-receipt">Next receipt</a>
         <a href="#daily-receipt">Daily settings</a><a href="#routines">Routines</a>
-        <a href="#instalments">Instalments</a><a href="#commitments">Commitments</a><a href="#annual-subscriptions">Annual</a><a href="#food-shop">Food shop</a>
+        <a href="#instalments">Instalments</a><a href="#commitments">Commitments</a><a href="#annual-subscriptions">Annual</a><a href="#food-shop">Food shop</a><a href="#to-buy">To buy</a>
         <a href="#printing">Printing</a>
     </nav>
     <section id="overview">
@@ -301,7 +301,8 @@
             {% for key,label in [
                 ('finance_check','Finance check'),
                 ('food_shop','Food shop'),
-                ('shopping_list','Shopping list')
+                ('shopping_list','Shopping list'),
+                ('to_buy','To buy')
             ] %}
 
                 <label class="option">
@@ -1074,6 +1075,17 @@
 
     </section>
 
+
+    <section id="to-buy">
+        <h2>To buy</h2>
+        <p class="muted">Your wish list is saved on this computer. Tick “To buy” under Next receipt and save settings to print it once. Put one item on each line.</p>
+        <form method="post" action="{{ url_for('to_buy_save') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="to-buy-items">Wish list</label>
+            <textarea id="to-buy-items" name="items" rows="12" style="width:100%">{{ to_buy_items|join('\n') }}</textarea>
+            <button>Save to buy list</button>
+        </form>
+    </section>
 
     <!-- DEBUG PRINTING -->
 

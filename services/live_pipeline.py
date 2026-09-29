@@ -2462,6 +2462,19 @@ def print_shopping_list(printer, shopping_list_text):
 
     print_line(printer, "-")
 
+
+def print_to_buy(printer, items):
+    print_line(printer, "=")
+    printer.set(bold=True)
+    centre(printer, "TO BUY")
+    printer.set(bold=False)
+    print_line(printer, "-")
+    if not items:
+        left(printer, "NO TO BUY ITEMS")
+    for item in items:
+        print_wrapped(printer, f"[ ] {printer_safe_text(item)}", width=40)
+    print_line(printer, "-")
+
 # ============================================================
 # FINANCIAL STATUS - LIVE TRUE LAYER DATA
 # ============================================================
@@ -8977,6 +8990,8 @@ def run_live_pipeline(
             )
         )
 
+        web_to_buy = one_shot_requested(settings, "to_buy")
+
         today = datetime.now(
             ZoneInfo("Europe/London")
         ).date()
@@ -9090,6 +9105,17 @@ def run_live_pipeline(
                     settings,
                     "shopping_list",
                 )
+
+        if web_to_buy:
+            try:
+                from web_control.to_buy import load_to_buy
+                print_to_buy(printer, load_to_buy())
+            except Exception as error:
+                print("To buy error:", repr(error))
+                traceback.print_exc()
+                _print_section_error(printer, "TO BUY ERROR", "LIST UNAVAILABLE")
+            else:
+                consume_one_shot(settings, "to_buy")
 
         # ==========================================
         # SUNDAY SUBSCRIPTIONS
