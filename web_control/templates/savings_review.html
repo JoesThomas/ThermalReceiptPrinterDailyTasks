@@ -1,0 +1,6 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Savings &amp; investments · Receipt Control</title><link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}"></head><body><main>
+<a href="{{ url_for('index') }}">Back to control</a> · <a href="{{ url_for('finance_review') }}">Finance review</a>
+<header><h1>Savings &amp; investments</h1><p class="muted">Private dated balances. No code changes needed.</p></header>
+{% for message in get_flashed_messages() %}<p class="helper" role="status">{{ message }}</p>{% endfor %}
+{% include 'wealth_section.html' %}
+</main></body></html>

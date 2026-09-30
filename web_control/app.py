@@ -1032,6 +1032,55 @@ def generate_live_preview():
     return redirect(url_for("preview", source="live"))
 
 
+def _wealth_view():
+    from finance.wealth_history import capture_local, review
+    from finance.investments import load_investments
+    from savings_runway import load_savings
+    today = _local_today()
+    capture_local(load_savings(PROJECT_ROOT / "data" / "savings.json"),
+                  load_investments(PROJECT_ROOT / "data" / "investments.json"), today)
+    return review(today, request.args.get("month") or None)
+
+
+@app.get("/savings")
+@login_required
+def savings_review():
+    try:
+        wealth = _wealth_view()
+        error = None
+    except (ValueError, OSError, KeyError, TypeError):
+        wealth, error = None, "Balance history could not be loaded. Check the month or restore the local history file."
+    return render_template("savings_review.html", wealth=wealth, wealth_error=error, today=_local_today())
+
+
+@app.post("/savings/record")
+@login_required
+def savings_record():
+    from finance.wealth_history import record
+    try:
+        deposits, withdrawals = request.form.get("deposits", ""), request.form.get("withdrawals", "")
+        if bool(deposits) != bool(withdrawals):
+            raise ValueError("Fill both cash-flow fields (use zero where applicable), or leave both blank.")
+        record(request.form.get("name", ""), request.form.get("kind", ""), request.form.get("date", ""),
+               request.form.get("balance", ""), deposits or None, withdrawals or None, today=_local_today())
+    except (ValueError, OSError):
+        flash("Could not save. Check the account, date, balance and both cash-flow fields.")
+    else:
+        flash("Dated balance saved privately. Saving the same account, type and date updates that entry.")
+    return redirect(url_for("savings_review"))
+
+
+@app.post("/savings/delete")
+@login_required
+def savings_delete():
+    from finance.wealth_history import delete
+    try:
+        delete(request.form.get("entry_id", ""))
+    except (ValueError, OSError):
+        flash("Could not remove this entry.")
+    return redirect(url_for("savings_review"))
+
+
 @app.get("/finance-review")
 @login_required
 def finance_review():
@@ -1043,6 +1092,10 @@ def finance_review():
                                         get_regular_finance_data,
                                         matching_subscription_transaction)
     today = datetime.now(ZoneInfo("Europe/London")).date()
+    try:
+        wealth, wealth_error = _wealth_view(), None
+    except (ValueError, OSError, KeyError, TypeError):
+        wealth, wealth_error = None, "Private balance history could not be loaded."
     try:
         finance_data = get_regular_finance_data()
         transactions = finance_data[0]
@@ -1080,12 +1133,17 @@ def finance_review():
         except Exception:
             app.logger.warning("Cash balances unavailable for finance projection")
             balances = {}
-        savings = savings_totals(load_savings(PROJECT_ROOT / "data" / "savings.json"))["runway_accessible"]
+        from finance.wealth_history import apply_latest
+        savings_data = load_savings(PROJECT_ROOT / "data" / "savings.json")
+        if wealth:
+            savings_data, _ = apply_latest(savings_data, {"accounts": []}, wealth)
+        savings = savings_totals(savings_data)["runway_accessible"]
         projection = build_projection(balances, transactions, status["monthly"], status["yearly"],
                                       forecast_settings, today, savings, bank_data_status)
         suggestions = build_suggestions(projection, rows, annual, status["ended"], charts,
                                         finance_data[3], transactions, today)
         return render_template("finance_review.html", rows=rows, charts=charts,
+                               wealth=wealth, wealth_error=wealth_error,
                                month=month, income=income, cash_flow=cash_flow,
                                annual=annual,
                                projection=projection, suggestions=suggestions, forecast_settings=forecast_settings,
@@ -1095,6 +1153,7 @@ def finance_review():
     except Exception:
         app.logger.exception("Could not load finance review")
         return render_template("finance_review.html", rows=[], checked_at=today,
+                               wealth=wealth, wealth_error=wealth_error,
                                error="Bank transactions are unavailable. Try again later."), 503
 
 

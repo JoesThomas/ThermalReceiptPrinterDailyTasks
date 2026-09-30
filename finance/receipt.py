@@ -339,6 +339,16 @@ def print_integrated_finance(
         )
     )
 
+    from finance.wealth_history import capture_local, review as wealth_review, apply_latest, receipt_lines as wealth_lines
+    investment_data = load_investments(INVESTMENTS_FILE)
+    wealth = None
+    try:
+        capture_local(savings_data, investment_data, today)
+        wealth = wealth_review(today)
+        savings_data, investment_data = apply_latest(savings_data, investment_data, wealth)
+    except (ValueError, OSError, KeyError, TypeError):
+        pass
+
     st = savings_totals(
         savings_data
     )
@@ -360,12 +370,6 @@ def print_integrated_finance(
     # ==========================================
     # INVESTMENTS
     # ==========================================
-
-    investment_data = (
-        load_investments(
-            INVESTMENTS_FILE
-        )
-    )
 
     investment_summary = (
         investment_totals(
@@ -516,6 +520,10 @@ def print_integrated_finance(
                 left(printer, row)
         left(printer, _amount_line("NET CASH + SAVINGS [C]", net_cash))
 
+    if wealth:
+        for text in wealth_lines(wealth):
+            left(printer, text)
+
     # ==========================================
     # INVESTMENTS
     # ==========================================
@@ -572,15 +580,19 @@ def print_integrated_finance(
             "-",
         )
 
-        for label, value in (
-            ("TOTAL", investment_summary["value"]),
-            ("CONTRIBUTED", investment_summary["contributions"]),
-            ("GAIN / LOSS", investment_summary["gain"]),
-        ):
-            left(printer, _amount_line(f"{label} [C]", value))
-        gain_pct = investment_summary["gain_pct"]
-        if gain_pct is not None:
-            left(printer, f"RETURN {gain_pct:+.1f}%")
+        left(printer, _amount_line("TOTAL [C]", investment_summary["value"]))
+        manual_valuations = wealth and any(a["kind"] == "investment" and a["latest"]["source"] == "manual"
+                                          for a in wealth["accounts"])
+        contributions_known = all("contributions" in a for a in investment_data["accounts"])
+        if contributions_known and not manual_valuations:
+            for label, value in (("CONTRIBUTED", investment_summary["contributions"]),
+                                 ("GAIN / LOSS", investment_summary["gain"])):
+                left(printer, _amount_line(f"{label} [C]", value))
+            gain_pct = investment_summary["gain_pct"]
+            if gain_pct is not None:
+                left(printer, f"RETURN {gain_pct:+.1f}%")
+        else:
+            left(printer, "SEE DATED HISTORY FOR BALANCE CHANGES")
 
         if (
             investment_age is not None
