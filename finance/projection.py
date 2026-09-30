@@ -20,8 +20,9 @@ def format_runway(days, start=None):
     if anniversary(months) > end:
         months -= 1
     weeks, remainder = divmod((end - anniversary(months)).days, 7)
+    years, months = divmod(months, 12)
     parts = [f"{value} {unit}" + ("s" if value != 1 else "")
-             for value, unit in ((months, "month"), (weeks, "week"), (remainder, "day")) if value]
+             for value, unit in ((years, "year"), (months, "month"), (weeks, "week"), (remainder, "day")) if value]
     if not parts:
         parts = ["0 days"]
     duration = parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + (", and " if len(parts) > 2 else " and ") + parts[-1]
@@ -71,8 +72,10 @@ def matches(item, tx):
                 and abs(abs(money(tx.get('amount'), Decimal(0))) - expected) <= Decimal('0.01'))
 
 
-def payment_schedule(monthly, yearly, transactions, settings, today, horizon=365):
+def payment_schedule(monthly, yearly, transactions, settings, today, horizon=1826):
     end = today + timedelta(days=horizon)
+    month_count = (end.year - today.year) * 12 + end.month - today.month + 2
+    year_count = end.year - today.year + 2
     events, undated, warnings = [], [], []
     debits = [tx for tx in transactions if money(tx.get('amount')) is not None
               and str(tx.get('transaction_type') or tx.get('type') or '').upper() not in ('CREDIT', 'REFUND')
@@ -159,7 +162,7 @@ def payment_schedule(monthly, yearly, transactions, settings, today, horizon=365
             basis = 'Date unknown; reserved conservatively'
         first_offset = max(0, (today.year - anchor.year) * 12 + today.month - anchor.month)
         launched = 0
-        for offset in range(first_offset, first_offset + 14):
+        for offset in range(first_offset, first_offset + month_count):
             due = occurs(anchor, offset)
             if due_day:
                 due = date(due.year, due.month, min(due_day, monthrange(due.year, due.month)[1]))
@@ -187,7 +190,7 @@ def payment_schedule(monthly, yearly, transactions, settings, today, horizon=365
             undated.append(str(item.get('name') or 'Annual subscription'))
             add(item, today, item.get('amount'), 'Renewal date unknown; reserved today', True)
             continue
-        for offset in range(max(0, today.year - anchor.year), max(0, today.year - anchor.year) + 3):
+        for offset in range(max(0, today.year - anchor.year), max(0, today.year - anchor.year) + year_count):
             due = occurs(anchor, offset, 'yearly')
             observed = [d for tx in debits if matches(item, tx)
                         if (d := _parse_date(tx)) and d <= today and abs((d - due).days) <= 30]
@@ -209,7 +212,7 @@ def payment_schedule(monthly, yearly, transactions, settings, today, horizon=365
         if repeat not in ('once', 'monthly', 'yearly'):
             warnings.append('A listed payment has an unsupported repeat rule.')
             continue
-        offsets = range(14) if repeat == 'monthly' else range(3) if repeat == 'yearly' else range(1)
+        offsets = range(month_count) if repeat == 'monthly' else range(year_count) if repeat == 'yearly' else range(1)
         start = max(0, (today.year - anchor.year) * 12 + today.month - anchor.month) if repeat == 'monthly' else max(0, today.year - anchor.year) if repeat == 'yearly' else 0
         for offset in offsets:
             due = anchor if repeat == 'once' else occurs(anchor, start + offset, repeat)
@@ -225,7 +228,7 @@ def payment_schedule(monthly, yearly, transactions, settings, today, horizon=365
 
 
 def build_projection(balances, transactions, monthly, yearly, settings, today,
-                     savings=0, bank_status='complete', horizon=365):
+                     savings=0, bank_status='complete', horizon=1826):
     events, undated, warnings = payment_schedule(monthly, yearly, transactions, settings, today, horizon)
     cash = Decimal(0)
     balances_ok = True
@@ -318,6 +321,9 @@ def build_projection(balances, transactions, monthly, yearly, settings, today,
             'cash_days': cash_days if valid else None, 'total_days': total_days if valid else None,
             'cash_duration': format_runway(cash_days, today) if valid and cash_days is not None else None,
             'total_duration': format_runway(total_days, today) if valid and total_days is not None else None,
+            'cash_run_out_date': today + timedelta(days=cash_days) if valid and cash_days is not None else None,
+            'total_run_out_date': today + timedelta(days=total_days) if valid and total_days is not None else None,
+            'horizon_end_date': today + timedelta(days=horizon),
             'horizon_duration': format_runway(horizon, today),
             'valid': valid, 'horizon': horizon, 'undated': undated, 'warnings': warnings,
             'events': events, 'upcoming': [e for e in events if e['date'] <= today + timedelta(days=30)],

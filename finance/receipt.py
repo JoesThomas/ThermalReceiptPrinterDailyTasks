@@ -682,6 +682,13 @@ def print_integrated_finance(
         from textwrap import wrap
         for row in wrap(value.upper(), width=40):
             left(printer, row.rjust(40))
+        run_out = projection["cash_run_out_date" if label == "CASH RUNWAY" else "total_run_out_date"]
+        if run_out:
+            left(printer, f"PROJECTED SHORTFALL: {run_out:%d %b %Y}".upper())
+        elif projection["valid"]:
+            left(printer, f"NO SHORTFALL THROUGH {projection['horizon_end_date']:%d %b %Y}".upper())
+    if projection["buffer"] > 0:
+        left(printer, "DATES PROTECT YOUR CASH BUFFER")
     from textwrap import wrap
     for warning in projection["warnings"]:
         for row in wrap(warning.upper(), width=40):
