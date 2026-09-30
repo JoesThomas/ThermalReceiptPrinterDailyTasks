@@ -20,6 +20,68 @@
         {% if bank_data_status != 'complete' %}
             <section class="helper" role="status">Bank transaction data is {{ bank_data_status }}. Totals below include only payments the bank returned; missing matches may still have been paid.</section>
         {% endif %}
+        {% if projection %}
+        <section id="finance-forecast" aria-labelledby="forecast-title">
+            <p class="eyebrow">Upcoming payments · estimated everyday spending</p>
+            <h2 id="forecast-title">Cash runway</h2>
+            <p class="muted">Cash from connected current accounts, less your protected buffer, dated bills, repayments and annual renewals. Future income and credit limits are excluded. Everyday spending is estimated from 30 days of transactions after removing known bill matches.</p>
+            <div class="flow-totals">
+                <div><span>Current cash</span><strong>{% if projection.cash is not none %}£{{ '%.2f'|format(projection.cash) }}{% else %}Unavailable{% endif %}</strong></div>
+                <div><span>Cash runway</span><strong>{% if projection.valid %}{{ projection.cash_days if projection.cash_days is not none else 'Over ' ~ projection.horizon }} days{% else %}Unavailable{% endif %}</strong></div>
+                <div><span>With accessible savings</span><strong>{% if projection.valid %}{{ projection.total_days if projection.total_days is not none else 'Over ' ~ projection.horizon }} days{% else %}Unavailable{% endif %}</strong></div>
+            </div>
+            <p>Everyday spending: <strong>£{{ '%.2f'|format(projection.daily) }} per day</strong> · Protected buffer: £{{ '%.2f'|format(projection.buffer) }}</p>
+            {% for warning in projection.warnings %}<p class="helper" role="status">{{ warning }}</p>{% endfor %}
+            {% if projection.payday %}
+                <h3>Before payday · {{ projection.payday.strftime('%d %b %Y') }}</h3>
+                <p>Listed payments: £{{ '%.2f'|format(projection.before_payday_total) }}. {% if projection.safe_before_payday is not none %}Cash left after these and the buffer: <strong>£{{ '%.2f'|format(projection.safe_before_payday) }}</strong>; spending allowance <strong>£{{ '%.2f'|format(projection.per_day_before_payday) }} per day</strong>.{% endif %}</p>
+            {% endif %}
+            <details><summary>Payments included in the next 30 days ({{ projection.upcoming|length }})</summary>
+                {% for payment in projection.upcoming %}
+                <div class="merchant-payment"><span>{% if payment.undated %}Date unknown{% else %}{{ payment.date.strftime('%d %b') }}{% endif %} · {{ payment.name }}<small class="muted"> · {{ payment.basis }}</small></span><strong>£{{ '%.2f'|format(payment.amount) }}</strong></div>
+                {% else %}<p>No dated payments configured for this period. Check that all bills and card repayments are listed.</p>{% endfor %}
+            </details>
+            <details><summary>Daily cash projection (no future income)</summary>
+                {% for point in projection.timeline %}<div class="merchant-payment"><span>{{ point.date.strftime('%d %b') }}</span><strong class="{{ 'negative' if point.cash < 0 else '' }}">£{{ '%.2f'|format(point.cash) }}</strong></div>{% else %}<p>Complete bank data is needed for the projection.</p>{% endfor %}
+            </details>
+            <details><summary>Edit projection assumptions</summary>
+                <form method="post" action="{{ url_for('save_forecast_settings') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="grid">
+                        <label>Next payday<input type="date" name="next_payday" value="{{ forecast_settings.next_payday or '' }}"></label>
+                        <label>Payday repeats<select name="payday_repeat"><option value="once">Once</option><option value="monthly" {% if forecast_settings.payday_repeat == 'monthly' %}selected{% endif %}>Monthly</option></select></label>
+                        <label>Protected buffer (£)<input type="number" name="emergency_buffer" min="0" step="0.01" value="{{ forecast_settings.emergency_buffer or 0 }}"></label>
+                        <label>Everyday spending per day (£, optional)<input type="number" name="runway_daily_spend" min="0" step="0.01" value="{{ forecast_settings.runway_daily_spend if forecast_settings.runway_daily_spend is not none and forecast_settings.runway_daily_spend is defined else '' }}" placeholder="Use bank estimate"></label>
+                    </div><button>Save projection settings</button>
+                </form>
+                <p class="muted">Set usual payment days on the home page. Add card repayments and other known payments to your local finance settings; a debt balance alone does not specify its payment date.</p>
+            </details>
+            <details><summary>Add or remove a dated cash payment</summary>
+                <p class="muted">Use this for card repayments and other known payments. Use the same name as an existing monthly commitment to set its date without counting it twice.</p>
+                {% for item in forecast_settings.commitments or [] %}
+                    <div class="merchant-payment"><span>{{ item.name }} · {{ item.due_date }} · {{ item.repeat or 'once' }} · £{{ '%.2f'|format(item.amount) }}</span><form method="post" action="{{ url_for('delete_forecast_payment', index=loop.index0) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Remove</button></form></div>
+                {% endfor %}
+                <form method="post" action="{{ url_for('add_forecast_payment') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="grid"><label>Payment name<input name="name" maxlength="90" required></label><label>Amount (£)<input type="number" name="amount" min="0.01" step="0.01" required></label><label>Due date<input type="date" name="due_date" required></label><label>Repeats<select name="repeat"><option value="once">Once</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label></div><button>Add dated payment</button>
+                </form>
+            </details>
+        </section>
+        <section id="finance-suggestions" aria-labelledby="suggestions-title">
+            <p class="eyebrow">Based on available records</p>
+            <h2 id="suggestions-title">Finance suggestions</h2>
+            <p class="muted">Checks to review, rather than instructions to cancel or pay anything. Dismissals stay local for 30 days; changed evidence creates a new suggestion.</p>
+            {% for suggestion in suggestions %}
+                <article class="review-row">
+                    <h3>{{ suggestion.title }} {% if suggestion.severity == 'attention' %}<span class="badge due">Check soon</span>{% endif %}</h3>
+                    <p>{{ suggestion.detail }}</p>
+                    {% if suggestion.evidence %}<details><summary>Why this appeared</summary><ul>{% for evidence in suggestion.evidence %}<li>{{ evidence }}</li>{% endfor %}</ul></details>{% endif %}
+                    <div class="actions"><a class="section-link" href="{{ '#' if suggestion.target == 'finance-forecast' else url_for('index') ~ '#' }}{{ suggestion.target }}">Review information</a>
+                    <form method="post" action="{{ url_for('dismiss_finance_suggestion') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="suggestion_id" value="{{ suggestion.id }}"><button>Dismiss for 30 days</button></form></div>
+                </article>
+            {% else %}<p>No new suggestions to review.</p>{% endfor %}
+        </section>
+        {% endif %}
         <section aria-labelledby="cash-flow-title">
             <p class="eyebrow">Last 30 days · bank transactions</p>
             <h2 id="cash-flow-title">Money in and out</h2>

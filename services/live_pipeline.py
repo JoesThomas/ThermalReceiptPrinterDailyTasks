@@ -9326,6 +9326,8 @@ def run_live_pipeline(
                 subscriptions=subscriptions,
                 spending_summary=spending_summary,
                 instalments=subscriptions_data.get("instalments", []),
+                commitment_status=build_subscription_status(transactions, subscriptions_data=subscriptions_data,
+                                                            today=today),
             )
 
             print_subscription_changes(

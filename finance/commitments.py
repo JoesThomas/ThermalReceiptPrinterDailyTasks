@@ -57,7 +57,9 @@ def repayment_commitments(subscriptions_data, settings):
                 match = ["amazon.co.uk"]
             result.append({"name": name, "amount": amount, "category": "repayment",
                            "match": match, "next_payment": item.get("next_payment"),
-                           "due_date": item.get("due_date")})
+                           "due_date": item.get("due_date"),
+                           **{field: item[field] for field in ("due_day", "end_date", "schedule", "payments_remaining",
+                                                              "remaining_balance", "balance") if field in item}})
     return result
 
 

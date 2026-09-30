@@ -683,8 +683,12 @@ def _monthly_entry():
     end_date = request.form.get("end_date", "").strip()
     if end_date:
         end_date = date.fromisoformat(end_date).isoformat()
+    due_day = request.form.get("due_day", "").strip()
+    if due_day and not 1 <= int(due_day) <= 31:
+        raise ValueError("Choose a payment day from 1 to 31.")
     return {"name": name, "amount": amount, "match": match,
             "end_date": end_date or None,
+            "due_day": int(due_day) if due_day else None,
             "category": request.form.get("category") if request.form.get("category") in
             {"bill", "subscription", "savings", "repayment"} else "subscription"}
 
@@ -1016,6 +1020,7 @@ def finance_review():
     from finance.yearly_subscriptions import annual_subscription_rows
     from services.live_pipeline import (build_subscription_status,
                                         analyse_incoming_payments,
+                                        get_account_balances,
                                         get_regular_finance_data,
                                         matching_subscription_transaction)
     today = datetime.now(ZoneInfo("Europe/London")).date()
@@ -1046,9 +1051,25 @@ def finance_review():
         )
         income = incoming_review(salary, other, today)
         cash_flow = cash_flow_review(income, payments, today)
+        from finance.projection import build_projection
+        from finance.receipt import load_finance_settings
+        from savings_runway import load_savings, savings_totals
+        from web_control.finance_suggestions import build_suggestions
+        forecast_settings = load_finance_settings()
+        try:
+            balances = get_account_balances()
+        except Exception:
+            app.logger.warning("Cash balances unavailable for finance projection")
+            balances = {}
+        savings = savings_totals(load_savings(PROJECT_ROOT / "data" / "savings.json"))["runway_accessible"]
+        projection = build_projection(balances, transactions, status["monthly"], status["yearly"],
+                                      forecast_settings, today, savings, bank_data_status)
+        suggestions = build_suggestions(projection, rows, annual, status["ended"], charts,
+                                        finance_data[3], transactions, today)
         return render_template("finance_review.html", rows=rows, charts=charts,
                                month=month, income=income, cash_flow=cash_flow,
                                annual=annual,
+                               projection=projection, suggestions=suggestions, forecast_settings=forecast_settings,
                                ended_contracts=status["ended"],
                                bank_data_status=bank_data_status,
                                checked_at=today, error=None)
@@ -1056,6 +1077,89 @@ def finance_review():
         app.logger.exception("Could not load finance review")
         return render_template("finance_review.html", rows=[], checked_at=today,
                                error="Bank transactions are unavailable. Try again later."), 503
+
+
+@app.post("/finance-review/dismiss")
+@login_required
+def dismiss_finance_suggestion():
+    from web_control.finance_suggestions import dismiss_suggestion
+    try:
+        dismiss_suggestion(request.form.get("suggestion_id", ""), _local_today())
+    except ValueError:
+        return ("Invalid suggestion", 400)
+    return redirect(url_for("finance_review") + "#finance-suggestions")
+
+
+@app.post("/finance-review/forecast-settings")
+@login_required
+def save_forecast_settings():
+    from finance.receipt import FINANCE_SETTINGS_FILE, load_finance_settings
+    from finance.projection import money
+    try:
+        settings = load_finance_settings()
+        payday = request.form.get("next_payday", "").strip()
+        settings["next_payday"] = date.fromisoformat(payday).isoformat() if payday else None
+        repeat = request.form.get("payday_repeat", "once")
+        if repeat not in {"once", "monthly"}:
+            raise ValueError("Invalid payday repeat")
+        settings["payday_repeat"] = repeat
+        buffer = money(request.form.get("emergency_buffer", "0"))
+        daily_text = request.form.get("runway_daily_spend", "").strip()
+        daily = money(daily_text) if daily_text else None
+        if buffer is None or buffer < 0 or (daily_text and (daily is None or daily < 0)):
+            raise ValueError("Enter non-negative amounts")
+        settings["emergency_buffer"] = float(buffer)
+        settings["runway_daily_spend"] = float(daily) if daily is not None else None
+        FINANCE_SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        temp = FINANCE_SETTINGS_FILE.with_suffix(".tmp")
+        temp.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+        temp.replace(FINANCE_SETTINGS_FILE)
+        flash("Projection settings saved locally.")
+    except (ValueError, OverflowError):
+        flash("Enter a valid payday and non-negative amounts.")
+    return redirect(url_for("finance_review") + "#finance-forecast")
+
+
+@app.post("/finance-review/payment/add")
+@login_required
+def add_forecast_payment():
+    from finance.receipt import FINANCE_SETTINGS_FILE, load_finance_settings
+    from finance.projection import money
+    try:
+        name = request.form.get("name", "").strip()
+        amount = money(request.form.get("amount"))
+        due = date.fromisoformat(request.form.get("due_date", "")).isoformat()
+        repeat = request.form.get("repeat", "once")
+        if not name or len(name) > 90 or amount is None or amount <= 0 or repeat not in {"once", "monthly", "yearly"}:
+            raise ValueError("Invalid payment")
+        settings = load_finance_settings()
+        items = settings.setdefault("commitments", [])
+        if len(items) >= 100:
+            raise ValueError("Too many payments")
+        items.append({"name": name, "amount": float(amount), "due_date": due, "repeat": repeat})
+        FINANCE_SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        temp = FINANCE_SETTINGS_FILE.with_suffix(".tmp")
+        temp.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+        temp.replace(FINANCE_SETTINGS_FILE)
+        flash("Dated payment saved locally.")
+    except (ValueError, OverflowError):
+        flash("Enter a valid payment name, amount and date.")
+    return redirect(url_for("finance_review") + "#finance-forecast")
+
+
+@app.post("/finance-review/payment/<int:index>/delete")
+@login_required
+def delete_forecast_payment(index):
+    from finance.receipt import FINANCE_SETTINGS_FILE, load_finance_settings
+    settings = load_finance_settings()
+    items = settings.get("commitments", [])
+    if index >= len(items):
+        return ("Payment not found", 404)
+    items.pop(index)
+    temp = FINANCE_SETTINGS_FILE.with_suffix(".tmp")
+    temp.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+    temp.replace(FINANCE_SETTINGS_FILE)
+    return redirect(url_for("finance_review") + "#finance-forecast")
 
 
 @app.post("/print-page")

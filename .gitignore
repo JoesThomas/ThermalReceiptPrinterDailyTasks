@@ -92,3 +92,6 @@ env/
 data/finance_settings.json
 data/live_receipt_preview.json
 data/live_preview_status.json
+
+# Private suggestion dismissal IDs
+data/finance_suggestions.json

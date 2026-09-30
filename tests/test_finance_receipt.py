@@ -7,11 +7,12 @@ from finance.receipt import (calculate_debt_and_payday, _amount_rows,
                              _calendar_occurrence, _forecast_events)
 
 class FinanceReceiptTests(unittest.TestCase):
-    def test_cash_runway_uses_bank_cash_and_total_spending_not_debt_net(self):
+    def test_cash_runway_uses_bank_cash_and_scheduled_card_payment_not_total_debt(self):
         import finance.receipt as receipt
         import tempfile
+        import json
         from pathlib import Path
-        captured = []
+        lines = []
         class Printer:
             def text(self, value):
                 pass
@@ -19,18 +20,17 @@ class FinanceReceiptTests(unittest.TestCase):
                 pass
         with tempfile.TemporaryDirectory() as folder:
             settings = Path(folder) / 'settings.json'
-            settings.write_text('{}', encoding='utf-8')
-            with patch.object(receipt, 'spending_total', side_effect=[300.0, 200.0]), \
-                 patch.object(receipt, 'runway_receipt_lines',
-                              side_effect=lambda cash, savings, spending:
-                              captured.append((cash, spending)) or ['RUNWAY']):
-                receipt.print_integrated_finance(
-                    Printer(), lambda printer, value: None,
-                    lambda printer, char='-': None,
-                    {'HSBC': {'available': 500}, 'MONZO': {'available': 100},
-                     'AMEX': {'current': 900}}, transactions=[],
-                    finance_settings_file=settings, today=date(2026, 9, 29))
-        self.assertEqual(captured, [(600.0, 300.0)])
+            settings.write_text(json.dumps({'runway_daily_spend': 10, 'commitments': [
+                {'name': 'Amex repayment', 'amount': 100, 'due_date': '2026-09-30'}]}), encoding='utf-8')
+            receipt.print_integrated_finance(
+                Printer(), lambda printer, value: lines.append(value),
+                lambda printer, char='-': None,
+                {'HSBC': {'available': 500}, 'MONZO': {'available': 100},
+                 'AMEX': {'current': 900}}, transactions=[],
+                finance_settings_file=settings, today=date(2026, 9, 29))
+        self.assertIn('RUNWAY / DATED PAYMENTS [E]', lines)
+        self.assertTrue(any('51 DAYS' in row for row in lines))
+        self.assertTrue(any('£100.00' in row and 'LISTED PAYMENTS' in row for row in lines))
 
     def test_incoming_section_lists_salary_and_every_other_payment_in_window(self):
         lines = []
@@ -110,7 +110,10 @@ class FinanceReceiptTests(unittest.TestCase):
         import json
         from pathlib import Path
         settings = {'reviewed_on': '2026-09-27', 'next_payday': '2026-10-30',
-                    'debts': [{'name': 'Plan', 'type': 'payment_plan', 'balance': 100}]}
+                    'debts': [{'name': 'Plan', 'type': 'payment_plan', 'balance': 100}],
+                    'runway_daily_spend': 10, 'commitments': [
+                        {'name': 'Amex repayment', 'amount': 50, 'due_date': '2026-10-20'},
+                        {'name': 'Plan', 'amount': 10, 'due_date': '2026-10-21'}]}
         try:
             with tempfile.TemporaryDirectory() as folder:
                 path = Path(folder) / 'finance.json'

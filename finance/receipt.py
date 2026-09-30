@@ -23,7 +23,7 @@ from finance_trends import (
 from finance_period_helpers import previous_period_label
 from savings_runway import (
     load_savings, savings_totals, savings_receipt_lines,
-    runway_receipt_lines, savings_snapshot,
+    savings_snapshot,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -273,6 +273,7 @@ def print_integrated_finance(
     instalments=None,
     finance_settings_file=FINANCE_SETTINGS_FILE,
     today=None,
+    commitment_status=None,
 ):
 
     direct_debits = (
@@ -341,6 +342,18 @@ def print_integrated_finance(
     st = savings_totals(
         savings_data
     )
+
+    from finance.projection import build_projection
+    status = commitment_status or {"monthly": subscriptions, "yearly": []}
+    projection = build_projection(balances, transactions, status["monthly"], status.get("yearly", []),
+                                  finance_settings, today, st["runway_accessible"],
+                                  spending_summary.get("bank_data_status", "complete"))
+    if projection["valid"] and projection["payday"]:
+        debt_summary.update(payday=projection["payday"], days=(projection["payday"] - today).days,
+                            committed=projection["before_payday_total"], buffer=projection["buffer"],
+                            safe=projection["safe_before_payday"], daily=projection["per_day_before_payday"])
+    else:
+        debt_summary.pop("payday", None)
 
     net_cash = available_cash - float(debt_summary["short_term"]) + st["net_cash"]
 
@@ -653,16 +666,22 @@ def print_integrated_finance(
     # RUNWAY
     # ==========================================
 
-    if total_outgoings > 0:
-
-        printer.text("\n")
-        left(printer, "RUNWAY [E]")
-        left(printer, _amount_line("30D SPEND BASIS [B]", total_outgoings))
-        for text in runway_receipt_lines(
-            available_cash, savings_data, total_outgoings,
-        ):
-            if text != "RUNWAY":
-                left(printer, text)
+    printer.text("\n")
+    left(printer, "RUNWAY / DATED PAYMENTS [E]")
+    print_line(printer)
+    left(printer, "ASSUMES NO FUTURE INCOME")
+    left(printer, _amount_line("EVERYDAY PER DAY", projection["daily"]))
+    upcoming_total = sum((item["amount"] for item in projection["upcoming"]), Decimal(0))
+    left(printer, _amount_line("LISTED PAYMENTS / 30D", upcoming_total))
+    for label, days in (("CASH RUNWAY", projection["cash_days"]),
+                        ("WITH ACCESSIBLE SAVINGS", projection["total_days"])):
+        value = (f"{days} DAYS" if days is not None else f"OVER {projection['horizon']} DAYS" if projection["valid"] else "UNAVAILABLE")
+        left(printer, label)
+        left(printer, value.rjust(40))
+    from textwrap import wrap
+    for warning in projection["warnings"]:
+        for row in wrap(warning.upper(), width=40):
+            left(printer, row)
 
     # ==========================================
     # QUARTER / YEAR REVIEW
