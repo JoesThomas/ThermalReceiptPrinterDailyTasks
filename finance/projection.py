@@ -9,6 +9,25 @@ from finance_trends import _parse_date
 from web_control.payments import external_payments
 
 
+def format_runway(days, start=None):
+    """Calendar months followed by weeks/days; preserve exact elapsed days."""
+    start = start or date.today()
+    end = start + timedelta(days=days)
+    months = (end.year - start.year) * 12 + end.month - start.month
+    def anniversary(count):
+        year, month = divmod(start.year * 12 + start.month - 1 + count, 12)
+        return date(year, month + 1, min(start.day, monthrange(year, month + 1)[1]))
+    if anniversary(months) > end:
+        months -= 1
+    weeks, remainder = divmod((end - anniversary(months)).days, 7)
+    parts = [f"{value} {unit}" + ("s" if value != 1 else "")
+             for value, unit in ((months, "month"), (weeks, "week"), (remainder, "day")) if value]
+    if not parts:
+        parts = ["0 days"]
+    duration = parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + (", and " if len(parts) > 2 else " and ") + parts[-1]
+    return f"{duration} ({days} {'day' if days == 1 else 'days'})"
+
+
 def money(value, default=None):
     try:
         amount = Decimal(str(value))
@@ -297,6 +316,9 @@ def build_projection(balances, transactions, monthly, yearly, settings, today,
         valid = False
     return {'cash': cash if balances_ok else None, 'buffer': buffer, 'daily': daily.quantize(Decimal('0.01')),
             'cash_days': cash_days if valid else None, 'total_days': total_days if valid else None,
+            'cash_duration': format_runway(cash_days, today) if valid and cash_days is not None else None,
+            'total_duration': format_runway(total_days, today) if valid and total_days is not None else None,
+            'horizon_duration': format_runway(horizon, today),
             'valid': valid, 'horizon': horizon, 'undated': undated, 'warnings': warnings,
             'events': events, 'upcoming': [e for e in events if e['date'] <= today + timedelta(days=30)],
             'timeline': timeline[:31] if valid else [], 'payday': payday,
