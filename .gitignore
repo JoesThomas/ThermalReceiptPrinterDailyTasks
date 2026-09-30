@@ -95,3 +95,6 @@ data/live_preview_status.json
 
 # Private suggestion dismissal IDs
 data/finance_suggestions.json
+
+data/future_tasks.json
+data/future_tasks.json.tmp

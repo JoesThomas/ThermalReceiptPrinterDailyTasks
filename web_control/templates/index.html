@@ -254,7 +254,7 @@
     <nav class="nav" aria-label="Page sections">
         <a href="#overview">Overview</a><a href="#next-receipt">Next receipt</a>
         <a href="#daily-receipt">Daily settings</a><a href="#routines">Routines</a>
-        <a href="#instalments">Instalments</a><a href="#commitments">Commitments</a><a href="#annual-subscriptions">Annual</a><a href="#food-shop">Food shop</a><a href="#to-buy">To buy</a>
+        <a href="#instalments">Instalments</a><a href="#commitments">Commitments</a><a href="#annual-subscriptions">Annual</a><a href="#food-shop">Food shop</a><a href="#to-buy">To buy</a><a href="#future-tasks">Future tasks</a>
         <a href="#printing">Printing</a>
     </nav>
     <section id="overview">
@@ -302,7 +302,8 @@
                 ('finance_check','Finance check'),
                 ('food_shop','Food shop'),
                 ('shopping_list','Shopping list'),
-                ('to_buy','To buy')
+                ('to_buy','To buy'),
+                ('future_tasks','Future tasks')
             ] %}
 
                 <label class="option">
@@ -1084,6 +1085,33 @@
             <label for="to-buy-items">Wish list</label>
             <textarea id="to-buy-items" name="items" rows="12" style="width:100%">{{ to_buy_items|join('\n') }}</textarea>
             <button>Save to buy list</button>
+        </form>
+    </section>
+
+    <section id="future-tasks">
+        <h2>Future tasks</h2>
+        <p class="muted">Keep longer-term goals here, with a small next step. Entries are saved privately on this server. Tick “Future tasks” under Next receipt to include unfinished goals once.</p>
+        {% for task in future_tasks %}
+        <form method="post" action="{{ url_for('future_tasks_save') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="task_id" value="{{ task.id }}">
+            <p><strong>{{ 'Completed' if task.done else 'Future goal' }}</strong></p>
+            <label for="goal-{{ task.id }}">Goal</label>
+            <input id="goal-{{ task.id }}" name="title" value="{{ task.title }}" maxlength="160" required>
+            <label for="step-{{ task.id }}">Next step (optional)</label>
+            <input id="step-{{ task.id }}" name="next_step" value="{{ task.next_step }}" maxlength="240">
+            <button name="action" value="save">Save changes</button>
+            <button name="action" value="toggle">{{ 'Reopen' if task.done else 'Mark completed' }}</button>
+            <button name="action" value="delete" formnovalidate>Delete</button>
+        </form>
+        {% else %}<p class="muted">No future tasks yet.</p>{% endfor %}
+        <form method="post" action="{{ url_for('future_tasks_save') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="new-goal">New goal</label>
+            <input id="new-goal" name="title" maxlength="160" required>
+            <label for="new-step">Next step (optional)</label>
+            <input id="new-step" name="next_step" maxlength="240">
+            <button>Add future task</button>
         </form>
     </section>
 

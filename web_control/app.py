@@ -27,6 +27,7 @@ from web_control.live_data import (food_shop_override, save_food_shop, tesco_pro
                                    mark_tesco_item, meal_confirmation, confirm_meal,
                                    clear_meal_confirmation, map_embed_url, map_link_url)
 from web_control.to_buy import load_to_buy, save_to_buy
+from web_control.future_tasks import load_tasks, update_task
 
 app = Flask(__name__)
 
@@ -430,6 +431,7 @@ def index():
         food_shop_error=food_shop_error,
         food_shop_is_local=food_shop_override() is not None,
         to_buy_items=load_to_buy(),
+        future_tasks=load_tasks(),
     )
 
 def _checked(name): return request.form.get(name) == "on"
@@ -447,10 +449,11 @@ def save():
             return redirect(url_for("index"))
     for name in ("calendar", "deliveries", "weather", "national_news", "local_news", "sport_news", "villa", "villa_trains"):
         settings["features"][name] = _checked(name)
-    for name in ("finance_check", "food_shop", "shopping_list", "to_buy"):
+    for name in ("finance_check", "food_shop", "shopping_list", "to_buy", "future_tasks"):
         if _checked(name): settings["one_shot"][name] = True
     # Unlike existing requests, unticking To buy cancels its pending print.
     settings["one_shot"]["to_buy"] = _checked("to_buy")
+    settings["one_shot"]["future_tasks"] = _checked("future_tasks")
     detail = request.form.get("weather_detail", "auto")
     settings["display"]["weather_detail"] = detail if detail in {"auto", "compact", "full"} else "auto"
     try: settings["display"]["news_count"] = max(1, min(10, int(request.form.get("news_count", 3))))
@@ -468,7 +471,7 @@ def save():
 @app.post("/one-shot/<name>/clear")
 @login_required
 def clear_one_shot(name):
-    if name not in {"finance_check", "food_shop", "shopping_list", "to_buy"}: return ("Unknown request", 404)
+    if name not in {"finance_check", "food_shop", "shopping_list", "to_buy", "future_tasks"}: return ("Unknown request", 404)
     settings = load_receipt_settings(); settings["one_shot"][name] = False; save_receipt_settings(settings)
     return redirect(url_for("index"))
 
@@ -634,6 +637,22 @@ def to_buy_save():
     else:
         flash("To buy list saved locally.")
     return redirect(url_for("index") + "#to-buy")
+
+
+@app.post("/future-tasks/save")
+@login_required
+def future_tasks_save():
+    try:
+        action = request.form.get("action", "save")
+        if action not in {"save", "toggle", "delete"}:
+            raise ValueError("Unknown task action.")
+        update_task(request.form.get("task_id") or None,
+                    request.form.get("title", ""), request.form.get("next_step", ""), action)
+    except (ValueError, OSError) as error:
+        flash(str(error))
+    else:
+        flash("Future tasks saved locally.")
+    return redirect(url_for("index") + "#future-tasks")
 
 
 def _tesco_list():

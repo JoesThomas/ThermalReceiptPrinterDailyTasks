@@ -2475,6 +2475,21 @@ def print_to_buy(printer, items):
         print_wrapped(printer, f"[ ] {printer_safe_text(item)}", width=40)
     print_line(printer, "-")
 
+def print_future_tasks(printer, tasks):
+    pending = [task for task in tasks if not task["done"]]
+    print_line(printer, "=")
+    printer.set(bold=True)
+    centre(printer, "FUTURE TASKS")
+    printer.set(bold=False)
+    print_line(printer, "-")
+    if not pending:
+        left(printer, "NO UNFINISHED FUTURE TASKS")
+    for task in pending:
+        print_wrapped(printer, "[ ] " + printer_safe_text(task["title"]), width=40)
+        if task["next_step"]:
+            print_wrapped(printer, "Next: " + printer_safe_text(task["next_step"]), width=40)
+    print_line(printer, "-")
+
 # ============================================================
 # FINANCIAL STATUS - LIVE TRUE LAYER DATA
 # ============================================================
@@ -9105,6 +9120,16 @@ def run_live_pipeline(
                     settings,
                     "shopping_list",
                 )
+
+        if one_shot_requested(settings, "future_tasks"):
+            try:
+                from web_control.future_tasks import load_tasks
+                print_future_tasks(printer, load_tasks())
+            except Exception as error:
+                print("Future tasks error:", repr(error))
+                _print_section_error(printer, "FUTURE TASKS ERROR", "LIST UNAVAILABLE")
+            else:
+                consume_one_shot(settings, "future_tasks")
 
         if web_to_buy:
             try:
