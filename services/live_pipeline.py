@@ -700,9 +700,17 @@ def get_gmail_delivery_emails():
             if not is_delivery:
                 continue
 
+            try:
+                received = parsedate_to_datetime(parsed_message.get("Date", ""))
+                if received.tzinfo is None:
+                    received = received.replace(tzinfo=ZoneInfo("Europe/London"))
+                received_date = received.astimezone(ZoneInfo("Europe/London")).date().isoformat()
+            except (TypeError, ValueError, OverflowError):
+                received_date = None
             records.append({
                 "email_subject": subject,
                 "email_body": body,
+                "email_received_at": received_date,
             })
 
         return records
@@ -867,7 +875,8 @@ def _normalise_delivery_time(value):
 
 def extract_delivery_from_email(
     email_subject,
-    email_body
+    email_body,
+    reference_date=None,
 ):
     email_subject = (
         email_subject
@@ -918,7 +927,7 @@ def extract_delivery_from_email(
     ):
         return None
 
-    today = datetime.now(
+    today = reference_date or datetime.now(
         ZoneInfo(
             "Europe/London"
         )
@@ -1396,6 +1405,9 @@ def extract_delivery_from_email(
     # RESULT
     # -------------------------
 
+    from actions.delivery_summary import references
+    metadata = references(email_subject, email_body)
+
     return {
         "event_title": (
             printer_safe_text(
@@ -1403,6 +1415,9 @@ def extract_delivery_from_email(
             )
         ),
         "carrier": carrier,
+        "time_from": time_from,
+        "time_to": time_to,
+        **metadata,
         "delivery_date": (
             delivery_date
         ),
@@ -1513,6 +1528,7 @@ def get_upcoming_deliveries():
         delivery = extract_delivery_from_email(
             subject,
             body,
+            reference_date=_parse_delivery_date(record.get("email_received_at")),
         )
 
         # -------------------------------------------------
@@ -1583,10 +1599,8 @@ def get_upcoming_deliveries():
         # DEDUPLICATE
         # -------------------------------------------------
 
-        key = (
-            delivery["event_title"],
-            delivery_date.isoformat(),
-        )
+        from actions.delivery_summary import identity
+        key = identity(delivery)
 
         if key in seen:
             continue
@@ -1845,15 +1859,9 @@ def print_upcoming_deliveries(printer, deliveries):
     printer.set(bold=False)
     print_line(printer, "-")
 
-    for delivery in deliveries:
-        left(
-            printer,
-            _normalise_delivery_carrier(delivery),
-        )
-        left(
-            printer,
-            format_delivery_expected(delivery),
-        )
+    from actions.delivery_summary import summary_lines
+    for row in summary_lines(deliveries, _normalise_delivery_carrier, format_delivery_expected):
+        left(printer, printer_safe_text(row))
 
 
 # ============================================================
