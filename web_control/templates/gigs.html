@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gigs today · Receipt Control</title><link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}"></head><body><main>
+<a href="{{ url_for('index') }}">Back to control</a>
+<header><h1>Gigs near {{ gigs.location }}</h1><p>{{ gigs.date.strftime('%A %d %B %Y') }} · Within {{ gigs.radius }} km of your saved location</p></header>
+{% for message in get_flashed_messages() %}<p class="helper" role="status">{{ message }}</p>{% endfor %}
+<section><h2>Listings for this day</h2><form method="get"><label>Date <input type="date" name="date" value="{{ gigs.date.isoformat() }}" required></label><button>Show gigs</button></form>
+<p class="muted">Music events listed by Ticketmaster. This source does not cover every venue or independently ticketed gig. Times are the listed local event times, which may be doors times; confirm details with the venue. Cancelled and postponed events are excluded.</p>
+{% if gigs.status == 'not_configured' %}<p class="helper">Add a Ticketmaster Discovery API key below to enable live listings.</p>
+{% elif gigs.status == 'unavailable' %}<p class="helper">Listings are currently unavailable. Check your API key or try again later.</p>
+{% elif gigs.status == 'partial' or gigs.truncated %}<p class="helper">These listings are incomplete. Check venue listings for more events.</p>{% endif %}
+{% for event in gigs.events %}<article class="panel"><h3>{{ event.name }}</h3><p><strong>{{ event.time or 'Time to be confirmed' }}</strong> · {{ event.venue }}{% if event.distance is not none %} · {{ event.distance }} km{% endif %}</p>{% if event.url %}<a class="button" href="{{ event.url }}" target="_blank" rel="noopener noreferrer">Event details &amp; tickets</a>{% endif %}</article>
+{% else %}{% if gigs.status in ['ok','partial'] %}<p>No matching gigs found in this source for the selected date and radius.</p>{% endif %}{% endfor %}
+{% if gigs.checked_at %}<p class="muted">Checked {{ gigs.checked_at.strftime('%d %b %Y, %H:%M %Z') }} · Successful searches are reused for up to 15 minutes to keep previews fast.</p>{% endif %}</section>
+<section><h2>Gig settings</h2><p class="muted">Uses the name and coordinates in your receipt location settings. It does not detect your device’s location automatically.</p><p>API key: {{ 'Configured' if key_configured else 'Not configured' }}{{ ' in the server environment' if environment_key else '' }}.</p>
+<form method="post" action="{{ url_for('gigs_settings') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<label class="option"><input type="checkbox" name="enabled" {% if settings.features.local_gigs %}checked{% endif %}>Include gigs on the information receipt</label>
+<div class="grid"><label>Search radius (km)<input type="number" name="radius_km" min="1" max="100" value="{{ settings.gigs.radius_km }}" required></label><label>Maximum gigs on receipt<input type="number" name="receipt_limit" min="1" max="30" value="{{ settings.gigs.receipt_limit }}" required></label>
+{% if not environment_key %}<label>Ticketmaster API key<input type="password" name="api_key" autocomplete="new-password" maxlength="200" placeholder="Leave blank to keep existing key"></label>{% endif %}</div>
+{% if not environment_key %}<label class="option"><input type="checkbox" name="clear_key">Remove saved API key</label>{% endif %}
+<button>Save gig settings</button></form><p class="muted"><a href="https://developer.ticketmaster.com/products-and-docs/apis/getting-started/" target="_blank" rel="noopener noreferrer">Ticketmaster developer setup</a>. The saved API key remains in a private local file excluded from Git.</p></section>
+</main></body></html>

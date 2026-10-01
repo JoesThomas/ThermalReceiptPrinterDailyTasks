@@ -280,7 +280,7 @@
         {% endif %}
     </section>
 
-    <section id="live-data"><p class="eyebrow">Live data</p><h2>Plan and review</h2><div class="quick-actions"><a class="button" href="{{ url_for('calendar_map') }}">Calendar map</a><a class="button" href="{{ url_for('meals_page') }}">Meals & recipes</a><a class="button" href="{{ url_for('tesco_list') }}">Tesco shopping review</a></div></section>
+    <section id="live-data"><p class="eyebrow">Live data</p><h2>Plan and review</h2><div class="quick-actions"><a class="button" href="{{ url_for('gigs_page') }}">Gigs today</a><a class="button" href="{{ url_for('calendar_map') }}">Calendar map</a><a class="button" href="{{ url_for('meals_page') }}">Meals & recipes</a><a class="button" href="{{ url_for('tesco_list') }}">Tesco shopping review</a></div></section>
 
     <!-- RECEIPT SETTINGS -->
 
@@ -338,6 +338,7 @@
                 ('national_news','National news'),
                 ('local_news','BBC local news'),
                 ('sport_news','Sport news'),
+                ('local_gigs','Gigs today'),
                 ('villa','Villa match information'),
                 ('villa_trains','Villa match-day trains')
             ] %}

@@ -101,3 +101,6 @@ data/future_tasks.json.tmp
 
 data/wealth_history.json
 data/wealth_history.json.tmp
+
+data/local_gigs_config.json
+data/local_gigs_config.json.tmp

@@ -400,6 +400,8 @@ def logout(): session.clear(); return redirect(url_for("login"))
 @login_required
 def index():
     settings = load_receipt_settings()
+    from services.local_gigs import options as gig_options
+    settings["features"]["local_gigs"] = gig_options()["enabled"]
     routines = load_routines()
     subscriptions = load_subscriptions()
     for item in subscriptions.get("instalments", []):
@@ -449,6 +451,9 @@ def save():
             return redirect(url_for("index"))
     for name in ("calendar", "deliveries", "weather", "national_news", "local_news", "sport_news", "villa", "villa_trains"):
         settings["features"][name] = _checked(name)
+    from services.local_gigs import options as gig_options, save_options as save_gig_options
+    current_gigs = gig_options()
+    save_gig_options(current_gigs["radius_km"],current_gigs["receipt_limit"],_checked("local_gigs"))
     for name in ("finance_check", "food_shop", "shopping_list", "to_buy", "future_tasks"):
         if _checked(name): settings["one_shot"][name] = True
     # Unlike existing requests, unticking To buy cancels its pending print.
@@ -817,7 +822,7 @@ def annual_delete(index):
 
 
 PRINT_PAGES = {
-    "information": "Information (header, weather, news)",
+    "information": "Information (header, weather, news, gigs)",
     "actions": "Actions (calendar, to-do, food shop, deliveries, exercises)",
     "food": "Food / meal planner",
     "finance": "Finance",
@@ -1040,6 +1045,42 @@ def _wealth_view():
     capture_local(load_savings(PROJECT_ROOT / "data" / "savings.json"),
                   load_investments(PROJECT_ROOT / "data" / "investments.json"), today)
     return review(today, request.args.get("month") or None)
+
+
+@app.get("/gigs")
+@login_required
+def gigs_page():
+    from services.local_gigs import get_gigs, api_key, options
+    settings = load_receipt_settings()
+    on = _local_today()
+    if request.args.get("date"):
+        try:
+            on = date.fromisoformat(request.args["date"])
+        except ValueError:
+            return ("Use a valid date.", 400)
+    settings["gigs"] = options()
+    settings["features"]["local_gigs"] = settings["gigs"]["enabled"]
+    location = validate_location(settings["location"])
+    gigs = get_gigs(location, on, int(settings["gigs"]["radius_km"]))
+    return render_template("gigs.html", gigs=gigs, settings=settings,
+                           key_configured=bool(api_key()), environment_key=bool(os.environ.get("TICKETMASTER_API_KEY")))
+
+
+@app.post("/gigs/settings")
+@login_required
+def gigs_settings():
+    from services.local_gigs import save_options
+    try:
+        radius = int(request.form.get("radius_km", "25"))
+        limit = int(request.form.get("receipt_limit", "8"))
+        if not 1 <= radius <= 100 or not 1 <= limit <= 30:
+            raise ValueError("Choose a radius of 1–100 km and 1–30 receipt listings.")
+        save_options(radius,limit,request.form.get("enabled") == "on",
+                     request.form.get("api_key", ""),request.form.get("clear_key") == "on")
+        flash("Local gig settings saved.")
+    except (ValueError, OSError) as error:
+        flash(str(error))
+    return redirect(url_for("gigs_page"))
 
 
 @app.get("/savings")
