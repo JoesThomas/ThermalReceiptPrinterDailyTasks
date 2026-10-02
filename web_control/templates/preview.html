@@ -7,7 +7,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
 </head>
 <body>
-<main>
+{% include "navigation.html" %}
+<main id="main-content">
     <a class="section-link" href="{{ url_for('index') }}">← Back to control</a>
     <header>
         <p class="eyebrow">80 mm paper view</p>

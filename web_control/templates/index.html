@@ -216,18 +216,19 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
 </head>
 
-<body>
+<body data-control-view="{{ active_view }}">
+{% include "navigation.html" %}
 
-<main>
+<main id="main-content">
 
     <!-- HEADER -->
 
     <header>
         <div>
             <p class="eyebrow">Daily paper, your way</p>
-            <h1>Receipt Control</h1>
+            <h1>{{ {'dashboard':'Your day, on paper','receipt':'Receipt','tasks':'Tasks & lists','accounts':'Account settings','settings':'Settings'}[active_view] }}</h1>
             <div class="muted">
-                Daily receipt printer
+                {{ {'dashboard':'A little clarity for the day ahead.','receipt':'Choose what goes on your next print.','tasks':'Routines, future plans and things to buy.','accounts':'Manage commitments and repayment details.','settings':'Location, reminders and printer controls.'}[active_view] }}
             </div>
         </div>
 
@@ -251,26 +252,26 @@
     {% endwith %}
 
 
-    <nav class="nav" aria-label="Page sections">
-        <a href="#overview">Overview</a><a href="#next-receipt">Next receipt</a>
-        <a href="#daily-receipt">Daily settings</a><a href="#routines">Routines</a>
-        <a href="#instalments">Instalments</a><a href="#commitments">Commitments</a><a href="#annual-subscriptions">Annual</a><a href="#food-shop">Food shop</a><a href="#to-buy">To buy</a><a href="#future-tasks">Future tasks</a><a href="{{ url_for('savings_review') }}">Savings &amp; investments</a>
-        <a href="#printing">Printing</a>
-    </nav>
+    {% if active_view == 'dashboard' %}
     <section id="overview">
         <p class="eyebrow">At a glance</p>
-        <h2>Ready for your next receipt</h2>
+        <h2>Make room for the day</h2>
+        <div class="dashboard-stats">
+            <div><span>Next scheduled print</span><strong>{{ scheduled_at.strftime('%H:%M') }}</strong><small>{{ scheduled_at.strftime('%a %d %b · %Z') }} · while the server runs</small></div>
+            <div><span>Receipt location</span><strong>{{ settings.location.name }}</strong><small>{{ settings.location.region }}</small></div>
+            <div><span>Daily routines</span><strong>{{ routines|length }}</strong><small><a href="{{ url_for('index',view='tasks') }}">Manage your routines</a></small></div>
+        </div>
         <div class="quick-actions">
             <form method="post" action="{{ url_for('print_now') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="primary">Print receipt</button></form>
-            <a class="button" href="{{ url_for('preview') }}">Preview layout</a>
+            <a class="button" href="{{ url_for('preview') }}">Open receipt</a>
             <a class="button" id="finance-review-link" href="{{ url_for('finance_review') }}">Review finances</a>
         </div>
-        <p class="muted">Preview shows example content. Finance review checks live bank transactions.</p>
+        <p class="muted">Open your saved live receipt, generate a fresh preview or print a new copy.</p>
         <div class="status-line" aria-live="polite">
             <strong>Last print:</strong>
             {% if print_status %}
                 <span class="badge {{ print_status.state }}">{{ print_status.state|title }}</span>
-                <span>{{ print_status.page|replace('_', ' ')|title }} · {{ print_status.updated_at[:16]|replace('T', ' ') }} UTC</span>
+                <span>{{ print_status.page|replace('_', ' ')|title }} · {{ last_print_local or 'Time unavailable' }}</span>
             {% else %}
                 <span class="muted">No recent web print.</span>
             {% endif %}
@@ -282,12 +283,16 @@
 
     <section id="live-data"><p class="eyebrow">Live data</p><h2>Plan and review</h2><div class="quick-actions"><a class="button" href="{{ url_for('gigs_page') }}">Gigs today</a><a class="button" href="{{ url_for('calendar_map') }}">Calendar map</a><a class="button" href="{{ url_for('meals_page') }}">Meals & recipes</a><a class="button" href="{{ url_for('tesco_list') }}">Tesco shopping review</a></div></section>
 
+    {% endif %}
+
+    {% if active_view in ['receipt','settings'] %}
     <!-- RECEIPT SETTINGS -->
 
     <form
         method="post"
         action="{{ url_for('save') }}"
     ><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="return_view" value="{{ active_view }}">
 
         <section>
 
@@ -467,6 +472,9 @@
     </form>
 
 
+    {% endif %}
+
+    {% if active_view == 'tasks' %}
     <!-- ROUTINES -->
 
     <section id="routines">
@@ -688,6 +696,10 @@
          INSTALMENTS
          ======================================== -->
 
+    {% endif %}
+
+    {% if active_view == 'accounts' %}
+    <p><a class="button" href="{{ url_for('finance_review') }}">Back to finance review</a></p>
     <section id="instalments">
 
         <h2>Instalments</h2>
@@ -1011,6 +1023,9 @@
 
     <!-- FOOD SHOP -->
 
+    {% endif %}
+
+    {% if active_view == 'tasks' %}
     <section id="food-shop">
 
         <h2>Food shop</h2>
@@ -1116,6 +1131,9 @@
         </form>
     </section>
 
+    {% endif %}
+
+    {% if active_view in ['receipt','settings'] %}
     <!-- DEBUG PRINTING -->
 
     <section id="print-pages">
@@ -1177,6 +1195,7 @@
     </section>
 
 
+    {% endif %}
 </main>
 
 <div id="finance-review-loading" class="finance-review-loading" role="status" aria-live="polite" hidden>

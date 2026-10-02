@@ -351,7 +351,7 @@ def instalment_update(index):
 
     except ValueError:
         flash("Invalid instalment value.")
-        return redirect(url_for("index"))
+        return redirect(url_for("index", view="accounts"))
 
     next_payment = request.form.get(
         "next_payment",
@@ -368,7 +368,7 @@ def instalment_update(index):
         f"{item['name']} updated."
     )
 
-    return redirect(url_for("index"))
+    return redirect(url_for("index", view="accounts"))
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -399,6 +399,21 @@ def logout(): session.clear(); return redirect(url_for("login"))
 @app.get("/")
 @login_required
 def index():
+    active_view = request.args.get("view", "dashboard")
+    if active_view not in {"dashboard", "receipt", "tasks", "accounts", "settings"}:
+        active_view = "dashboard"
+    from web_control.scheduled_print import next_print_time
+    scheduled_at = next_print_time(datetime.now(ZoneInfo("Europe/London")))
+    status = load_print_status()
+    last_print_local = None
+    if status and status.get("updated_at"):
+        try:
+            stamp = datetime.fromisoformat(status["updated_at"].replace("Z", "+00:00"))
+            if stamp.tzinfo is None:
+                stamp = stamp.replace(tzinfo=ZoneInfo("UTC"))
+            last_print_local = stamp.astimezone(ZoneInfo("Europe/London")).strftime("%d %b, %H:%M %Z")
+        except (ValueError, TypeError):
+            pass
     settings = load_receipt_settings()
     from services.local_gigs import options as gig_options
     settings["features"]["local_gigs"] = gig_options()["enabled"]
@@ -423,7 +438,8 @@ def index():
 
     return render_template(
         "index.html",
-        print_status=load_print_status(),
+        print_status=status,
+        active_view=active_view, scheduled_at=scheduled_at, last_print_local=last_print_local,
         settings=settings,
         routines=routines,
         weekdays=WEEKDAYS,
@@ -441,6 +457,9 @@ def _checked(name): return request.form.get(name) == "on"
 @app.post("/save")
 @login_required
 def save():
+    return_view = request.form.get("return_view", "receipt")
+    if return_view not in {"receipt", "settings"}:
+        return_view = "receipt"
     settings = load_receipt_settings()
     if any(key in request.form for key in ("name", "region", "latitude", "longitude",
                                            "local_news_label", "local_news_feed")):
@@ -448,7 +467,7 @@ def save():
             settings["location"] = validate_location(request.form)
         except ValueError as error:
             flash(str(error))
-            return redirect(url_for("index"))
+            return redirect(url_for("index", view=return_view))
     for name in ("calendar", "deliveries", "weather", "national_news", "local_news", "sport_news", "villa", "villa_trains"):
         settings["features"][name] = _checked(name)
     from services.local_gigs import options as gig_options, save_options as save_gig_options
@@ -471,36 +490,36 @@ def save():
         settings["therapy_payment"]["provider"] = provider if provider in {"MONZO", "HSBC"} else "MONZO"
     if "salary_payee" in request.form:
         settings["finance"]["salary_payee"] = request.form["salary_payee"].strip()[:80]
-    save_receipt_settings(settings); flash("Settings saved."); return redirect(url_for("index"))
+    save_receipt_settings(settings); flash("Settings saved."); return redirect(url_for("index", view=return_view))
 
 @app.post("/one-shot/<name>/clear")
 @login_required
 def clear_one_shot(name):
     if name not in {"finance_check", "food_shop", "shopping_list", "to_buy", "future_tasks"}: return ("Unknown request", 404)
     settings = load_receipt_settings(); settings["one_shot"][name] = False; save_receipt_settings(settings)
-    return redirect(url_for("index"))
+    return redirect(url_for("index", view="receipt"))
 
 @app.post("/routine/add")
 @login_required
 def routine_add():
     name = request.form.get("name", "").strip(); kind = request.form.get("schedule_type", "")
-    if not name or kind not in {"weekly", "interval"}: flash("Enter a valid routine."); return redirect(url_for("index"))
+    if not name or kind not in {"weekly", "interval"}: flash("Enter a valid routine."); return redirect(url_for("index", view="tasks"))
     try:
         interval = max(1, int(request.form.get("interval_days", 7))); before = max(0, int(request.form.get("show_days_before", 0)))
-    except ValueError: flash("Invalid schedule number."); return redirect(url_for("index"))
+    except ValueError: flash("Invalid schedule number."); return redirect(url_for("index", view="tasks"))
     add_routine(name, kind, weekday=request.form.get("weekday", "monday") if kind == "weekly" else None,
                 interval_days=interval if kind == "interval" else None, show_days_before=before)
-    flash("Routine added."); return redirect(url_for("index"))
+    flash("Routine added."); return redirect(url_for("index", view="tasks"))
 
 @app.post("/routine/<routine_id>/done")
 @login_required
-def routine_done(routine_id): mark_done(routine_id); return redirect(url_for("index"))
+def routine_done(routine_id): mark_done(routine_id); return redirect(url_for("index", view="tasks"))
 @app.post("/routine/<routine_id>/toggle")
 @login_required
-def routine_toggle(routine_id): set_enabled(routine_id, request.form.get("enabled") == "1"); return redirect(url_for("index"))
+def routine_toggle(routine_id): set_enabled(routine_id, request.form.get("enabled") == "1"); return redirect(url_for("index", view="tasks"))
 @app.post("/routine/<routine_id>/delete")
 @login_required
-def routine_delete(routine_id): delete_routine(routine_id); return redirect(url_for("index"))
+def routine_delete(routine_id): delete_routine(routine_id); return redirect(url_for("index", view="tasks"))
 
 def _run_receipt_job(
     app_path,
@@ -620,7 +639,7 @@ def food_shop_save():
         flash(str(error))
     else:
         flash("Shopping items saved for the next receipt and Tesco review.")
-    return redirect(url_for("index") + "#food-shop")
+    return redirect(url_for("index", view="tasks") + "#food-shop")
 
 
 @app.post("/food-shop/reset")
@@ -629,7 +648,7 @@ def food_shop_reset():
     from web_control.live_data import FOOD_SHOP_FILE
     FOOD_SHOP_FILE.unlink(missing_ok=True)
     flash("Using the Google Doc shopping list again.")
-    return redirect(url_for("index") + "#food-shop")
+    return redirect(url_for("index", view="tasks") + "#food-shop")
 
 
 @app.post("/to-buy/save")
@@ -641,7 +660,7 @@ def to_buy_save():
         flash(str(error))
     else:
         flash("To buy list saved locally.")
-    return redirect(url_for("index") + "#to-buy")
+    return redirect(url_for("index", view="tasks") + "#to-buy")
 
 
 @app.post("/future-tasks/save")
@@ -657,7 +676,7 @@ def future_tasks_save():
         flash(str(error))
     else:
         flash("Future tasks saved locally.")
-    return redirect(url_for("index") + "#future-tasks")
+    return redirect(url_for("index", view="tasks") + "#future-tasks")
 
 
 def _tesco_list():
@@ -724,12 +743,12 @@ def commitment_add():
         item = _monthly_entry()
     except (ValueError, OverflowError):
         flash("Enter a valid name, amount and matching terms.")
-        return redirect(url_for("index") + "#commitments")
+        return redirect(url_for("index", view="accounts") + "#commitments")
     data = load_subscriptions()
     data["monthly"].append(item)
     save_subscriptions(data)
     flash("Monthly commitment added.")
-    return redirect(url_for("index") + "#commitments")
+    return redirect(url_for("index", view="accounts") + "#commitments")
 
 
 @app.post("/commitment/<int:index>/update")
@@ -742,11 +761,11 @@ def commitment_update(index):
         item = _monthly_entry()
     except (ValueError, OverflowError):
         flash("Enter a valid name, amount and matching terms.")
-        return redirect(url_for("index") + "#commitments")
+        return redirect(url_for("index", view="accounts") + "#commitments")
     data["monthly"][index].update(item)
     save_subscriptions(data)
     flash("Monthly commitment updated.")
-    return redirect(url_for("index") + "#commitments")
+    return redirect(url_for("index", view="accounts") + "#commitments")
 
 
 @app.post("/commitment/<int:index>/delete")
@@ -758,7 +777,7 @@ def commitment_delete(index):
     data["monthly"].pop(index)
     save_subscriptions(data)
     flash("Monthly commitment removed.")
-    return redirect(url_for("index") + "#commitments")
+    return redirect(url_for("index", view="accounts") + "#commitments")
 
 
 def _annual_entry():
@@ -784,12 +803,12 @@ def annual_add():
         item = _annual_entry()
     except (ValueError, OverflowError):
         flash("Enter a valid annual name, amount, renewal date and matching terms.")
-        return redirect(url_for("index") + "#annual-subscriptions")
+        return redirect(url_for("index", view="accounts") + "#annual-subscriptions")
     data = load_subscriptions()
     data["yearly"].append(item)
     save_subscriptions(data)
     flash("Annual subscription added.")
-    return redirect(url_for("index") + "#annual-subscriptions")
+    return redirect(url_for("index", view="accounts") + "#annual-subscriptions")
 
 
 @app.post("/annual/<int:index>/update")
@@ -802,11 +821,11 @@ def annual_update(index):
         item = _annual_entry()
     except (ValueError, OverflowError):
         flash("Enter a valid annual name, amount, renewal date and matching terms.")
-        return redirect(url_for("index") + "#annual-subscriptions")
+        return redirect(url_for("index", view="accounts") + "#annual-subscriptions")
     data["yearly"][index].update(item)
     save_subscriptions(data)
     flash("Annual subscription updated.")
-    return redirect(url_for("index") + "#annual-subscriptions")
+    return redirect(url_for("index", view="accounts") + "#annual-subscriptions")
 
 
 @app.post("/annual/<int:index>/delete")
@@ -818,7 +837,7 @@ def annual_delete(index):
     data["yearly"].pop(index)
     save_subscriptions(data)
     flash("Annual subscription removed.")
-    return redirect(url_for("index") + "#annual-subscriptions")
+    return redirect(url_for("index", view="accounts") + "#annual-subscriptions")
 
 
 PRINT_PAGES = {

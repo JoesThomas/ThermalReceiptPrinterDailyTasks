@@ -1,4 +1,5 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gigs today · Receipt Control</title><link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}"></head><body><main>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gigs today · Receipt Control</title><link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}"></head><body>
+{% include "navigation.html" %}<main id="main-content">
 <a href="{{ url_for('index') }}">Back to control</a>
 <header><h1>Gigs near {{ gigs.location }}</h1><p>{{ gigs.date.strftime('%A %d %B %Y') }} · Within {{ gigs.radius }} km of your saved location</p></header>
 {% for message in get_flashed_messages() %}<p class="helper" role="status">{{ message }}</p>{% endfor %}
