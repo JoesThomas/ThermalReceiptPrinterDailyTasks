@@ -54,7 +54,7 @@ with tempfile.TemporaryDirectory() as folder,patch.object(web,'PROJECT_ROOT',Pat
   with web.app.test_client() as client:
    with client.session_transaction() as session:session['authenticated']=True;session['csrf_token']='test'
    response=client.post('/preview/generate',data={'csrf_token':'test'});statuses.append(response.status_code)
- with patch.object(web.subprocess,'Popen',side_effect=popen):
+ with patch.object(web.subprocess,'Popen',side_effect=popen),patch.object(web,'watch_job'):
   threads=[Thread(target=preview),Thread(target=preview)]
   for thread in threads:thread.start()
   for thread in threads:thread.join()

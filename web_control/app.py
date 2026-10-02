@@ -28,6 +28,7 @@ from web_control.live_data import (food_shop_override, save_food_shop, tesco_pro
                                    clear_meal_confirmation, map_embed_url, map_link_url)
 from web_control.to_buy import load_to_buy, save_to_buy
 from web_control.future_tasks import load_tasks, update_task
+from web_control.job_process import watch_job
 
 app = Flask(__name__)
 
@@ -934,6 +935,7 @@ def _start_print_command_locked(command_args):
             str(process.pid),
             encoding="utf-8",
         )
+        watch_job(process, lock)
 
     except Exception as error:
         lock.unlink(
@@ -1049,6 +1051,7 @@ def _generate_live_preview_locked():
                 cwd=PROJECT_ROOT, stdout=log_handle, stderr=subprocess.STDOUT,
                 start_new_session=True)
         lock.write_text(str(process.pid), encoding="utf-8")
+        watch_job(process, lock)
         flash("Fetching current receipt data. This may take a few minutes.")
     except Exception:
         from web_control.preview_job import save_status
