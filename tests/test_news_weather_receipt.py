@@ -84,7 +84,7 @@ class NewsWeatherReceiptTests(unittest.TestCase):
         import datetime
         namespace = {"DEFAULT_LOCATION": {"name": "Birmingham", "region": "UK"},
                      "datetime": datetime.datetime, "is_definitively_boring_weather": lambda _: False,
-                     "weather_description": lambda _: "RAIN", "weather_graphic": lambda _: [],
+                     "weather_description": lambda _: "RAIN", "print_weather_graphic": lambda *args: None,
                      "print_line": lambda *args: None, "centre": lambda *args: None,
                      "left": lambda *args: None, "print_wrapped": lambda *args, **kwargs: None,
                      "print_temperature_graph": lambda printer, readings: graph.extend(readings)}
@@ -94,6 +94,41 @@ class NewsWeatherReceiptTests(unittest.TestCase):
                       {"name": "Birmingham", "region": "UK"})
         self.assertEqual([reading["time"] for reading in graph],
                          [f"{hour:02d}:00" for hour in range(24)])
+
+
+class WeatherIllustrationTests(unittest.TestCase):
+    def test_complete_outlines_and_same_width_rows_for_every_condition(self):
+        rows = []
+        namespace = {'centre': lambda printer, text: rows.append(text)}
+        graphic = renderer('weather_graphic', namespace)
+        draw = renderer('print_weather_graphic', namespace)
+        for code in (0, 1, 2, 3, 45, 48, 51, 61, 71, 85, 95, 99, -1):
+            with self.subTest(code=code):
+                rows.clear()
+                draw(None, code)
+                self.assertEqual(len(rows), len(graphic(code)) + 1)
+                self.assertEqual(rows[-1], '')
+                self.assertEqual(len({len(row) for row in rows[:-1]}), 1)
+                self.assertTrue(all(len(row) <= 42 for row in rows))
+                self.assertEqual(rows[-2].strip(), graphic(code)[-1].strip())
+                if code in (1, 2, 3):
+                    self.assertEqual(rows[-2].strip(), "'------'")
+
+    def test_capture_keeps_closing_row_and_gap_before_caption(self):
+        from receipt.capture import RecordingPrinter
+        class Printer:
+            def set(self, **kwargs): pass
+            def text(self, text): pass
+        recorder = RecordingPrinter(Printer())
+        namespace = {'centre': lambda printer, text: (printer.set(align='center'), printer.text(text+'\n'))}
+        renderer('weather_graphic', namespace)
+        draw = renderer('print_weather_graphic', namespace)
+        draw(recorder, 3)
+        namespace['centre'](recorder, '12.0C CLOUDY')
+        lines = ''.join(recorder.lines).splitlines()
+        self.assertEqual(lines[-3].strip(), "'------'")
+        self.assertEqual(lines[-2].strip(), '')
+        self.assertEqual(lines[-1].strip(), '12.0C CLOUDY')
 
 
 if __name__ == "__main__":

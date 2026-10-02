@@ -2044,6 +2044,7 @@ def weather_graphic(code):
             r"      -- O --",
             r"     .------.",
             r"    (  CLOUD  )",
+            r"     '------'",
         ]
 
     if code == 3:
@@ -2052,6 +2053,7 @@ def weather_graphic(code):
             r"   .'          '.",
             r"  (    CLOUD     )",
             r"   '._        _.'",
+            r"      '------'",
         ]
 
     if code in (45, 48):
@@ -2087,6 +2089,17 @@ def weather_graphic(code):
 
     return ["    WEATHER UNKNOWN"]
 
+
+
+def print_weather_graphic(printer, code):
+    """Preserve drawing geometry when centring different-length ASCII rows."""
+    rows = weather_graphic(code)
+    margin = min(len(row) - len(row.lstrip(' ')) for row in rows)
+    rows = [row[margin:].rstrip() for row in rows]
+    width = max(len(row) for row in rows)
+    for row in rows:
+        centre(printer, row.ljust(width))
+    centre(printer, '')
 
 def get_weather(latitude=DEFAULT_LOCATION["latitude"], longitude=DEFAULT_LOCATION["longitude"]):
     url = "https://api.open-meteo.com/v1/forecast"
@@ -8380,8 +8393,7 @@ def print_weather(printer, weather, location=DEFAULT_LOCATION):
     print_line(printer)
 
     # Compact current weather graphic.
-    for line in weather_graphic(current["weather_code"]):
-        centre(printer, line)
+    print_weather_graphic(printer, current["weather_code"])
     current_temperature = current["temperature_2m"]
     current_condition = weather_description(
         current["weather_code"]
