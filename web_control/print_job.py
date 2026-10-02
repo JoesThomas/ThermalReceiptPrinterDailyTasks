@@ -34,6 +34,14 @@ def main():
         time.sleep(0.01)
     try:
         save_status("running", page)
+        if args and args[0] == '--archive':
+            if len(args) != 3:
+                raise ValueError('Invalid archive command')
+            sys.path.insert(0, str(ROOT))
+            from receipt.archive import reprint
+            reprint(args[1], args[2])
+            save_status('completed', 'archived ' + args[2])
+            return 0
         result = subprocess.run([sys.executable, str(ROOT / "main.py"), *args],
                                 cwd=ROOT, check=False,
                                 env={**os.environ, "RECEIPT_WEB_CAPTURE": "1"})

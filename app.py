@@ -19,6 +19,8 @@ def run_live(
     trigger/source. The keyword is retained so main.py has a stable modular API
     while individual collectors continue to be separated further.
     """
+    from receipt.freshness import reset
+    reset()
     if live_preview:
         from receipt.capture import LIVE_PREVIEW_FILE, RecordingPrinter
         from receipt.live_preview import isolated_preview
@@ -38,16 +40,6 @@ def run_live(
             recorder.save(only_page, path=LIVE_PREVIEW_FILE, replace=True)
         from receipt.preview_progress import report as preview_progress
         preview_progress("Preview saved", 5, 5)
-        return
-
-    if os.environ.get("RECEIPT_WEB_CAPTURE") != "1":
-        from receipt.printer import open_printer
-        original_usb = live_pipeline.Usb
-        live_pipeline.Usb = lambda *args, **kwargs: open_printer()
-        try:
-            run_live_pipeline(force_finance=finance_requested, only_page=only_page)
-        finally:
-            live_pipeline.Usb = original_usb
         return
 
     from receipt.capture import RecordingPrinter

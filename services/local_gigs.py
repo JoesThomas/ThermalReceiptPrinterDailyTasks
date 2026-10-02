@@ -178,6 +178,8 @@ def get_gigs(location, on, radius=25):
 
 def receipt_lines(result, limit=8):
     from textwrap import wrap
+    if result["status"] == "ok" and not result["events"] and not result["truncated"]:
+        return []
     lines = ['GIGS TODAY', '-'*40, f"{result['location']} / {result['radius']} KM"]
     if result['status'] == 'not_configured':
         lines.append('SET UP TICKETMASTER IN WEB GIGS PAGE')

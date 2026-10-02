@@ -38,7 +38,14 @@ def main():
         time.sleep(0.01)
     try:
         save_status("running")
-        args = ["--finance"] if sys.argv[1:] == ["--finance"] else []
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--finance', action='store_true')
+        parser.add_argument('--only', choices=['information', 'actions', 'food', 'finance'])
+        options = parser.parse_args()
+        args = ['--finance'] if options.finance or options.only == 'finance' else []
+        if options.only:
+            args += ['--only', options.only]
         result = subprocess.run([sys.executable, str(ROOT / "main.py"), "--live-preview", *args],
                                 cwd=ROOT, check=False,
                                 env={**os.environ, "RECEIPT_LIVE_PREVIEW": "1"})

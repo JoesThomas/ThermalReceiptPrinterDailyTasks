@@ -994,7 +994,7 @@ def preview():
               "captured_local": uk_receipt_time(capture.get("page_times", {}).get(name)),
               "sample": not bool(capture["pages"].get(name))}
              for name in selected]
-    return render_template("preview.html", pages=pages, page=page, source=source,
+    return render_template("preview.html", freshness=[dict(name=name, status=value["status"], local=uk_receipt_time(value["checked_at"])) for name, value in capture.get("freshness", {}).items()], pages=pages, page=page, source=source,
                            preview_status=load_live_preview_status(),
                            has_live=bool(live_capture), has_printed=bool(printed_capture))
 
@@ -1025,6 +1025,8 @@ def live_preview_status_api():
 @app.post("/preview/generate")
 @login_required
 def generate_live_preview():
+    if request.form.get("page", "all") not in {"all", *PRINT_PAGES}:
+        abort(400)
     lock = PROJECT_ROOT / "data" / ".live_preview.lock"
     log_file = PROJECT_ROOT / "logs" / "web_preview.log"
     lock.parent.mkdir(parents=True, exist_ok=True)
@@ -1040,7 +1042,12 @@ def generate_live_preview():
         from web_control.preview_job import save_status
         save_status("running")
         with log_file.open("a", encoding="utf-8") as log_handle:
-            args = ["--finance"] if request.form.get("include_finance") == "on" else []
+            page = request.form.get('page', 'all')
+            if page not in {'all', *PRINT_PAGES}:
+                abort(400)
+            args = ["--finance"] if request.form.get("include_finance") == "on" or page == 'finance' else []
+            if page != 'all':
+                args += ['--only', page]
             process = subprocess.Popen(
                 [sys.executable, str(PROJECT_ROOT / "web_control" / "preview_job.py"), *args],
                 cwd=PROJECT_ROOT, stdout=log_handle, stderr=subprocess.STDOUT,
@@ -1209,7 +1216,8 @@ def finance_review():
                                projection=projection, suggestions=suggestions, forecast_settings=forecast_settings,
                                ended_contracts=status["ended"],
                                bank_data_status=bank_data_status,
-                               checked_at=today, error=None)
+                               checked_at=today, checked_time=datetime.now(ZoneInfo("Europe/London")).strftime("%d %b %Y, %H:%M %Z"),
+                               accessible_savings=savings, error=None)
     except Exception:
         app.logger.exception("Could not load finance review")
         return render_template("finance_review.html", rows=[], checked_at=today,
@@ -1404,4 +1412,10 @@ def print_now():
         url_for("index")
     )
 
-if __name__ == "__main__": app.run(host="0.0.0.0", port=5000, debug=False)
+
+# Private archive and backup routes share the existing authentication and CSRF guard.
+from web_control.private_tools import register
+register(app, login_required, _start_print_command, PROJECT_ROOT, _print_start_lock)
+
+if __name__ == "__main__":
+    app.run(host="127.0.0.1", port=5000, debug=False)

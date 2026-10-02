@@ -104,3 +104,10 @@ data/wealth_history.json.tmp
 
 data/local_gigs_config.json
 data/local_gigs_config.json.tmp
+
+# Private receipt archives and backup/restore staging
+data/receipt_archive/
+data/private_backups/
+data/restore_pending/
+
+data/investments.json

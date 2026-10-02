@@ -6,3 +6,5 @@
 {% endfor %}
 </nav>
 <script src="{{ url_for('static',filename='control.js') }}" defer></script>
+
+<div class="private-tools-links"><a href="{{ url_for('archive_list') }}">Receipt archive</a><a href="{{ url_for('backup_page') }}">Private backup</a></div>

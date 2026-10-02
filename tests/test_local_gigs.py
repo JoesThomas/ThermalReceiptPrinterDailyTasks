@@ -80,6 +80,6 @@ class LocalGigsTests(unittest.TestCase):
         self.assertTrue(all(len(line)<=40 for line in lines))
         self.assertIn('+8 MORE ON WEB GIGS PAGE',lines)
         result['events']=[]
-        self.assertIn('NO MATCHING GIGS IN THIS SOURCE',gigs.receipt_lines(result))
+        self.assertEqual(gigs.receipt_lines(result), [])
     def test_geohash_reference(self):
         self.assertTrue(gigs.geohash(42.6,-5.6).startswith('ezs42'))

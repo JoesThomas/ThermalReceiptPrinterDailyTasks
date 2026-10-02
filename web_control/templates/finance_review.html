@@ -13,16 +13,22 @@
     <header>
         <p class="eyebrow">Monthly commitments</p>
         <h1>Finance review</h1>
-        <p class="muted">Checked {{ checked_at.strftime('%d %B %Y') }} against bank transactions. Refresh the page to check again.</p>
+        <p class="muted">{% if not error %}Bank request completed {{ checked_time }} · {{ bank_data_status }} data.{% else %}Bank check unavailable.{% endif %} Refresh to check again.</p>
     </header>
     <div class="page-actions"><a class="button" href="{{ url_for('savings_review') }}">Savings & investments</a><a class="button" href="{{ url_for('index',view='accounts') }}">Manage commitments</a></div>
     <details class="section-disclosure"><summary>Savings & investment history</summary>{% include "wealth_section.html" %}</details>
     {% if error %}
-        <section class="helper">{{ error }}</section>
+        <details class="section-disclosure"><summary>Cash runway</summary><section class="helper">{{ error }}</section>
     {% else %}
         {% if bank_data_status != 'complete' %}
             <section class="helper" role="status">Bank transaction data is {{ bank_data_status }}. Totals below include only payments the bank returned; missing matches may still have been paid.</section>
         {% endif %}
+        <section aria-label="Finance overview"><div class="flow-totals">
+        <div><span>Current cash</span><strong>{{ '£%.2f'|format(projection.cash) if projection.cash is not none else 'Unavailable' }}</strong></div>
+        <div><span>Upcoming 30 days</span><strong>£{{ '%.2f'|format(projection.upcoming|sum(attribute='amount')) }}</strong></div>
+        <div><span>Income · last 30 days</span><strong>£{{ '%.2f'|format(income.total) }}</strong></div>
+        <div><span>Accessible savings</span><strong>£{{ '%.2f'|format(accessible_savings) }}</strong></div>
+        </div><p class="muted">Upcoming payments include only configured dates. Accessible savings are those selected for runway calculations.</p></section>
         {% if projection %}
         <section id="finance-forecast" aria-labelledby="forecast-title">
             <p class="eyebrow">Upcoming payments · estimated everyday spending</p>
@@ -34,6 +40,12 @@
                 <div><span>With accessible savings</span><strong>{% if projection.valid %}{{ projection.total_duration if projection.total_duration is not none else 'Over ' ~ projection.horizon_duration }}{% else %}Unavailable{% endif %}</strong><p class="muted">{% if projection.total_run_out_date %}Projected to run out: {{ projection.total_run_out_date.strftime('%d %b %Y') }}{% elif projection.valid %}No shortfall projected through {{ projection.horizon_end_date.strftime('%d %b %Y') }}{% endif %}</p></div>
             </div>
             <p class="muted">Projected dates assume no further income and the current spending estimate. With a protected buffer, the date marks when spendable funds fall below that buffer. If no shortfall occurs within the forecast horizon, an exact date is unavailable.</p>
+            <details><summary>What this forecast assumes</summary><ul>
+            <li>Starts from connected current-account balances checked on this visit.</li>
+            <li>Everyday spending uses {{ 'your manual estimate' if forecast_settings.runway_daily_spend is defined and forecast_settings.runway_daily_spend is not none else 'the last 30 days of bank spending, excluding matched commitments' }}.</li>
+            <li>Uses configured payment dates and annual renewals; missing dates appear as warnings.</li>
+            <li>Assumes no future income. Accessible savings are included only in the second runway.</li>
+            </ul></details>
             <p>Everyday spending: <strong>£{{ '%.2f'|format(projection.daily) }} per day</strong> · Protected buffer: £{{ '%.2f'|format(projection.buffer) }}</p>
             {% for warning in projection.warnings %}<p class="helper" role="status">{{ warning }}</p>{% endfor %}
             {% if projection.payday %}
@@ -70,7 +82,7 @@
                     <div class="grid"><label>Payment name<input name="name" maxlength="90" required></label><label>Amount (£)<input type="number" name="amount" min="0.01" step="0.01" required></label><label>Due date<input type="date" name="due_date" required></label><label>Repeats<select name="repeat"><option value="once">Once</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label></div><button>Add dated payment</button>
                 </form>
             </details>
-        </section>
+        </section></details>
         <section id="finance-suggestions" aria-labelledby="suggestions-title">
             <p class="eyebrow">Based on available records</p>
             <h2 id="suggestions-title">Finance suggestions</h2>
@@ -86,7 +98,7 @@
             {% else %}<p>No new suggestions to review.</p>{% endfor %}
         </section>
         {% endif %}
-        <section aria-labelledby="cash-flow-title">
+        <details class="section-disclosure"><summary>Money in and out</summary><section aria-labelledby="cash-flow-title">
             <p class="eyebrow">Last 30 days · bank transactions</p>
             <h2 id="cash-flow-title">Money in and out</h2>
             <div class="flow-totals">
@@ -113,8 +125,8 @@
                     </div>
                 {% endfor %}
             </div>
-        </section>
-        <section aria-labelledby="incoming-title">
+        </section></details>
+        <details class="section-disclosure"><summary>Incoming payments</summary><section aria-labelledby="incoming-title">
             <p class="eyebrow">Credits from connected accounts</p>
             <h2 id="incoming-title">Incoming payments</h2>
             <p class="amount-headline">£{{ '%.2f'|format(income.total) }}</p>
@@ -137,8 +149,8 @@
                     {% endfor %}
                 </div>
             {% else %}<p>No incoming bank payments found in the last 30 days.</p>{% endif %}
-        </section>
-        <section id="month-payments" aria-labelledby="month-payments-title">
+        </section></details>
+        <details class="section-disclosure"><summary>Outgoings · {{ month.label }}</summary><section id="month-payments" aria-labelledby="month-payments-title">
             <p class="eyebrow">Calendar month</p>
             <h2 id="month-payments-title">Outgoings · {{ month.label }}</h2>
             <p class="amount-headline">£{{ '%.2f'|format(month.total) }}</p>
@@ -163,8 +175,8 @@
                     {% endfor %}
                 </div>
             {% else %}<p>No payments found for this month.</p>{% endif %}
-        </section>
-        <section aria-labelledby="commitment-chart-title">
+        </section></details>
+        <details class="section-disclosure"><summary>Monthly commitments</summary><section aria-labelledby="commitment-chart-title">
             <p class="eyebrow">This month</p>
             <h2 id="commitment-chart-title">Monthly commitments</h2>
             {% if charts.commitments.total > 0 %}
@@ -180,8 +192,8 @@
                 </figure>
                 <p class="muted">Total scheduled: £{{ '%.2f'|format(charts.commitments.total) }}. A missing bank match does not prove a payment is unpaid.</p>
             {% else %}<p>No monthly commitments to chart.</p>{% endif %}
-        </section>
-        <section aria-labelledby="spending-chart-title">
+        </section></details>
+        <details class="section-disclosure"><summary>Spending by category</summary><section aria-labelledby="spending-chart-title">
             <p class="eyebrow">Last 30 days</p>
             <h2 id="spending-chart-title">Spending by category</h2>
             {% if charts.categories %}
@@ -197,8 +209,8 @@
                     {% endfor %}
                 </figure>
             {% else %}<p>No recent spending transactions to chart.</p>{% endif %}
-        </section>
-        <section aria-labelledby="weekly-chart-title">
+        </section></details>
+        <details class="section-disclosure"><summary>Weekly spending</summary><section aria-labelledby="weekly-chart-title">
             <p class="eyebrow">Last four weeks</p>
             <h2 id="weekly-chart-title">Weekly spending</h2>
             <p class="muted">Each bar covers seven consecutive days. The most recent bar ends today; a short bar can mean transactions have not arrived yet.</p>
@@ -217,8 +229,8 @@
                     </div>
                 </figure>
             {% else %}<p>No recent transactions to chart.</p>{% endif %}
-        </section>
-        <section aria-labelledby="annual-title">
+        </section></details>
+        <details class="section-disclosure"><summary>Annual subscriptions</summary><section aria-labelledby="annual-title">
             <p class="eyebrow">Renewals</p>
             <h2 id="annual-title">Annual subscriptions</h2>
             <p class="muted">Shown separately from monthly commitments. A last recorded payment is history, not proof that the current renewal was paid.</p>
@@ -234,8 +246,8 @@
                     {% if item.last_paid_date %}<small>Last recorded payment: {{ item.last_paid_date.strftime('%d %b %Y') }}</small>{% endif %}
                 </div>
             {% else %}<p>No annual subscriptions configured. Add them on the home page.</p>{% endfor %}
-        </section>
-        <section>
+        </section></details>
+        <details class="section-disclosure"><summary>Payment matches</summary><section>
             <h2>Payment matches</h2>
             <p class="muted">A due entry means no matching bank transaction was found; check it before treating it as unpaid.</p>
             {% for row in rows %}
@@ -250,15 +262,15 @@
                     {% endif %}
                 </div>
             {% else %}<p>No monthly commitments configured.</p>{% endfor %}
-        </section>
+        </section></details>
         {% if ended_contracts %}
-            <section aria-labelledby="ended-contracts-title">
+            <details class="section-disclosure"><summary>Ended contracts</summary><section aria-labelledby="ended-contracts-title">
                 <h2 id="ended-contracts-title">Ended contracts</h2>
                 <p class="muted">These remain editable on the home page, but are excluded from this month's commitments after their final contract month.</p>
                 {% for item in ended_contracts %}
                     <div class="review-row"><div class="review-head"><strong>{{ item.name }}</strong><strong>£{{ '%.2f'|format(item.amount) }} / month</strong></div><small>Ended {{ item.end_date }}</small></div>
                 {% endfor %}
-            </section>
+            </section></details>
         {% endif %}
     {% endif %}
 </main>

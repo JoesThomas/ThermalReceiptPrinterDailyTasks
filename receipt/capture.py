@@ -94,10 +94,21 @@ class RecordingPrinter:
             store_section(only_page, sections[0] if sections else "")
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(".tmp")
-        temporary.write_text(json.dumps({"page_times": page_times, "pages": pages,
+        from receipt.freshness import snapshot
+        temporary.write_text(json.dumps({"freshness": snapshot(), "page_times": page_times, "pages": pages,
                                          "page_images": page_images},
                                         ensure_ascii=False), encoding="utf-8")
         temporary.replace(path)
+        from receipt.archive import save as archive_save
+        from receipt.freshness import snapshot
+        fresh = {name: value for name, value in pages.items() if page_times.get(name) == captured_at}
+        if fresh:
+            try:
+                archive_save(fresh, {name: page_images[name] for name in fresh}, captured_at,
+                             "preview" if path == LIVE_PREVIEW_FILE else "printed", snapshot())
+            except OSError:
+                import logging
+                logging.getLogger(__name__).warning("Receipt saved, but its archive copy could not be written.")
 
 
 def load_capture(path=CAPTURE_FILE):
@@ -106,7 +117,7 @@ def load_capture(path=CAPTURE_FILE):
         pages = data.get("pages", {})
         if not isinstance(pages, dict):
             return None
-        return {"page_times": data.get("page_times", {}),
+        return {"freshness": data.get("freshness", {}), "page_times": data.get("page_times", {}),
                 "pages": {key: str(value) for key, value in pages.items() if key in PAGE_NAMES},
                 "page_images": data.get("page_images", {})}
     except (OSError, ValueError, TypeError):

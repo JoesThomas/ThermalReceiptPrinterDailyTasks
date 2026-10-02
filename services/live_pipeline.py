@@ -8716,6 +8716,8 @@ def run_live_pipeline(
                 )
 
                 weather = get_weather(location["latitude"], location["longitude"])
+                from receipt.freshness import mark
+                mark("Weather")
 
                 print_weather(
                     printer,
@@ -8762,6 +8764,8 @@ def run_live_pipeline(
                     )
                 )
 
+                from receipt.freshness import mark
+                mark("UK news")
                 print_news(
                     printer,
                     headlines,
@@ -8802,6 +8806,8 @@ def run_live_pipeline(
                     )
                 )
 
+                from receipt.freshness import mark
+                mark("Local news")
                 print_local_news(
                     printer,
                     local_headlines,
@@ -8927,6 +8933,8 @@ def run_live_pipeline(
                 )
 
                 upcoming_events = get_calendar_events(CALENDAR_ICAL_URL, days_ahead=3)
+                from receipt.freshness import mark
+                mark("Calendar")
                 events = [event for event in upcoming_events if event["date"] == today]
 
                 print_calendar(
@@ -9345,6 +9353,8 @@ def run_live_pipeline(
                     spending_summary,
                 ) = finance_data[:5]
 
+                from receipt.freshness import mark
+                mark("Bank transactions", spending_summary.get("bank_data_status", "unavailable"))
                 subscription_changes = (
                     update_subscriptions_from_transactions(
                         transactions
