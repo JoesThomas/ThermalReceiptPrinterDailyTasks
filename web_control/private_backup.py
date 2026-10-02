@@ -5,7 +5,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 MAX_BYTES = 900_000
-OBJECT_FILES = {'receipt_settings.json', 'subscriptions.json', 'savings.json',
+OBJECT_FILES = {'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
                 'investments.json', 'finance_settings.json', 'finance_categories.json',
                 'food_shop_override.json', 'tesco_progress.json', 'meals_eaten.json'}
 LIST_FILES = {'routines.json', 'future_tasks.json', 'wealth_history.json'}
@@ -34,6 +34,9 @@ def validate(raw):
                 raise ValueError()
             if name == 'future_tasks.json' and any(not all(isinstance(row.get(key), str) for key in ('id', 'title', 'next_step')) or not isinstance(row.get('done'), bool) for row in content):
                 raise ValueError()
+            if name == 'premium_bonds.json':
+                from finance.premium_bonds import validate_data
+                validate_data(content)
             if name == 'subscriptions.json' and any(not isinstance(content.get(key, []), list) for key in ('monthly', 'yearly', 'instalments')):
                 raise ValueError()
     except (ValueError, TypeError, KeyError, RecursionError):

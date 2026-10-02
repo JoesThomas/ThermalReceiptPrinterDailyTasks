@@ -111,3 +111,7 @@ data/private_backups/
 data/restore_pending/
 
 data/investments.json
+
+# Private Premium Bonds prize and balance ledger
+data/premium_bonds.json
+data/premium_bonds.lock

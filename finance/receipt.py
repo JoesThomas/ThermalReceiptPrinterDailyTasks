@@ -612,6 +612,13 @@ def print_integrated_finance(
 
     printer.text("\n")
 
+    from finance.premium_bonds import receipt_lines as premium_bond_lines
+    try:
+        bond_lines = premium_bond_lines(today)
+    except (ValueError, OSError):
+        bond_lines = ["PREMIUM BONDS HISTORY UNAVAILABLE"]
+    for row in bond_lines:
+        left(printer, row)
     left(
         printer,
         "SPENDING - BANK TX [C]",

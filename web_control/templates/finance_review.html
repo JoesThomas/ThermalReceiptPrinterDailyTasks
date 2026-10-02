@@ -15,7 +15,10 @@
         <h1>Finance review</h1>
         <p class="muted">{% if not error %}Bank request completed {{ checked_time }} · {{ bank_data_status }} data.{% else %}Bank check unavailable.{% endif %} Refresh to check again.</p>
     </header>
-    <div class="page-actions"><a class="button" href="{{ url_for('savings_review') }}">Savings & investments</a><a class="button" href="{{ url_for('index',view='accounts') }}">Manage commitments</a></div>
+    <div class="page-actions"><a class="button" href="{{ url_for('premium_bonds_page') }}">Premium Bonds winnings & return</a><a class="button" href="{{ url_for('savings_review') }}">Savings & investments</a><a class="button" href="{{ url_for('index',view='accounts') }}">Manage commitments</a></div>
+    {% if bonds_summary and (bonds_summary.prizes or bonds_summary.balances) %}
+    <section aria-label="Premium Bonds winnings summary"><h2>Premium Bonds · {{ bonds_summary.year }}</h2><div class="flow-totals"><div><span>Recorded winnings</span><strong>£{{ '%.2f'|format(bonds_summary.total) }}</strong></div><div><span>Recorded period return</span><strong>{{ '%.2f%%'|format(bonds_summary.percent) if bonds_summary.percent is not none else 'Add dated balance' }}</strong></div></div><p class="muted">{% if bonds_summary.start %}Return covers {{ bonds_summary.start.strftime('%d %b') }}–{{ bonds_summary.end.strftime('%d %b %Y') }}, using £{{ '%.2f'|format(bonds_summary.period_total) }} in prizes and £{{ '%.2f'|format(bonds_summary.average) }} average holdings.{% endif %} {{ 'Prize coverage confirmed through this period.' if bonds_summary.complete else 'Prize history may be incomplete.' }}</p></section>
+    {% endif %}
     <details class="section-disclosure"><summary>Savings & investment history</summary>{% include "wealth_section.html" %}</details>
     {% if error %}
         <details class="section-disclosure"><summary>Cash runway</summary><section class="helper">{{ error }}</section>

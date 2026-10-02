@@ -6859,6 +6859,13 @@ def get_regular_finance_data():
         )
     )
 
+    from finance.premium_bonds import capture as capture_bond_prizes
+    try:
+        capture_bond_prizes(all_transactions, _other_incoming_category, _is_incoming_transaction,
+                            _looks_like_internal_transfer, _transaction_date)
+    except (ValueError, OSError):
+        print("Premium Bonds history could not be saved; check the private ledger file.")
+
     salary_30 = _incoming_total(
         salary_incomings,
         days=30,

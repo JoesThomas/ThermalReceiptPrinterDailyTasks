@@ -1151,6 +1151,7 @@ def savings_delete():
 @app.get("/finance-review")
 @login_required
 def finance_review():
+    from finance.premium_bonds import review as review_bond_prizes
     from finance.commitments import matching_repayment_transaction
     from finance.yearly_subscriptions import annual_subscription_rows
     from services.live_pipeline import (build_subscription_status,
@@ -1160,12 +1161,20 @@ def finance_review():
                                         matching_subscription_transaction)
     today = datetime.now(ZoneInfo("Europe/London")).date()
     try:
+        bonds_summary = review_bond_prizes(today)
+    except (ValueError, OSError):
+        bonds_summary = None
+    try:
         wealth, wealth_error = _wealth_view(), None
     except (ValueError, OSError, KeyError, TypeError):
         wealth, wealth_error = None, "Private balance history could not be loaded."
     try:
         finance_data = get_regular_finance_data()
         transactions = finance_data[0]
+        try:
+            bonds_summary = review_bond_prizes(today)
+        except (ValueError, OSError):
+            bonds_summary = None
         bank_data_status = finance_data[4].get("bank_data_status", "unavailable")
         status = build_subscription_status(transactions, today=today)
         annual = annual_subscription_rows(status["yearly"], transactions, today)
@@ -1210,7 +1219,7 @@ def finance_review():
         suggestions = build_suggestions(projection, rows, annual, status["ended"], charts,
                                         finance_data[3], transactions, today)
         return render_template("finance_review.html", rows=rows, charts=charts,
-                               wealth=wealth, wealth_error=wealth_error,
+                               wealth=wealth, wealth_error=wealth_error, bonds_summary=bonds_summary,
                                month=month, income=income, cash_flow=cash_flow,
                                annual=annual,
                                projection=projection, suggestions=suggestions, forecast_settings=forecast_settings,
@@ -1221,7 +1230,7 @@ def finance_review():
     except Exception:
         app.logger.exception("Could not load finance review")
         return render_template("finance_review.html", rows=[], checked_at=today,
-                               wealth=wealth, wealth_error=wealth_error,
+                               wealth=wealth, wealth_error=wealth_error, bonds_summary=bonds_summary,
                                error="Bank transactions are unavailable. Try again later."), 503
 
 
@@ -1416,6 +1425,8 @@ def print_now():
 # Private archive and backup routes share the existing authentication and CSRF guard.
 from web_control.private_tools import register
 register(app, login_required, _start_print_command, PROJECT_ROOT, _print_start_lock)
+from web_control.premium_bonds import register as register_premium_bonds
+register_premium_bonds(app, login_required)
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

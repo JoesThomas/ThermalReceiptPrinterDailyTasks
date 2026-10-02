@@ -1,4 +1,4 @@
-"""Live receipt rendering without printer hardware or persistent state changes."""
+"""Live receipt rendering without printer hardware or meal/bill bookkeeping changes."""
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -33,7 +33,7 @@ class VirtualPrinter:
 
 @contextmanager
 def isolated_preview(*, pipeline=None, meal_planner=None, finance_receipt=None, subscriptions=None):
-    """Keep planned meals, subscriptions, flags and trend snapshots unchanged."""
+    """Keep meal/bill bookkeeping unchanged; identified prize history is retained."""
     if finance_receipt is None:
         from finance import receipt as finance_receipt
     if meal_planner is None:
