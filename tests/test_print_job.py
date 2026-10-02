@@ -14,9 +14,9 @@ class PrintJobTests(unittest.TestCase):
             status = Path(tmp) / 'status.json'
             lock.write_text('123')
             with patch.object(print_job, 'LOCK', lock), patch.object(print_job, 'STATUS', status), \
-                    patch.object(print_job.subprocess, 'run') as run, \
+                    patch.object(print_job, 'run_bounded') as run, \
                     patch.object(print_job.sys, 'argv', ['print_job.py', '--only', 'finance']):
-                run.return_value.returncode = 1
+                run.return_value = 1
                 self.assertEqual(print_job.main(), 1)
             self.assertFalse(lock.exists())
             self.assertEqual(json.loads(status.read_text())['state'], 'failed')

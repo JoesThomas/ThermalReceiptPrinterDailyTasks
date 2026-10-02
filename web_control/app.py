@@ -954,7 +954,7 @@ def load_print_status():
     path = PROJECT_ROOT / "data" / "web_print_status.json"
     try:
         status = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(status, dict) or status.get("state") not in {"running", "completed", "failed"}:
+        if not isinstance(status, dict) or status.get("state") not in {"running", "completed", "failed", "timed_out", "cancelled"}:
             return None
         if status["state"] == "running":
             lock = PROJECT_ROOT / "data" / ".print_now.lock"
@@ -998,7 +998,7 @@ def load_live_preview_status():
     path = PROJECT_ROOT / "data" / "live_preview_status.json"
     try:
         status = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(status, dict) or status.get("state") not in {"running", "completed", "failed"}:
+        if not isinstance(status, dict) or status.get("state") not in {"running", "completed", "failed", "timed_out", "cancelled"}:
             return None
         if status["state"] == "running":
             lock = PROJECT_ROOT / "data" / ".live_preview.lock"
@@ -1372,6 +1372,9 @@ register_premium_bonds(app, login_required)
 
 from web_control.delivery_tools import register as register_deliveries
 register_deliveries(app, login_required)
+
+from web_control.job_controls import register as register_job_controls
+register_job_controls(app, login_required, PROJECT_ROOT, load_print_status, load_live_preview_status)
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

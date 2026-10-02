@@ -53,3 +53,62 @@
     while (parent) { if (parent.tagName === 'DETAILS') parent.open = true; parent = parent.parentElement; }
   },true));
 })();
+
+(() => {
+  const panel = document.getElementById('global-job-panel');
+  if (!panel) return;
+  let busy = false;
+  let wasActive = false;
+  async function poll() {
+    if (busy || document.hidden) return;
+    busy = true;
+    try {
+      const response = await fetch(panel.dataset.statusUrl, {cache:'no-store', signal:AbortSignal.timeout(8000)});
+      if (!response.ok) throw new Error('status unavailable');
+      const jobs = await response.json();
+      const kind = jobs.print?.state === 'running' ? 'print' : jobs.preview?.state === 'running' ? 'preview' : null;
+      panel.hidden = !kind;
+      if (!kind) {
+        if (wasActive) location.reload();
+        return;
+      }
+      wasActive = true;
+      const job = jobs[kind];
+      document.getElementById('global-job-kind').value = kind;
+      document.getElementById('global-job-title').textContent = kind === 'print' ? 'Printing your receipt' : 'Building your preview';
+      document.getElementById('global-job-stage').textContent = job.stage || 'Starting…';
+      const done = Math.max(0, Math.min(5, Number(job.completed) || 0));
+      document.getElementById('global-job-progress').value = done;
+      const start = Date.parse(job.started_at || job.updated_at);
+      const seconds = Number.isFinite(start) ? Math.max(0, Math.floor((Date.now()-start)/1000)) : 0;
+      document.getElementById('global-job-time').textContent = `${done}/5 sections · ${Math.floor(seconds/60)}m ${seconds%60}s elapsed · Job ${job.job_id || 'earlier job'}`;
+      document.querySelectorAll('form[action$="/print-page"], form[action$="/print-now"], form[action$="/preview/generate"]').forEach(form => {
+        form.querySelectorAll('button[type="submit"],button:not([type])').forEach(button => button.disabled = true);
+      });
+    } catch (_) {
+      if (wasActive) document.getElementById('global-job-stage').textContent = 'Reconnecting to job updates…';
+    } finally { busy = false; }
+  }
+  poll(); setInterval(poll, 2000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+})();
+
+// Give slow review pages immediate feedback without trapping browser back navigation.
+(() => {
+  const notice = document.createElement('div');
+  notice.className = 'navigation-loading'; notice.hidden = true;
+  notice.setAttribute('role','status');
+  const spinner = document.createElement('span'); spinner.className='preview-spinner'; spinner.setAttribute('aria-hidden','true');
+  const text = document.createElement('span'); text.textContent='Loading your review…';
+  notice.append(spinner,text); document.body.append(notice);
+  document.addEventListener('click', event => {
+    const link = event.target.closest('a[href]');
+    if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.target || event.button !== 0) return;
+    const url = new URL(link.href);
+    if (url.origin === location.origin && ['/finance-review','savings-review','gigs','meals','calendar-map'].includes(url.pathname)) {
+      notice.hidden=false;
+      setTimeout(() => { notice.hidden=true; },15000);
+    }
+  });
+  window.addEventListener('pageshow', () => { notice.hidden=true; });
+})();

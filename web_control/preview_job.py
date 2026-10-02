@@ -6,12 +6,15 @@ import os
 import subprocess
 import sys
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 STATUS = ROOT / "data" / "live_preview_status.json"
 LOCK = ROOT / "data" / ".live_preview.lock"
+sys.path.insert(0, str(ROOT))
+from web_control.job_runtime import run_bounded, JobCancelled, log_event, MAX_SECONDS
 
 
 def save_status(state):
@@ -25,7 +28,8 @@ def save_status(state):
         pass
     temporary.write_text(json.dumps({"state": state, "stage": "Starting receipt" if state == "running" else state,
                                      "completed": 0 if state == "running" else previous.get("completed", 0),
-                                     "total": 5, "started_at": now if state == "running" else previous.get("started_at", now),
+                                     "job_id": uuid.uuid4().hex[:12] if state == "running" else previous.get("job_id"),
+                                     "timeout_seconds": MAX_SECONDS, "total": 5, "started_at": now if state == "running" else previous.get("started_at", now),
                                      "updated_at": now}),
                          encoding="utf-8")
     temporary.replace(STATUS)
@@ -46,11 +50,22 @@ def main():
         args = ['--finance'] if options.finance or options.only == 'finance' else []
         if options.only:
             args += ['--only', options.only]
-        result = subprocess.run([sys.executable, str(ROOT / "main.py"), "--live-preview", *args],
-                                cwd=ROOT, check=False,
-                                env={**os.environ, "RECEIPT_LIVE_PREVIEW": "1"})
-        save_status("completed" if result.returncode == 0 else "failed")
-        return result.returncode
+        job_id = json.loads(STATUS.read_text())['job_id']
+        log_event(job_id, 'preview started')
+        code = run_bounded([sys.executable, str(ROOT / "main.py"), "--live-preview", *args],
+                                cwd=ROOT,
+                                env={**os.environ, "RECEIPT_LIVE_PREVIEW": "1", "RECEIPT_JOB_ID": job_id})
+        save_status("completed" if code == 0 else "failed")
+        log_event(job_id, f'preview ended exit={code}')
+        return code
+    except subprocess.TimeoutExpired:
+        save_status('timed_out')
+        log_event(job_id, 'preview timed out; child stopped')
+        return 124
+    except JobCancelled:
+        save_status('cancelled')
+        log_event(job_id, 'preview cancelled; child stopped')
+        return 130
     except Exception:
         save_status("failed")
         raise

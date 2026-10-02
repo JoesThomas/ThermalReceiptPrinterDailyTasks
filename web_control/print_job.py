@@ -6,21 +6,32 @@ import os
 import subprocess
 import sys
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 STATUS = ROOT / "data" / "web_print_status.json"
 LOCK = ROOT / "data" / ".print_now.lock"
+sys.path.insert(0, str(ROOT))
+from web_control.job_runtime import run_bounded, JobCancelled, log_event, MAX_SECONDS
 
 
 def save_status(state, page):
-    STATUS.parent.mkdir(parents=True, exist_ok=True)
-    temporary = STATUS.with_suffix(".tmp")
-    temporary.write_text(json.dumps({"state": state, "page": page,
-                                     "updated_at": datetime.now(timezone.utc).isoformat()}),
-                         encoding="utf-8")
-    temporary.replace(STATUS)
+    from storage import write_json
+    previous = {}
+    try:
+        previous = json.loads(STATUS.read_text())
+    except (OSError, ValueError):
+        pass
+    now = datetime.now(timezone.utc).isoformat()
+    payload = {**previous, "state": state, "page": page, "updated_at": now}
+    if state == 'running':
+        payload.update(started_at=now, job_id=uuid.uuid4().hex[:12], stage='Connecting to printer',
+                       completed=0, total=5, timeout_seconds=MAX_SECONDS)
+    if state == 'completed':
+        payload.update(completed=5, stage='Receipt finished')
+    write_json(STATUS, payload)
 
 
 def main():
@@ -34,19 +45,26 @@ def main():
         time.sleep(0.01)
     try:
         save_status("running", page)
+        job_id = json.loads(STATUS.read_text())['job_id']
+        log_event(job_id, 'print started')
+        command = [sys.executable, str(ROOT / "main.py"), *args]
         if args and args[0] == '--archive':
             if len(args) != 3:
                 raise ValueError('Invalid archive command')
-            sys.path.insert(0, str(ROOT))
-            from receipt.archive import reprint
-            reprint(args[1], args[2])
-            save_status('completed', 'archived ' + args[2])
-            return 0
-        result = subprocess.run([sys.executable, str(ROOT / "main.py"), *args],
-                                cwd=ROOT, check=False,
-                                env={**os.environ, "RECEIPT_WEB_CAPTURE": "1"})
-        save_status("completed" if result.returncode == 0 else "failed", page)
-        return result.returncode
+            command = [sys.executable, str(ROOT / 'web_control' / 'archive_job.py'), *args[1:]]
+        code = run_bounded(command, cwd=ROOT,
+                           env={**os.environ, "RECEIPT_WEB_CAPTURE": "1", 'RECEIPT_JOB_ID': job_id})
+        save_status("completed" if code == 0 else "failed", page)
+        log_event(job_id, f'print ended exit={code}')
+        return code
+    except subprocess.TimeoutExpired:
+        save_status('timed_out', page)
+        log_event(job_id, 'print timed out; child stopped')
+        return 124
+    except JobCancelled:
+        save_status('cancelled', page)
+        log_event(job_id, 'print cancelled; child stopped')
+        return 130
     except Exception:
         save_status("failed", page)
         raise

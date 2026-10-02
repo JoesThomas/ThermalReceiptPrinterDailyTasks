@@ -19,7 +19,8 @@
     <section class="panel">
         <form action="{{ url_for('generate_live_preview') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label>Pages to generate<select name="page">{% for key in ['all','information','actions','food','finance'] %}<option value="{{ key }}">{{ key|title }}</option>{% endfor %}</select></label>
-            <a class="button" href="{{ url_for('archive_list') }}">Receipt archive</a>
+            <a class="button" href="{{ url_for('index',view='receipt') }}">Receipt options</a>
+            <a class="button" href="{{ url_for('archive_list') }}">Past receipts</a>
             <button class="primary" type="submit" {% if preview_status and preview_status.state == 'running' %}disabled{% endif %}>Generate live preview</button>
             <label><input type="checkbox" name="include_finance"> Include finance even if it is not scheduled today</label>
         </form>
@@ -43,7 +44,7 @@
                     <p class="muted preview-build-note">The saved receipt below remains available while a new one is generated.</p>
                 </div>
             {% else %}
-                <p role="status">{% if preview_status.state == 'completed' %}Preview generated.{% elif preview_status.state == 'interrupted' %}Preview was interrupted. Try again.{% else %}Preview failed. Check logs/web_preview.log and try again.{% endif %}</p>
+                <p role="status">{% if preview_status.state == 'completed' %}Preview generated.{% elif preview_status.state == 'timed_out' %}Preview stopped after 10 minutes. You can try again.{% elif preview_status.state == 'cancelled' %}Preview cancelled. You can generate another.{% elif preview_status.state == 'interrupted' %}Preview was interrupted. Try again.{% else %}Preview failed. Check logs/web_preview.log and try again.{% endif %}</p>
             {% endif %}
         {% endif %}
         <nav class="nav" aria-label="Receipt source">

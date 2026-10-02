@@ -1,10 +1,17 @@
 <a class="skip-link" href="#main-content">Skip to content</a>
 <div class="app-topbar"><a class="app-brand" href="{{ url_for('index') }}"><span aria-hidden="true" class="brand-mark">R</span><span>Receipt Control</span></a><span class="app-subtitle">A calmer daily routine</span></div>
 <nav class="app-navigation" aria-label="Main navigation">
-{% for label,endpoint,view in [('Home','index','dashboard'),('Receipt','index','receipt'),('Finance','finance_review',''),('Tasks','index','tasks'),('Deliveries','delivery_checklist',''),('Meals','meals_page',''),('Calendar','calendar_map',''),('Settings','index','settings')] %}
-<a href="{{ url_for(endpoint,view=view) if endpoint == 'index' and view != 'dashboard' else url_for(endpoint) }}" {% if (request.endpoint == 'index' and active_view|default('dashboard') == view) or (endpoint != 'index' and request.endpoint == endpoint) or (endpoint == 'finance_review' and (request.endpoint == 'savings_review' or (request.endpoint == 'index' and active_view|default('dashboard') == 'accounts'))) or (view == 'receipt' and request.endpoint == 'preview') %}aria-current="page"{% endif %}>{{ label }}</a>
+{% for label,endpoint,view in [('Home','index','dashboard'),('Receipt','preview',''),('Finance','finance_review',''),('Tasks','index','tasks'),('Deliveries','delivery_checklist',''),('Meals','meals_page',''),('Calendar','calendar_map',''),('Settings','index','settings')] %}
+<a href="{{ url_for(endpoint,view=view) if endpoint == 'index' and view != 'dashboard' else url_for(endpoint) }}" {% if (request.endpoint == 'index' and active_view|default('dashboard') == view) or (endpoint != 'index' and request.endpoint == endpoint) or (endpoint == 'finance_review' and (request.endpoint == 'savings_review' or (request.endpoint == 'index' and active_view|default('dashboard') == 'accounts'))) or (endpoint == 'preview' and request.endpoint == 'index' and active_view|default('dashboard') == 'receipt') %}aria-current="page"{% endif %}>{{ label }}</a>
 {% endfor %}
 </nav>
 <script src="{{ url_for('static',filename='control.js') }}" defer></script>
 
 <div class="private-tools-links"><a href="{{ url_for('archive_list') }}">Receipt archive</a><a href="{{ url_for('backup_page') }}">Private backup</a></div>
+
+<aside class="job-panel" id="global-job-panel" data-status-url="{{ url_for('jobs_status') }}" hidden aria-live="polite">
+<strong id="global-job-title">Receipt job</strong><p id="global-job-stage"></p>
+<progress id="global-job-progress" max="5" aria-label="Receipt stages completed"></progress>
+<small id="global-job-time"></small><p class="muted">Stages show completed sections, not estimated time. Jobs stop after 10 minutes.</p>
+<form method="post" action="{{ url_for('cancel_receipt_job') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="kind" id="global-job-kind" value="print"><button class="danger">Cancel job</button><a class="button" href="{{ url_for('preview') }}">View receipt</a></form>
+</aside>

@@ -276,12 +276,12 @@
                 <span class="muted">No recent web print.</span>
             {% endif %}
         </div>
-        {% if print_status and print_status.state in ('failed','interrupted') %}
-            <p class="helper">Check <code>logs/web_print.log</code> for the error.</p>
+        {% if print_status and print_status.state in ('failed','interrupted','timed_out','cancelled') %}
+            <p class="helper">{{ "The job reached the 10-minute limit." if print_status.state == "timed_out" else "The job was cancelled." if print_status.state == "cancelled" else "The job did not finish." }} Check the receipt before printing again, as it may be partly printed. <a href="{{ url_for('preview') }}">Open receipt</a>.</p><form method="post" action="{{ url_for('print_now') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Retry print</button></form>
         {% endif %}
     </section>
 
-    <section id="live-data"><p class="eyebrow">Live data</p><h2>Plan and review</h2><div class="quick-actions"><a class="button" href="{{ url_for('gigs_page') }}">Gigs today</a><a class="button" href="{{ url_for('calendar_map') }}">Calendar map</a><a class="button" href="{{ url_for('meals_page') }}">Meals & recipes</a><a class="button" href="{{ url_for('tesco_list') }}">Tesco shopping review</a></div></section>
+    <section id="live-data"><p class="eyebrow">Live data</p><h2>Plan and review</h2><div class="quick-actions"><a class="button" href="{{ url_for('delivery_checklist') }}">Confirm deliveries</a><a class="button" href="{{ url_for('gigs_page') }}">Gigs today</a><a class="button" href="{{ url_for('calendar_map') }}">Calendar map</a><a class="button" href="{{ url_for('meals_page') }}">Meals & recipes</a><a class="button" href="{{ url_for('tesco_list') }}">Tesco shopping review</a></div></section>
 
     {% endif %}
 
@@ -1198,32 +1198,7 @@
     {% endif %}
 </main>
 
-<div id="finance-review-loading" class="finance-review-loading" role="status" aria-live="polite" hidden>
-    <div class="finance-review-loading-card">
-        <span class="preview-spinner" aria-hidden="true"></span>
-        <div>
-            <strong>Loading finance review</strong>
-            <p>Fetching bank transactions and checking monthly payments…</p>
-        </div>
-    </div>
-</div>
-<script>
-    (() => {
-        const link = document.getElementById('finance-review-link');
-        const loading = document.getElementById('finance-review-loading');
-        if (!link || !loading) return;
-        link.addEventListener('click', event => {
-            if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey ||
-                event.shiftKey || event.altKey) return;
-            loading.hidden = false;
-            link.setAttribute('aria-busy', 'true');
-        });
-        window.addEventListener('pageshow', () => {
-            loading.hidden = true;
-            link.removeAttribute('aria-busy');
-        });
-    })();
-</script>
+
 </body>
 
 </html>
