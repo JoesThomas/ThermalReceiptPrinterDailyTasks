@@ -1,7 +1,7 @@
 <a class="skip-link" href="#main-content">Skip to content</a>
 <div class="app-topbar"><a class="app-brand" href="{{ url_for('index') }}"><span aria-hidden="true" class="brand-mark">R</span><span>Receipt Control</span></a><span class="app-subtitle">A calmer daily routine</span></div>
 <nav class="app-navigation" aria-label="Main navigation">
-{% for label,endpoint,view in [('Home','index','dashboard'),('Receipt','index','receipt'),('Finance','finance_review',''),('Tasks','index','tasks'),('Meals','meals_page',''),('Calendar','calendar_map',''),('Settings','index','settings')] %}
+{% for label,endpoint,view in [('Home','index','dashboard'),('Receipt','index','receipt'),('Finance','finance_review',''),('Tasks','index','tasks'),('Deliveries','delivery_checklist',''),('Meals','meals_page',''),('Calendar','calendar_map',''),('Settings','index','settings')] %}
 <a href="{{ url_for(endpoint,view=view) if endpoint == 'index' and view != 'dashboard' else url_for(endpoint) }}" {% if (request.endpoint == 'index' and active_view|default('dashboard') == view) or (endpoint != 'index' and request.endpoint == endpoint) or (endpoint == 'finance_review' and (request.endpoint == 'savings_review' or (request.endpoint == 'index' and active_view|default('dashboard') == 'accounts'))) or (view == 'receipt' and request.endpoint == 'preview') %}aria-current="page"{% endif %}>{{ label }}</a>
 {% endfor %}
 </nav>

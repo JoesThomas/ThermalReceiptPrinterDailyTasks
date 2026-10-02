@@ -1,0 +1,9 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Deliveries</title><link rel="stylesheet" href="{{ url_for('static',filename='control.css') }}"></head><body>{% include 'navigation.html' %}<main id="main-content"><header><h1>Deliveries</h1><p class="muted">Updated when you generate a live receipt or preview. Confirm items you have received to leave them off future receipts. Saved receipt copies remain unchanged.</p></header><section>
+{% for item in items %}
+<form method="post" action="{{ url_for('delivery_confirm') }}" class="tesco-item">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ item.id }}"><input type="hidden" name="confirmed" value="0">
+<div><strong>{{ item.title }}</strong><p class="muted">{{ item.carrier }} · {{ item.date or 'Date unknown' }}{% if item.confirmed %} · Received{% endif %}</p></div>
+<label><input type="checkbox" name="confirmed" value="1" {% if item.confirmed %}checked{% endif %}> Received</label><button>Save</button>
+</form>
+{% else %}<p>No delivery notices yet. Generate a live receipt preview to check for upcoming deliveries.</p>{% endfor %}
+</section></main></body></html>

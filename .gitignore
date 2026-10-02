@@ -122,3 +122,7 @@ logs/
 receipt_preview.txt
 data/.*.lock
 data/.scheduled_print_date
+
+# Private delivery descriptions and confirmations
+data/delivery_state.json
+data/delivery_state.lock

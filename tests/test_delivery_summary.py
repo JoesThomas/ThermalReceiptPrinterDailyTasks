@@ -12,9 +12,9 @@ class DeliverySummaryTests(unittest.TestCase):
                  dict(carrier='AMAZON',event_title='Arriving: Example item',delivery_date='2026-10-02',**references('Arriving: Example item','Order 123-7654321-7654321'))]
         self.assertNotEqual(identity(notices[0]),identity(notices[1]))
         lines=summary_lines(notices+notices,lambda r:r['carrier'],lambda r:'Expected tomorrow')
-        self.assertEqual(lines.count('AMAZON / 2 notices'),1)
+        self.assertEqual(lines.count('AMAZON / 2 items'),1)
         self.assertEqual(lines.count('Expected tomorrow'),1)
-        self.assertTrue('...234567' in ' '.join(lines))
+        self.assertEqual(sum('[ ]' in line for line in lines), 2)
         self.assertTrue(all(len(line)<=40 for line in lines))
     def test_tracking_updates_and_split_order(self):
         first=dict(carrier='AMAZON',**references('Dispatched','Tracking number TBA123456789 Order 123-1234567-1234567'))

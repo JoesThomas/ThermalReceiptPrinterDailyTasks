@@ -1370,5 +1370,8 @@ register(app, login_required, _start_print_command, PROJECT_ROOT, _print_start_l
 from web_control.premium_bonds import register as register_premium_bonds
 register_premium_bonds(app, login_required)
 
+from web_control.delivery_tools import register as register_deliveries
+register_deliveries(app, login_required)
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

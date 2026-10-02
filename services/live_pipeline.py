@@ -1595,8 +1595,8 @@ def get_upcoming_deliveries():
         # DEDUPLICATE
         # -------------------------------------------------
 
-        from actions.delivery_summary import identity
-        key = identity(delivery)
+        # Keep status updates until consolidation can select the advanced notice.
+        key = delivery.get('notice_id')
 
         if key in seen:
             continue
@@ -1618,9 +1618,8 @@ def get_upcoming_deliveries():
         item["delivery_date"]
     )
 
-    return deliveries[
-        :MAX_UPCOMING_DELIVERIES
-    ]
+    from actions.delivery_summary import consolidate
+    return consolidate(deliveries)[:MAX_UPCOMING_DELIVERIES]
 
 
 def _delivery_value(delivery, *keys, default=None):
@@ -1835,6 +1834,8 @@ def print_upcoming_deliveries(printer, deliveries):
 
     The entire section is omitted when there are no deliveries.
     """
+    from actions.delivery_state import record_deliveries
+    deliveries = record_deliveries(deliveries, _normalise_delivery_carrier, format_delivery_expected)
     if not deliveries:
         return
 

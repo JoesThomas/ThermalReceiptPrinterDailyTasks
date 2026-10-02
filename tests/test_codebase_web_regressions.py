@@ -25,6 +25,8 @@ with tempfile.TemporaryDirectory() as folder,patch.object(web,'PROJECT_ROOT',Pat
  with web.app.test_client() as client:
   with client.session_transaction() as session:
    session['authenticated']=True;session['csrf_token']='test'
+  assert client.get('/deliveries').status_code==200
+  assert client.post('/deliveries/confirm',data={'id':'unknown','confirmed':'1'}).status_code==403
   response=client.get('/premium-bonds')
   assert response.headers['Cache-Control']=='no-store'
   assert response.headers['X-Content-Type-Options']=='nosniff'

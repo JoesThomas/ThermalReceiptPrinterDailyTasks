@@ -14,19 +14,41 @@ def references(subject, body):
             'notice_id':hashlib.sha256(text.encode()).hexdigest()}
 
 
+def item_title(delivery):
+    title = str(delivery.get('event_title') or delivery.get('subject') or '')
+    title = re.sub(r"^(?:ordered|dispatched|shipped|arriving|delivered)\s*:\s*", '', title, flags=re.I)
+    title = re.sub(r'\s+', ' ', title).strip()
+    title = re.sub(r"^(\d+)\s+['\"]", r'\1 x ', title).strip("'\" ")
+    return title
+
+
 def identity(delivery):
-    carrier = delivery.get('carrier') or ''
+    carrier = str(delivery.get('carrier') or '').upper()
     if delivery.get('tracking_ref'):
-        return (carrier,'tracking',delivery['tracking_ref'])
-    # One order can be split into several parcels. Only exact notices are collapsed.
-    return (carrier,'notice',delivery.get('notice_id') or
-            (delivery.get('order_ref',''),delivery.get('event_title',''),str(delivery.get('delivery_date'))))
+        return (carrier, 'tracking', delivery['tracking_ref'])
+    if delivery.get('order_ref') and item_title(delivery):
+        # Match order updates for the same item, keeping different items separate.
+        return (carrier, 'order-item', delivery['order_ref'], item_title(delivery).casefold())
+    return (carrier, 'notice', delivery.get('notice_id') or
+            (delivery.get('order_ref', ''), item_title(delivery), str(delivery.get('delivery_date'))))
+
+
+def consolidate(deliveries):
+    rows = OrderedDict()
+    for delivery in deliveries:
+        key = identity(delivery)
+        title = str(delivery.get('event_title') or '').lower()
+        rank = next((score for word, score in [('delivered', 4), ('arriving', 3),
+                    ('dispatched', 2), ('shipped', 2), ('ordered', 1)] if title.startswith(word)), 0)
+        if key not in rows or rank > rows[key][0]:
+            rows[key] = (rank, delivery)
+    return [row for _, row in rows.values()]
 
 
 def summary_lines(deliveries, carrier, expected):
     groups = OrderedDict()
     seen = set()
-    for delivery in deliveries:
+    for delivery in consolidate(deliveries):
         key = identity(delivery)
         if key in seen:
             continue
@@ -34,18 +56,18 @@ def summary_lines(deliveries, carrier, expected):
         groups.setdefault((carrier(delivery),expected(delivery)),[]).append(delivery)
     lines = []
     for (name, when), notices in groups.items():
-        lines.append(name + (f' / {len(notices)} notices' if len(notices)>1 else ''))
+        lines.append(name + (f' / {len(notices)} items' if len(notices)>1 else ''))
         lines.append(when)
         for index, delivery in enumerate(notices,1):
-            title = re.sub(r'\s+',' ',str(delivery.get('event_title') or delivery.get('subject') or '')).strip()
+            title = item_title(delivery)
             # Do not repeat generic carrier-only headings as item descriptions.
             if title.casefold() in {name.casefold(),(name+' delivery').casefold(),'package delivery'}:
                 title = ''
             detail = title[:180]
             ref = delivery.get('tracking_ref') or delivery.get('order_ref')
             if ref:
-                detail = (detail + ' / ' if detail else '') + 'Ref ...' + ref[-6:]
+                detail = detail or ('Order ...' + ref[-6:])
             if detail:
-                lines.extend(wrap(('  '+str(index)+'. ' if len(notices)>1 else '  ') + detail,40))
+                lines.extend(wrap('[ ] ' + detail, 40, subsequent_indent='    '))
         lines.append('')
     return lines
