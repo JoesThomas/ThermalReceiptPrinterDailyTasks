@@ -11,7 +11,6 @@ import re
 
 from finance.investments import (
     load_investments,
-    investment_snapshot,
 )
 
 DEFAULT_CATEGORIES = [
@@ -227,7 +226,7 @@ def _amount(tx: dict) -> float:
     except Exception:
         return 0.0
     # Spending is stored as positive magnitude regardless of provider sign convention.
-    return abs(amount)
+    return abs(amount) if math.isfinite(amount) else 0.0
 
 def _is_spend(tx: dict, category: str) -> bool:
     if category in EXCLUDED_CATEGORIES:

@@ -4,9 +4,25 @@ This is the complete merged project based on `thermal_receipt_modular_v3`, with
 the later calendar, news, finance, savings and savings-growth work folded
 back into the project.
 
+## Install and check
+
+Use your project's Python environment and install all application dependencies:
+
+```sh
+python -m pip install -r requirements.txt
+```
+
+The RSS parser uses `defusedxml` to reject entity declarations. For development
+checks, install `requirements-dev.txt` and run `python -m unittest discover -s tests`.
+GitHub checks run tests, compilation, undefined-name checks and high-severity
+security checks on Python 3.11 and 3.14. Offline `--preview`, `--health` and
+`--validate` commands do not import the live printer/bank pipeline. Missing optional
+private runtime files are permitted; malformed present files still report errors.
+See [the code review notes](docs/codebase-review.md) for fixes and limitations.
+
 ## Physical receipts
 
-1. Daily Information — weather + 3 UK news summaries + up to 3 BBC Birmingham & Black Country stories + up to 3 BBC Sport stories
+1. Daily Information — weather + compact UK, BBC regional and BBC Sport headlines
 2. Daily Actions — calendar events with locations, Villa match-day trains, to-do, deliveries, other requested checks
 3. Food — daily recipe; Saturday plan/shopping; Sunday prep
 4. Finance — only when requested
@@ -27,8 +43,8 @@ transaction) and choose Monzo or HSBC. This private setting stays in the ignored
 `data/receipt_settings.json`. Bank access failures leave the reminder visible.
 The same completed payment also hides an exact "Pay for therapy." task in the
 Google Doc for that receipt.
-The therapy reference defaults to the payee provided for this receipt and can be
-changed in Receipt Control. Finance receipts show a dedicated 30-day incoming
+The therapy reference defaults to blank. Set it privately in Receipt Control;
+existing saved local settings are retained. Finance receipts show a dedicated 30-day incoming
 section: salary totals and payments, all other incoming payments, and the amount
 remaining after outgoings. Salary/payroll descriptions are recognised automatically;
 enter an employer bank reference under **Salary identification** if the bank uses a
@@ -42,12 +58,11 @@ of a full timestamp. A bank connection must return the credit for it to appear.
 
 - Calendar locations print beneath each event when present; ordinary event directions are omitted
 - Aston Villa home match train information remains on the receipt
-- Three UK items, BBC Birmingham & Black Country articles and BBC Sport articles with compact source-derived RSS summaries
+- Three UK items, BBC Birmingham & Black Country articles and BBC Sport articles with compact headlines
 - Optional news disappears if unavailable
 - Finance uses £ formatting
 - Upcoming payments are one line: name / amount / date
-- Last-30-day spending versus usual 30-day spending
-- Category trends using the preceding 90-day baseline
+- Spending summaries use available bank records; unavailable historical baselines are omitted
 - Transfers/savings/income/card repayments excluded from spending categories
 - Savings loaded from `data/savings.json`
 - Per-savings-account `include_in_net_cash` and `include_in_runway`

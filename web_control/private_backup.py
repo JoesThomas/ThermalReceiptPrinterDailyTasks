@@ -1,6 +1,7 @@
 """Bounded, allowlisted JSON backups. Credentials and transaction caches are excluded."""
 import json
 import os
+import math
 import secrets
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,11 +12,79 @@ OBJECT_FILES = {'premium_bonds.json', 'receipt_settings.json', 'subscriptions.js
 LIST_FILES = {'routines.json', 'future_tasks.json', 'wealth_history.json'}
 FILES = OBJECT_FILES | LIST_FILES | {'to_buy.json', 'freezer.json', 'pantry.json'}
 
+def _finite_tree(value, depth=0):
+    if depth > 80:
+        raise ValueError()
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError()
+    if isinstance(value, dict):
+        for item in value.values():
+            _finite_tree(item, depth + 1)
+    elif isinstance(value, list):
+        for item in value:
+            _finite_tree(item, depth + 1)
+
+
+def _amount(value):
+    from decimal import Decimal
+    amount = Decimal(str(value))
+    if not amount.is_finite() or amount < 0:
+        raise ValueError()
+
+
+def _validate_file(name, content):
+    from datetime import date
+    if name == 'receipt_settings.json':
+        for key in ('features', 'one_shot', 'display', 'therapy_payment', 'finance', 'location'):
+            if key in content and not isinstance(content[key], dict):
+                raise ValueError()
+        for key in ('features', 'one_shot'):
+            if any(not isinstance(value, bool) for value in content.get(key, {}).values()):
+                raise ValueError()
+        if 'location' in content:
+            from receipt.location_settings import validate_location
+            validate_location(content['location'])
+    elif name == 'subscriptions.json':
+        for key in ('monthly', 'yearly', 'instalments'):
+            for row in content.get(key, []):
+                if not isinstance(row, dict) or not isinstance(row.get('name'), str):
+                    raise ValueError()
+                for field in ('amount', 'monthly_payment', 'remaining_balance', 'paid_to_date', 'total_price'):
+                    if row.get(field) is not None:
+                        _amount(row[field])
+                if row.get('match') is not None and (not isinstance(row['match'], list) or any(not isinstance(term, str) for term in row['match'])):
+                    raise ValueError()
+                for field in ('due_day', 'day'):
+                    if row.get(field) is not None and (isinstance(row[field], bool) or not isinstance(row[field], int) or not 1 <= row[field] <= 31):
+                        raise ValueError()
+                for field in ('next_payment', 'renewal_date', 'end_date'):
+                    if row.get(field):
+                        date.fromisoformat(row[field])
+    elif name in {'savings.json', 'investments.json'}:
+        for row in content.get('accounts', []):
+            if not isinstance(row, dict) or ('name' in row and not isinstance(row['name'], str)):
+                raise ValueError()
+            _amount(row.get('balance' if name == 'savings.json' else 'value', 0))
+    elif name == 'wealth_history.json':
+        for row in content:
+            if not all(isinstance(row.get(key), str) for key in ('id', 'name', 'date')) or row.get('kind') not in {'savings', 'investment'}:
+                raise ValueError()
+            date.fromisoformat(row['date'])
+            _amount(row['balance'])
+            for key in ('deposits', 'withdrawals'):
+                if row.get(key) is not None:
+                    _amount(row[key])
+    elif name == 'food_shop_override.json':
+        if not isinstance(content.get('items'), list) or any(not isinstance(item, str) for item in content['items']):
+            raise ValueError()
+
+
 def validate(raw):
     if len(raw) > MAX_BYTES:
         raise ValueError('Backup exceeds the 900 KB limit.')
     try:
         value = json.loads(raw, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+        _finite_tree(value)
         files = value['files']
         if value.get('version') != 1 or not isinstance(files, dict) or not files:
             raise ValueError()
@@ -39,7 +108,8 @@ def validate(raw):
                 validate_data(content)
             if name == 'subscriptions.json' and any(not isinstance(content.get(key, []), list) for key in ('monthly', 'yearly', 'instalments')):
                 raise ValueError()
-    except (ValueError, TypeError, KeyError, RecursionError):
+            _validate_file(name, content)
+    except (ValueError, TypeError, KeyError, RecursionError, ArithmeticError):
         raise ValueError('Use a valid Receipt Control backup with supported local data files.') from None
     return value
 
@@ -55,6 +125,7 @@ def export(root):
     raw = json.dumps(value, ensure_ascii=False, allow_nan=False).encode()
     if len(raw) > MAX_BYTES:
         raise ValueError('Local data exceeds the 900 KB backup limit. Copy your private data folder manually.')
+    validate(raw)
     return raw
 
 def private_write(path, raw):
@@ -80,10 +151,20 @@ def restore(root, value):
     try:
         for name, content in value['files'].items():
             private_write(root / 'data' / name, json.dumps(content, ensure_ascii=False, allow_nan=False).encode())
-    except Exception:
+    except Exception as cause:
+        rollback_failed = False
         for name, raw in originals.items():
-            if raw is None:
-                (root / 'data' / name).unlink(missing_ok=True)
-            else:
-                private_write(root / 'data' / name, raw)
+            try:
+                if raw is None:
+                    (root / 'data' / name).unlink(missing_ok=True)
+                else:
+                    private_write(root / 'data' / name, raw)
+            except OSError:
+                rollback_failed = True
+        if rollback_failed:
+            raise RestoreRecoveryError('Restore rollback incomplete; recover original files from data/private_backups.') from cause
         raise
+
+
+class RestoreRecoveryError(OSError):
+    """The rollback record must be used for manual recovery."""

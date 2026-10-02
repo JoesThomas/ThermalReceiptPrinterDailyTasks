@@ -1,4 +1,5 @@
 import json
+import math
 from datetime import date, datetime
 from pathlib import Path
 
@@ -78,33 +79,19 @@ def investment_totals(data):
     contributions = 0.0
 
     for account in accounts:
-        try:
-            value += float(
-                account.get(
-                    "value",
-                    0,
-                )
-                or 0
-            )
-        except (
-            TypeError,
-            ValueError,
-        ):
-            pass
-
-        try:
-            contributions += float(
-                account.get(
-                    "contributions",
-                    0,
-                )
-                or 0
-            )
-        except (
-            TypeError,
-            ValueError,
-        ):
-            pass
+        if not isinstance(account, dict):
+            continue
+        for field in ('value', 'contributions'):
+            try:
+                amount = float(account.get(field, 0) or 0)
+            except (TypeError, ValueError, OverflowError):
+                continue
+            if not math.isfinite(amount) or amount < 0:
+                continue
+            if field == 'value':
+                value += amount
+            else:
+                contributions += amount
 
     gain = (
         value

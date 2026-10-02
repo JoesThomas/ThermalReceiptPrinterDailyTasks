@@ -12,7 +12,7 @@ def load_json(path: Path, expected_type: type | tuple[type, ...] | None = None) 
     try:
         with path.open("r", encoding="utf-8") as f:
             value = json.load(f)
-    except json.JSONDecodeError as exc:
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
         raise ValidationError(f"Invalid JSON in {path.name}: {exc}") from exc
     if expected_type is not None and not isinstance(value, expected_type):
         raise ValidationError(
@@ -38,7 +38,7 @@ def validate_recipe(recipe: dict, index: int) -> list[str]:
         "add the sauce",
         "cook until ready",
     )
-    for step in recipe.get("method", []):
+    for step in recipe.get("method", []) if isinstance(recipe.get("method", []), list) else []:
         low = str(step).lower()
         if any(term in low for term in vague):
             errors.append(f"{context}: vague method step -> {step}")
@@ -46,7 +46,11 @@ def validate_recipe(recipe: dict, index: int) -> list[str]:
 
 def validate_project(files: dict[str, Path]) -> list[str]:
     errors = []
+    optional_runtime = {'pantry', 'freezer', 'recipe_history', 'meal_overrides',
+                        'finance_categories', 'finance_history', 'savings'}
     for key, path in files.items():
+        if key in optional_runtime and not path.exists():
+            continue
         try:
             value = load_json(path)
             if key == "recipes":

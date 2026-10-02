@@ -45,9 +45,8 @@ import math
 from io import BytesIO
 import random
 import re
-import xml.etree.ElementTree as ET
+from services.safe_xml import parse_feed
 import unicodedata
-from email.utils import parsedate_to_datetime
 from zoneinfo import ZoneInfo
 
 import requests
@@ -70,8 +69,6 @@ from receipt_settings import (
     one_shot_requested,
     consume_one_shot,
     finance_requested,
-    food_shop_requested,
-    shopping_list_requested,
 )
 
 from routines import (
@@ -93,7 +90,6 @@ from receipt.location_settings import DEFAULT_LOCATION, validate_location
 
 # services/live_pipeline.py
 
-from pathlib import Path
 
 # live_pipeline.py is inside /services, so the project root is its parent.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -2230,7 +2226,7 @@ def get_random_lines(number_of_lines):
            f"{extract_google_doc_id(GOOGLE_DOC_2_URL)}/export?format=txt")
 
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=15)
         response.raise_for_status()
         full_text = response.text
 
@@ -2572,10 +2568,8 @@ def _load_truelayer_saved_tokens():
 
 def _save_truelayer_tokens(tokens):
     try:
-        TRUELAYER_TOKEN_FILE.write_text(
-            json.dumps(tokens, indent=2),
-            encoding="utf-8",
-        )
+        from storage import write_json
+        write_json(TRUELAYER_TOKEN_FILE, tokens)
 
         # Restrict token file permissions on macOS/Linux/Raspberry Pi.
         try:
@@ -2800,14 +2794,6 @@ def load_regular_payments(
                         parts[0].lower()
                     ]
 
-                payments.append({
-                    "name": parts[0],
-                    "amount": amount,
-                    "day": day,
-                    "match_terms": match_terms,
-                    "type": payment_type,
-                })
-
                 payment_type = "other"
 
                 if len(parts) >= 5:
@@ -2816,6 +2802,15 @@ def load_regular_payments(
                         .strip()
                         .lower()
                     )
+
+                payments.append({
+                    "name": parts[0],
+                    "amount": amount,
+                    "day": day,
+                    "match_terms": match_terms,
+                    "type": payment_type,
+                })
+
 
     except FileNotFoundError:
         pass
@@ -2941,88 +2936,6 @@ def categorise_transaction(
 
     return "other"
 
-def payment_made_this_month(
-    payment,
-    transactions,
-):
-    """
-    Check transaction history to determine
-    whether a known regular payment has already
-    been made this month.
-    """
-
-    today = datetime.now(
-        ZoneInfo(
-            "Europe/London"
-        )
-    ).date()
-
-    match_terms = payment.get(
-        "match_terms",
-        [],
-    )
-
-    expected_amount = payment[
-        "amount"
-    ]
-
-    for transaction in (
-        transactions or []
-    ):
-        tx_date = transaction_date(
-            transaction
-        )
-
-        if not tx_date:
-            continue
-
-        if (
-            tx_date.year != today.year
-            or tx_date.month != today.month
-        ):
-            continue
-
-        amount = transaction_amount(
-            transaction
-        )
-
-        # We're looking for money leaving.
-        if amount >= 0:
-            continue
-
-        description = (
-            transaction_description(
-                transaction
-            ).lower()
-        )
-
-        name_matches = any(
-            term in description
-            for term in match_terms
-        )
-
-        # Allow a little movement for bills
-        # such as energy.
-        tolerance = max(
-            2.00,
-            expected_amount * 0.10,
-        )
-
-        amount_matches = (
-            abs(
-                abs(amount)
-                - expected_amount
-            )
-            <= tolerance
-        )
-
-        if (
-            name_matches
-            and amount_matches
-        ):
-            return True
-
-    return False
 
 def calculate_runway(
     available_money,
@@ -5585,8 +5498,9 @@ def calculate_month_cashflow(
 
 def _safe_amount(value):
     try:
-        return float(value or 0.0)
-    except (TypeError, ValueError):
+        amount = float(value or 0.0)
+        return amount if math.isfinite(amount) else 0.0
+    except (TypeError, ValueError, OverflowError):
         return 0.0
 
 
@@ -7367,9 +7281,7 @@ def _news_stories(
 
     response.raise_for_status()
 
-    root = ET.fromstring(
-        response.content
-    )
+    root = parse_feed(response.content)
 
     now = datetime.now(
         ZoneInfo("Europe/London")
@@ -8290,7 +8202,7 @@ def therapy_paid_recently(settings, today):
     from receipt.therapy_payment import recent_therapy_payment
 
     options = settings.get("therapy_payment", {})
-    configured_payee = options.get("payee") or "Angeliki Ford"
+    configured_payee = options.get("payee") or ""
     provider = options.get("provider", "MONZO")
     if provider not in ("MONZO", "HSBC"):
         provider = "MONZO"

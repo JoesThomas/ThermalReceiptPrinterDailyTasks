@@ -13,8 +13,20 @@ def load(identifier):
     if not re.fullmatch(r'[0-9]{8}T[0-9]{6}Z-[a-f0-9]{12}', identifier):
         raise ValueError('Invalid receipt identifier')
     try:
-        return json.loads((DIRECTORY / (identifier + '.json')).read_text())
-    except (OSError, ValueError):
+        value = json.loads((DIRECTORY / (identifier + '.json')).read_text())
+        if not isinstance(value, dict) or value.get('id') != identifier or not isinstance(value.get('pages'), dict) or not value['pages']:
+            raise ValueError()
+        if any(name not in PAGE_NAMES or not isinstance(text, str) for name, text in value['pages'].items()):
+            raise ValueError()
+        datetime.fromisoformat(value['captured_at'])
+        if value.get('source') not in {'preview', 'printed'} or not isinstance(value.get('page_images', {}), dict) or not isinstance(value.get('freshness', {}), dict):
+            raise ValueError()
+        if any(not isinstance(images, list) for images in value.get('page_images', {}).values()):
+            raise ValueError()
+        if any(not isinstance(check, dict) or not isinstance(check.get('status'), str) or not isinstance(check.get('checked_at'), str) for check in value.get('freshness', {}).values()):
+            raise ValueError()
+        return value
+    except (OSError, ValueError, KeyError, TypeError, RecursionError):
         raise ValueError('Archived receipt unavailable') from None
 
 def save(pages, images, captured_at, source, freshness):
@@ -23,9 +35,8 @@ def save(pages, images, captured_at, source, freshness):
     value = dict(id=identifier, captured_at=captured_at, source=source, pages=pages,
                  page_images=images, freshness=freshness)
     target = DIRECTORY / (identifier + '.json')
-    with target.open('x', encoding='utf-8') as stream:
-        target.chmod(0o600)
-        json.dump(value, stream, ensure_ascii=False)
+    from storage import write_json
+    write_json(target, value)
     return identifier
 
 def entries(on=None):

@@ -10,9 +10,9 @@ SETTINGS_FILE = PROJECT_ROOT / "data" / "receipt_settings.json"
 DEFAULT_SETTINGS = {
     "location": DEFAULT_LOCATION,
     "features": {"calendar": True, "deliveries": True, "weather": True, "national_news": True, "local_news": True, "sport_news": True, "villa": True, "villa_trains": True},
-    "one_shot": {"finance_check": False, "food_shop": False, "shopping_list": False, "to_buy": False},
+    "one_shot": {"finance_check": False, "food_shop": False, "shopping_list": False, "to_buy": False, "future_tasks": False},
     "display": {"weather_detail": "auto", "news_count": 3, "sport_count": 3},
-    "therapy_payment": {"payee": "Angeliki Ford", "provider": "MONZO"},
+    "therapy_payment": {"payee": "", "provider": "MONZO"},
     "finance": {"salary_payee": ""},
 }
 
@@ -33,10 +33,9 @@ def load_receipt_settings():
     return _merge(DEFAULT_SETTINGS, raw)
 
 def save_receipt_settings(settings):
-    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    tmp = SETTINGS_FILE.with_suffix(".tmp")
-    tmp.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
-    tmp.replace(SETTINGS_FILE)
+    from storage import write_json
+    write_json(SETTINGS_FILE, settings)
+
 
 def feature_enabled(settings, name, default=True): return bool(settings.get("features", {}).get(name, default))
 def display_value(settings, name, default=None): return settings.get("display", {}).get(name, default)

@@ -1,4 +1,6 @@
 import json
+import math
+from zoneinfo import ZoneInfo
 from calendar import monthrange
 from datetime import date, datetime
 from pathlib import Path
@@ -34,10 +36,10 @@ def load_yearly_subscriptions(path=DEFAULT_FILE):
 
 def _parse_date(value):
     try:
-        return datetime.strptime(
-            str(value)[:10],
-            "%Y-%m-%d",
-        ).date()
+        parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(ZoneInfo('Europe/London'))
+        return parsed.date()
     except (TypeError, ValueError):
         return None
 
@@ -156,7 +158,7 @@ def annual_subscription_rows(subscriptions, transactions, today):
             cycle = date(today.year, anchor.month,
                          min(anchor.day, monthrange(today.year, anchor.month)[1]))
         matches = []
-        if cycle and expected is not None and expected > 0 and terms:
+        if cycle and expected is not None and math.isfinite(expected) and expected > 0 and terms:
             for tx in transactions or []:
                 paid_on = _parse_date(tx.get("timestamp") or tx.get("transaction_date")
                                       or tx.get("date"))
@@ -168,7 +170,7 @@ def annual_subscription_rows(subscriptions, transactions, today):
                     amount = float(tx.get("amount"))
                 except (ValueError, TypeError):
                     continue
-                if amount >= 0 or abs(abs(amount) - expected) > 0.01:
+                if not math.isfinite(amount) or amount >= 0 or abs(abs(amount) - expected) > 0.01:
                     continue
                 description = " ".join(str(tx.get(key) or "") for key in
                                        ("merchant_name", "description")).casefold()

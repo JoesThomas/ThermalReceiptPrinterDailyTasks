@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import json
+import math
 
 def load_savings(path: Path) -> dict:
     try:
@@ -16,10 +17,14 @@ def savings_totals(data: dict) -> dict:
     runway = 0.0
     accounts = []
     for raw in data.get("accounts", []):
+        if not isinstance(raw, dict):
+            continue
         try:
             balance = float(raw.get("balance", 0))
         except Exception:
             balance = 0.0
+        if not math.isfinite(balance) or balance < 0:
+            continue
         row = {
             "name": str(raw.get("name", "Savings")),
             "balance": balance,

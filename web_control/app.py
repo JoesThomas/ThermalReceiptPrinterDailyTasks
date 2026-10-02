@@ -31,8 +31,6 @@ from web_control.future_tasks import load_tasks, update_task
 
 app = Flask(__name__)
 
-import json
-
 SUBSCRIPTIONS_FILE = (
     PROJECT_ROOT / "data" / "subscriptions.json"
 )
@@ -60,35 +58,8 @@ def load_subscriptions():
 
 
 def save_subscriptions(data):
-    """
-    Save subscription and instalment changes
-    made through Receipt Control.
-    """
-    SUBSCRIPTIONS_FILE.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    temp_file = SUBSCRIPTIONS_FILE.with_suffix(
-        ".json.tmp"
-    )
-
-    with temp_file.open(
-        "w",
-        encoding="utf-8",
-    ) as file:
-        json.dump(
-            data,
-            file,
-            indent=2,
-            ensure_ascii=False,
-        )
-
-        file.write("\n")
-
-    temp_file.replace(
-        SUBSCRIPTIONS_FILE
-    )
+    from storage import write_json
+    write_json(SUBSCRIPTIONS_FILE, data)
 
 
 PROJECT_PASSWORDS_FILE = (
@@ -266,6 +237,16 @@ def csrf_token():
 app.jinja_env.globals["csrf_token"] = csrf_token
 
 
+@app.after_request
+def private_response_headers(response):
+    if session.get('authenticated') or request.endpoint == 'login':
+        response.headers['Cache-Control'] = 'no-store'
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    response.headers.setdefault('Referrer-Policy', 'same-origin')
+    return response
+
+
 @app.before_request
 def require_csrf():
     if request.method == "POST":
@@ -324,7 +305,10 @@ def instalment_update(index):
         if not value:
             return None
 
-        return round(float(value), 2)
+        amount = round(float(value), 2)
+        if not math.isfinite(amount) or amount < 0 or amount > 1_000_000_000:
+            raise ValueError('Invalid amount')
+        return amount
 
     def integer_field(name):
         value = request.form.get(name, "").strip()
@@ -332,7 +316,10 @@ def instalment_update(index):
         if not value:
             return None
 
-        return max(0, int(value))
+        number = int(value)
+        if not 0 <= number <= 1_000_000:
+            raise ValueError('Invalid payment count')
+        return number
 
     try:
         item["amount"] = decimal_field("amount")
@@ -358,9 +345,13 @@ def instalment_update(index):
         "",
     ).strip()
 
-    item["next_payment"] = (
-        next_payment or None
-    )
+    if next_payment:
+        try:
+            date.fromisoformat(next_payment)
+        except ValueError:
+            flash("Use a valid next payment date.")
+            return redirect(url_for("index", view="accounts"))
+    item["next_payment"] = next_payment or None
 
     save_subscriptions(data)
 
@@ -507,8 +498,12 @@ def routine_add():
     try:
         interval = max(1, int(request.form.get("interval_days", 7))); before = max(0, int(request.form.get("show_days_before", 0)))
     except ValueError: flash("Invalid schedule number."); return redirect(url_for("index", view="tasks"))
-    add_routine(name, kind, weekday=request.form.get("weekday", "monday") if kind == "weekly" else None,
-                interval_days=interval if kind == "interval" else None, show_days_before=before)
+    try:
+        add_routine(name, kind, weekday=request.form.get("weekday", "monday") if kind == "weekly" else None,
+                    interval_days=interval if kind == "interval" else None, show_days_before=before)
+    except ValueError as error:
+        flash(str(error))
+        return redirect(url_for('index', view='tasks'))
     flash("Routine added."); return redirect(url_for("index", view="tasks"))
 
 @app.post("/routine/<routine_id>/done")
@@ -875,7 +870,22 @@ def _start_print_command(command_args):
 _print_start_lock = Lock()
 
 
+def _job_active(path):
+    try:
+        pid = int(path.read_text(encoding='utf-8').strip())
+        if not 0 < pid <= 2_147_483_647:
+            return False
+        os.kill(pid, 0)
+        return True
+    except PermissionError:
+        return True
+    except (ValueError, FileNotFoundError, ProcessLookupError):
+        return False
+
+
 def _start_print_command_locked(command_args):
+    if _job_active(PROJECT_ROOT / 'data' / '.live_preview.lock'):
+        return False, 'A live preview is running. Wait before starting a print.'
     lock = (
         PROJECT_ROOT
         / "data"
@@ -898,24 +908,9 @@ def _start_print_command_locked(command_args):
         exist_ok=True,
     )
 
-    if lock.exists():
-        try:
-            pid = int(
-                lock.read_text(
-                    encoding="utf-8"
-                ).strip()
-            )
-            os.kill(pid, 0)
-            return False, "A receipt job is already running."
-        except (
-            ValueError,
-            ProcessLookupError,
-            PermissionError,
-            OSError,
-        ):
-            lock.unlink(
-                missing_ok=True
-            )
+    if _job_active(lock):
+        return False, "A receipt job is already running."
+    lock.unlink(missing_ok=True)
 
     try:
         log_handle = open(
@@ -957,13 +952,11 @@ def load_print_status():
     path = PROJECT_ROOT / "data" / "web_print_status.json"
     try:
         status = json.loads(path.read_text(encoding="utf-8"))
-        if status.get("state") not in {"running", "completed", "failed"}:
+        if not isinstance(status, dict) or status.get("state") not in {"running", "completed", "failed"}:
             return None
         if status["state"] == "running":
             lock = PROJECT_ROOT / "data" / ".print_now.lock"
-            try:
-                os.kill(int(lock.read_text(encoding="utf-8").strip()), 0)
-            except (OSError, ValueError):
+            if not _job_active(lock):
                 status["state"] = "interrupted"
         return status
     except (OSError, ValueError, KeyError, TypeError):
@@ -1003,13 +996,11 @@ def load_live_preview_status():
     path = PROJECT_ROOT / "data" / "live_preview_status.json"
     try:
         status = json.loads(path.read_text(encoding="utf-8"))
-        if status.get("state") not in {"running", "completed", "failed"}:
+        if not isinstance(status, dict) or status.get("state") not in {"running", "completed", "failed"}:
             return None
         if status["state"] == "running":
             lock = PROJECT_ROOT / "data" / ".live_preview.lock"
-            try:
-                os.kill(int(lock.read_text(encoding="utf-8").strip()), 0)
-            except (OSError, ValueError):
+            if not _job_active(lock):
                 status["state"] = "interrupted"
         return status
     except (OSError, ValueError, KeyError, TypeError):
@@ -1025,19 +1016,24 @@ def live_preview_status_api():
 @app.post("/preview/generate")
 @login_required
 def generate_live_preview():
+    with _print_start_lock:
+        return _generate_live_preview_locked()
+
+
+def _generate_live_preview_locked():
     if request.form.get("page", "all") not in {"all", *PRINT_PAGES}:
         abort(400)
+    if _job_active(PROJECT_ROOT / 'data' / '.print_now.lock'):
+        flash('A print job is running. Wait before generating a preview.')
+        return redirect(url_for('preview', source='live'))
     lock = PROJECT_ROOT / "data" / ".live_preview.lock"
     log_file = PROJECT_ROOT / "logs" / "web_preview.log"
     lock.parent.mkdir(parents=True, exist_ok=True)
     log_file.parent.mkdir(parents=True, exist_ok=True)
-    if lock.exists():
-        try:
-            os.kill(int(lock.read_text(encoding="utf-8").strip()), 0)
-            flash("A live preview is already being generated.")
-            return redirect(url_for("preview", source="live"))
-        except (OSError, ValueError):
-            lock.unlink(missing_ok=True)
+    if _job_active(lock):
+        flash("A live preview is already being generated.")
+        return redirect(url_for("preview", source="live"))
+    lock.unlink(missing_ok=True)
     try:
         from web_control.preview_job import save_status
         save_status("running")
@@ -1348,63 +1344,6 @@ def print_page():
 @app.post("/print-now")
 @login_required
 def print_now():
-    lock = (
-        PROJECT_ROOT
-        / "data"
-        / ".print_now.lock"
-    )
-
-    log_file = (
-        PROJECT_ROOT
-        / "logs"
-        / "web_print.log"
-    )
-
-    lock.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    log_file.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    # ----------------------------------------
-    # Check existing lock
-    # ----------------------------------------
-
-    if lock.exists():
-        try:
-            pid = int(
-                lock.read_text(
-                    encoding="utf-8"
-                ).strip()
-            )
-
-            # Check whether that process
-            # genuinely still exists.
-            os.kill(pid, 0)
-
-            flash(
-                "A receipt job is already running."
-            )
-
-            return redirect(
-                url_for("index")
-            )
-
-        except (
-            ValueError,
-            ProcessLookupError,
-            PermissionError,
-            OSError,
-        ):
-            # Invalid/stale lock.
-            lock.unlink(
-                missing_ok=True
-            )
-
     started, error = _start_print_command([])
 
     if not started:

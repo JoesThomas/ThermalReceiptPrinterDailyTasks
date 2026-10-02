@@ -21,10 +21,8 @@ def _read(path, fallback):
 
 
 def _write(path, value):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    temporary.replace(path)
+    from storage import write_json
+    write_json(path, value)
 
 
 def food_shop_override():

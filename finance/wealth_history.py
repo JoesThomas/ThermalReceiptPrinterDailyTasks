@@ -30,10 +30,8 @@ def load_history():
 
 
 def _write(rows):
-    HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
-    temporary = HISTORY_FILE.with_suffix('.json.tmp')
-    temporary.write_text(json.dumps(rows, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    temporary.replace(HISTORY_FILE)
+    from storage import write_json
+    write_json(HISTORY_FILE, rows)
 
 
 def record(name, kind, on, balance, deposits=None, withdrawals=None, source='manual', today=None):
@@ -86,9 +84,11 @@ def capture_local(savings_data, investments_data, today):
         record(str(row.get('name', 'Savings')), 'savings', today, row.get('balance', 0), source='local observation', today=today)
     updated = investments_data.get('updated')
     try:
-        on = date.fromisoformat(str(updated)[:10]) if updated else today
+        on = date.fromisoformat(str(updated)[:10]) if updated else None
     except ValueError:
-        on = today
+        on = None
+    if on is None or on > today:
+        return
     for row in investments_data.get('accounts', []):
         record(str(row.get('name', 'Investment')), 'investment', on, row.get('value', 0), source='local observation', today=today)
 

@@ -60,19 +60,10 @@ class RecordingPrinter:
         content = "".join(self.lines)
         sections = [part.strip("\n") for part in content.split("\n--- CUT ---\n") if part.strip()]
         captured_at = datetime.now(timezone.utc).isoformat()
-        try:
-            if replace:
-                raise FileNotFoundError()
-            existing = json.loads(path.read_text(encoding="utf-8"))
-            pages = existing.get("pages", {}) if isinstance(existing, dict) else {}
-            page_times = existing.get("page_times", {}) if isinstance(existing, dict) else {}
-            page_images = existing.get("page_images", {}) if isinstance(existing, dict) else {}
-            if not isinstance(pages, dict) or not isinstance(page_times, dict):
-                pages, page_times = {}, {}
-            if not isinstance(page_images, dict):
-                page_images = {}
-        except (OSError, ValueError):
-            pages, page_times, page_images = {}, {}, {}
+        existing = None if replace else load_capture(path)
+        pages = existing['pages'] if existing else {}
+        page_times = existing['page_times'] if existing else {}
+        page_images = existing['page_images'] if existing else {}
 
         def store_section(name, section):
             images = []
@@ -93,12 +84,10 @@ class RecordingPrinter:
         else:
             store_section(only_page, sections[0] if sections else "")
         path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_suffix(".tmp")
         from receipt.freshness import snapshot
-        temporary.write_text(json.dumps({"freshness": snapshot(), "page_times": page_times, "pages": pages,
-                                         "page_images": page_images},
-                                        ensure_ascii=False), encoding="utf-8")
-        temporary.replace(path)
+        from storage import write_json
+        write_json(path, {"freshness": snapshot(), "page_times": page_times, "pages": pages,
+                          "page_images": page_images})
         from receipt.archive import save as archive_save
         from receipt.freshness import snapshot
         fresh = {name: value for name, value in pages.items() if page_times.get(name) == captured_at}
@@ -113,14 +102,18 @@ class RecordingPrinter:
 
 def load_capture(path=CAPTURE_FILE):
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        pages = data.get("pages", {})
-        if not isinstance(pages, dict):
+        data = json.loads(path.read_text(encoding='utf-8'))
+        if not isinstance(data, dict) or not isinstance(data.get('pages'), dict):
             return None
-        return {"freshness": data.get("freshness", {}), "page_times": data.get("page_times", {}),
-                "pages": {key: str(value) for key, value in pages.items() if key in PAGE_NAMES},
-                "page_images": data.get("page_images", {})}
-    except (OSError, ValueError, TypeError):
+        pages = {key: value for key, value in data['pages'].items() if key in PAGE_NAMES and isinstance(value, str)}
+        raw_times = data.get('page_times', {})
+        times = {key: value for key, value in raw_times.items() if key in pages and isinstance(value, str)} if isinstance(raw_times, dict) else {}
+        raw_images = data.get('page_images', {})
+        images = {key: value for key, value in raw_images.items() if key in pages and isinstance(value, list)} if isinstance(raw_images, dict) else {}
+        raw_checks = data.get('freshness', {})
+        checks = {key: value for key, value in raw_checks.items() if isinstance(value, dict) and isinstance(value.get('status'), str) and isinstance(value.get('checked_at'), str)} if isinstance(raw_checks, dict) else {}
+        return dict(pages=pages, page_times=times, page_images=images, freshness=checks)
+    except (OSError, ValueError, TypeError, RecursionError):
         return None
 
 

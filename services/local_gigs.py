@@ -57,11 +57,8 @@ def save_options(radius, limit, enabled, key='', clear=False):
             data.pop('api_key',None)
         elif key:
             data['api_key'] = key
-        CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-        temporary = CONFIG_FILE.with_suffix('.json.tmp')
-        temporary.write_text(json.dumps(data) + '\n', encoding='utf-8')
-        temporary.chmod(0o600)
-        temporary.replace(CONFIG_FILE)
+        from storage import write_json
+        write_json(CONFIG_FILE, data)
         _CACHE.clear()
 
 

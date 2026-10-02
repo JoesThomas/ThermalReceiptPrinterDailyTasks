@@ -3,8 +3,7 @@ from __future__ import annotations
 import argparse
 from datetime import date, datetime
 
-from app import run_live
-from config import BASE_DIR, FILES
+from config import BASE_DIR, FILES, TIMEZONE
 from health import run_health_checks
 from logging_setup import configure_logging
 from receipt.model import ReceiptDocument, ReceiptSection
@@ -30,7 +29,7 @@ def parse_args():
 
 
 def simulated_date(value: str | None) -> date:
-    return datetime.strptime(value, "%Y-%m-%d").date() if value else date.today()
+    return datetime.strptime(value, "%Y-%m-%d").date() if value else datetime.now(TIMEZONE).date()
 
 
 def build_demo_documents(day: date, finance_requested: bool) -> list[ReceiptDocument]:
@@ -96,6 +95,7 @@ def main():
         return
 
     logger.info("Launching modular live receipt pipeline.")
+    from app import run_live
     run_live(
         finance_requested=args.finance,
         only_page=args.only,

@@ -41,11 +41,8 @@ def _load(path: Path, default: Any) -> Any:
 
 
 def _save(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    with tmp.open("w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    tmp.replace(path)
+    from storage import write_json
+    write_json(path, data)
 
 
 def recipes() -> list[dict]:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 
 from datetime import datetime
 from pathlib import Path
@@ -45,32 +46,8 @@ def load_subscriptions():
     return data
 
 def save_subscriptions(data):
-    SUBSCRIPTIONS_FILE.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    temporary = (
-        SUBSCRIPTIONS_FILE
-        .with_suffix(".tmp")
-    )
-
-    with temporary.open(
-        "w",
-        encoding="utf-8",
-    ) as file:
-        json.dump(
-            data,
-            file,
-            indent=2,
-            ensure_ascii=False,
-        )
-
-        file.write("\n")
-
-    temporary.replace(
-        SUBSCRIPTIONS_FILE
-    )
+    from storage import write_json
+    write_json(SUBSCRIPTIONS_FILE, data)
 
 
 def _description(transaction):
@@ -89,20 +66,21 @@ def _description(transaction):
 
 def _amount(transaction):
     try:
-        return abs(
-            float(
-                transaction.get(
-                    "amount",
-                    0,
-                )
-            )
-        )
-
-    except (
-        TypeError,
-        ValueError,
-    ):
+        value = abs(float(transaction.get('amount', 0)))
+        return value if math.isfinite(value) else 0.0
+    except (TypeError, ValueError, OverflowError):
         return 0.0
+
+
+def _is_debit(transaction):
+    kind = str(transaction.get('transaction_type') or transaction.get('type') or '').upper()
+    if kind in {'CREDIT', 'INCOME', 'REFUND'}:
+        return False
+    try:
+        value = float(transaction.get('amount', 0))
+        return math.isfinite(value) and value != 0 and (value < 0 or kind == 'DEBIT')
+    except (TypeError, ValueError, OverflowError):
+        return False
 
 
 def _date(transaction):
@@ -116,21 +94,11 @@ def _date(transaction):
         return None
 
     try:
-        return (
-            datetime.fromisoformat(
-                str(value).replace(
-                    "Z",
-                    "+00:00",
-                )
-            )
-            .date()
-            .isoformat()
-        )
-
-    except (
-        TypeError,
-        ValueError,
-    ):
+        parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(ZoneInfo('Europe/London'))
+        return parsed.date().isoformat()
+    except (TypeError, ValueError):
         return None
 
 
@@ -150,7 +118,7 @@ def _matches(
         [],
     )
 
-    return any(
+    return _is_debit(transaction) and any(
         str(term).upper()
         in description
         for term in terms
@@ -163,7 +131,7 @@ def _annual_amount_matches(subscription, transaction):
         expected = float(subscription.get("amount"))
     except (TypeError, ValueError):
         return False
-    return amount < 0 and abs(-amount - expected) <= 0.01
+    return _is_debit(transaction) and math.isfinite(expected) and abs(abs(amount) - expected) <= 0.01
 
 def update_subscriptions_from_transactions(
     transactions,

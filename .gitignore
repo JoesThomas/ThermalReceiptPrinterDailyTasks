@@ -115,3 +115,10 @@ data/investments.json
 # Private Premium Bonds prize and balance ledger
 data/premium_bonds.json
 data/premium_bonds.lock
+
+# Generated caches, logs and job markers can contain private data
+cache/
+logs/
+receipt_preview.txt
+data/.*.lock
+data/.scheduled_print_date

@@ -105,13 +105,18 @@ def register(app, login_required, start_print, root, print_lock):
                     if lock.exists():
                         import os
                         try:
-                            os.kill(int(lock.read_text()), 0)
+                            pid = int(lock.read_text())
+                            if not 0 < pid <= 2_147_483_647:
+                                continue
+                            os.kill(pid, 0)
+                        except PermissionError:
+                            raise ValueError('A receipt job may still be running; restore was not started.')
                         except (OSError, ValueError):
                             continue
                         raise ValueError('Wait for the current receipt job to finish before restoring.')
                 backup.restore(root, value)
         except (ValueError, OSError) as error:
-            flash(str(error) if isinstance(error, ValueError) else 'Restore failed; previous local files were retained.')
+            flash(str(error) if isinstance(error, (ValueError, backup.RestoreRecoveryError)) else 'Restore failed; check the private rollback record before retrying.')
             return redirect(url_for('backup_page'))
         path.unlink(missing_ok=True)
         session.pop('restore_token', None)
