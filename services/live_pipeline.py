@@ -6415,7 +6415,8 @@ def _other_incoming_category(tx):
                     ("description", "merchant_name", "reference")).casefold()
     if re.search(r"\brent\b", text):
         return "RENT RECEIVED"
-    if any(term in text for term in ("premium bond", "ns&i", "national savings")):
+    if any(term in text for term in ("premium bond", "ns&i", "national savings")) or \
+            re.search(r"(?:^|[\s\d])ns\s+pbz\b", text):
         return "PREMIUM BONDS"
     if any(term in text for term in ("bet365", "sky bet", "paddy power", "william hill",
                                      "betfair", "betfred", "ladbrokes", "coral")) or \

@@ -58,6 +58,27 @@ class IncomingClassificationTests(unittest.TestCase):
         self.assertEqual([(item['name'], item['amount']) for item in other],
                          [('Rent payment', 800), ('PAYMENT RECEIVED - THANK YOU', 20)])
 
+    def test_ns_pbz_prize_references_are_premium_bonds_income(self):
+        # Synthetic bank references: no personal account identifiers.
+        transactions = [
+            {'date': '2026-10-01', 'amount': 10, 'transaction_type': 'CREDIT',
+             'description': '000000000001NS PBZ'},
+            {'date': '2026-10-01', 'amount': 20, 'transaction_type': 'CREDIT',
+             'description': '000000000002ns pbz'},
+            {'date': '2026-10-01', 'amount': 5, 'transaction_type': 'CREDIT',
+             'reference': 'NS PBZ'},
+            {'date': '2026-10-01', 'amount': -30, 'transaction_type': 'DEBIT',
+             'description': '000000000003NS PBZ'},
+            {'date': '2026-10-01', 'amount': 7, 'transaction_type': 'CREDIT',
+             'description': 'OTHER MERCHANT NS PBZZ'},
+        ]
+        salary, other = income_functions()(transactions)
+        self.assertEqual(salary, [])
+        prizes = [item for item in other if item['category'] == 'PREMIUM BONDS']
+        self.assertEqual(len(prizes), 3)
+        self.assertEqual(sum(item['amount'] for item in prizes), 35)
+        self.assertEqual(next(item['category'] for item in other if item['amount'] == 7), 'OTHER IN')
+
     def test_date_only_rent_credit_and_other_sources_are_retained(self):
         transactions = [
             {'date': '2026-09-28', 'amount': 800, 'transaction_type': 'CREDIT',
