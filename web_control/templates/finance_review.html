@@ -1,48 +1,195 @@
 <!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Finance review · Receipt Control</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
-</head>
-<body>
-{% include "navigation.html" %}
-<main id="main-content">
-    <a class="section-link" href="{{ url_for('index') }}">← Back to control</a>
-    <header>
-        <p class="eyebrow">Monthly commitments</p>
-        <h1>Finance review</h1>
-        <p class="muted">{% if not error %}Bank request completed {{ checked_time }} · {{ bank_data_status }} data.{% else %}Bank check unavailable.{% endif %} Refresh to check again.</p>
-    </header>
-    <div class="page-actions"><a class="button" href="{{ url_for('premium_bonds_page') }}">Premium Bonds winnings & return</a><a class="button" href="{{ url_for('savings_review') }}">Savings & investments</a><a class="button" href="{{ url_for('index',view='accounts') }}">Manage commitments</a></div>
-    {% if bonds_summary and (bonds_summary.prizes or bonds_summary.balances) %}
-    <section aria-label="Premium Bonds winnings summary"><h2>Premium Bonds · {{ bonds_summary.year }}</h2><div class="flow-totals"><div><span>Recorded winnings</span><strong>£{{ '%.2f'|format(bonds_summary.total) }}</strong></div><div><span>Recorded period return</span><strong>{{ '%.2f%%'|format(bonds_summary.percent) if bonds_summary.percent is not none else 'Add dated balance' }}</strong></div></div><p class="muted">{% if bonds_summary.start %}Return covers {{ bonds_summary.start.strftime('%d %b') }}–{{ bonds_summary.end.strftime('%d %b %Y') }}, using £{{ '%.2f'|format(bonds_summary.period_total) }} in prizes and £{{ '%.2f'|format(bonds_summary.average) }} average holdings.{% endif %} {{ 'Prize coverage confirmed through this period.' if bonds_summary.complete else 'Prize history may be incomplete.' }}</p></section>
-    {% endif %}
-    <details class="section-disclosure"><summary>Savings & investment history</summary>{% include "wealth_section.html" %}</details>
-    {% if error %}
-        <details class="section-disclosure"><summary>Cash runway</summary><section class="helper">{{ error }}</section>
-    {% else %}
-        {% if bank_data_status != 'complete' %}
-            <section class="helper" role="status">Bank transaction data is {{ bank_data_status }}. Totals below include only payments the bank returned; missing matches may still have been paid.</section>
-        {% endif %}
-        <section aria-label="Finance overview"><div class="flow-totals">
-        <div><span>Current cash</span><strong>{{ '£%.2f'|format(projection.cash) if projection.cash is not none else 'Unavailable' }}</strong></div>
-        <div><span>Upcoming 30 days</span><strong>£{{ '%.2f'|format(projection.upcoming|sum(attribute='amount')) }}</strong></div>
-        <div><span>Income · last 30 days</span><strong>£{{ '%.2f'|format(income.total) }}</strong></div>
-        <div><span>Accessible savings</span><strong>£{{ '%.2f'|format(accessible_savings) }}</strong></div>
-        </div><p class="muted">Upcoming payments include only configured dates. Accessible savings are those selected for runway calculations.</p></section>
-        {% if projection %}
-        <section id="finance-forecast" aria-labelledby="forecast-title">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Finance review · Receipt Control</title><link rel="stylesheet" href="{{ url_for('static',filename='control.css') }}"></head>
+<body>{% include "navigation.html" %}<main id="main-content" class="finance-page">
+<header class="finance-header"><div><p class="eyebrow">Your money</p><h1>Finance review</h1><p class="muted">{% if not error %}Checked {{ checked_time }} · {{ bank_data_status|title }} bank data{% else %}Bank check unavailable{% endif %}</p></div><a class="button primary" href="{{ url_for('finance_review') }}">Refresh bank data</a></header>
+{% with messages=get_flashed_messages() %}{% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}{% endwith %}
+<nav class="finance-jumps" aria-label="Finance sections">{% if not error %}<a href="#finance-overview">Overview</a><a href="#finance-activity">Income & spending</a><a href="#finance-bills">Bills & repayments</a><a href="#finance-forecast">Cash runway</a>{% endif %}<a href="#finance-savings">Savings</a></nav>
+{% if error %}<section id="finance-overview" class="helper" role="status"><h2>Bank records are unavailable</h2><p>{{ error }}</p><p>Refresh to try again. Your locally recorded savings and investments are available below.</p></section>
+{% else %}
+{% if bank_data_status != 'complete' %}<p class="helper" role="status">Bank data is {{ bank_data_status }}. These totals cover only the returned transactions. Missing payment matches may still have been paid.</p>{% endif %}
+<section id="finance-overview" aria-labelledby="overview-title"><div class="finance-section-heading"><div><p class="eyebrow">{{ month.label }}</p><h2 id="overview-title">At a glance</h2></div><small class="muted">Activity for this calendar month</small></div>
+<div class="finance-metrics">
+<article><span>Cash available now</span><strong>{{ '£%.2f'|format(projection.cash) if projection.cash is not none else 'Unavailable' }}</strong><small>Connected current accounts</small></article>
+<article><span>Money in</span><strong>£{{ '%.2f'|format(income.month_total) }}</strong><small>{{ income.month_count }} incoming payments this month</small></article>
+<article><span>Money out</span><strong>£{{ '%.2f'|format(month.total) }}</strong><small>{{ month.count }} outgoing payments this month</small></article>
+<article><span>Monthly balance</span>{% set month_net = income.month_total - month.total %}<strong class="{{ 'negative' if month_net < 0 else '' }}">{{ '-' if month_net < 0 else '+' }}£{{ '%.2f'|format(month_net|abs) }}</strong><small>Money in minus money out · not your bank balance</small></article>
+</div><p class="muted finance-footnote">Internal transfers and card repayments are excluded from activity totals. Bank coverage may not include the entire month.</p></section>
+<div class="finance-group" id="finance-activity"><div class="finance-section-heading"><div><p class="eyebrow">Understand your activity</p><h2>Income & spending</h2></div></div><p class="muted">Open a merchant or income category to see its individual payments. Each section states its reporting period.</p>
+<details class="section-disclosure" open><summary>Money in and out · last 30 days</summary><section aria-labelledby="cash-flow-title">
+            <p class="eyebrow">Last 30 days · bank transactions</p>
+            <h2 id="cash-flow-title">Money in and out</h2>
+            <div class="flow-totals">
+                <div><span>Income</span><strong>£{{ '%.2f'|format(cash_flow.income) }}</strong></div>
+                <div><span>Outgoings</span><strong>£{{ '%.2f'|format(cash_flow.outgoing) }}</strong></div>
+                <div><span>Net flow</span><strong class="{{ 'negative' if cash_flow.net < 0 else '' }}">{{ '-' if cash_flow.net < 0 else '+' }}£{{ '%.2f'|format(cash_flow.net|abs) }}</strong></div>
+            </div>
+            <p class="muted">Net flow is income minus recorded spending. Transfers between your accounts and Amex repayments are excluded from income.</p>
+            <h3>Weekly cash flow</h3>
+            <p class="muted">Four seven-day periods ending today. Bar lengths share one scale.</p>
+            <div class="flow-legend"><span><i class="legend-swatch paid"></i> Income</span><span><i class="legend-swatch due"></i> Outgoings</span></div>
+            <div class="flow-weeks">
+                {% for week in cash_flow.weeks %}
+                    <div class="flow-week">
+                        <strong>{{ week.label }}</strong>
+                        <div class="flow-track" role="img" aria-label="Income £{{ '%.2f'|format(week.income) }}">
+                            <span class="flow-fill income" style="width:{{ week.income_percent }}%"></span>
+                        </div>
+                        <small>In £{{ '%.2f'|format(week.income) }}</small>
+                        <div class="flow-track" role="img" aria-label="Outgoings £{{ '%.2f'|format(week.outgoing) }}">
+                            <span class="flow-fill outgoing" style="width:{{ week.outgoing_percent }}%"></span>
+                        </div>
+                        <small>Out £{{ '%.2f'|format(week.outgoing) }}</small>
+                    </div>
+                {% endfor %}
+            </div>
+        </section></details><details class="section-disclosure"><summary>Outgoings · {{ month.label }}</summary><section id="month-payments" aria-labelledby="month-payments-title">
+            <p class="eyebrow">Calendar month</p>
+            <h2 id="month-payments-title">Outgoings · {{ month.label }}</h2>
+            <p class="amount-headline">£{{ '%.2f'|format(month.total) }}</p>
+            <p class="muted">{{ month.count }} bank payments across {{ month.merchants|length }} merchants, from the connected accounts. Income, refunds, transfers and card repayments are excluded. Identical repeat purchases remain separate unless they share a bank transaction ID.</p>
+            {% if month.merchants %}
+                <div class="merchant-list">
+                    {% for merchant in month.merchants %}
+                        <details class="merchant-group">
+                            <summary>
+                                <span class="merchant-summary-name">{{ merchant.name }} <small>({{ merchant.count }})</small></span>
+                                <strong>£{{ '%.2f'|format(merchant.amount) }}</strong>
+                            </summary>
+                            <div class="merchant-payments">
+                                {% for payment in merchant.payments %}
+                                    <div class="merchant-payment">
+                                        <span><time datetime="{{ payment.date.isoformat() }}">{{ payment.date.strftime('%d %b') }}</time> · {{ payment.description }}</span>
+                                        <strong>£{{ '%.2f'|format(payment.amount) }}</strong>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </details>
+                    {% endfor %}
+                </div>
+            {% else %}<p>No payments found for this month.</p>{% endif %}
+        </section></details><details class="section-disclosure"><summary>Incoming payments</summary><section aria-labelledby="incoming-title">
+            <p class="eyebrow">Credits from connected accounts</p>
+            <h2 id="incoming-title">Incoming payments</h2>
+            <p class="amount-headline">£{{ '%.2f'|format(income.total) }}</p>
+            <p class="muted">{{ income.recent|length }} payments in the last 30 days · £{{ '%.2f'|format(income.month_total) }} across {{ income.month_count }} payments this calendar month.</p>
+            {% if income.categories %}
+                <div class="merchant-list">
+                    {% for category in income.categories %}
+                        <details class="merchant-group">
+                            <summary>
+                                <span class="merchant-summary-name">{{ category.name }} <small>({{ category.count }})</small></span>
+                                <strong>£{{ '%.2f'|format(category.amount) }}</strong>
+                            </summary>
+                            <div class="bar-track" role="img" aria-label="{{ category.name }} income £{{ '%.2f'|format(category.amount) }}"><div class="bar-fill" style="width:{{ category.percent }}%"></div></div>
+                            <div class="merchant-payments">
+                                {% for payment in category.payments %}
+                                    <div class="merchant-payment"><span><time datetime="{{ payment.date.isoformat() }}">{{ payment.date.strftime('%d %b') }}</time> · {{ payment.name }}</span><strong>£{{ '%.2f'|format(payment.amount) }}</strong></div>
+                                {% endfor %}
+                            </div>
+                        </details>
+                    {% endfor %}
+                </div>
+            {% else %}<p>No incoming bank payments found in the last 30 days.</p>{% endif %}
+        </section></details><details class="section-disclosure"><summary>Spending by category</summary><section aria-labelledby="spending-chart-title">
+            <p class="eyebrow">Last 30 days</p>
+            <h2 id="spending-chart-title">Spending by category</h2>
+            {% if charts.categories %}
+                <p class="muted">Total £{{ '%.2f'|format(charts.spending_total) }} · Bars scale to the largest category. Transfers, income, refunds and duplicate transactions are excluded.</p>
+                <figure class="chart-figure">
+                    {% for category in charts.categories %}
+                        <div class="category-row">
+                            <div class="chart-label"><span>{{ category.name|title }}</span><strong>£{{ '%.2f'|format(category.amount) }}</strong></div>
+                            <div class="bar-track" role="img" aria-label="{{ category.name|title }} spending £{{ '%.2f'|format(category.amount) }}">
+                                <div class="bar-fill" style="width:{{ category.percent }}%"></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </figure>
+            {% else %}<p>No recent spending transactions to chart.</p>{% endif %}
+        </section></details><details class="section-disclosure"><summary>Weekly spending</summary><section aria-labelledby="weekly-chart-title">
+            <p class="eyebrow">Last four weeks</p>
+            <h2 id="weekly-chart-title">Weekly spending</h2>
+            <p class="muted">Each bar covers seven consecutive days. The most recent bar ends today; a short bar can mean transactions have not arrived yet.</p>
+            {% if charts.weekly_total > 0 %}
+                <figure class="chart-figure">
+                    <div class="weekly-chart">
+                        {% for week in charts.weeks %}
+                            <div class="weekly-column">
+                                <strong>£{{ '%.2f'|format(week.amount) }}</strong>
+                                <div class="weekly-track" role="img" aria-label="{{ week.label }}: £{{ '%.2f'|format(week.amount) }}">
+                                    <div class="weekly-fill" style="height:{{ week.percent }}%"></div>
+                                </div>
+                                <small>{{ week.label }}</small>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </figure>
+            {% else %}<p>No recent transactions to chart.</p>{% endif %}
+        </section></details></div><div class="finance-group" id="finance-bills"><div class="finance-section-heading"><div><p class="eyebrow">Plan what comes next</p><h2>Bills & repayments</h2></div><a class="button" href="{{ url_for('index',view='accounts') }}">Manage commitments</a></div>
+<div class="finance-bill-summary"><div><span>Listed payments · next 30 days</span><strong>£{{ '%.2f'|format(projection.upcoming|sum(attribute='amount')) }}</strong></div><div><span>Monthly payments to check</span><strong>{{ rows|rejectattr('transaction')|list|length }}</strong><small>No bank match found · verify before paying</small></div></div>
+<details class="section-disclosure" open><summary>Monthly commitments</summary><section aria-labelledby="commitment-chart-title">
+            <p class="eyebrow">This month</p>
+            <h2 id="commitment-chart-title">Monthly commitments</h2>
+            {% if charts.commitments.total > 0 %}
+                <figure class="chart-figure">
+                    <div class="stacked-bar" role="img" aria-label="Paid £{{ '%.2f'|format(charts.commitments.paid) }}; needs checking £{{ '%.2f'|format(charts.commitments.due) }}">
+                        {% if charts.commitments.paid > 0 %}<span class="stack-paid" style="width:{{ charts.commitments.paid_percent }}%"></span>{% endif %}
+                        {% if charts.commitments.due > 0 %}<span class="stack-due" style="width:{{ charts.commitments.due_percent }}%"></span>{% endif %}
+                    </div>
+                    <figcaption class="legend">
+                        <span><i class="legend-swatch paid"></i>Paid £{{ '%.2f'|format(charts.commitments.paid) }}</span>
+                        <span><i class="legend-swatch due"></i>Needs checking £{{ '%.2f'|format(charts.commitments.due) }}</span>
+                    </figcaption>
+                </figure>
+                <p class="muted">Total scheduled: £{{ '%.2f'|format(charts.commitments.total) }}. A missing bank match does not prove a payment is unpaid.</p>
+            {% else %}<p>No monthly commitments to chart.</p>{% endif %}
+        </section></details><details class="section-disclosure"><summary>Payment matches</summary><section>
+            <h2>Payment matches</h2>
+            <p class="muted">A due entry means no matching bank transaction was found; check it before treating it as unpaid.</p>
+            {% for row in rows %}
+                <div class="review-row">
+                    <div class="review-head"><strong>{{ row.item.name }}</strong><strong>£{{ '%.2f'|format(row.item.amount) }}</strong></div>
+                    <p><span class="badge {{ 'paid' if row.transaction else 'due' }}">{{ 'Paid' if row.transaction else 'Needs checking' }}</span> <span class="muted">{{ row.item.category|title }}</span></p>
+                    {% if row.item.end_date %}<p class="muted">Contract ends {{ row.item.end_date }}</p>{% endif %}
+                    {% if row.transaction %}
+                        <small>{{ row.method }} · {{ (row.transaction.timestamp or row.transaction.transaction_date or row.transaction.date or '')[:10] }} · {{ row.transaction.merchant_name or row.transaction.description or 'Bank transaction' }}</small>
+                    {% elif row.item.category == 'repayment' %}
+                        <small>{% if row.item.next_payment %}Expected payment day: {{ row.item.next_payment }}{% else %}Add a next payment date to enable date-and-amount matching.{% endif %}</small>
+                    {% endif %}
+                </div>
+            {% else %}<p>No monthly commitments configured.</p>{% endfor %}
+        </section></details><details class="section-disclosure"><summary>Annual subscriptions</summary><section aria-labelledby="annual-title">
+            <p class="eyebrow">Renewals</p>
+            <h2 id="annual-title">Annual subscriptions</h2>
+            <p class="muted">Shown separately from monthly commitments. A last recorded payment is history, not proof that the current renewal was paid.</p>
+            {% for item in annual %}
+                <div class="review-row">
+                    <div class="review-head"><strong>{{ item.name }}</strong><strong>£{{ '%.2f'|format(item.amount) }} / year</strong></div>
+                    <p>Next renewal: {% if item.next_renewal %}<time datetime="{{ item.next_renewal.isoformat() }}">{{ item.next_renewal.strftime('%d %b %Y') }}</time>{% else %}add a renewal date{% endif %}</p>
+                    {% if item.bank_paid_date %}
+                        <p><span class="badge paid">Bank matched {{ item.bank_paid_date.strftime('%d %b %Y') }}</span></p>
+                    {% else %}
+                        <p><span class="badge">Payment unverified</span></p>
+                    {% endif %}
+                    {% if item.last_paid_date %}<small>Last recorded payment: {{ item.last_paid_date.strftime('%d %b %Y') }}</small>{% endif %}
+                </div>
+            {% else %}<p>No annual subscriptions configured. Add them in Manage commitments.</p>{% endfor %}
+        </section></details>{% if ended_contracts %}<details class="section-disclosure"><summary>Ended contracts</summary><section aria-labelledby="ended-contracts-title">
+                <h2 id="ended-contracts-title">Ended contracts</h2>
+                <p class="muted">These remain editable in Manage commitments, but are excluded from this month's commitments after their final contract month.</p>
+                {% for item in ended_contracts %}
+                    <div class="review-row"><div class="review-head"><strong>{{ item.name }}</strong><strong>£{{ '%.2f'|format(item.amount) }} / month</strong></div><small>Ended {{ item.end_date }}</small></div>
+                {% endfor %}
+            </section></details>{% endif %}</div>{% if projection %}<section id="finance-forecast" aria-labelledby="forecast-title">
             <p class="eyebrow">Upcoming payments · estimated everyday spending</p>
             <h2 id="forecast-title">Cash runway</h2>
-            <p class="muted">Cash from connected current accounts, less your protected buffer, dated bills, repayments and annual renewals. Income already received is included in the current balance. This runway assumes no further income; future income and credit limits are excluded. Everyday spending is estimated from 30 days of transactions after removing known bill matches. Durations use calendar years and months from today, then weeks and days; brackets show the exact total days.</p>
+            <p class="muted">How long your cash could cover upcoming payments and estimated everyday spending, assuming no more income.</p>
             <div class="flow-totals">
-                <div><span>Current cash</span><strong>{% if projection.cash is not none %}£{{ '%.2f'|format(projection.cash) }}{% else %}Unavailable{% endif %}</strong></div>
+
                 <div><span>Cash runway</span><strong>{% if projection.valid %}{{ projection.cash_duration if projection.cash_duration is not none else 'Over ' ~ projection.horizon_duration }}{% else %}Unavailable{% endif %}</strong><p class="muted">{% if projection.cash_run_out_date %}Projected to run out: {{ projection.cash_run_out_date.strftime('%d %b %Y') }}{% elif projection.valid %}No shortfall projected through {{ projection.horizon_end_date.strftime('%d %b %Y') }}{% endif %}</p></div>
                 <div><span>With accessible savings</span><strong>{% if projection.valid %}{{ projection.total_duration if projection.total_duration is not none else 'Over ' ~ projection.horizon_duration }}{% else %}Unavailable{% endif %}</strong><p class="muted">{% if projection.total_run_out_date %}Projected to run out: {{ projection.total_run_out_date.strftime('%d %b %Y') }}{% elif projection.valid %}No shortfall projected through {{ projection.horizon_end_date.strftime('%d %b %Y') }}{% endif %}</p></div>
             </div>
-            <p class="muted">Projected dates assume no further income and the current spending estimate. With a protected buffer, the date marks when spendable funds fall below that buffer. If no shortfall occurs within the forecast horizon, an exact date is unavailable.</p>
+            <p class="muted">Dates mark when funds fall below your protected buffer. This is an estimate; future income is excluded.</p>
             <details><summary>What this forecast assumes</summary><ul>
             <li>Starts from connected current-account balances checked on this visit.</li>
             <li>Everyday spending uses {{ 'your manual estimate' if forecast_settings.runway_daily_spend is defined and forecast_settings.runway_daily_spend is not none else 'the last 30 days of bank spending, excluding matched commitments' }}.</li>
@@ -73,7 +220,7 @@
                         <label>Everyday spending per day (£, optional)<input type="number" name="runway_daily_spend" min="0" step="0.01" value="{{ forecast_settings.runway_daily_spend if forecast_settings.runway_daily_spend is not none and forecast_settings.runway_daily_spend is defined else '' }}" placeholder="Use bank estimate"></label>
                     </div><button>Save projection settings</button>
                 </form>
-                <p class="muted">Set usual payment days on the home page. Add card repayments and other known payments to your local finance settings; a debt balance alone does not specify its payment date.</p>
+                <p class="muted">Set usual payment days in Manage commitments. Add card repayments and other known payments to your local finance settings; a debt balance alone does not specify its payment date.</p>
             </details>
             <details><summary>Add or remove a dated cash payment</summary>
                 <p class="muted">Use this for card repayments and other known payments. Use the same name as an existing monthly commitment to set its date without counting it twice.</p>
@@ -85,8 +232,7 @@
                     <div class="grid"><label>Payment name<input name="name" maxlength="90" required></label><label>Amount (£)<input type="number" name="amount" min="0.01" step="0.01" required></label><label>Due date<input type="date" name="due_date" required></label><label>Repeats<select name="repeat"><option value="once">Once</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label></div><button>Add dated payment</button>
                 </form>
             </details>
-        </section></details>
-        <section id="finance-suggestions" aria-labelledby="suggestions-title">
+        </section>{% endif %}<details class="section-disclosure finance-advice"><summary>Finance suggestions · {{ suggestions|length }} to review</summary><section id="finance-suggestions" aria-labelledby="suggestions-title">
             <p class="eyebrow">Based on available records</p>
             <h2 id="suggestions-title">Finance suggestions</h2>
             <p class="muted">Checks to review, rather than instructions to cancel or pay anything. Dismissals stay local for 30 days; changed evidence creates a new suggestion.</p>
@@ -99,183 +245,11 @@
                     <form method="post" action="{{ url_for('dismiss_finance_suggestion') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="suggestion_id" value="{{ suggestion.id }}"><button>Dismiss for 30 days</button></form></div>
                 </article>
             {% else %}<p>No new suggestions to review.</p>{% endfor %}
-        </section>
-        {% endif %}
-        <details class="section-disclosure"><summary>Money in and out</summary><section aria-labelledby="cash-flow-title">
-            <p class="eyebrow">Last 30 days · bank transactions</p>
-            <h2 id="cash-flow-title">Money in and out</h2>
-            <div class="flow-totals">
-                <div><span>Income</span><strong>£{{ '%.2f'|format(cash_flow.income) }}</strong></div>
-                <div><span>Outgoings</span><strong>£{{ '%.2f'|format(cash_flow.outgoing) }}</strong></div>
-                <div><span>Net flow</span><strong class="{{ 'negative' if cash_flow.net < 0 else '' }}">{{ '-' if cash_flow.net < 0 else '+' }}£{{ '%.2f'|format(cash_flow.net|abs) }}</strong></div>
-            </div>
-            <p class="muted">Net flow is income minus recorded spending. Transfers between your accounts and Amex repayments are excluded from income.</p>
-            <h3>Weekly cash flow</h3>
-            <p class="muted">Four seven-day periods ending today. Bar lengths share one scale.</p>
-            <div class="flow-legend"><span><i class="legend-swatch paid"></i> Income</span><span><i class="legend-swatch due"></i> Outgoings</span></div>
-            <div class="flow-weeks">
-                {% for week in cash_flow.weeks %}
-                    <div class="flow-week">
-                        <strong>{{ week.label }}</strong>
-                        <div class="flow-track" role="img" aria-label="Income £{{ '%.2f'|format(week.income) }}">
-                            <span class="flow-fill income" style="width:{{ week.income_percent }}%"></span>
-                        </div>
-                        <small>In £{{ '%.2f'|format(week.income) }}</small>
-                        <div class="flow-track" role="img" aria-label="Outgoings £{{ '%.2f'|format(week.outgoing) }}">
-                            <span class="flow-fill outgoing" style="width:{{ week.outgoing_percent }}%"></span>
-                        </div>
-                        <small>Out £{{ '%.2f'|format(week.outgoing) }}</small>
-                    </div>
-                {% endfor %}
-            </div>
         </section></details>
-        <details class="section-disclosure"><summary>Incoming payments</summary><section aria-labelledby="incoming-title">
-            <p class="eyebrow">Credits from connected accounts</p>
-            <h2 id="incoming-title">Incoming payments</h2>
-            <p class="amount-headline">£{{ '%.2f'|format(income.total) }}</p>
-            <p class="muted">{{ income.recent|length }} payments in the last 30 days · £{{ '%.2f'|format(income.month_total) }} across {{ income.month_count }} payments this calendar month.</p>
-            {% if income.categories %}
-                <div class="merchant-list">
-                    {% for category in income.categories %}
-                        <details class="merchant-group">
-                            <summary>
-                                <span class="merchant-summary-name">{{ category.name }} <small>({{ category.count }})</small></span>
-                                <strong>£{{ '%.2f'|format(category.amount) }}</strong>
-                            </summary>
-                            <div class="bar-track" role="img" aria-label="{{ category.name }} income £{{ '%.2f'|format(category.amount) }}"><div class="bar-fill" style="width:{{ category.percent }}%"></div></div>
-                            <div class="merchant-payments">
-                                {% for payment in category.payments %}
-                                    <div class="merchant-payment"><span><time datetime="{{ payment.date.isoformat() }}">{{ payment.date.strftime('%d %b') }}</time> · {{ payment.name }}</span><strong>£{{ '%.2f'|format(payment.amount) }}</strong></div>
-                                {% endfor %}
-                            </div>
-                        </details>
-                    {% endfor %}
-                </div>
-            {% else %}<p>No incoming bank payments found in the last 30 days.</p>{% endif %}
-        </section></details>
-        <details class="section-disclosure"><summary>Outgoings · {{ month.label }}</summary><section id="month-payments" aria-labelledby="month-payments-title">
-            <p class="eyebrow">Calendar month</p>
-            <h2 id="month-payments-title">Outgoings · {{ month.label }}</h2>
-            <p class="amount-headline">£{{ '%.2f'|format(month.total) }}</p>
-            <p class="muted">{{ month.count }} bank payments across {{ month.merchants|length }} merchants, from the connected accounts. Income, refunds, transfers and card repayments are excluded. Identical repeat purchases remain separate unless they share a bank transaction ID.</p>
-            {% if month.merchants %}
-                <div class="merchant-list">
-                    {% for merchant in month.merchants %}
-                        <details class="merchant-group">
-                            <summary>
-                                <span class="merchant-summary-name">{{ merchant.name }} <small>({{ merchant.count }})</small></span>
-                                <strong>£{{ '%.2f'|format(merchant.amount) }}</strong>
-                            </summary>
-                            <div class="merchant-payments">
-                                {% for payment in merchant.payments %}
-                                    <div class="merchant-payment">
-                                        <span><time datetime="{{ payment.date.isoformat() }}">{{ payment.date.strftime('%d %b') }}</time> · {{ payment.description }}</span>
-                                        <strong>£{{ '%.2f'|format(payment.amount) }}</strong>
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        </details>
-                    {% endfor %}
-                </div>
-            {% else %}<p>No payments found for this month.</p>{% endif %}
-        </section></details>
-        <details class="section-disclosure"><summary>Monthly commitments</summary><section aria-labelledby="commitment-chart-title">
-            <p class="eyebrow">This month</p>
-            <h2 id="commitment-chart-title">Monthly commitments</h2>
-            {% if charts.commitments.total > 0 %}
-                <figure class="chart-figure">
-                    <div class="stacked-bar" role="img" aria-label="Paid £{{ '%.2f'|format(charts.commitments.paid) }}; needs checking £{{ '%.2f'|format(charts.commitments.due) }}">
-                        {% if charts.commitments.paid > 0 %}<span class="stack-paid" style="width:{{ charts.commitments.paid_percent }}%"></span>{% endif %}
-                        {% if charts.commitments.due > 0 %}<span class="stack-due" style="width:{{ charts.commitments.due_percent }}%"></span>{% endif %}
-                    </div>
-                    <figcaption class="legend">
-                        <span><i class="legend-swatch paid"></i>Paid £{{ '%.2f'|format(charts.commitments.paid) }}</span>
-                        <span><i class="legend-swatch due"></i>Needs checking £{{ '%.2f'|format(charts.commitments.due) }}</span>
-                    </figcaption>
-                </figure>
-                <p class="muted">Total scheduled: £{{ '%.2f'|format(charts.commitments.total) }}. A missing bank match does not prove a payment is unpaid.</p>
-            {% else %}<p>No monthly commitments to chart.</p>{% endif %}
-        </section></details>
-        <details class="section-disclosure"><summary>Spending by category</summary><section aria-labelledby="spending-chart-title">
-            <p class="eyebrow">Last 30 days</p>
-            <h2 id="spending-chart-title">Spending by category</h2>
-            {% if charts.categories %}
-                <p class="muted">Total £{{ '%.2f'|format(charts.spending_total) }} · Bars scale to the largest category. Transfers, income, refunds and duplicate transactions are excluded.</p>
-                <figure class="chart-figure">
-                    {% for category in charts.categories %}
-                        <div class="category-row">
-                            <div class="chart-label"><span>{{ category.name|title }}</span><strong>£{{ '%.2f'|format(category.amount) }}</strong></div>
-                            <div class="bar-track" role="img" aria-label="{{ category.name|title }} spending £{{ '%.2f'|format(category.amount) }}">
-                                <div class="bar-fill" style="width:{{ category.percent }}%"></div>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </figure>
-            {% else %}<p>No recent spending transactions to chart.</p>{% endif %}
-        </section></details>
-        <details class="section-disclosure"><summary>Weekly spending</summary><section aria-labelledby="weekly-chart-title">
-            <p class="eyebrow">Last four weeks</p>
-            <h2 id="weekly-chart-title">Weekly spending</h2>
-            <p class="muted">Each bar covers seven consecutive days. The most recent bar ends today; a short bar can mean transactions have not arrived yet.</p>
-            {% if charts.weekly_total > 0 %}
-                <figure class="chart-figure">
-                    <div class="weekly-chart">
-                        {% for week in charts.weeks %}
-                            <div class="weekly-column">
-                                <strong>£{{ '%.2f'|format(week.amount) }}</strong>
-                                <div class="weekly-track" role="img" aria-label="{{ week.label }}: £{{ '%.2f'|format(week.amount) }}">
-                                    <div class="weekly-fill" style="height:{{ week.percent }}%"></div>
-                                </div>
-                                <small>{{ week.label }}</small>
-                            </div>
-                        {% endfor %}
-                    </div>
-                </figure>
-            {% else %}<p>No recent transactions to chart.</p>{% endif %}
-        </section></details>
-        <details class="section-disclosure"><summary>Annual subscriptions</summary><section aria-labelledby="annual-title">
-            <p class="eyebrow">Renewals</p>
-            <h2 id="annual-title">Annual subscriptions</h2>
-            <p class="muted">Shown separately from monthly commitments. A last recorded payment is history, not proof that the current renewal was paid.</p>
-            {% for item in annual %}
-                <div class="review-row">
-                    <div class="review-head"><strong>{{ item.name }}</strong><strong>£{{ '%.2f'|format(item.amount) }} / year</strong></div>
-                    <p>Next renewal: {% if item.next_renewal %}<time datetime="{{ item.next_renewal.isoformat() }}">{{ item.next_renewal.strftime('%d %b %Y') }}</time>{% else %}add a renewal date{% endif %}</p>
-                    {% if item.bank_paid_date %}
-                        <p><span class="badge paid">Bank matched {{ item.bank_paid_date.strftime('%d %b %Y') }}</span></p>
-                    {% else %}
-                        <p><span class="badge">Payment unverified</span></p>
-                    {% endif %}
-                    {% if item.last_paid_date %}<small>Last recorded payment: {{ item.last_paid_date.strftime('%d %b %Y') }}</small>{% endif %}
-                </div>
-            {% else %}<p>No annual subscriptions configured. Add them on the home page.</p>{% endfor %}
-        </section></details>
-        <details class="section-disclosure"><summary>Payment matches</summary><section>
-            <h2>Payment matches</h2>
-            <p class="muted">A due entry means no matching bank transaction was found; check it before treating it as unpaid.</p>
-            {% for row in rows %}
-                <div class="review-row">
-                    <div class="review-head"><strong>{{ row.item.name }}</strong><strong>£{{ '%.2f'|format(row.item.amount) }}</strong></div>
-                    <p><span class="badge {{ 'paid' if row.transaction else 'due' }}">{{ 'Paid' if row.transaction else 'Needs checking' }}</span> <span class="muted">{{ row.item.category|title }}</span></p>
-                    {% if row.item.end_date %}<p class="muted">Contract ends {{ row.item.end_date }}</p>{% endif %}
-                    {% if row.transaction %}
-                        <small>{{ row.method }} · {{ (row.transaction.timestamp or row.transaction.transaction_date or row.transaction.date or '')[:10] }} · {{ row.transaction.merchant_name or row.transaction.description or 'Bank transaction' }}</small>
-                    {% elif row.item.category == 'repayment' %}
-                        <small>{% if row.item.next_payment %}Expected payment day: {{ row.item.next_payment }}{% else %}Add a next payment date to enable date-and-amount matching.{% endif %}</small>
-                    {% endif %}
-                </div>
-            {% else %}<p>No monthly commitments configured.</p>{% endfor %}
-        </section></details>
-        {% if ended_contracts %}
-            <details class="section-disclosure"><summary>Ended contracts</summary><section aria-labelledby="ended-contracts-title">
-                <h2 id="ended-contracts-title">Ended contracts</h2>
-                <p class="muted">These remain editable on the home page, but are excluded from this month's commitments after their final contract month.</p>
-                {% for item in ended_contracts %}
-                    <div class="review-row"><div class="review-head"><strong>{{ item.name }}</strong><strong>£{{ '%.2f'|format(item.amount) }} / month</strong></div><small>Ended {{ item.end_date }}</small></div>
-                {% endfor %}
-            </section></details>
-        {% endif %}
+{% endif %}
+<div class="finance-group" id="finance-savings"><div class="finance-section-heading"><div><p class="eyebrow">Build your longer-term picture</p><h2>Savings & investments</h2></div><a class="button" href="{{ url_for('savings_review') }}">Manage balances</a></div>
+    {% if bonds_summary and (bonds_summary.prizes or bonds_summary.balances) %}
+    <section aria-label="Premium Bonds winnings summary"><h2>Premium Bonds · {{ bonds_summary.year }}</h2><div class="flow-totals"><div><span>Recorded winnings</span><strong>£{{ '%.2f'|format(bonds_summary.total) }}</strong></div><div><span>Recorded period return</span><strong>{{ '%.2f%%'|format(bonds_summary.percent) if bonds_summary.percent is not none else 'Add dated balance' }}</strong></div></div><p class="muted">{% if bonds_summary.start %}Return covers {{ bonds_summary.start.strftime('%d %b') }}–{{ bonds_summary.end.strftime('%d %b %Y') }}, using £{{ '%.2f'|format(bonds_summary.period_total) }} in prizes and £{{ '%.2f'|format(bonds_summary.average) }} average holdings.{% endif %} {{ 'Prize coverage confirmed through this period.' if bonds_summary.complete else 'Prize history may be incomplete.' }}</p></section>
     {% endif %}
-</main>
-</body>
-</html>
+<details class="section-disclosure"><summary>Savings & investment history</summary>{% include "wealth_section.html" %}</details><p><a class="button" href="{{ url_for('premium_bonds_page') }}">Premium Bonds winnings & return</a></p></div>
+</main></body></html>
