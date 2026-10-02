@@ -8,7 +8,7 @@ import sys
 from tempfile import TemporaryDirectory
 from types import ModuleType, SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from receipt import printer as connection
 from receipt.live_preview import VirtualPrinter
@@ -21,9 +21,12 @@ class PrinterConnectionTests(unittest.TestCase):
         escpos = ModuleType("escpos")
         escpos.__path__ = []
         escpos_printer = ModuleType("escpos.printer")
-        escpos_printer.Network = lambda *args, **kw: self.network.append((args, kw)) or object()
+        self.device = Mock()
+        escpos_printer.Network = lambda *args, **kw: self.network.append((args, kw)) or self.device
         escpos_printer.Usb = lambda *args, **kw: self.usb.append((args, kw)) or object()
-        self.modules = patch.dict(sys.modules, {"escpos": escpos, "escpos.printer": escpos_printer})
+        exceptions = ModuleType("escpos.exceptions")
+        exceptions.DeviceNotFoundError = type("DeviceNotFoundError", (Exception,), {})
+        self.modules = patch.dict(sys.modules, {"escpos": escpos, "escpos.printer": escpos_printer, "escpos.exceptions": exceptions})
         self.modules.start()
         self.env = patch.dict(os.environ, {}, clear=True)
         self.env.start()
@@ -43,6 +46,18 @@ class PrinterConnectionTests(unittest.TestCase):
         os.environ["RECEIPT_PRINTER_CONNECTION"] = "usb"
         connection.open_printer()
         self.assertEqual(self.usb, [((0x0416, 0x5011), {})])
+
+    def test_network_timeout_has_actionable_error_and_closes_device(self):
+        self.device.open.side_effect = TimeoutError("timed out")
+        with self.assertRaisesRegex(connection.PrinterConnectionError, "192.168.0.220:9100") as caught:
+            connection.open_printer()
+        self.assertIn("--live-preview", str(caught.exception))
+        self.device.close.assert_called_once()
+        self.assertFalse(self.usb)
+
+    def test_network_connects_before_returning(self):
+        self.assertIs(connection.open_printer(), self.device)
+        self.device.open.assert_called_once_with()
 
     def test_main_receipt_uses_network_factory_and_restores_pipeline(self):
         original_usb = object()

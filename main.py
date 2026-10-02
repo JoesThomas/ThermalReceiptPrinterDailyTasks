@@ -96,11 +96,15 @@ def main():
 
     logger.info("Launching modular live receipt pipeline.")
     from app import run_live
-    run_live(
-        finance_requested=args.finance,
-        only_page=args.only,
-        live_preview=args.live_preview,
-    )
+    from receipt.printer import PrinterConnectionError
+    try:
+        run_live(
+            finance_requested=args.finance,
+            only_page=args.only,
+            live_preview=args.live_preview,
+        )
+    except PrinterConnectionError as error:
+        raise SystemExit(str(error)) from None
 
 
 if __name__ == "__main__":
