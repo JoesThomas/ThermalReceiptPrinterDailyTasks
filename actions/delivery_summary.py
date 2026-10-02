@@ -16,7 +16,7 @@ def references(subject, body):
 
 def item_title(delivery):
     title = str(delivery.get('event_title') or delivery.get('subject') or '')
-    title = re.sub(r"^(?:ordered|dispatched|shipped|arriving|delivered)\s*:\s*", '', title, flags=re.I)
+    title = re.sub(r"^(?:out for delivery|ordered|dispatched|shipped|arriving(?: today)?|delivered)\s*:\s*", '', title, flags=re.I)
     title = re.sub(r'\s+', ' ', title).strip()
     title = re.sub(r"^(\d+)\s+['\"]", r'\1 x ', title).strip("'\" ")
     return title
@@ -38,11 +38,18 @@ def consolidate(deliveries):
     for delivery in deliveries:
         key = identity(delivery)
         title = str(delivery.get('event_title') or '').lower()
-        rank = next((score for word, score in [('delivered', 4), ('arriving', 3),
+        rank = next((score for word, score in [('delivered', 5), ('out for delivery', 4), ('arriving', 3),
                     ('dispatched', 2), ('shipped', 2), ('ordered', 1)] if title.startswith(word)), 0)
+        rank = (rank, bool(delivery.get('time_from') or delivery.get('time_to')))
         if key not in rows or rank > rows[key][0]:
             rows[key] = (rank, delivery)
-    return [row for _, row in rows.values()]
+    selected = [row for _, row in rows.values()]
+    # A generic order update is superseded by item-specific tracking updates.
+    # Distinct tracking references remain separate for split parcels.
+    tracked = {(str(row.get('carrier') or '').upper(), row['order_ref'], item_title(row).casefold())
+               for row in selected if row.get('tracking_ref') and row.get('order_ref')}
+    return [row for row in selected if row.get('tracking_ref') or
+            (str(row.get('carrier') or '').upper(), row.get('order_ref'), item_title(row).casefold()) not in tracked]
 
 
 def summary_lines(deliveries, carrier, expected):

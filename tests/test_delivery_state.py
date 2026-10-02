@@ -73,3 +73,23 @@ class DeliveryChecklistTests(unittest.TestCase):
             self.assertTrue(state.checklist()[0]['confirmed'])
             client.post('/deliveries/confirm', data={'id': key, 'confirmed': '0'})
             self.assertFalse(state.checklist()[0]['confirmed'])
+
+    def test_out_for_delivery_replaces_dispatch_and_keeps_window(self):
+        from actions.delivery_summary import consolidate
+        dispatched = notice('Dispatched')
+        out = notice('Out for delivery')
+        out.update(time_from='11:30', time_to='13:45')
+        for rows in ([dispatched, out], [out, dispatched], [notice('Out for delivery'), out], [out, notice('Out for delivery')]):
+            self.assertEqual(consolidate(rows), [out])
+            lines = summary_lines(rows, lambda r: r['carrier'],
+                                  lambda r: 'Expected 11:30-13:45' if r.get('time_from') else 'Expected today')
+            self.assertIn('Expected 11:30-13:45', lines)
+            self.assertEqual(sum('[ ]' in line for line in lines), 1)
+            self.assertNotIn('Out for delivery:', '\n'.join(lines))
+
+    def test_tracking_update_supersedes_generic_notice_keeps_split_parcels(self):
+        from actions.delivery_summary import consolidate
+        generic = notice('Dispatched')
+        first = notice('Out for delivery'); first['tracking_ref'] = 'TBA123456789'
+        second = notice('Out for delivery'); second['tracking_ref'] = 'TBA987654321'
+        self.assertEqual(consolidate([generic, first, second]), [first, second])
