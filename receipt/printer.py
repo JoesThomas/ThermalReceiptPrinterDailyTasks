@@ -19,7 +19,13 @@ def open_printer():
 
     connection = os.getenv("RECEIPT_PRINTER_CONNECTION", "network").strip().lower()
     if connection == "usb":
-        return Usb(USB_VENDOR_ID, USB_PRODUCT_ID)
+        printer = Usb(USB_VENDOR_ID, USB_PRODUCT_ID)
+        try:
+            printer.cut()
+        except Exception:
+            printer.close()
+            raise
+        return printer
     if connection == "network":
         host = os.getenv("RECEIPT_PRINTER_HOST", DEFAULT_NETWORK_HOST).strip()
         port = int(os.getenv("RECEIPT_PRINTER_PORT", str(DEFAULT_NETWORK_PORT)))
@@ -29,6 +35,8 @@ def open_printer():
         try:
             # Connect before receipt generation; Network otherwise connects lazily.
             printer.open()
+            # Separate leftover paper before any new receipt is sent.
+            printer.cut()
         except (OSError, DeviceNotFoundError) as error:
             printer.close()
             raise PrinterConnectionError(

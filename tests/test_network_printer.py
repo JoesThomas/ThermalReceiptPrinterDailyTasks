@@ -23,7 +23,7 @@ class PrinterConnectionTests(unittest.TestCase):
         escpos_printer = ModuleType("escpos.printer")
         self.device = Mock()
         escpos_printer.Network = lambda *args, **kw: self.network.append((args, kw)) or self.device
-        escpos_printer.Usb = lambda *args, **kw: self.usb.append((args, kw)) or object()
+        escpos_printer.Usb = lambda *args, **kw: self.usb.append((args, kw)) or Mock()
         exceptions = ModuleType("escpos.exceptions")
         exceptions.DeviceNotFoundError = type("DeviceNotFoundError", (Exception,), {})
         self.modules = patch.dict(sys.modules, {"escpos": escpos, "escpos.printer": escpos_printer, "escpos.exceptions": exceptions})
@@ -58,6 +58,8 @@ class PrinterConnectionTests(unittest.TestCase):
     def test_network_connects_before_returning(self):
         self.assertIs(connection.open_printer(), self.device)
         self.device.open.assert_called_once_with()
+        self.device.cut.assert_called_once_with()
+        self.assertEqual([call[0] for call in self.device.mock_calls], ['open', 'cut'])
 
     def test_main_receipt_uses_network_factory_and_restores_pipeline(self):
         original_usb = object()
