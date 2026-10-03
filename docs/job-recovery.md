@@ -9,3 +9,5 @@ The Receipt navigation opens the latest preview. Receipt options edits what will
 Print and preview logs include UTC timestamps, job IDs and section changes. Local receipt timestamps continue to use Europe/London. Progress counts completed sections rather than estimating remaining time.
 
 These safeguards apply to jobs started after updating. An existing old worker may still require cancellation. Direct terminal invocations of main.py are outside the web supervisor. The process-group cleanup targets macOS and Linux; run one Receipt Control server process, as the start mutex is process-local. Graceful web-server restarts do not remove a running job's timeout supervisor.
+
+Daily print time is editable under Settings → Printer, and automatic printing can be disabled. The dashboard shows the next run. Schedule changes are picked up within 30 seconds; selecting a time already passed schedules tomorrow. The first occurrence is used when a local time repeats in autumn; a nonexistent spring time advances to the next valid minute. The date marker still allows only one launch per local day, even after changing the time.

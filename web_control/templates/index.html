@@ -257,7 +257,7 @@
         <p class="eyebrow">At a glance</p>
         <h2>Make room for the day</h2>
         <div class="dashboard-stats">
-            <div><span>Next scheduled print</span><strong>{{ scheduled_at.strftime('%H:%M') }}</strong><small>{{ scheduled_at.strftime('%a %d %b · %Z') }} · while the server runs</small></div>
+            <div><span>Next scheduled print</span><strong>{{ scheduled_at.strftime('%H:%M') if scheduled_at else 'Off' }}</strong><small>{% if scheduled_at %}{{ scheduled_at.strftime('%a %d %b · %Z') }} · while the server runs{% else %}Automatic printing is disabled{% endif %} · <a href="{{ url_for('index',view='settings') }}#printing">Change time</a></small></div>
             <div><span>Receipt location</span><strong>{{ settings.location.name }}</strong><small>{{ settings.location.region }}</small></div>
             <div><span>Daily routines</span><strong>{{ routines|length }}</strong><small><a href="{{ url_for('index',view='tasks') }}">Manage your routines</a></small></div>
         </div>
@@ -277,7 +277,7 @@
             {% endif %}
         </div>
         {% if print_status and print_status.state in ('failed','interrupted','timed_out','cancelled') %}
-            <p class="helper">{{ "The job reached the 10-minute limit." if print_status.state == "timed_out" else "The job was cancelled." if print_status.state == "cancelled" else "The job did not finish." }} Check the receipt before printing again, as it may be partly printed. <a href="{{ url_for('preview') }}">Open receipt</a>.</p><form method="post" action="{{ url_for('print_now') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Retry print</button></form>
+            <p class="helper">{{ "The job reached the 10-minute limit." if print_status.state == "timed_out" else "The job was cancelled." if print_status.state == "cancelled" else "The job did not finish." }} Last step: {{ print_status.stage or 'unavailable' }}. Check the receipt before printing again, as it may be partly printed. <a href="{{ url_for('preview') }}">Open receipt</a>.</p><form method="post" action="{{ url_for('print_now') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Retry print</button></form>
         {% endif %}
     </section>
 
@@ -1180,6 +1180,15 @@
     <section id="printing">
 
         <h2>Printer</h2>
+        <form method="post" action="{{ url_for('save_print_schedule') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <h3>Daily automatic print</h3>
+            <label><input type="checkbox" name="enabled" {% if settings.print_schedule.enabled %}checked{% endif %}> Enable daily printing</label>
+            <label>Print time <input type="time" name="time" value="{{ settings.print_schedule.time }}" required></label>
+            <p class="muted">Europe/London time, including daylight saving. The server and computer must be running. At most one scheduled job is launched each day; failures are not automatically reprinted.</p>
+            <button>Save print schedule</button>
+        </form>
+
 
         <form
             method="post"

@@ -25,6 +25,15 @@ with tempfile.TemporaryDirectory() as folder,patch.object(web,'PROJECT_ROOT',Pat
  with web.app.test_client() as client:
   with client.session_transaction() as session:
    session['authenticated']=True;session['csrf_token']='test'
+  from copy import deepcopy
+  from receipt_settings import DEFAULT_SETTINGS
+  with patch.object(web,'load_receipt_settings',return_value=deepcopy(DEFAULT_SETTINGS)),patch.object(web,'save_receipt_settings') as save:
+   assert client.post('/settings/print-schedule',data={'csrf_token':'test','time':'08:45','enabled':'on'}).status_code==302
+   assert save.call_args.args[0]['print_schedule']=={'enabled':True,'time':'08:45'}
+   save.reset_mock()
+   assert client.post('/settings/print-schedule',data={'csrf_token':'test','time':'25:00'}).status_code==302
+   save.assert_not_called()
+   assert client.post('/settings/print-schedule',data={'time':'08:45'}).status_code==403
   assert client.get('/jobs/status').status_code==200
   assert client.post('/jobs/cancel',data={'kind':'print'}).status_code==403
   assert client.get('/deliveries').status_code==200

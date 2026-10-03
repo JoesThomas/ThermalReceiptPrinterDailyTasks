@@ -8,6 +8,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 SETTINGS_FILE = PROJECT_ROOT / "data" / "receipt_settings.json"
 
 DEFAULT_SETTINGS = {
+    "print_schedule": {"enabled": True, "time": "03:00"},
     "location": DEFAULT_LOCATION,
     "features": {"calendar": True, "deliveries": True, "weather": True, "national_news": True, "local_news": True, "sport_news": True, "villa": True, "villa_trains": True},
     "one_shot": {"finance_check": False, "food_shop": False, "shopping_list": False, "to_buy": False, "future_tasks": False},

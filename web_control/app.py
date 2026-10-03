@@ -395,7 +395,6 @@ def index():
     if active_view not in {"dashboard", "receipt", "tasks", "accounts", "settings"}:
         active_view = "dashboard"
     from web_control.scheduled_print import next_print_time
-    scheduled_at = next_print_time(datetime.now(ZoneInfo("Europe/London")))
     status = load_print_status()
     last_print_local = None
     if status and status.get("updated_at"):
@@ -407,6 +406,7 @@ def index():
         except (ValueError, TypeError):
             pass
     settings = load_receipt_settings()
+    scheduled_at = next_print_time(datetime.now(ZoneInfo("Europe/London")), settings)
     from services.local_gigs import options as gig_options
     settings["features"]["local_gigs"] = gig_options()["enabled"]
     routines = load_routines()
@@ -445,6 +445,20 @@ def index():
     )
 
 def _checked(name): return request.form.get(name) == "on"
+
+@app.post('/settings/print-schedule')
+@login_required
+def save_print_schedule():
+    import re
+    value = request.form.get('time', '')
+    if not re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d', value):
+        flash('Choose a valid daily print time.')
+        return redirect(url_for('index', view='settings'))
+    settings = load_receipt_settings()
+    settings['print_schedule'] = {'enabled': _checked('enabled'), 'time': value}
+    save_receipt_settings(settings)
+    flash('Daily print schedule saved. Changes take effect within 30 seconds.')
+    return redirect(url_for('index', view='settings'))
 
 @app.post("/save")
 @login_required

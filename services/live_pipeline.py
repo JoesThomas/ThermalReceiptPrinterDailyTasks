@@ -8795,6 +8795,7 @@ def run_live_pipeline(
             "Checking vehicle MOT/tax..."
         )
 
+        preview_progress("Checking vehicle MOT/tax", 1, 5)
         print_vehicle_expiry_checks(
             printer,
             vehicles,

@@ -1,4 +1,4 @@
-"""Print the full receipt once a day at 03:00 in the UK while Waitress runs."""
+"""Print once a day at the configured UK time while Waitress runs."""
 from __future__ import annotations
 
 import logging
@@ -13,11 +13,37 @@ UK = ZoneInfo("Europe/London")
 LOG = logging.getLogger(__name__)
 
 
-def next_print_time(now):
+def schedule_options(settings=None):
+    from receipt_settings import load_receipt_settings
+    config = (settings if settings is not None else load_receipt_settings()).get('print_schedule', {})
+    if not isinstance(config, dict):
+        config = {}
+    try:
+        hour, minute = map(int, config.get('time', '03:00').split(':'))
+        time(hour, minute)
+    except (AttributeError, TypeError, ValueError):
+        hour, minute = 3, 0
+    return bool(config.get('enabled', True)), hour, minute
+
+
+def _local_run(day, hour, minute):
+    # Choose the first occurrence when clocks repeat; move to the first valid
+    # minute when the configured time falls in the spring clock-change gap.
+    from datetime import timezone
+    candidate = datetime.combine(day, time(hour, minute), tzinfo=UK)
+    while candidate.astimezone(timezone.utc).astimezone(UK).replace(tzinfo=None) != candidate.replace(tzinfo=None):
+        candidate += timedelta(minutes=1)
+    return candidate
+
+
+def next_print_time(now, settings=None):
+    enabled, hour, minute = schedule_options(settings)
+    if not enabled:
+        return None
     local = now.astimezone(UK)
-    candidate = datetime.combine(local.date(), time(3), tzinfo=UK)
-    if local >= candidate:
-        candidate = datetime.combine(local.date() + timedelta(days=1), time(3), tzinfo=UK)
+    candidate = _local_run(local.date(), hour, minute)
+    if local.timestamp() >= candidate.timestamp():
+        candidate = _local_run(local.date() + timedelta(days=1), hour, minute)
     return candidate
 
 
@@ -42,24 +68,28 @@ def print_once(today, start_print, marker=LAST_PRINT_DATE):
 
 def schedule_loop(start_print, stop, now_fn=None, marker=LAST_PRINT_DATE):
     now_fn = now_fn or (lambda: datetime.now(UK))
+    signature, due, retry_at = None, None, 0
     while not stop.is_set():
-        due = next_print_time(now_fn())
-        # Recheck the clock regularly, including across daylight saving changes.
-        while not stop.is_set():
-            remaining = (due.timestamp() - now_fn().timestamp())
-            if remaining <= 0:
-                break
-            stop.wait(min(remaining, 60))
-        if stop.is_set():
-            return
-        today = due.date()
-        while not stop.is_set() and now_fn().astimezone(UK).date() == today:
-            try:
-                if print_once(today, start_print, marker):
-                    break
-            except Exception:
-                LOG.exception("Scheduled receipt could not start")
-            stop.wait(5 * 60)
+        now = now_fn()
+        config = schedule_options()
+        if config != signature:
+            signature = config
+            due = next_print_time(now)
+            retry_at = 0
+        if due is not None and now.timestamp() >= due.timestamp():
+            if now.astimezone(UK).date() != due.date():
+                due = next_print_time(now)
+            elif now.timestamp() >= retry_at:
+                try:
+                    launched = print_once(due.date(), start_print, marker)
+                except Exception:
+                    LOG.exception('Scheduled receipt could not start')
+                    launched = False
+                if launched:
+                    due = next_print_time(now)
+                else:
+                    retry_at = now.timestamp() + 300
+        stop.wait(30)
 
 
 def start_scheduler(start_print):
