@@ -34,6 +34,16 @@ with tempfile.TemporaryDirectory() as folder,patch.object(web,'PROJECT_ROOT',Pat
    assert client.post('/settings/print-schedule',data={'csrf_token':'test','time':'25:00'}).status_code==302
    save.assert_not_called()
    assert client.post('/settings/print-schedule',data={'time':'08:45'}).status_code==403
+  from actions import checklists
+  with patch.object(checklists,'FILE',root/'data'/'daily_lists.json'):
+   assert client.get('/tasks').status_code==200
+   assert client.get('/exercises').status_code==200
+   assert client.post('/lists/tasks/update',data={'action':'add','title':'Test'}).status_code==403
+   assert client.post('/lists/tasks/update',data={'csrf_token':'test','action':'add','title':'Test task'}).status_code==302
+   item=checklists.rows('tasks')[0]
+   assert client.post('/lists/tasks/update',data={'csrf_token':'test','action':'toggle','id':item['id']}).status_code==302
+   assert checklists.rows('tasks')[0]['completed']
+   response=client.get('/tasks');assert b'Test task' in response.data
   assert client.get('/jobs/status').status_code==200
   assert client.post('/jobs/cancel',data={'kind':'print'}).status_code==403
   assert client.get('/deliveries').status_code==200

@@ -1390,5 +1390,8 @@ register_deliveries(app, login_required)
 from web_control.job_controls import register as register_job_controls
 register_job_controls(app, login_required, PROJECT_ROOT, load_print_status, load_live_preview_status)
 
+from web_control.task_tools import register as register_task_tools
+register_task_tools(app, login_required)
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

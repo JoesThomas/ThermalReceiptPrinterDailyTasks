@@ -8290,16 +8290,14 @@ def print_random_document_lines(printer, text):
     printer.set(bold=False)
     print_line(printer, "-")
 
-    # .split() breaks the selected text into
-    # individual exercises.
-    words = get_random_lines(RANDOM_LINES).split()
-
-    for word in words:
-        print_wrapped(
-            printer,
-            f"[ ] {printer_safe_text(word)}",
-            width=40,
-        )
+    from actions.checklists import sync, exercise_plan
+    sync(text, 'exercises')
+    selected = exercise_plan(RANDOM_LINES)
+    pending = [row for row in selected if not row['completed']]
+    for row in pending:
+        print_wrapped(printer, f"[ ] {printer_safe_text(row['title'])}", width=40)
+    if not pending:
+        left(printer, "TODAY'S EXERCISES COMPLETE" if selected else "NO EXERCISES LISTED")
 
 BORING_WEATHER_CODES = {0, 1, 2, 3}
 
@@ -8910,6 +8908,8 @@ def run_live_pipeline(
                 )
             )
 
+            from actions.checklists import task_text
+            document_1 = task_text(document_1)
             print_google_doc(
                 printer,
                 document_1,
