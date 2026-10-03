@@ -617,7 +617,7 @@ def get_gmail_delivery_emails():
     mailbox = None
 
     try:
-        mailbox = imaplib.IMAP4_SSL(GMAIL_IMAP_HOST)
+        mailbox = imaplib.IMAP4_SSL(GMAIL_IMAP_HOST, timeout=15)
 
         mailbox.login(
             GMAIL_ADDRESS,
