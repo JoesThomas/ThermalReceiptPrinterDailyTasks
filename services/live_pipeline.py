@@ -6505,6 +6505,8 @@ def get_regular_finance_data():
             source_coverage.append({'provider':provider,'source':'Connection','status':'Unavailable','count':None})
 
     # Bank accounts: transactions, DDs and standing orders.
+    from finance.transaction_sources import load as load_source_settings, select as select_sources
+    source_settings=load_source_settings()
     for provider in ("HSBC", "MONZO"):
         access_token = provider_tokens.get(
             provider
@@ -6523,7 +6525,11 @@ def get_regular_finance_data():
         if not account_ids:
             fetch_failed += 1
             source_coverage.append({'provider':provider,'source':'Account list','status':'No accounts returned','count':0})
-        for source_number,account_id in enumerate(account_ids,1):
+        included_ids=select_sources(provider,account_ids,source_settings)
+        if len(included_ids)<len(account_ids):
+            source_coverage.append({'provider':provider,'source':f'{len(account_ids)-len(included_ids)} other accounts',
+                                    'status':'Disabled by first-account setting','count':None})
+        for source_number,account_id in enumerate(included_ids,1):
             try:
                 dd_items = _truelayer_regular_payments(
                     access_token,
@@ -7975,7 +7981,8 @@ def therapy_paid_recently(settings, today):
     try:
         token = _refresh_truelayer_access_token(
             provider, _initial_truelayer_refresh_token(provider))
-        account_ids = _truelayer_account_ids(token)
+        from finance.transaction_sources import select as select_sources
+        account_ids = select_sources(provider, _truelayer_account_ids(token))
     except Exception as error:
         print("Therapy payment check unavailable:", type(error).__name__)
         return False

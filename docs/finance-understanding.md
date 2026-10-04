@@ -17,3 +17,5 @@ Opening Finance saves the latest observation for the current month in private `d
 Verification uses mock bank data and temporary private files; it does not contact banks or the printer.
 
 Amazon shopping is excluded from the automatic daily variable-spending estimate used for runway and salary savings planning. Actual purchase totals and spending since salary still include it. Scheduled Amazon repayments remain commitments. A manual daily spending estimate overrides the automatic estimate. Future discretionary Amazon purchases are not budgeted by this exclusion.
+
+Monzo transaction collection defaults to the first account returned by TrueLayer. Under Choose cash accounts, the separate Monzo transaction-source setting can restore all connected accounts. This also limits direct-debit and standing-order collection, while HSBC and Amex remain unchanged. Disabled accounts do not contribute to income or spending totals; coverage describes enabled sources only. Cash balance selection remains separate. The first returned account is a provider ordering, not a verified account identity, and may change after reconnecting.

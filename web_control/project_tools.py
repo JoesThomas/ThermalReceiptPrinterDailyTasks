@@ -38,7 +38,20 @@ def register(app,login_required):
             provider=row['provider']
             row['included']=row['id'] in selected[provider] if provider in selected else provider not in seen
             seen.add(provider)
-        return render_template('cash_accounts.html',accounts=accounts,checked=state.get('checked_at'),error=error)
+        from finance.transaction_sources import load as source_settings
+        try: scope=source_settings()['monzo']
+        except (ValueError,TypeError,OSError): scope='invalid'
+        return render_template('cash_accounts.html',accounts=accounts,checked=state.get('checked_at'),error=error,monzo_scope=scope)
+
+    @app.post('/finance/transaction-sources')
+    @login_required
+    def save_transaction_sources():
+        from finance.transaction_sources import save
+        try:
+            save(request.form.get('monzo',''))
+            flash('Monzo transaction scope saved privately. Refresh Finance or generate a receipt to apply it.')
+        except (ValueError,TypeError,OSError): flash('Choose first account or all accounts.')
+        return redirect(url_for('cash_accounts'))
 
     @app.post('/finance/accounts')
     @login_required

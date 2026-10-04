@@ -170,3 +170,5 @@ data/calendar_location_overrides.lock
 
 data/finance_planning.json
 data/finance_planning.lock
+
+data/transaction_sources.json

@@ -26,6 +26,7 @@
                 {% endfor %}
             {% endfor %}
             <h3>Bank data coverage</h3>
+            <p>Coverage applies to enabled transaction sources. Monzo defaults to its first returned account; disabled accounts are excluded from spending and income totals. Manage transaction sources under Choose cash accounts.</p>
             <p>
                 {{ bank_data_status|title }} transaction data · {{ insights.succeeded if insights.succeeded is not none else 'Unknown' }} successful fetches / {{ insights.attempted if insights.attempted is not none else 'unknown' }} attempted. Requested window: {{ insights.requested_from or 'Unknown' }} to {{ insights.requested_to or 'Unknown' }}.
             </p>
