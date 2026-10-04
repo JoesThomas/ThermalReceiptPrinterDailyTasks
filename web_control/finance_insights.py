@@ -74,7 +74,7 @@ def build(projection,balances,summary,month,income,wealth,goals,today):
     try: history=snapshots(snapshot);history_error=None
     except (ValueError,TypeError,OSError): history=[];history_error='Private monthly snapshots could not be updated.'
     accounts=[{'provider':provider,'value':money(balances.get(provider,{}).get('available',balances.get(provider,{}).get('current'))),
-               'currency':balances.get(provider,{}).get('currency','GBP')} for provider in ('HSBC','MONZO')]
+               'scope':balances.get(provider,{}).get('scope','First account (default)'), 'parts':balances.get(provider,{}).get('accounts',[]), 'currency':balances.get(provider,{}).get('currency','GBP')} for provider in ('HSBC','MONZO')]
     growth=[]
     for account in (wealth or {}).get('accounts',[]):
         goal=next((a for a in (goals or {}).get('accounts',[]) if a['name'].casefold()==account['name'].casefold() and a['kind']==account['kind']),{})

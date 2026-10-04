@@ -2314,7 +2314,8 @@ def get_calendar_events(ical_url, days_ahead=0):
     today = datetime.now(ZoneInfo('Europe/London')).date()
     if not isinstance(days_ahead, int) or not 0 <= days_ahead <= 31:
         raise ValueError('Calendar range must be 0–31 days')
-    return get('Calendar', f'{ical_url}|{today}|{days_ahead}', lambda: collect(ical_url, today, days_ahead))
+    from services.calendar_locations import apply
+    return apply(get('Calendar', f'{ical_url}|{today}|{days_ahead}', lambda: collect(ical_url, today, days_ahead)))
 
 
 # ============================================================
@@ -3636,139 +3637,19 @@ def _truelayer_get(access_token, endpoint):
 
 
 def _get_first_account_balance(access_token):
-    """
-    Return live balance data for the first bank account exposed by
-    this TrueLayer connection.
-    """
-    account_data = _truelayer_get(
-        access_token,
-        "/accounts",
-    )
-
-    accounts = account_data.get("results", [])
-
-    if not accounts:
-        raise RuntimeError(
-            "No bank account was returned by TrueLayer."
-        )
-
-    account_id = accounts[0].get("account_id")
-
-    if not account_id:
-        raise RuntimeError(
-            "TrueLayer account has no account_id."
-        )
-
-    balance_data = _truelayer_get(
-        access_token,
-        f"/accounts/{account_id}/balance",
-    )
-
-    balances = balance_data.get("results", [])
-
-    if not balances:
-        raise RuntimeError(
-            "TrueLayer returned no account balance."
-        )
-
-    return balances[0]
+    from finance.bank_accounts import first
+    return first(_truelayer_get,access_token,'accounts')
 
 
 def _get_first_card_balance(access_token):
-    """
-    Return live balance data for the first credit card exposed by
-    this TrueLayer connection.
-    """
-    card_data = _truelayer_get(
-        access_token,
-        "/cards",
-    )
-
-    cards = card_data.get("results", [])
-
-    if not cards:
-        raise RuntimeError(
-            "No credit card was returned by TrueLayer."
-        )
-
-    account_id = cards[0].get("account_id")
-
-    if not account_id:
-        raise RuntimeError(
-            "TrueLayer card has no account_id."
-        )
-
-    balance_data = _truelayer_get(
-        access_token,
-        f"/cards/{account_id}/balance",
-    )
-
-    balances = balance_data.get("results", [])
-
-    if not balances:
-        raise RuntimeError(
-            "TrueLayer returned no card balance."
-        )
-
-    return balances[0]
+    from finance.bank_accounts import first
+    return first(_truelayer_get,access_token,'cards')
 
 
 def get_account_balances():
-    """
-    Retrieve real HSBC, Monzo and American Express balances from
-    TrueLayer.
+    from finance.bank_accounts import collect
+    return collect(_refresh_truelayer_access_token,_initial_truelayer_refresh_token,_truelayer_get)
 
-    HSBC/Monzo use account balance endpoints.
-    American Express uses the credit-card balance endpoint.
-    """
-    hsbc_token = _refresh_truelayer_access_token(
-        "HSBC",
-        _initial_truelayer_refresh_token("HSBC"),
-    )
-    monzo_token = _refresh_truelayer_access_token(
-        "MONZO",
-        _initial_truelayer_refresh_token("MONZO"),
-    )
-    amex_token = _refresh_truelayer_access_token(
-        "AMEX",
-        _initial_truelayer_refresh_token("AMEX"),
-    )
-    hsbc = _get_first_account_balance(hsbc_token)
-    monzo = _get_first_account_balance(monzo_token)
-    amex = _get_first_card_balance(amex_token)
-
-    return {
-        "HSBC": {
-            "current": float(hsbc.get("current", 0.0)),
-            "available": float(
-                hsbc.get(
-                    "available",
-                    hsbc.get("current", 0.0),
-                )
-            ),
-            "currency": hsbc.get("currency", "GBP"),
-        },
-        "MONZO": {
-            "current": float(monzo.get("current", 0.0)),
-            "available": float(
-                monzo.get(
-                    "available",
-                    monzo.get("current", 0.0),
-                )
-            ),
-            "currency": monzo.get("currency", "GBP"),
-        },
-        "AMEX": {
-            # For TrueLayer card balances, current is expenditure /
-            # amount currently owed on the card.
-            "current": float(amex.get("current", 0.0)),
-            "available": float(amex.get("available", 0.0)),
-            "credit_limit": float(
-                amex.get("credit_limit", 0.0)
-            ),
-            "currency": amex.get("currency", "GBP"),
-        },
-    }
 
 def finance_quick_summary(
     snapshot,

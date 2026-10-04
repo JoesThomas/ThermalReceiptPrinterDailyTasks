@@ -83,7 +83,10 @@ def create(root=ROOT, *, force=False, now=None, settings=None):
 
 def loop(stop):
     while not stop.is_set():
-        try: create()
+        try:
+            create()
+            from web_control.backup_health import check
+            check(ROOT)
         except (OSError, ValueError): logging.getLogger(__name__).warning('Private backup unavailable; check local data and disk space.')
         stop.wait(60)
 

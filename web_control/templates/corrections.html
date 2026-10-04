@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Correct saved information</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <h1>Correct saved information</h1>
+            <p>
+                Use the editor for the item you want to correct. Saved local changes apply to future receipts; archived receipts keep their original contents.
+            </p>
+            <div class="setup-grid">
+                <section>
+                    <h2>Payments & merchants</h2>
+                    <p>Review categories directly beside a payment in Finance. A category edit does not verify that a bill was paid.</p>
+                    <a class="button" href="{{ url_for('finance_review') }}#month-payments">Open payments</a>
+                </section>
+                <section>
+                    <h2>Commitments</h2>
+                    <p>Correct amounts, matching words, payment dates and contract ends.</p>
+                    <a class="button"
+                       href="{{ url_for('index',view='accounts') }}#commitments">Edit commitments</a>
+                </section>
+                <section>
+                    <h2>Deliveries</h2>
+                    <p>Confirm receipt or undo a confirmation. Email-derived delivery dates remain tied to the source notice.</p>
+                    <a class="button" href="{{ url_for('delivery_checklist') }}">Review deliveries</a>
+                </section>
+                <section>
+                    <h2>Calendar locations</h2>
+                    <p>
+                        Correct the local map and receipt location beside an event, or restore the feed location. Date and time changes belong in your calendar.
+                    </p>
+                    <a class="button" href="{{ url_for('calendar_map') }}">Edit event locations</a>
+                </section>
+                <section>
+                    <h2>Savings & ISA records</h2>
+                    <a class="button" href="{{ url_for('savings_review') }}">Edit balances</a><a class="button" href="{{ url_for('savings_goals_page') }}">Edit ISA payments</a>
+                </section>
+                <section>
+                    <h2>Cash accounts</h2>
+                    <a class="button" href="{{ url_for('cash_accounts') }}">Choose included accounts</a>
+                </section>
+            </div>
+        </main>
+    </body>
+</html>

@@ -12,6 +12,7 @@
         <main id="main-content">
             <header>
                 <h1>Receipt archive</h1>
+                <a class="button" href="{{ url_for('latest_receipt') }}">Open latest saved receipt</a>
                 <p class="muted">
                     Private copies of pages generated from now on. Archived data reflects its original generation time.
                 </p>
@@ -21,7 +22,18 @@
             {% endwith %}
             {% if receipt %}
                 <a class="button" href="{{ url_for('archive_list') }}">All receipts</a>
-                <p>{{ receipt.source|title }} · {{ captured_local }}</p>
+                <p>{{ receipt_delivery_status(receipt.id,receipt.source) }} · generated {{ captured_local }}</p>
+                {% set delivery_state = receipt_recovery_state().get(receipt.id,{}) %}
+                {% if receipt.source == 'printed' or delivery_state.sent_at %}
+                    <form method="post"
+                          action="{{ url_for('receipt_collected',identifier=receipt.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden"
+                               name="collected"
+                               value="{{ '0' if delivery_state.collected_at else '1' }}">
+                        <button>{{ 'Undo collection confirmation' if delivery_state.collected_at else 'I collected this printout' }}</button>
+                    </form>
+                {% endif %}
                 <details>
                     <summary>Source freshness at generation</summary>
                     <p class="muted">
@@ -92,7 +104,7 @@
                 <section>
                     {% for item in entries %}
                         <div class="review-row">
-                            <a href="{{ url_for('archive_detail',identifier=item.id) }}">{{ item.local.strftime('%d %b %Y, %H:%M %Z') }} · {{ item.source|title }}</a>
+                            <a href="{{ url_for('archive_detail',identifier=item.id) }}">{{ item.local.strftime('%d %b %Y, %H:%M %Z') }} · {{ receipt_delivery_status(item.id,item.source) }}</a>
                             <p class="muted">{{ item.pages|join(', ') }}</p>
                         </div>
                     {% else %}

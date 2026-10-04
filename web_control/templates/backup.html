@@ -22,6 +22,25 @@
             {% if not pending %}
                 <section>
                     <h2>Automatic snapshots</h2>
+                    {% if backup_health %}
+                        <p>
+                            Latest restore drill: <strong>{{ backup_health.status }}</strong> · {{ backup_health_time }}.
+                        </p>
+                        {% if backup_health.status == 'passed' %}
+                            <p>
+                                Verified backup created {{ backup_verified_time }} · {{ backup_health.files }} private files. Live files were not changed.
+                            </p>
+                        {% endif %}
+                    {% else %}
+                        <p>No restore drill recorded yet.</p>
+                    {% endif %}
+                    {% if saved_backups %}
+                        <p>Latest valid snapshot: {{ saved_backups[0].local.strftime('%d %b %Y, %H:%M %Z') }}.</p>
+                    {% endif %}
+                    <form method="post" action="{{ url_for('backup_check') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button>Check backup recovery now</button>
+                    </form>
                     <p class="muted">
                         A private snapshot is saved once a day while this server runs, when no receipt job is active. Snapshots stay on this computer; download or copy them to another device to protect against disk loss.
                     </p>

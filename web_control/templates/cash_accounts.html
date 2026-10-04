@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Cash accounts</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <h1>Choose cash accounts</h1>
+            <p>
+                Select the HSBC and Monzo accounts whose available GBP balances should count towards cash and runway. Transaction reporting still uses the connected accounts. Cards are debt, not cash.
+            </p>
+            {% for message in get_flashed_messages() %}<p class="helper" role="status">{{ message }}</p>{% endfor %}
+            {% if error %}<p class="helper">{{ error }}</p>{% endif %}
+            <p class="muted">
+                Account names from the last balance check: {{ checked or 'No bank check yet' }}. Until configured, the first account from each connection is used.
+            </p>
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% for account in accounts %}
+                    <label class="account-choice">
+                        <input type="checkbox"
+                               name="{{ account.provider }}"
+                               value="{{ account.id }}"
+                               {% if account.included %}checked{% endif %}>
+                        {{ account.provider }} · {{ account.name }}
+                    </label>
+                {% else %}
+                    <p>Refresh Finance to discover your connected accounts. No credentials are entered here.</p>
+                {% endfor %}
+                {% if accounts %}<button>Save selected accounts</button>{% endif %}
+            </form>
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mode" value="defaults">
+                <button>Reset to first-account defaults</button>
+            </form>
+            <p class="muted">
+                If a selected account disappears after reconnecting, numeric forecasts are withheld until you reset or update the selection. A cash reserve should be included once: do not also enter the same balance as separate accessible savings.
+            </p>
+            <a class="button" href="{{ url_for('finance_review') }}">Refresh Finance & balances</a>
+        </main>
+    </body>
+</html>

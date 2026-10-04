@@ -20,7 +20,7 @@
                 <p class="eyebrow">Next eight days</p>
                 <h1>Calendar events</h1>
                 <p class="muted">
-                    Events are read from your iCal feed. Change their date or location in your calendar; the map uses the location in that feed.
+                    Events are read from your iCal feed. Change dates and times in your calendar. You can correct the local map and receipt location below without changing the feed.
                 </p>
             </header>
             {% if error %}
@@ -31,6 +31,19 @@
                 {% for event in events %}
                     <section>
                         <h2>{{ event.title }}</h2>
+                        <details>
+                            <summary>Correct location{{ ' (local override)' if event.location_corrected else '' }}</summary>
+                            <form method="post" action="{{ url_for('calendar_location') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="id" value="{{ event.correction_id }}">
+                                <label>
+                                    Local location
+                                    <input name="location" maxlength="500" value="{{ event.location }}">
+                                </label>
+                                <button>Save local location</button>
+                                <button name="reset" value="1">Use calendar feed location</button>
+                            </form>
+                        </details>
                         <p>
                             {{ event.date.strftime('%a %d %b') }} · {{ event.time }}
                             {% if event.location %}· {{ event.location }}{% endif %}

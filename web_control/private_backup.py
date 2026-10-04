@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 MAX_BYTES = 900_000
-OBJECT_FILES = {'savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
+OBJECT_FILES = {'bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
                 'investments.json', 'finance_settings.json', 'finance_categories.json',
                 'food_shop_override.json', 'tesco_progress.json', 'meals_eaten.json'}
 LIST_FILES = {'finance_monthly_snapshots.json','routines.json', 'future_tasks.json', 'wealth_history.json'}
@@ -62,6 +62,15 @@ def _validate_file(name, content):
         if 'location' in content:
             from receipt.location_settings import validate_location
             validate_location(content['location'])
+    elif name == 'receipt_recovery.json':
+        from receipt.recovery import validate as validate_recovery
+        validate_recovery(content)
+    elif name == 'calendar_location_overrides.json':
+        from services.calendar_locations import validate as validate_locations
+        validate_locations(content)
+    elif name == 'bank_account_selection.json':
+        from finance.bank_accounts import validate as validate_accounts
+        validate_accounts(content)
     elif name == 'finance_settings.json':
         for field in ('hsbc_emergency_reserve','physical_cash_target','physical_cash_held','salary_savings_target'):
             if content.get(field) is not None: _amount(content[field])

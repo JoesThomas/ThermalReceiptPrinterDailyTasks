@@ -54,7 +54,20 @@ def register(app, login_required, start_print, root, print_lock):
     @login_required
     def backup_page():
         from web_control.maintenance import saved, options
-        return render_template('backup.html', pending=None, saved_backups=saved(root), backup_options=options())
+        from web_control.backup_health import state
+        from receipt.local_time import uk_receipt_time
+        health=state(root)
+        return render_template('backup.html', pending=None, saved_backups=saved(root), backup_options=options(), backup_health=health, backup_health_time=uk_receipt_time(health.get('checked_at')), backup_verified_time=uk_receipt_time(health.get('backup_created_at')))
+
+    @app.post('/backup/check')
+    @login_required
+    def backup_check():
+        from web_control.backup_health import check
+        try:
+            result=check(root,force=True)
+            flash('Restore drill passed in a temporary directory.' if result['status']=='passed' else 'Backup verification did not pass. Create a fresh snapshot and check your private files.')
+        except (ValueError,OSError): flash('Backup verification could not complete.')
+        return redirect(url_for('backup_page'))
 
     @app.post('/backup/settings')
     @login_required
@@ -77,6 +90,9 @@ def register(app, login_required, start_print, root, print_lock):
         try:
             with print_lock:
                 ok = create(root, force=True)
+                if ok:
+                    from web_control.backup_health import check
+                    check(root,force=True)
             flash('Private snapshot saved.' if ok else 'Wait for the receipt job or backup to finish, then try again.')
         except (OSError, ValueError): flash('Backup could not be saved. Check your local files and disk space.')
         return redirect(url_for('backup_page'))

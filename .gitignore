@@ -158,3 +158,12 @@ data/savings_goals.lock
 # Private aggregate finance observations
 data/finance_monthly_snapshots.json
 data/finance_monthly_snapshots.lock
+
+# Private cash account selection and display metadata
+data/bank_account_selection.json
+data/bank_account_catalog.json
+data/receipt_recovery.json
+data/calendar_location_overrides.json
+data/backup_health.json
+data/receipt_recovery.lock
+data/calendar_location_overrides.lock

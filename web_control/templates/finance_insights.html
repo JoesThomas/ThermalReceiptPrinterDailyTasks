@@ -4,11 +4,11 @@
         <section>
             <h2>Where the totals come from</h2>
             <p>
-                Checked on this visit. Cash uses the first account returned by each HSBC and Monzo connection; it does not include every connected account. Amex is a debt balance, not available cash.
+                Checked on this visit. Cash uses your selected HSBC and Monzo accounts. Until you choose accounts, each connection uses its first account by default. Amex is a debt balance, not available cash.
             </p>
             {% for account in insights.accounts %}
                 <div class="merchant-payment">
-                    <span>{{ account.provider }} · first account · {{ account.currency }}</span><strong>{{ '£%.2f'|format(account.value) if account.value is not none and account.currency == 'GBP' else 'Unavailable' }}</strong>
+                    <span>{{ account.provider }} · {{ account.scope }} · {{ account.currency }}</span><strong>{{ '£%.2f'|format(account.value) if account.value is not none and account.currency == 'GBP' else 'Unavailable' }}</strong>
                 </div>
             {% endfor %}
             <p>
@@ -17,6 +17,14 @@
             <p>
                 Runway starts with cash minus the protected buffer, then deducts scheduled payments and estimated everyday spending each day. The second runway also includes £{{ '%.2f'|format(accessible_savings) }} of savings marked accessible. Future income is excluded.
             </p>
+            <a class="button" href="{{ url_for('cash_accounts') }}">Choose cash accounts</a>
+            {% for account in insights.accounts %}
+                {% for part in account.parts %}
+                    <div class="merchant-payment">
+                        <span>{{ account.provider }} · {{ part.name }}</span><strong>£{{ '%.2f'|format(part.available) }}</strong>
+                    </div>
+                {% endfor %}
+            {% endfor %}
             <h3>Bank data coverage</h3>
             <p>
                 {{ bank_data_status|title }} transaction data · {{ insights.succeeded if insights.succeeded is not none else 'Unknown' }} successful fetches / {{ insights.attempted if insights.attempted is not none else 'unknown' }} attempted. Requested window: {{ insights.requested_from or 'Unknown' }} to {{ insights.requested_to or 'Unknown' }}.

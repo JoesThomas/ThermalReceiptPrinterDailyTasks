@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
+import hashlib
 import math
 import re
 
@@ -34,6 +35,10 @@ def merchant_name(tx):
     return name or "Unknown merchant"
 
 
+def payment_identity(on,merchant,amount):
+    return hashlib.sha256(f'{on}|{merchant.strip()[:160]}|{round(float(amount),2)}'.encode()).hexdigest()
+
+
 def monthly_payments(transactions, today: date):
     grouped = defaultdict(list)
     names = {}
@@ -48,6 +53,7 @@ def monthly_payments(transactions, today: date):
         key = label.casefold()
         names.setdefault(key, label)
         grouped[key].append({"date": paid_on, "amount": Decimal(str(amount)).quantize(Decimal("0.01")),
+                             "review_id":payment_identity(paid_on,str(tx.get("merchant_name") or tx.get("merchant") or tx.get("description") or "").strip(),amount),
                              "description": str(tx.get("spend_description") or tx.get("description") or label)})
     merchants = []
     for key, records in grouped.items():

@@ -28,7 +28,7 @@ def parse(content, today, days):
             event_date, label, start_dt = sv.date(), sv.strftime('%H:%M'), sv
             end_dt = ev if isinstance(ev, datetime) else sv
             if end_dt != sv: label += '-' + end_dt.strftime('%H:%M')
-        results.append(dict(date=event_date, time=label, title=str(event.get('SUMMARY','UNTITLED EVENT')),
+        results.append(dict(uid=str(event.get('UID','')), date=event_date, time=label, title=str(event.get('SUMMARY','UNTITLED EVENT')),
                             location=str(event.get('LOCATION','') or '').strip(), start_dt=start_dt, end_dt=end_dt, all_day=all_day))
         if len(results) > 2000: raise ValueError('Too many calendar events')
     return sorted(results, key=lambda x:(x['date'],x['time']))

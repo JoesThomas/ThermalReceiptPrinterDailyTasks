@@ -22,7 +22,7 @@
             {% endwith %}
             {% if error %}<p class="helper">{{ error }}</p>{% endif %}
             <section>
-                <h2>Uncategorised spending</h2>
+                <h2>{{ 'Correct payment category' if request.args.get('payment') else 'Uncategorised spending' }}</h2>
                 <p>
                     Choose a category for one purchase or all payments matching its merchant text. One-purchase rules match the date, merchant and amount; identical purchases on the same day share that rule.
                 </p>

@@ -28,7 +28,7 @@ class InsightTests(unittest.TestCase):
             raw=insights.FILE.read_text()
             self.assertNotIn('Example bill',raw)
             self.assertNotIn('account_id',raw)
-            html=Environment(loader=FileSystemLoader('web_control/templates'),autoescape=True).get_template('finance_insights.html').render(insights=result,projection=projection,checked_at=today,bank_data_status='complete',accessible_savings=0,wealth=None)
+            html=Environment(loader=FileSystemLoader('web_control/templates'),autoescape=True).get_template('finance_insights.html').render(url_for=lambda endpoint:"/"+endpoint,insights=result,projection=projection,checked_at=today,bank_data_status='complete',accessible_savings=0,wealth=None)
             self.assertIn('<svg',html)
             self.assertIn('Lowest expected cash balance',html)
             self.assertIn('£800.00',html)

@@ -58,7 +58,7 @@
                         <small class="muted">Activity for this calendar month</small>
                     </div>
                     <div class="finance-metrics">
-                        <article><span>Cash available now</span><strong>{{ '£%.2f'|format(projection.cash) if projection.cash is not none else 'Unavailable' }}</strong><small>Connected current accounts</small></article>
+                        <article><span>Cash available now</span><strong>{{ '£%.2f'|format(projection.cash) if projection.cash is not none else 'Unavailable' }}</strong><small>Selected current accounts (first account until configured)</small></article>
                         <article><span>Money in</span><strong>£{{ '%.2f'|format(income.month_total) }}</strong><small>{{ income.month_count }} incoming payments this month</small></article>
                         <article><span>Money out</span><strong>£{{ '%.2f'|format(month.total) }}</strong><small>{{ month.count }} outgoing payments this month</small></article>
                         <article><span>Monthly balance</span>{% set month_net = income.month_total - month.total %}<strong class="{{ 'negative' if month_net < 0 else '' }}">{{ '-' if month_net < 0 else '+' }}£{{ '%.2f'|format(month_net|abs) }}</strong><small>Money in minus money out · not your bank balance</small></article>
@@ -145,7 +145,11 @@
                                             <div class="merchant-payments">
                                                 {% for payment in merchant.payments %}
                                                     <div class="merchant-payment">
-                                                        <span><time datetime="{{ payment.date.isoformat() }}">{{ payment.date.strftime('%d %b') }}</time> · {{ payment.description }}</span>
+                                                        <span><time datetime="{{ payment.date.isoformat() }}">{{ payment.date.strftime('%d %b') }}</time> · {{ payment.description }}
+                                                            {% if payment.review_id in reviewable_payment_ids %}
+                                                                <a href="{{ url_for('finance_reconciliation',payment=payment.review_id) }}">Correct category</a>
+                                                            {% endif %}
+                                                        </span>
                                                         <strong>£{{ '%.2f'|format(payment.amount) }}</strong>
                                                     </div>
                                                 {% endfor %}
@@ -314,6 +318,15 @@
                                         <span class="badge {{ 'paid' if row.transaction else 'due' }}">{{ 'Paid' if row.transaction else 'Needs checking' }}</span> <span class="muted">{{ row.item.category|title }}</span>
                                     </p>
                                     {% if row.item.end_date %}<p class="muted">Contract ends {{ row.item.end_date }}</p>{% endif %}
+                                    <small>Payment date:
+                                        {% if row.item.next_payment or row.item.due_day or row.item.due_date %}
+                                            Configured
+                                        {% elif row.transaction %}
+                                            Observed bank payment
+                                        {% else %}
+                                            Unknown; forecast may reserve conservatively
+                                        {% endif %}
+                                    </small>
                                     {% if row.transaction %}
                                         <small>{{ row.method }} · {{ (row.transaction.timestamp or row.transaction.transaction_date or row.transaction.date or '')[:10] }} · {{ row.transaction.merchant_name or row.transaction.description or 'Bank transaction' }}</small>
                                     {% elif row.item.category == 'repayment' %}

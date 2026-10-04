@@ -68,3 +68,19 @@ body{background:#f5f7f5;font-size:15px;line-height:1.6}main{max-width:1080px;pad
 .quick-page{max-width:760px}.quick-row{display:flex;gap:.8rem;align-items:center;padding:.8rem 0;border-bottom:1px solid #e0e7e3}.quick-row button{min-width:48px;min-height:48px;flex-shrink:0}.quick-row span{overflow-wrap:anywhere}.quick-row small{display:block;color:#60756a}.quick-row .completed{text-decoration:line-through}.private-tools-links{flex-wrap:wrap}
 
 .goal-card{padding:1rem;border:1px solid #dce6df;border-radius:12px;margin:1rem 0}.goal-card progress,#savings-goals progress{display:block;width:100%;height:18px;accent-color:#286b58;margin:.8rem 0}
+
+/* Narrow screens keep each editor and amount inside its panel. */
+.account-choice{display:flex;align-items:center;gap:12px;padding:14px 0;overflow-wrap:anywhere}
+.merchant-payment,.review-head,.chart-label,.page-actions{gap:12px;flex-wrap:wrap}
+.merchant-payment>span,.review-head>div,.chart-label>span{min-width:0;overflow-wrap:anywhere}
+.merchant-payment strong,.review-head strong{white-space:nowrap}
+fieldset{min-width:0;max-width:100%;box-sizing:border-box}textarea{width:100%}
+@media(max-width:600px){
+    .grid,.setup-grid,.health-grid,.flow-weeks{grid-template-columns:minmax(0,1fr)}
+    main{padding-left:14px;padding-right:14px}.paper-roll{max-width:100%;box-sizing:border-box}
+    .paper-text{max-width:100%;overflow-x:auto}form .grid>label{min-width:0}
+    input:not([type=checkbox]):not([type=radio]),select,textarea{width:100%}
+    .page-actions form,.page-actions button{width:100%}.merchant-payment{align-items:flex-start}
+    .private-tools-links{gap:10px}.private-tools-links a{padding:8px 0}
+    summary{overflow-wrap:anywhere}.review-row form{max-width:100%;min-width:0}
+}

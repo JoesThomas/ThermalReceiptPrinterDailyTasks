@@ -64,6 +64,8 @@ def run_live(
     if recorder is not None:
         try:
             from receipt.preview_progress import report as print_progress
+            from receipt.capture import LIVE_PREVIEW_FILE
+            recorder.save(only_page,path=LIVE_PREVIEW_FILE,replace=True)
             print_progress("Sending receipt to printer", 4, 5)
             recorder.printer.open()
             recorder.send()
