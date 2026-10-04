@@ -111,6 +111,24 @@ with tempfile.TemporaryDirectory() as folder,patch.object(web,'PROJECT_ROOT',Pat
    before=reconciliation.RULES.read_bytes()
    client.post('/finance-reconciliation/category',data={'csrf_token':'test','id':identity,'category':'INVALID'})
    assert reconciliation.RULES.read_bytes()==before
+  from finance import savings_goals as goals, wealth_history
+  with patch.object(goals,'FILE',root/'data'/'goals.json'),patch.object(wealth_history,'HISTORY_FILE',root/'data'/'history.json'),patch('finance.premium_bonds.load',return_value={'balances':[]}):
+   assert client.post('/savings/goals/account',data={'name':'Example ISA'}).status_code==403
+   assert client.post('/savings/goals/contribution').status_code==403
+   assert client.post('/savings/goals/contribution/remove').status_code==403
+   assert client.post('/savings/goals/year').status_code==403
+   assert client.post('/savings/goals/account',data={'csrf_token':'test','name':'Example ISA','kind':'investment','type':'stocks_isa'}).status_code==302
+   assert client.post('/savings/goals/contribution',data={'csrf_token':'test','name':'Example ISA','kind':'investment','type':'stocks_isa','date':web._local_today().isoformat(),'amount':'1000','event':'contribution'}).status_code==302
+   response=client.get('/savings/goals');assert response.status_code==200,response.data
+   assert b'Combined adult ISA contributions' in response.data
+   assert b'1,000.00' in response.data
+   assert b'Remaining allowance is not verified' in response.data
+   year=goals.tax_year(web._local_today())
+   assert client.post('/savings/goals/year',data={'csrf_token':'test','year':year,'allowance':'20000','cash_limit':'20000','complete':'on'}).status_code==302
+   response=client.get('/savings/goals');assert b'19,000.00' in response.data
+   identity=goals.load()['entries'][0]['id']
+   assert client.post('/savings/goals/contribution/remove',data={'csrf_token':'test','id':identity}).status_code==302
+   assert not goals.load()['entries']
   assert client.get('/jobs/status').status_code==200
   assert client.post('/jobs/cancel',data={'kind':'print'}).status_code==403
   assert client.get('/deliveries').status_code==200

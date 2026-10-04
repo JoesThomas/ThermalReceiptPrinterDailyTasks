@@ -250,6 +250,7 @@
         </section></details>
 {% endif %}
 <div class="finance-group" id="finance-savings"><div class="finance-section-heading"><div><p class="eyebrow">Build your longer-term picture</p><h2>Savings & investments</h2></div><a class="button" href="{{ url_for('savings_review') }}">Manage balances</a></div>
+    {% set goals = savings_goals_summary(wealth) %}{% include 'savings_goal_summary.html' %}
     {% if bonds_summary and (bonds_summary.prizes or bonds_summary.balances) %}
     <section aria-label="Premium Bonds winnings summary"><h2>Premium Bonds · {{ bonds_summary.year }}</h2><div class="flow-totals"><div><span>Recorded winnings</span><strong>£{{ '%.2f'|format(bonds_summary.total) }}</strong></div><div><span>Recorded period return</span><strong>{{ '%.2f%%'|format(bonds_summary.percent) if bonds_summary.percent is not none else 'Add dated balance' }}</strong></div></div><p class="muted">{% if bonds_summary.start %}Return covers {{ bonds_summary.start.strftime('%d %b') }}–{{ bonds_summary.end.strftime('%d %b %Y') }}, using £{{ '%.2f'|format(bonds_summary.period_total) }} in prizes and £{{ '%.2f'|format(bonds_summary.average) }} average holdings.{% endif %} {{ 'Prize coverage confirmed through this period.' if bonds_summary.complete else 'Prize history may be incomplete.' }}</p></section>
     {% endif %}

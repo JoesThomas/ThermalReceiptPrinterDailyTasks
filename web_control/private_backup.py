@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 MAX_BYTES = 900_000
-OBJECT_FILES = {'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
+OBJECT_FILES = {'savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
                 'investments.json', 'finance_settings.json', 'finance_categories.json',
                 'food_shop_override.json', 'tesco_progress.json', 'meals_eaten.json'}
 LIST_FILES = {'routines.json', 'future_tasks.json', 'wealth_history.json'}
@@ -62,6 +62,9 @@ def _validate_file(name, content):
         if 'location' in content:
             from receipt.location_settings import validate_location
             validate_location(content['location'])
+    elif name == 'savings_goals.json':
+        from finance.savings_goals import validate as validate_goals
+        validate_goals(content)
     elif name == 'bin_collections.json':
         from services.bin_collections import validate as validate_bins
         validate_bins(content)

@@ -520,6 +520,12 @@ def print_integrated_finance(
                 left(printer, row)
         left(printer, _amount_line("NET CASH + SAVINGS [C]", net_cash))
 
+    try:
+        from finance.savings_goals import review as goal_review, receipt_lines as goal_lines
+        for text in goal_lines(goal_review(wealth,on=today)):
+            left(printer,text)
+    except (ValueError,OSError,KeyError,TypeError):
+        left(printer,'SAVINGS GOALS UNAVAILABLE')
     if wealth:
         for text in wealth_lines(wealth):
             left(printer, text)

@@ -150,3 +150,7 @@ data/source_cache.lock
 data/printer_diagnostics.json
 data/finance_review_queue.json
 data/finance_categories.lock
+
+# Private savings targets and ISA contributions
+data/savings_goals.json
+data/savings_goals.lock

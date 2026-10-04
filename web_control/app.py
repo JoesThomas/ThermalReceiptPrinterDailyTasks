@@ -1436,5 +1436,8 @@ register_reconciliation(app, login_required)
 from web_control.daily_tools import register as register_daily_tools
 register_daily_tools(app, login_required, PROJECT_ROOT, _start_print_command, _recipe_items, meal_confirmation)
 
+from web_control.savings_goal_tools import register as register_savings_goals
+register_savings_goals(app, login_required, _wealth_view)
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

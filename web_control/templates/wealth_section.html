@@ -1,5 +1,5 @@
 <section id="wealth-history">
-<h2>Savings &amp; investment balances</h2><a class="button" href="{{ url_for('premium_bonds_page') }}">Premium Bonds winnings & return</a>
+<h2>Savings &amp; investment balances</h2><a class="button" href="{{ url_for('savings_goals_page') }}">Goals & ISA contributions</a><a class="button" href="{{ url_for('premium_bonds_page') }}">Premium Bonds winnings & return</a>
 <p class="muted">Balances and history stay on this server. Local observations come from your saved files, not a live provider check. Add a current valuation here for accounts such as an ISA. Investments are not automatically treated as accessible cash for runway.</p>
 {% if wealth_error %}<p class="helper">{{ wealth_error }}</p>{% endif %}
 {% if wealth %}
