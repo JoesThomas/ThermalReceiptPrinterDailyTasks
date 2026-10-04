@@ -4,6 +4,7 @@
 <header class="finance-header"><div><p class="eyebrow">Your money</p><h1>Finance review</h1><p class="muted">{% if not error %}Checked {{ checked_time }} · {{ bank_data_status|title }} bank data{% else %}Bank check unavailable{% endif %}</p></div><a class="button primary" href="{{ url_for('finance_review') }}">Refresh bank data</a></header>
 {% with messages=get_flashed_messages() %}{% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}{% endwith %}
 {% include 'renewal_reminders.html' %}
+<a class="button" href="{{ url_for('finance_reconciliation') }}">Review uncertain payments</a>
 <nav class="finance-jumps" aria-label="Finance sections">{% if not error %}<a href="#finance-overview">Overview</a><a href="#finance-activity">Income & spending</a><a href="#finance-bills">Bills & repayments</a><a href="#finance-forecast">Cash runway</a>{% endif %}<a href="#finance-savings">Savings</a></nav>
 {% if error %}<section id="finance-overview" class="helper" role="status"><h2>Bank records are unavailable</h2><p>{{ error }}</p><p>Refresh to try again. Your locally recorded savings and investments are available below.</p></section>
 {% else %}

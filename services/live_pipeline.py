@@ -608,6 +608,8 @@ def get_gmail_delivery_emails():
     Password. The login details are read only from environment
     variables and are never written to this script.
     """
+    global _gmail_fetch_failed
+    _gmail_fetch_failed = False
     if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
         print(
             "Gmail IMAP credentials not configured; "
@@ -615,10 +617,12 @@ def get_gmail_delivery_emails():
         )
         return []
 
+    import time as fetch_clock
+    deadline = fetch_clock.monotonic() + 20
     mailbox = None
 
     try:
-        mailbox = imaplib.IMAP4_SSL(GMAIL_IMAP_HOST, timeout=15)
+        mailbox = imaplib.IMAP4_SSL(GMAIL_IMAP_HOST, timeout=5)
 
         from services.api_health import record as health_record
         mailbox.login(
@@ -633,6 +637,7 @@ def get_gmail_delivery_emails():
 
         if status != "OK":
             health_record("Gmail", "failed", reason="unavailable")
+            _gmail_fetch_failed = True
             print("Could not open Gmail inbox.")
             return []
 
@@ -651,6 +656,7 @@ def get_gmail_delivery_emails():
         )
 
         if status != "OK" or not data:
+            _gmail_fetch_failed = True
             health_record("Gmail", "failed", reason="unavailable")
             return []
 
@@ -660,9 +666,15 @@ def get_gmail_delivery_emails():
         records = []
 
         for message_id in message_ids:
+            remaining = deadline - fetch_clock.monotonic()
+            if remaining <= 0:
+                _gmail_fetch_failed = True
+                break
+            if getattr(mailbox, 'sock', None) is not None:
+                mailbox.sock.settimeout(min(5, remaining))
             status, message_data = mailbox.fetch(
                 message_id,
-                "(RFC822)",
+                "(BODY.PEEK[]<0.524288>)",
             )
 
             if status != "OK":
@@ -717,6 +729,7 @@ def get_gmail_delivery_emails():
         return records
 
     except imaplib.IMAP4.error as error:
+        _gmail_fetch_failed = True
         from services.api_health import record as health_record
         health_record("Gmail", "failed", reason="unavailable")
         print(
@@ -726,6 +739,7 @@ def get_gmail_delivery_emails():
         return []
 
     except OSError as error:
+        _gmail_fetch_failed = True
         from services.api_health import record as health_record
         health_record("Gmail", "failed", reason="connection")
         print(
@@ -737,6 +751,8 @@ def get_gmail_delivery_emails():
     finally:
         if mailbox is not None:
             try:
+                if getattr(mailbox, 'sock', None) is not None:
+                    mailbox.sock.settimeout(1)
                 mailbox.logout()
             except Exception:
                 pass
@@ -1429,7 +1445,7 @@ def extract_delivery_from_email(
         ),
     }
 
-def get_upcoming_deliveries():
+def _collect_upcoming_deliveries():
     """
     Read likely delivery emails from Gmail, extract delivery
     dates, and return upcoming parcels.
@@ -1630,6 +1646,18 @@ def get_upcoming_deliveries():
 
     from actions.delivery_summary import consolidate
     return consolidate(deliveries)[:MAX_UPCOMING_DELIVERIES]
+
+
+def get_upcoming_deliveries():
+    from services.source_cache import get
+    today = datetime.now(ZoneInfo('Europe/London')).date()
+    def collect():
+        rows = _collect_upcoming_deliveries()
+        if globals().get('_gmail_fetch_failed'):
+            if not rows and not DELIVERY_EMAIL_FILE.exists(): raise OSError('Delivery source unavailable')
+            return rows, 'partial'
+        return rows
+    return get('Deliveries', f'{GMAIL_ADDRESS}|{today}|{DELIVERY_LOOKAHEAD_DAYS}', collect)
 
 
 def _delivery_value(delivery, *keys, default=None):
@@ -2281,52 +2309,12 @@ def get_random_lines(number_of_lines):
 # ============================================================
 
 def get_calendar_events(ical_url, days_ahead=0):
-    from services.api_health import observed_request
-    response = observed_request("Google Calendar", "get", ical_url, timeout=15)
-    response.raise_for_status()
-    calendar_data = Calendar.from_ical(response.content)
-    tz = ZoneInfo("Europe/London")
-    today = datetime.now(tz).date()
-    start_of_day = datetime.combine(today, time.min)
-    end_of_day = datetime.combine(today + timedelta(days=days_ahead), time.max)
-    events = recurring_ical_events.of(calendar_data).between(start_of_day, end_of_day)
-    results = []
-
-    for event in events:
-        start = event.get("DTSTART")
-        end = event.get("DTEND")
-        if start is None:
-            continue
-        sv = start.dt
-        ev = end.dt if end is not None else None
-        all_day = isinstance(sv, date) and not isinstance(sv, datetime)
-        if all_day:
-            event_date, time_string, start_dt, end_dt = sv, "ALL DAY", None, None
-        else:
-            if sv.tzinfo is None: sv = sv.replace(tzinfo=tz)
-            else: sv = sv.astimezone(tz)
-            if isinstance(ev, datetime):
-                if ev.tzinfo is None: ev = ev.replace(tzinfo=tz)
-                else: ev = ev.astimezone(tz)
-            event_date = sv.date()
-            start_dt = sv
-            end_dt = ev if isinstance(ev, datetime) else sv
-            time_string = sv.strftime("%H:%M")
-            if isinstance(end_dt, datetime) and end_dt != sv:
-                time_string += "-" + end_dt.strftime("%H:%M")
-
-        results.append({
-            "date": event_date,
-            "time": time_string,
-            "title": str(event.get("SUMMARY", "UNTITLED EVENT")),
-            "location": str(event.get("LOCATION", "") or "").strip(),
-            "start_dt": start_dt,
-            "end_dt": end_dt,
-            "all_day": all_day,
-        })
-
-    results.sort(key=lambda x: (x["date"], x["time"]))
-    return results
+    from services.source_cache import get
+    from services.calendar_source import collect
+    today = datetime.now(ZoneInfo('Europe/London')).date()
+    if not isinstance(days_ahead, int) or not 0 <= days_ahead <= 31:
+        raise ValueError('Calendar range must be 0–31 days')
+    return get('Calendar', f'{ical_url}|{today}|{days_ahead}', lambda: collect(ical_url, today, days_ahead))
 
 
 # ============================================================
@@ -8905,9 +8893,11 @@ def run_live_pipeline(
 
                 upcoming_events = get_calendar_events(CALENDAR_ICAL_URL, days_ahead=3)
                 from receipt.freshness import mark
-                mark("Calendar")
                 from web_control.today_summary import save_calendar
                 save_calendar(upcoming_events)
+                from receipt.freshness import snapshot
+                if snapshot().get('Calendar', {}).get('status', '').startswith('cached'):
+                    left(printer, 'CALENDAR: CACHED DATA')
                 events = [event for event in upcoming_events if event["date"] == today]
 
                 print_calendar(
@@ -9188,6 +9178,12 @@ def run_live_pipeline(
                 deliveries = (
                     get_upcoming_deliveries()
                 )
+                from receipt.freshness import snapshot
+                checks = snapshot().get('Deliveries', {})
+                if checks.get('status', '').startswith('cached'):
+                    left(printer, 'DELIVERIES: CACHED DATA')
+                elif checks.get('status') == 'partial':
+                    left(printer, 'DELIVERIES: PARTIAL/FALLBACK DATA')
 
                 print_upcoming_deliveries(
                     printer,
@@ -9429,4 +9425,4 @@ def run_live_pipeline(
         preview_progress("Sending receipt pages in chosen order", 4, 5)
         printer.flush()
     preview_progress("Saving generated preview", 4, 5)
-    print("Preview generated." if os.environ.get('RECEIPT_LIVE_PREVIEW') == '1' else "Receipt sent to printer. Paper output is not confirmed.")
+    print("Preview generated." if os.environ.get('RECEIPT_LIVE_PREVIEW') == '1' else "Receipt generated; awaiting printer transfer.")

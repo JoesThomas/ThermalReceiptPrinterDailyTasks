@@ -143,3 +143,10 @@ data/bin_collections.lock
 data/api_health.json
 data/api_health.lock
 data/api_health_run.lock
+
+# Private parsed source caches and diagnostics
+data/source_cache.json
+data/source_cache.lock
+data/printer_diagnostics.json
+data/finance_review_queue.json
+data/finance_categories.lock

@@ -56,7 +56,7 @@ def register(app, login_required):
                               duration=request.form.get('duration', '').strip())
         except ValueError as error:
             flash(str(error))
-        return redirect(url_for('index') if request.form.get('return_home') == '1' else url_for('exercise_list' if kind == 'exercises' else 'task_list'))
+        return redirect(url_for('quick_actions') if request.form.get('return_quick') == '1' else url_for('index') if request.form.get('return_home') == '1' else url_for('exercise_list' if kind == 'exercises' else 'task_list'))
 
     @app.post('/exercises/plan')
     @login_required

@@ -7,7 +7,7 @@
 </nav>
 <script src="{{ url_for('static',filename='control.js') }}" defer></script>
 
-<div class="private-tools-links"><a href="{{ url_for('setup_page') }}">Setup checklist</a><a href="{{ url_for('archive_list') }}">Receipt archive</a><a href="{{ url_for('backup_page') }}">Private backup</a></div>
+<div class="private-tools-links"><a href="{{ url_for('quick_actions') }}">Quick actions</a><a href="{{ url_for('printer_diagnostics') }}">Printer diagnostics</a><a href="{{ url_for('setup_page') }}">Setup checklist</a><a href="{{ url_for('archive_list') }}">Receipt archive</a><a href="{{ url_for('backup_page') }}">Private backup</a></div>
 
 <aside class="job-panel" id="global-job-panel" data-status-url="{{ url_for('jobs_status') }}" hidden aria-live="polite">
 <strong id="global-job-title">Receipt job</strong><p id="global-job-stage"></p>

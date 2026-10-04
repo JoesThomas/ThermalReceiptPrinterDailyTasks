@@ -85,6 +85,32 @@ with tempfile.TemporaryDirectory() as folder,patch.object(web,'PROJECT_ROOT',Pat
    with patch('web_control.health_tools.Thread') as thread:
     assert client.post('/api-health/check',data={'csrf_token':'test'}).status_code==302
     thread.return_value.start.assert_called_once()
+  from web_control import daily_tools, reconciliation, live_data
+  from meals import legacy_planner as meals
+  from services import source_cache
+  with patch.object(daily_tools,'dashboard',return_value={'tasks':[],'exercises':[],'deliveries':[]}),patch.object(meals,'recipes',return_value=[{'name':'Example recipe'}]),patch.object(live_data,'MEALS_EATEN_FILE',root/'data'/'meals.json'):
+   response=client.get('/quick-actions');assert response.status_code==200 and b'Example recipe' in response.data
+   assert client.post('/meals/eaten',data={'csrf_token':'test','recipe':'Example recipe','return_quick':'1'}).location.endswith('/quick-actions')
+   assert client.post('/meals/eaten/clear',data={'csrf_token':'test','return_quick':'1'}).location.endswith('/quick-actions')
+  with patch.object(source_cache,'FILE',root/'data'/'source_cache.json'):
+   response=client.get('/printer-diagnostics');assert response.status_code==200 and b'Printer connection' in response.data
+   assert client.post('/printer-diagnostics/check').status_code==403
+   assert client.post('/printer-diagnostics/test').status_code==403
+   assert client.post('/sources/refresh').status_code==403
+   with patch.object(daily_tools,'readiness',return_value=(False,'Printer unreachable')),patch.object(daily_tools,'write_json') as save:
+    assert client.post('/printer-diagnostics/check',data={'csrf_token':'test'}).status_code==302
+    assert save.call_args.args[1]['reachable'] is False
+  with patch.object(reconciliation,'QUEUE',root/'data'/'queue.json'),patch.object(reconciliation,'RULES',root/'data'/'categories.json'):
+   reconciliation.save_review([{'date':web._local_today().isoformat(),'description':'EXAMPLE SHOP','amount':-12}],[],web._local_today())
+   response=client.get('/finance-reconciliation');assert response.status_code==200 and b'EXAMPLE SHOP' in response.data
+   identity=reconciliation.read(reconciliation.QUEUE)['payments'][0]['id']
+   assert client.post('/finance-reconciliation/category',data={'id':identity}).status_code==403
+   assert client.post('/finance-reconciliation/category',data={'csrf_token':'test','id':identity,'category':'GIFTS','scope':'purchase'}).status_code==302
+   assert reconciliation.read(reconciliation.RULES)['transactions'][0]['category']=='GIFTS'
+   assert b'EXAMPLE SHOP' not in client.get('/finance-reconciliation').data
+   before=reconciliation.RULES.read_bytes()
+   client.post('/finance-reconciliation/category',data={'csrf_token':'test','id':identity,'category':'INVALID'})
+   assert reconciliation.RULES.read_bytes()==before
   assert client.get('/jobs/status').status_code==200
   assert client.post('/jobs/cancel',data={'kind':'print'}).status_code==403
   assert client.get('/deliveries').status_code==200

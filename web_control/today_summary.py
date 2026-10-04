@@ -20,7 +20,10 @@ def read(path):
 
 def save_calendar(events):
     rows = [{key: str(row.get(key, '')) for key in ('date', 'time', 'title', 'location')} for row in events]
-    write_json(CALENDAR, {'checked_at': datetime.now(timezone.utc).isoformat(), 'events': rows})
+    from receipt.freshness import snapshot
+    check = snapshot().get('Calendar', {})
+    write_json(CALENDAR, {'checked_at': check.get('source_checked_at') or check.get('checked_at') or datetime.now(timezone.utc).isoformat(),
+                          'status': check.get('status', 'checked'), 'events': rows})
 
 
 def snapshot_changes(pages):
@@ -74,5 +77,5 @@ def dashboard():
     return dict(bin_lines=bin_lines, tasks=tasks, exercises=exercises, deliveries=deliveries,
                 events=[e for e in calendar.get('events', []) if isinstance(e, dict) and e.get('date') == checklists.today()] if isinstance(calendar.get('events', []), list) else [],
                 calendar_checked=uk_receipt_time(calendar.get('checked_at')),
-                checks=[{'name': name, 'status': row['status'], 'local': uk_receipt_time(row['checked_at'])} for name, row in checks.items()],
+                checks=[{'name': name, 'status': row['status'], 'local': uk_receipt_time(row.get('source_checked_at') or row['checked_at'])} for name, row in checks.items()],
                 changes=read(CHANGES), errors=errors)

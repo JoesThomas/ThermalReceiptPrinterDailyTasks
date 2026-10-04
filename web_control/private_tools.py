@@ -30,9 +30,10 @@ def register(app, login_required, start_print, root, print_lock):
         if any(name not in item['pages'] for name in names):
             abort(404)
         pages = [dict(name=name, blocks=receipt_blocks(item['pages'][name], item.get('page_images', {}).get(name, []))) for name in names]
-        freshness = [dict(name=name, status=value['status'], local=uk_receipt_time(value['checked_at']))
+        freshness = [dict(name=name, status=value['status'], local=uk_receipt_time(value.get('source_checked_at') or value['checked_at']))
                      for name, value in item.get('freshness', {}).items()]
-        return render_template('archive.html', receipt=item, pages=pages, freshness=freshness,
+        from receipt.quality import check
+        return render_template('archive.html', quality_warnings=check(item['pages'], item.get('freshness', {})), receipt=item, pages=pages, freshness=freshness,
                                captured_local=uk_receipt_time(item['captured_at']))
 
     @app.post('/receipts/<identifier>/print')

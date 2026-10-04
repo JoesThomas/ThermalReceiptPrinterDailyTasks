@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory() as directory:
  app.secret_key='test'
  app.before_request(web.require_csrf)
  app.jinja_env.globals['csrf_token']=web.csrf_token
- for name in ['index','finance_review','meals_page','calendar_map','generate_live_preview','delivery_checklist','jobs_status','cancel_receipt_job','preview','task_list','exercise_list','api_health_page','bin_settings']:
+ for name in ['index','finance_review','meals_page','calendar_map','generate_live_preview','delivery_checklist','jobs_status','cancel_receipt_job','preview','task_list','exercise_list','api_health_page','bin_settings','quick_actions','printer_diagnostics']:
   app.add_url_rule('/test/'+name,endpoint=name,view_func=lambda:'test')
  app.add_url_rule('/login',endpoint='login',view_func=lambda:'login')
  register(app,web.login_required,lambda args:(True,None),root,Lock())

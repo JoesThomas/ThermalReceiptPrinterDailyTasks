@@ -58,6 +58,7 @@
         {% endfor %}
     </nav>
     {% if freshness %}<details><summary>Source checks for this generation</summary><p class="muted">Times show when requests returned; partial bank data and manually entered balances may be incomplete.</p>{% for item in freshness %}<p>{{ item.name }}: {{ item.status }} · {{ item.local }}</p>{% endfor %}</details>{% endif %}
+    {% if quality_warnings %}<details class="helper"><summary>Receipt checks: {{ quality_warnings|length }} things to review</summary><p class="muted">These are advisory checks, including possible wrapping and stale sources. Paper output is not verified.</p>{% for item in quality_warnings %}<p><strong>{{ item.page|title }}</strong> · {{ item.message }}</p>{% endfor %}</details>{% endif %}
     <div class="receipt-gallery">
         {% for receipt in pages %}
             <section class="receipt-frame" aria-label="{{ receipt.name|title }} receipt">

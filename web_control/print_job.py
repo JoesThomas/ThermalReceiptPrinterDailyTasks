@@ -52,6 +52,8 @@ def main():
         job_id = json.loads(STATUS.read_text())['job_id']
         log_event(job_id, 'print started')
         command = [sys.executable, str(ROOT / "main.py"), *args]
+        if args == ['--printer-test']:
+            command = [sys.executable, str(ROOT / 'web_control' / 'printer_test_job.py')]
         if args and args[0] == '--archive':
             if len(args) != 3:
                 raise ValueError('Invalid archive command')

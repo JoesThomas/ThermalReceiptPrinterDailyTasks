@@ -627,7 +627,7 @@ def meal_eaten():
     except ValueError:
         return ("Choose a recipe from the list", 400)
     flash("Meal confirmed as eaten.")
-    return redirect(url_for("meals_page"))
+    return redirect(url_for("quick_actions" if request.form.get("return_quick") == "1" else "meals_page"))
 
 
 @app.post("/meals/eaten/clear")
@@ -635,7 +635,7 @@ def meal_eaten():
 def meal_eaten_clear():
     clear_meal_confirmation(_local_today())
     flash("Meal confirmation removed.")
-    return redirect(url_for("meals_page"))
+    return redirect(url_for("quick_actions" if request.form.get("return_quick") == "1" else "meals_page"))
 
 
 @app.get("/calendar-map")
@@ -657,7 +657,11 @@ def calendar_map():
     except Exception:
         app.logger.exception("Calendar map unavailable")
         error = "Calendar events are unavailable. Check your iCal connection."
-    return render_template("calendar_map.html", events=events, error=error)
+    from services.source_cache import timings
+    calendar_source = next((row for row in timings() if row["name"] == "Calendar"), {})
+    from receipt.local_time import uk_receipt_time
+    return render_template("calendar_map.html", events=events, error=error, calendar_source=calendar_source,
+                           calendar_source_time=uk_receipt_time(calendar_source.get("source_checked_at")))
 
 
 @app.post("/food-shop/save")
@@ -1023,7 +1027,9 @@ def preview():
               "captured_local": uk_receipt_time(capture.get("page_times", {}).get(name)),
               "sample": not bool(capture["pages"].get(name))}
              for name in selected]
-    return render_template("preview.html", freshness=[dict(name=name, status=value["status"], local=uk_receipt_time(value["checked_at"])) for name, value in capture.get("freshness", {}).items()], pages=pages, page=page, source=source,
+    from receipt.quality import check
+    quality_warnings = check(capture.get("pages", {}), capture.get("freshness", {}))
+    return render_template("preview.html", quality_warnings=quality_warnings, freshness=[dict(name=name, status=value["status"], local=uk_receipt_time(value.get("source_checked_at") or value["checked_at"])) for name, value in capture.get("freshness", {}).items()], pages=pages, page=page, source=source,
                            preview_status=load_live_preview_status(),
                            has_live=bool(live_capture), has_printed=bool(printed_capture))
 
@@ -1223,6 +1229,9 @@ def finance_review():
                 used.add(index)
             tx = transactions[index] if index is not None else None
             rows.append({"item": item, "transaction": tx, "method": method})
+        from web_control.reconciliation import save_review
+        try: save_review(transactions, rows, today)
+        except (OSError,ValueError): app.logger.warning("Finance review queue could not be saved.")
         payments = external_payments(transactions)
         charts = finance_charts(payments, status["monthly"], today)
         month = monthly_payments(transactions, today)
@@ -1421,6 +1430,11 @@ register_health_tools(app, login_required)
 
 from web_control.setup_tools import register as register_setup
 register_setup(app, login_required, PROJECT_ROOT)
+
+from web_control.reconciliation import register as register_reconciliation
+register_reconciliation(app, login_required)
+from web_control.daily_tools import register as register_daily_tools
+register_daily_tools(app, login_required, PROJECT_ROOT, _start_print_command, _recipe_items, meal_confirmation)
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

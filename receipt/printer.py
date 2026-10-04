@@ -71,3 +71,22 @@ def readiness():
         return True, 'Printer TCP connection is reachable; paper and cover status are not verified.'
     except (OSError, ValueError):
         return False, 'Printer unreachable. Check its power, cable and configured IP address.'
+
+
+class DeferredPhysicalPrinter:
+    """Open hardware only after collection, avoiding an idle socket during API waits."""
+    def __init__(self, factory):
+        from types import SimpleNamespace
+        self.factory = factory
+        self.device = None
+        self.profile = SimpleNamespace(profile_data={'media': {'width': {'pixels': 576}}})
+
+    def open(self):
+        if self.device is None: self.device = self.factory()
+
+    def __getattr__(self, name):
+        self.open()
+        return getattr(self.device, name)
+
+    def close(self):
+        if self.device is not None: self.device.close()

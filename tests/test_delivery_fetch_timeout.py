@@ -19,5 +19,5 @@ class DeliveryFetchTimeoutTests(unittest.TestCase):
         mailbox.login.side_effect = TimeoutError('test timeout')
         with patch.object(imaplib, 'IMAP4_SSL', return_value=mailbox) as connect, contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(namespace['get_gmail_delivery_emails'](), [])
-        connect.assert_called_once_with('example.invalid', timeout=15)
+        connect.assert_called_once_with('example.invalid', timeout=5)
         mailbox.logout.assert_called_once()

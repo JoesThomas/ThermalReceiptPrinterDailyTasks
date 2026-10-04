@@ -5,10 +5,10 @@ _current = {}
 def reset():
     _current.clear()
 
-def mark(name, status='checked'):
-    _current[name] = {'checked_at': datetime.now(timezone.utc).isoformat(), 'status': status}
+def mark(name, status='checked', **metadata):
+    _current[name] = {'checked_at': datetime.now(timezone.utc).isoformat(), 'status': status, **metadata}
     from services.api_health import record
-    record(name, 'healthy' if status in {'checked','available','ok'} else 'degraded' if status == 'partial' else 'failed')
+    record(name, 'healthy' if status in {'checked','available','ok'} else 'degraded' if status in {'partial', 'cached', 'cached after error'} else 'failed')
 
 def snapshot():
     return {name: dict(value) for name, value in _current.items()}

@@ -15,8 +15,10 @@ IMAGE_MARKER = re.compile(r"\[\[RECEIPT_IMAGE_(\d+)\]\]")
 
 
 class RecordingPrinter:
-    def __init__(self, printer):
+    def __init__(self, printer, defer=False):
         self.printer = printer
+        self.defer = defer
+        self.operations = []
         self.lines = []
         self.images = []
         self.align = "left"
@@ -26,12 +28,15 @@ class RecordingPrinter:
         return getattr(self.printer, name)
 
     def set(self, *args, **kwargs):
-        self.printer.set(*args, **kwargs)
+        self._output('set', args, kwargs)
         if kwargs.get("align"):
             self.align = kwargs["align"]
 
+    def hw(self, *args, **kwargs):
+        self._output('hw', args, kwargs)
+
     def text(self, value):
-        self.printer.text(value)
+        self._output('text', (value,), {})
         value = str(value)
         if self.align == "center":
             value = "".join(line.rstrip("\r\n").center(42) + ("\n" if line.endswith("\n") else "")
@@ -39,7 +44,13 @@ class RecordingPrinter:
         self.lines.append(value)
 
     def image(self, *args, **kwargs):
-        self.printer.image(*args, **kwargs)
+        if self.defer:
+            from io import BytesIO
+            position = args[0].tell(); args[0].seek(0)
+            buffered = BytesIO(args[0].read()); args[0].seek(position)
+            self._output('image', (buffered, *args[1:]), kwargs)
+        else:
+            self.printer.image(*args, **kwargs)
         try:
             bitmap = args[0]
             position = bitmap.tell()
@@ -54,8 +65,24 @@ class RecordingPrinter:
             self.lines.append("[ PRINTED GRAPH / IMAGE ]\n")
 
     def cut(self, *args, **kwargs):
-        self.printer.cut(*args, **kwargs)
+        self._output('cut', args, kwargs)
         self.lines.append("\n--- CUT ---\n")
+
+    def _output(self, method, args, kwargs):
+        if self.defer: self.operations.append((method, args, kwargs))
+        else: getattr(self.printer, method)(*args, **kwargs)
+
+    def send(self):
+        from receipt.quality import check
+        from receipt.freshness import snapshot
+        import logging
+        sections = [x for x in ''.join(self.lines).split('\n--- CUT ---\n') if x.strip()]
+        warnings = check({f'page {i+1}':text for i,text in enumerate(sections)}, snapshot())
+        for warning in warnings:
+            logging.getLogger(__name__).warning('Receipt quality: %s', warning['message'])
+        for method,args,kwargs in self.operations:
+            getattr(self.printer, method)(*args, **kwargs)
+        self.operations.clear()
 
     def save(self, only_page=None, path=CAPTURE_FILE, replace=False):
         content = "".join(self.lines)

@@ -64,6 +64,6 @@ def checked_lines(names):
     result = []
     for name, check in snapshot().items():
         if name in names:
-            stamp = uk_receipt_time(check['checked_at'])
+            stamp = uk_receipt_time(check.get('source_checked_at') or check['checked_at'])
             result.append(f"{name}: {check['status']} {stamp}")
     return result
