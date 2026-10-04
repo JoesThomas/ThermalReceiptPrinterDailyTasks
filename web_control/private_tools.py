@@ -13,8 +13,8 @@ def register(app, login_required, start_print, root, print_lock):
     @app.get('/receipts')
     @login_required
     def archive_list():
-        return render_template('archive.html', entries=archive.entries(request.args.get('date') or None),
-                               selected_date=request.args.get('date', ''), receipt=None)
+        return render_template('archive.html', entries=archive.entries(request.args.get('date') or None, request.args.get('q')),
+                               selected_date=request.args.get('date', ''), query=request.args.get('q', '')[:200], receipt=None)
 
     @app.get('/receipts/<identifier>')
     @login_required
@@ -26,7 +26,7 @@ def register(app, login_required, start_print, root, print_lock):
         page = request.args.get('page', 'all')
         if page not in {'all', *PAGE_NAMES}:
             abort(400)
-        names = [name for name in PAGE_NAMES if name in item['pages']] if page == 'all' else [page]
+        names = list(item['pages']) if page == 'all' else [page]
         if any(name not in item['pages'] for name in names):
             abort(404)
         pages = [dict(name=name, blocks=receipt_blocks(item['pages'][name], item.get('page_images', {}).get(name, []))) for name in names]
@@ -52,7 +52,51 @@ def register(app, login_required, start_print, root, print_lock):
     @app.get('/backup')
     @login_required
     def backup_page():
-        return render_template('backup.html', pending=None)
+        from web_control.maintenance import saved, options
+        return render_template('backup.html', pending=None, saved_backups=saved(root), backup_options=options())
+
+    @app.post('/backup/settings')
+    @login_required
+    def backup_settings():
+        from receipt_settings import load_receipt_settings, save_receipt_settings
+        try:
+            keep = int(request.form.get('keep', '14'))
+            if keep not in (7, 14, 30): raise ValueError()
+            settings = load_receipt_settings()
+            settings['private_backup'] = {'enabled': request.form.get('enabled') == 'on', 'keep': keep}
+            save_receipt_settings(settings)
+            flash('Automatic backup preferences saved.')
+        except ValueError: flash('Choose 7, 14 or 30 snapshots.')
+        return redirect(url_for('backup_page'))
+
+    @app.post('/backup/create')
+    @login_required
+    def backup_create():
+        from web_control.maintenance import create
+        try:
+            with print_lock:
+                ok = create(root, force=True)
+            flash('Private snapshot saved.' if ok else 'Wait for the receipt job or backup to finish, then try again.')
+        except (OSError, ValueError): flash('Backup could not be saved. Check your local files and disk space.')
+        return redirect(url_for('backup_page'))
+
+    @app.get('/backup/saved/<name>')
+    @login_required
+    def backup_saved_download(name):
+        from web_control.maintenance import read_saved
+        try: raw = read_saved(root, name)
+        except (OSError, ValueError): abort(404)
+        response = send_file(BytesIO(raw), as_attachment=True, download_name=name, mimetype='application/json')
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+
+    @app.post('/backup/saved/<name>/review')
+    @login_required
+    def backup_saved_review(name):
+        from web_control.maintenance import read_saved
+        try: raw = read_saved(root, name)
+        except (OSError, ValueError): abort(404)
+        return stage_restore(raw)
 
     @app.get('/backup/download')
     @login_required
@@ -74,10 +118,14 @@ def register(app, login_required, start_print, root, print_lock):
             abort(400)
         try:
             raw = uploaded.stream.read(backup.MAX_BYTES + 1)
-            value = backup.validate(raw)
+            backup.validate(raw)
         except ValueError as error:
             flash(str(error))
             return redirect(url_for('backup_page'))
+        return stage_restore(raw)
+
+    def stage_restore(raw):
+        value = backup.validate(raw)
         token = secrets.token_hex(24)
         directory = root / 'data' / 'restore_pending'
         # Remove expired staging files, never active restore candidates.

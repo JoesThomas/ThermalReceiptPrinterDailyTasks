@@ -56,6 +56,8 @@ def main(serve_fn=None, application=None, environ=None):
             start_scheduler(_start_print_command)
             from services.api_health import start_monitor
             start_monitor()
+            from web_control.maintenance import start_monitor as start_backups
+            start_backups()
         serve_fn(application, host=host, port=port, threads=4)
     except OSError as exc:
         raise SystemExit(bind_error_message(exc, host, port)) from exc

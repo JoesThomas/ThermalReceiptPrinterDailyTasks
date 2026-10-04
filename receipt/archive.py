@@ -39,14 +39,17 @@ def save(pages, images, captured_at, source, freshness):
     write_json(target, value)
     return identifier
 
-def entries(on=None):
+def entries(on=None, query=None):
     from zoneinfo import ZoneInfo
     result = []
+    query = (query or '').strip()[:200].casefold()
     for path in sorted(DIRECTORY.glob('*.json'), reverse=True):
         try:
             item = load(path.stem)
             local = datetime.fromisoformat(item['captured_at']).astimezone(ZoneInfo('Europe/London'))
             if on and local.date().isoformat() != on:
+                continue
+            if query and query not in '\n'.join(item['pages'].values()).casefold():
                 continue
             result.append(dict(id=item['id'], source=item['source'], local=local,
                                pages=list(item['pages'])))

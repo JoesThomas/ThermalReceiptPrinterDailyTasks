@@ -27,6 +27,7 @@ def save_status(state, page):
     now = datetime.now(timezone.utc).isoformat()
     payload = {**previous, "state": state, "page": page, "updated_at": now}
     if state == 'running':
+        payload.pop('preview_saved', None)
         payload.update(started_at=now, job_id=uuid.uuid4().hex[:12], stage='Connecting to printer',
                        completed=0, total=5, timeout_seconds=MAX_SECONDS)
     if state == 'completed':
@@ -36,6 +37,9 @@ def save_status(state, page):
 
 def main():
     args = sys.argv[1:]
+    scheduled = bool(args and args[0] == '--scheduled')
+    if scheduled:
+        args = args[1:]
     page = args[1] if len(args) == 2 and args[0] == "--only" else "full receipt"
     # The parent writes the lock immediately after starting this process.
     # Wait for that write so a quick job cannot leave a stale lock behind.
@@ -52,6 +56,22 @@ def main():
             if len(args) != 3:
                 raise ValueError('Invalid archive command')
             command = [sys.executable, str(ROOT / 'web_control' / 'archive_job.py'), *args[1:]]
+        if scheduled:
+            from receipt.printer import readiness
+            reachable, _ = readiness()
+            if reachable is False:
+                log_event(job_id, 'printer unreachable; generating saved preview')
+                code = run_bounded([sys.executable, str(ROOT / 'main.py'), '--live-preview', *args],
+                                   cwd=ROOT, env={**os.environ, 'RECEIPT_JOB_ID': job_id, 'RECEIPT_FALLBACK_PREVIEW': '1'})
+                save_status('failed', page)
+                from storage import write_json
+                payload = json.loads(STATUS.read_text())
+                payload['stage'] = ('Printer unreachable; live preview saved. Open Receipt to view it.' if code == 0
+                                    else 'Printer unreachable; preview generation also failed. Check the job log.')
+                payload['preview_saved'] = code == 0
+                write_json(STATUS, payload)
+                log_event(job_id, 'scheduled print skipped; no automatic print retry')
+                return 1
         code = run_bounded(command, cwd=ROOT,
                            env={**os.environ, "RECEIPT_WEB_CAPTURE": "1", 'RECEIPT_JOB_ID': job_id})
         save_status("completed" if code == 0 else "failed", page)

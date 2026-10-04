@@ -30,10 +30,12 @@ with tempfile.TemporaryDirectory() as directory:
  app.secret_key='test'
  app.before_request(web.require_csrf)
  app.jinja_env.globals['csrf_token']=web.csrf_token
- for name in ['index','finance_review','meals_page','calendar_map','generate_live_preview','delivery_checklist','jobs_status','cancel_receipt_job','preview','task_list','exercise_list']:
+ for name in ['index','finance_review','meals_page','calendar_map','generate_live_preview','delivery_checklist','jobs_status','cancel_receipt_job','preview','task_list','exercise_list','api_health_page','bin_settings']:
   app.add_url_rule('/test/'+name,endpoint=name,view_func=lambda:'test')
  app.add_url_rule('/login',endpoint='login',view_func=lambda:'login')
  register(app,web.login_required,lambda args:(True,None),root,Lock())
+ from web_control.setup_tools import register as register_setup
+ register_setup(app,web.login_required,root)
  with patch.object(archive,'DIRECTORY',root/'data'/'receipt_archive'),app.test_client() as client:
   assert client.get('/backup').status_code==302
   with client.session_transaction() as session:
@@ -48,6 +50,22 @@ with tempfile.TemporaryDirectory() as directory:
   assert client.post('/backup/restore/confirm',data={'csrf_token':'test','token':token}).status_code==302
   assert (root/'data'/'to_buy.json').exists()
   assert client.get('/backup/download').headers['Cache-Control']=='no-store'
+  assert client.get('/setup').status_code==200
+  assert client.post('/setup/printer-check').status_code==403
+  with patch('receipt.printer.readiness',return_value=(False,'Printer unreachable')):
+   assert client.post('/setup/printer-check',data={'csrf_token':'test'}).status_code==302
+   assert b'Printer unreachable' in client.get('/setup').data
+  for endpoint in ['/backup/create','/backup/settings']:
+   assert client.post(endpoint).status_code==403
+  assert client.post('/backup/create',data={'csrf_token':'test'}).status_code==302
+  response=client.get('/backup');assert response.status_code==200,response.data
+  assert b'Saved snapshots (1)' in response.data
+  from web_control.maintenance import saved
+  name=saved(root)[0]['name']
+  assert client.get('/backup/saved/'+name).status_code==200
+  assert client.post('/backup/saved/'+name+'/review').status_code==403
+  assert client.post('/backup/saved/'+name+'/review',data={'csrf_token':'test'}).status_code==200
+  assert client.get('/backup/saved/auto-invalid.json').status_code==404
   identifier=archive.save({'information':'<script>bad</script>'},{},'2026-10-02T12:00:00+00:00','preview',{})
   response=client.get('/receipts/'+identifier)
   assert response.status_code==200,response.data
@@ -55,6 +73,8 @@ with tempfile.TemporaryDirectory() as directory:
   assert client.get('/receipts/'+identifier+'?page=finance').status_code==404
   assert client.post('/receipts/'+identifier+'/print',data={'csrf_token':'test','page':'unknown'}).status_code==400
   assert client.get('/receipts?date=2026-10-02').status_code==200
+  response=client.get('/receipts?q=bad');assert response.status_code==200 and identifier.encode() in response.data
+  response=client.get('/receipts?q=absent');assert response.status_code==200 and identifier.encode() not in response.data
 '''
             result=subprocess.run([sys.executable,'-c',script],cwd=ROOT,env=os.environ.copy(),capture_output=True,text=True,timeout=20)
             self.assertEqual(result.returncode,0,result.stderr)

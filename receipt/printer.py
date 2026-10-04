@@ -52,3 +52,22 @@ def open_printer():
 
 def cut(printer) -> None:
     printer.cut()
+
+
+def readiness():
+    """Check the configured TCP socket without sending paper or control commands."""
+    import socket
+    connection = os.getenv('RECEIPT_PRINTER_CONNECTION', 'network').strip().lower()
+    if connection == 'usb':
+        return None, 'USB readiness is checked when the printer opens.'
+    if connection != 'network':
+        return False, 'Printer connection setting is invalid.'
+    try:
+        host = os.getenv('RECEIPT_PRINTER_HOST', DEFAULT_NETWORK_HOST).strip()
+        port = int(os.getenv('RECEIPT_PRINTER_PORT', str(DEFAULT_NETWORK_PORT)))
+        if not host or not 1 <= port <= 65535: raise ValueError()
+        with socket.create_connection((host, port), timeout=3):
+            pass
+        return True, 'Printer TCP connection is reachable; paper and cover status are not verified.'
+    except (OSError, ValueError):
+        return False, 'Printer unreachable. Check its power, cable and configured IP address.'

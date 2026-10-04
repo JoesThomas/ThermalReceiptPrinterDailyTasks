@@ -8,7 +8,7 @@ STATUS = Path(__file__).resolve().parent.parent / "data" / "live_preview_status.
 
 
 def report(stage, completed, total):
-    printing = os.environ.get("RECEIPT_WEB_CAPTURE") == "1" and os.environ.get("RECEIPT_LIVE_PREVIEW") != "1"
+    printing = os.environ.get("RECEIPT_FALLBACK_PREVIEW") == "1" or (os.environ.get("RECEIPT_WEB_CAPTURE") == "1" and os.environ.get("RECEIPT_LIVE_PREVIEW") != "1")
     if not printing and os.environ.get("RECEIPT_LIVE_PREVIEW") != "1":
         return
     status_file = STATUS.with_name("web_print_status.json") if printing else STATUS

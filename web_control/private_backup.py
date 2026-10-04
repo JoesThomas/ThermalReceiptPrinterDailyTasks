@@ -35,7 +35,7 @@ def _amount(value):
 def _validate_file(name, content):
     from datetime import date
     if name == 'receipt_settings.json':
-        for key in ('features', 'one_shot', 'display', 'therapy_payment', 'finance', 'location', 'print_schedule', 'layout', 'api_health'):
+        for key in ('features', 'one_shot', 'display', 'therapy_payment', 'finance', 'location', 'print_schedule', 'layout', 'api_health', 'private_backup'):
             if key in content and not isinstance(content[key], dict):
                 raise ValueError()
         for key in ('features', 'one_shot'):
@@ -47,6 +47,10 @@ def _validate_file(name, content):
             if 'enabled' in config and not isinstance(config['enabled'], bool):
                 raise ValueError()
             if 'time' in config and (not isinstance(config['time'], str) or not re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d', config['time'])):
+                raise ValueError()
+        if 'private_backup' in content:
+            config = content['private_backup']
+            if type(config.get('enabled')) is not bool or type(config.get('keep')) is not int or config['keep'] not in (7, 14, 30):
                 raise ValueError()
         if 'api_health' in content:
             from services.api_health import INTERVALS

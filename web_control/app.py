@@ -1419,5 +1419,8 @@ register_bin_tools(app, login_required)
 from web_control.health_tools import register as register_health_tools
 register_health_tools(app, login_required)
 
+from web_control.setup_tools import register as register_setup
+register_setup(app, login_required, PROJECT_ROOT)
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

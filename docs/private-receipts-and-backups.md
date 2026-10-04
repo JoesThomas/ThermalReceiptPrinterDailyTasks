@@ -45,3 +45,48 @@ files expire after 15 minutes and are cleaned on subsequent uploads. Cancelled
 uploads are not applied. These runtime directories are excluded from Git.
 
 Updates do not copy any private runtime data into the public repository.
+
+## Daily snapshots, setup and reminders
+
+While the Waitress server is running, an idle worker saves one private snapshot
+per Europe/London date, starting at startup and checking again every minute.
+Settings → Automatic backups enables/disables this and retains the latest 7, 14
+(default) or 30 valid automatic snapshots. Save snapshot now adds a snapshot on
+demand. Snapshots have owner-only file permissions, remain gitignored and use the
+same allowlist and 900 KB validation as downloaded backups. Credentials are never
+included. Restore rollback records are never pruned by automatic retention.
+Saved snapshots can be downloaded or reviewed before confirming replacement.
+A corrupt data file prevents a new backup; existing snapshots are left intact.
+These are local snapshots, not disaster recovery: keep a downloaded copy on a
+separate device. No backup is made while the server is stopped.
+
+The receipt archive can now search saved text case-insensitively, combined with
+an optional UK generation date. It does not call collectors or regenerate pages.
+Archive pages retain the generation order. There is still no archive retention
+policy; receipts and graphs are excluded from automatic configuration backups.
+
+Home and Finance show annual renewals within 30 days and monthly/annual contract
+endings within 60 days, using locally entered dates. An annual renewal after its
+known contract end is suppressed. Missing dates produce no invented reminders.
+Amounts, payments and provider renewal terms are not inferred from these notices.
+
+Setup checklist links to location, tasks, exercises, calendar, bins, commitments,
+backup and API health controls. It checks only local configuration, not whether
+remote services are healthy. Its printer check opens/closes the configured TCP
+socket with a three-second timeout and sends no bytes or cut commands. USB is
+verified only when a physical print opens the device.
+
+## Scheduled printer readiness
+
+Scheduled jobs check the configured network printer before collecting data. If
+the TCP socket is unreachable, the supervised job generates a live preview using
+the existing isolated preview path. The result is saved to Receipt and the dated
+archive if generation succeeds. Print status reports the failed print and whether
+a preview was saved. Progress stays attached to the scheduled job, and locks are
+released on completion, cancellation or timeout. No automatic print retry occurs,
+so paper cannot be duplicated by this fallback. The normal ten-minute job limit
+also bounds preview generation. USB jobs use the normal device-open check.
+
+An open socket cannot confirm paper, cover or successful paper output. The printer
+can still fail after this check; a generation or network error is reported rather
+than described as a successful print. Manual printing retains its normal behavior.

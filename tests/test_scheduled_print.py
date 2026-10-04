@@ -56,10 +56,10 @@ class ScheduledPrintTests(unittest.TestCase):
             self.assertFalse(marker.exists())
             self.assertTrue(print_once(today, start, marker))
             self.assertTrue(print_once(today, start, marker))
-            self.assertEqual(calls, [[], []])
+            self.assertEqual(calls, [['--scheduled'], ['--scheduled']])
             self.assertEqual(marker.read_text().strip(), '2026-09-29')
             self.assertTrue(print_once(today.replace(day=30), start, marker))
-            self.assertEqual(calls, [[], [], []])
+            self.assertEqual(calls, [['--scheduled'], ['--scheduled'], ['--scheduled']])
 
 
 if __name__ == '__main__':

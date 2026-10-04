@@ -54,7 +54,7 @@ def print_once(today, start_print, marker=LAST_PRINT_DATE):
             return True
     except FileNotFoundError:
         pass
-    started, error = start_print([])
+    started, error = start_print(['--scheduled'])
     if not started:
         LOG.warning("Scheduled receipt not started: %s", error)
         return False
