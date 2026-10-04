@@ -44,6 +44,13 @@ with tempfile.TemporaryDirectory() as folder,patch.object(web,'PROJECT_ROOT',Pat
    assert client.post('/lists/tasks/update',data={'csrf_token':'test','action':'toggle','id':item['id']}).status_code==302
    assert checklists.rows('tasks')[0]['completed']
    response=client.get('/tasks');assert b'Test task' in response.data
+   checklists.sync('Dumbbell curls\\nRowing\\nPlank', 'exercises')
+   assert client.post('/exercises/plan',data={'action':'suggest'}).status_code==403
+   assert client.post('/exercises/plan',data={'csrf_token':'test','action':'equipment','equipment':'dumbbells'}).status_code==302
+   assert client.post('/exercises/plan',data={'csrf_token':'test','action':'suggest'}).status_code==302
+   response=client.get('/exercises');assert response.status_code==200 and b'Today' in response.data
+   assert {r['title'] for r in checklists.exercise_plan(5)}=={'Dumbbell curls','Plank'}
+   assert client.get('/tasks?q=missing').status_code==200
   assert client.get('/jobs/status').status_code==200
   assert client.post('/jobs/cancel',data={'kind':'print'}).status_code==403
   assert client.get('/deliveries').status_code==200

@@ -63,3 +63,45 @@ class DailyChecklistTests(unittest.TestCase):
         exec(compile(ast.Module(body=[function], type_ignores=[]), '<exercises>', 'exec'), namespace)
         namespace['print_random_document_lines'](SimpleNamespace(set=lambda **kw: None), 'Squats 3 sets of 10')
         self.assertEqual(printed, ['[ ] Squats 3 sets of 10'])
+
+    def test_equipment_suggestion_and_receipt_follow_saved_plan(self):
+        lists.sync('Dumb bell curls\nRowing\nPlank\nUnknown exercise', 'exercises')
+        with patch.object(lists, 'today', return_value='2026-10-04'):
+            lists.save_equipment(['dumbbells'])
+            self.assertEqual(lists.set_plan(), 2)
+            self.assertEqual({r['title'] for r in lists.exercise_plan(5)}, {'Dumb bell curls', 'Plank'})
+            lists.save_equipment(['rowing_machine'])
+            lists.set_plan()
+            self.assertEqual({r['title'] for r in lists.exercise_plan(5)}, {'Rowing', 'Plank'})
+            rowing = next(r for r in lists.rows('exercises') if r['title'] == 'Rowing')
+            lists.update('exercises', 'skip', rowing['id'])
+            self.assertEqual([r['title'] for r in lists.exercise_plan(5)], ['Plank'])
+            lists.update('exercises', 'skip', rowing['id'])
+            self.assertEqual(len(lists.exercise_plan(5)), 2)
+
+    def test_manual_selection_instructions_and_history(self):
+        lists.update('exercises', 'add', title='Curls', equipment=['dumbbells'], sets='3', reps='10')
+        key = lists.rows('exercises')[0]['id']
+        lists.set_plan([key])
+        self.assertEqual(lists.exercise_plan(5)[0]['title'], 'Curls — 3 sets — 10 reps')
+        lists.update('exercises', 'toggle', key)
+        self.assertEqual(lists.rows('exercises')[0]['history'], [lists.today()])
+        lists.update('exercises', 'toggle', key)
+        self.assertEqual(lists.rows('exercises')[0]['history'], [])
+        with self.assertRaises(ValueError): lists.set_plan(['missing'])
+        with self.assertRaises(ValueError): lists.save_equipment(['unrecognised'])
+
+    def test_task_dates_priorities_recurrence_and_source_metadata(self):
+        lists.sync('Read book.', 'tasks')
+        key = lists.rows('tasks')[0]['id']
+        with patch.object(lists, 'today', return_value='2026-10-04'):
+            lists.update('tasks', 'details', key, due='2026-10-04', priority='high', repeat='daily')
+            lists.update('tasks', 'toggle', key)
+            lists.sync('Read book.', 'tasks')
+            self.assertTrue(lists.rows('tasks')[0]['completed'])
+            self.assertEqual(lists.task_text('Read book.'), '')
+        with patch.object(lists, 'today', return_value='2026-10-05'):
+            self.assertFalse(lists.rows('tasks')[0]['completed'])
+            self.assertEqual(lists.task_text('Read book.'), 'Read book.')
+        with self.assertRaises(ValueError): lists.update('tasks', 'details', key, due='invalid')
+        self.assertEqual(lists.rows('tasks')[0]['priority'], 'high')
