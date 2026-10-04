@@ -1,5 +1,81 @@
-{% if cash_reserve %}<details class="section-disclosure"><summary>Emergency reserves · HSBC & physical cash</summary><section><h2>Protected reserves</h2><p>Your HSBC target is part of the protected bank buffer, rather than an extra copy of it. Runway protects the larger of this target and your general buffer. Any physical cash top-up needed is also reserved from bank cash.</p>
-<p>HSBC reserve target: <strong>£{{ '%.2f'|format(cash_reserve.bank) }}</strong>. Physical cash target: <strong>£{{ '%.2f'|format(cash_reserve.target) }}</strong>.</p>
-{% if cash_reserve.held is not none %}<p>Physical cash recorded: <strong>£{{ '%.2f'|format(cash_reserve.held) }}</strong> · counted {{ cash_reserve.date }} · £{{ '%.2f'|format(cash_reserve.gap) }} to target.</p>{% if cash_reserve.percent is not none %}<progress max="100" value="{{ cash_reserve.percent }}" aria-label="Physical emergency cash target progress"></progress>{% endif %}{% else %}<p>Cash on hand is not recorded. The full cash target is reserved until you record a count.</p>{% endif %}
-<p class="muted">Physical cash is shown separately from savings account valuations and is excluded from spendable cash and runway. Update the count after adding or using cash; no withdrawal or bank transfer is made by the app.</p>
-<form method="post" action="{{ url_for('salary_settings') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="return_to" value="{{ 'savings' if request.endpoint == 'savings_review' else 'finance' }}"><div class="grid"><label>HSBC emergency reserve (£)<input type="number" name="hsbc_emergency_reserve" min="0" step="0.01" value="{{ reserve_settings.hsbc_emergency_reserve if reserve_settings.hsbc_emergency_reserve is defined and reserve_settings.hsbc_emergency_reserve is not none else '' }}" placeholder="Enter your protected amount"></label><label>Physical cash target (£)<input type="number" name="physical_cash_target" min="0" step="0.01" value="{{ reserve_settings.physical_cash_target if reserve_settings.physical_cash_target is defined and reserve_settings.physical_cash_target is not none else '' }}"></label><label>Physical cash held (£)<input type="number" name="physical_cash_held" min="0" step="0.01" value="{{ cash_reserve.held if cash_reserve.held is not none else '' }}"></label><label>Cash counted on<input type="date" name="physical_cash_date" value="{{ cash_reserve.date or '' }}"></label><label>Desired savings per pay period (£, optional)<input type="number" name="salary_savings_target" min="0" step="0.01" value="{{ reserve_settings.salary_savings_target if reserve_settings.salary_savings_target is defined and reserve_settings.salary_savings_target is not none else '' }}" placeholder="Use the monthly ISA target"></label></div><button>Save reserves & savings target</button></form><p class="muted">Targets are private and apply after saving. Blank targets mean zero; a blank savings target uses your monthly ISA target when available.</p></section></details>{% endif %}
+{% if cash_reserve %}
+    <details class="section-disclosure">
+        <summary>Emergency reserves · HSBC & physical cash</summary>
+        <section>
+            <h2>Protected reserves</h2>
+            <p>
+                Your HSBC target is part of the protected bank buffer, rather than an extra copy of it. Runway protects the larger of this target and your general buffer. Any physical cash top-up needed is also reserved from bank cash.
+            </p>
+            <p>
+                HSBC reserve target: <strong>£{{ '%.2f'|format(cash_reserve.bank) }}</strong>. Physical cash target: <strong>£{{ '%.2f'|format(cash_reserve.target) }}</strong>.
+            </p>
+            {% if cash_reserve.held is not none %}
+                <p>
+                    Physical cash recorded: <strong>£{{ '%.2f'|format(cash_reserve.held) }}</strong> · counted {{ cash_reserve.date }} · £{{ '%.2f'|format(cash_reserve.gap) }} to target.
+                </p>
+                {% if cash_reserve.percent is not none %}
+                    <progress max="100"
+                              value="{{ cash_reserve.percent }}"
+                              aria-label="Physical emergency cash target progress"></progress>
+                {% endif %}
+            {% else %}
+                <p>Cash on hand is not recorded. The full cash target is reserved until you record a count.</p>
+            {% endif %}
+            <p class="muted">
+                Physical cash is shown separately from savings account valuations and is excluded from spendable cash and runway. Update the count after adding or using cash; no withdrawal or bank transfer is made by the app.
+            </p>
+            <form method="post" action="{{ url_for('salary_settings') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden"
+                       name="return_to"
+                       value="{{ 'savings' if request.endpoint == 'savings_review' else 'finance' }}">
+                <div class="grid">
+                    <label>
+                        HSBC emergency reserve (£)
+                        <input type="number"
+                               name="hsbc_emergency_reserve"
+                               min="0"
+                               step="0.01"
+                               value="{{ reserve_settings.hsbc_emergency_reserve if reserve_settings.hsbc_emergency_reserve is defined and reserve_settings.hsbc_emergency_reserve is not none else '' }}"
+                               placeholder="Enter your protected amount">
+                    </label>
+                    <label>
+                        Physical cash target (£)
+                        <input type="number"
+                               name="physical_cash_target"
+                               min="0"
+                               step="0.01"
+                               value="{{ reserve_settings.physical_cash_target if reserve_settings.physical_cash_target is defined and reserve_settings.physical_cash_target is not none else '' }}">
+                    </label>
+                    <label>
+                        Physical cash held (£)
+                        <input type="number"
+                               name="physical_cash_held"
+                               min="0"
+                               step="0.01"
+                               value="{{ cash_reserve.held if cash_reserve.held is not none else '' }}">
+                    </label>
+                    <label>
+                        Cash counted on
+                        <input type="date"
+                               name="physical_cash_date"
+                               value="{{ cash_reserve.date or '' }}">
+                    </label>
+                    <label>
+                        Desired savings per pay period (£, optional)
+                        <input type="number"
+                               name="salary_savings_target"
+                               min="0"
+                               step="0.01"
+                               value="{{ reserve_settings.salary_savings_target if reserve_settings.salary_savings_target is defined and reserve_settings.salary_savings_target is not none else '' }}"
+                               placeholder="Use the monthly ISA target">
+                    </label>
+                </div>
+                <button>Save reserves & savings target</button>
+            </form>
+            <p class="muted">
+                Targets are private and apply after saving. Blank targets mean zero; a blank savings target uses your monthly ISA target when available.
+            </p>
+        </section>
+    </details>
+{% endif %}

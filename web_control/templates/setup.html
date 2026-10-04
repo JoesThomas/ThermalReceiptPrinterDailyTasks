@@ -1,1 +1,47 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Setup checklist · Receipt Control</title><link rel="stylesheet" href="{{ url_for('static',filename='control.css') }}"></head><body>{% include 'navigation.html' %}<main id="main-content"><header><p class="eyebrow">Make it yours</p><h1>Setup checklist</h1><p class="muted">Review the parts you use. Optional features can stay unconfigured. Configured means a local setting exists; API health shows whether a service responded.</p></header>{% with messages=get_flashed_messages() %}{% for message in messages %}<p class="helper" role="status">{{ message }}</p>{% endfor %}{% endwith %}<section><h2>Printer & connections</h2><p>Check the network connection without feeding or cutting paper. A reachable socket does not confirm paper or cover status.</p><form method="post" action="{{ url_for('setup_printer_check') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Check printer connection</button></form><a class="button" href="{{ url_for('printer_diagnostics') }}">Printer diagnostics & timings</a><a class="button" href="{{ url_for('api_health_page') }}">Review API health</a></section><div class="setup-grid">{% for item in checklist %}<section><small class="muted">{{ 'Configured · review' if item.configured else 'Not set up yet' }}</small><h2>{{ item.name }}</h2><p>{{ item.description }}</p><a class="button" href="{{ url_for(item.endpoint, view=item.view) if item.view else url_for(item.endpoint) }}{% if item.anchor %}#{{ item.anchor }}{% endif %}">Review {{ item.name|lower }}</a></section>{% endfor %}</div></main></body></html>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Setup checklist · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <header>
+                <p class="eyebrow">Make it yours</p>
+                <h1>Setup checklist</h1>
+                <p class="muted">
+                    Review the parts you use. Optional features can stay unconfigured. Configured means a local setting exists; API health shows whether a service responded.
+                </p>
+            </header>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="helper" role="status">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            <section>
+                <h2>Printer & connections</h2>
+                <p>
+                    Check the network connection without feeding or cutting paper. A reachable socket does not confirm paper or cover status.
+                </p>
+                <form method="post" action="{{ url_for('setup_printer_check') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button>Check printer connection</button>
+                </form>
+                <a class="button" href="{{ url_for('printer_diagnostics') }}">Printer diagnostics & timings</a><a class="button" href="{{ url_for('api_health_page') }}">Review API health</a>
+            </section>
+            <div class="setup-grid">
+                {% for item in checklist %}
+                    <section>
+                        <small class="muted">{{ 'Configured · review' if item.configured else 'Not set up yet' }}</small>
+                        <h2>{{ item.name }}</h2>
+                        <p>{{ item.description }}</p>
+                        <a class="button"
+                           href="{{ url_for(item.endpoint, view=item.view) if item.view else url_for(item.endpoint) }}{% if item.anchor %}#{{ item.anchor }}{% endif %}">Review {{ item.name|lower }}</a>
+                    </section>
+                {% endfor %}
+            </div>
+        </main>
+    </body>
+</html>

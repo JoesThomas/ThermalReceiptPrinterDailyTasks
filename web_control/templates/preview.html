@@ -1,88 +1,167 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Receipt preview · Receipt Control</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
-</head>
-<body>
-{% include "navigation.html" %}
-<main id="main-content">
-    <a class="section-link" href="{{ url_for('index') }}">← Back to control</a>
-    <header>
-        <p class="eyebrow">80 mm paper view</p>
-        <h1>Receipt preview</h1>
-        <p class="muted">Generate a receipt from current data without printing. Your latest generated preview stays here so you can view it away from the printer. A saved web print is available separately.</p>
-    </header>
-    {% with messages=get_flashed_messages() %}{% for message in messages %}<p class="flash">{{ message }}</p>{% endfor %}{% endwith %}
-    <section class="panel">
-        <form action="{{ url_for('generate_live_preview') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <label>Pages to generate<select name="page">{% for key in ['all','information','actions','food','finance'] %}<option value="{{ key }}">{{ key|title }}</option>{% endfor %}</select></label>
-            <a class="button" href="{{ url_for('index',view='receipt') }}">Receipt options</a>
-            <a class="button" href="{{ url_for('archive_list') }}">Past receipts</a>
-            <button class="primary" type="submit" {% if preview_status and preview_status.state == 'running' %}disabled{% endif %}>Generate live preview</button>
-            <label><input type="checkbox" name="include_finance"> Include finance even if it is not scheduled today</label>
-        </form>
-        {% if preview_status %}
-            {% if preview_status.state == 'running' %}
-                <div class="preview-build" id="preview-tracker" data-status-url="{{ url_for('live_preview_status_api') }}" data-started-at="{{ preview_status.started_at or '' }}">
-                    <div class="preview-build-heading">
-                        <span class="preview-spinner" aria-hidden="true"></span>
-                        <div>
-                            <strong>Generating your receipt</strong>
-                            <p role="status" id="preview-message" aria-live="polite">{{ preview_status.stage or 'Starting receipt' }}</p>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Receipt preview · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static', filename='control.css') }}">
+    </head>
+    <body>
+        {% include "navigation.html" %}
+        <main id="main-content">
+            <a class="section-link" href="{{ url_for('index') }}">← Back to control</a>
+            <header>
+                <p class="eyebrow">80 mm paper view</p>
+                <h1>Receipt preview</h1>
+                <p class="muted">
+                    Generate a receipt from current data without printing. Your latest generated preview stays here so you can view it away from the printer. A saved web print is available separately.
+                </p>
+            </header>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="flash">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            <section class="panel">
+                <form action="{{ url_for('generate_live_preview') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label>
+                        Pages to generate
+                        <select name="page">
+                            {% for key in ['all','information','actions','food','finance'] %}
+                                <option value="{{ key }}">{{ key|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <a class="button" href="{{ url_for('index',view='receipt') }}">Receipt options</a>
+                    <a class="button" href="{{ url_for('archive_list') }}">Past receipts</a>
+                    <button class="primary"
+                            type="submit"
+                            {% if preview_status and preview_status.state == 'running' %}disabled{% endif %}>
+                        Generate live preview
+                    </button>
+                    <label>
+                        <input type="checkbox" name="include_finance">
+                        Include finance even if it is not scheduled today
+                    </label>
+                </form>
+                {% if preview_status %}
+                    {% if preview_status.state == 'running' %}
+                        <div class="preview-build"
+                             id="preview-tracker"
+                             data-status-url="{{ url_for('live_preview_status_api') }}"
+                             data-started-at="{{ preview_status.started_at or '' }}">
+                            <div class="preview-build-heading">
+                                <span class="preview-spinner" aria-hidden="true"></span>
+                                <div>
+                                    <strong>Generating your receipt</strong>
+                                    <p role="status" id="preview-message" aria-live="polite">{{ preview_status.stage or 'Starting receipt' }}</p>
+                                </div>
+                            </div>
+                            <progress id="preview-progress"
+                                      max="5"
+                                      value="{{ preview_status.completed|default(0) }}"
+                                      aria-label="Generation stages completed"></progress>
+                            <div class="preview-build-meta">
+                                <small id="preview-count">{{ preview_status.completed|default(0) }} of 5 stages complete</small><small id="preview-elapsed">Working…</small>
+                            </div>
+                            <ol class="preview-steps"
+                                id="preview-steps"
+                                aria-label="Receipt generation stages">
+                                {% for label in ['Weather and news', 'Actions and calendar', 'Meals', 'Finance and checks', 'Saving preview'] %}
+                                    <li class="{{ 'done' if loop.index0 < preview_status.completed|default(0) else 'active' if loop.index0 == preview_status.completed|default(0) else 'queued' }}"
+                                        {% if loop.index0 == preview_status.completed|default(0) %}aria-current="step"{% endif %}>
+                                        <span class="preview-step-mark" aria-hidden="true">{{ '✓' if loop.index0 < preview_status.completed|default(0) else loop.index }}</span><span>{{ label }}</span>
+                                    </li>
+                                {% endfor %}
+                            </ol>
+                            <p class="muted preview-build-note">The saved receipt below remains available while a new one is generated.</p>
                         </div>
-                    </div>
-                    <progress id="preview-progress" max="5" value="{{ preview_status.completed|default(0) }}" aria-label="Generation stages completed"></progress>
-                    <div class="preview-build-meta"><small id="preview-count">{{ preview_status.completed|default(0) }} of 5 stages complete</small><small id="preview-elapsed">Working…</small></div>
-                    <ol class="preview-steps" id="preview-steps" aria-label="Receipt generation stages">
-                        {% for label in ['Weather and news', 'Actions and calendar', 'Meals', 'Finance and checks', 'Saving preview'] %}
-                            <li class="{{ 'done' if loop.index0 < preview_status.completed|default(0) else 'active' if loop.index0 == preview_status.completed|default(0) else 'queued' }}" {% if loop.index0 == preview_status.completed|default(0) %}aria-current="step"{% endif %}><span class="preview-step-mark" aria-hidden="true">{{ '✓' if loop.index0 < preview_status.completed|default(0) else loop.index }}</span><span>{{ label }}</span></li>
-                        {% endfor %}
-                    </ol>
-                    <p class="muted preview-build-note">The saved receipt below remains available while a new one is generated.</p>
-                </div>
-            {% else %}
-                <p role="status">{% if preview_status.state == 'completed' %}Preview generated.{% elif preview_status.state == 'timed_out' %}Preview stopped after 10 minutes. You can try again.{% elif preview_status.state == 'cancelled' %}Preview cancelled. You can generate another.{% elif preview_status.state == 'interrupted' %}Preview was interrupted. Try again.{% else %}Preview failed. Check logs/web_preview.log and try again.{% endif %}</p>
-            {% endif %}
-        {% endif %}
-        <nav class="nav" aria-label="Receipt source">
-            <a href="{{ url_for('preview', page=page, source='live') }}" {% if source == 'live' %}aria-current="page"{% endif %}>Live preview{% if has_live %} (saved){% endif %}</a>
-            <a href="{{ url_for('preview', page=page, source='printed') }}" {% if source == 'printed' %}aria-current="page"{% endif %}>Last web print{% if has_printed %} (saved){% endif %}</a>
-        </nav>
-    </section>
-    <nav class="nav" aria-label="Preview pages">
-        {% for key,label in [('all','All pages'),('information','Information'),('actions','Actions'),('food','Food'),('finance','Finance')] %}
-            <a href="{{ url_for('preview', page=key, source=source) }}" {% if page == key %}aria-current="page"{% endif %}>{{ label }}</a>
-        {% endfor %}
-    </nav>
-    {% if freshness %}<details><summary>Source checks for this generation</summary><p class="muted">Times show when requests returned; partial bank data and manually entered balances may be incomplete.</p>{% for item in freshness %}<p>{{ item.name }}: {{ item.status }} · {{ item.local }}</p>{% endfor %}</details>{% endif %}
-    {% if quality_warnings %}<details class="helper"><summary>Receipt checks: {{ quality_warnings|length }} things to review</summary><p class="muted">These are advisory checks, including possible wrapping and stale sources. Paper output is not verified.</p>{% for item in quality_warnings %}<p><strong>{{ item.page|title }}</strong> · {{ item.message }}</p>{% endfor %}</details>{% endif %}
-    <div class="receipt-gallery">
-        {% for receipt in pages %}
-            <section class="receipt-frame" aria-label="{{ receipt.name|title }} receipt">
-                <div class="receipt-meta">
-                    <strong>{{ receipt.name|title }} page</strong>
-                    {% if receipt.sample %}
-                        <span class="badge due">Illustrative example</span>
                     {% else %}
-                        <span class="badge">{{ 'Generated' if source == 'live' else 'Sent to printer' }} <time datetime="{{ receipt.captured_at }}">{{ receipt.captured_local or 'time unavailable' }}</time></span>
+                        <p role="status">
+                            {% if preview_status.state == 'completed' %}
+                                Preview generated.
+                            {% elif preview_status.state == 'timed_out' %}
+                                Preview stopped after 10 minutes. You can try again.
+                            {% elif preview_status.state == 'cancelled' %}
+                                Preview cancelled. You can generate another.
+                            {% elif preview_status.state == 'interrupted' %}
+                                Preview was interrupted. Try again.
+                            {% else %}
+                                Preview failed. Check logs/web_preview.log and try again.
+                            {% endif %}
+                        </p>
                     {% endif %}
-                </div>
-                <div class="paper-roll">
-                    {% for block in receipt.blocks %}
-                        {% if block.image %}<img class="paper-image" src="{{ block.image }}" style="width:{{ block.width_percent }}%" alt="Printed chart">
-                        {% else %}<pre class="paper-text">{{ block.text }}</pre>{% endif %}
-                    {% endfor %}
-                    <div class="paper-cut">CUT</div>
-                </div>
+                {% endif %}
+                <nav class="nav" aria-label="Receipt source">
+                    <a href="{{ url_for('preview', page=page, source='live') }}"
+                       {% if source == 'live' %}aria-current="page"{% endif %}>Live preview
+                        {% if has_live %}(saved){% endif %}
+                    </a>
+                    <a href="{{ url_for('preview', page=page, source='printed') }}"
+                       {% if source == 'printed' %}aria-current="page"{% endif %}>Last web print
+                        {% if has_printed %}(saved){% endif %}
+                    </a>
+                </nav>
             </section>
-        {% endfor %}
-    </div>
-</main>
-{% if preview_status and preview_status.state == 'running' %}
-<script>
+            <nav class="nav" aria-label="Preview pages">
+                {% for key,label in [('all','All pages'),('information','Information'),('actions','Actions'),('food','Food'),('finance','Finance')] %}
+                    <a href="{{ url_for('preview', page=key, source=source) }}"
+                       {% if page == key %}aria-current="page"{% endif %}>{{ label }}</a>
+                {% endfor %}
+            </nav>
+            {% if freshness %}
+                <details>
+                    <summary>Source checks for this generation</summary>
+                    <p class="muted">
+                        Times show when requests returned; partial bank data and manually entered balances may be incomplete.
+                    </p>
+                    {% for item in freshness %}<p>{{ item.name }}: {{ item.status }} · {{ item.local }}</p>{% endfor %}
+                </details>
+            {% endif %}
+            {% if quality_warnings %}
+                <details class="helper">
+                    <summary>Receipt checks: {{ quality_warnings|length }} things to review</summary>
+                    <p class="muted">
+                        These are advisory checks, including possible wrapping and stale sources. Paper output is not verified.
+                    </p>
+                    {% for item in quality_warnings %}
+                        <p>
+                            <strong>{{ item.page|title }}</strong> · {{ item.message }}
+                        </p>
+                    {% endfor %}
+                </details>
+            {% endif %}
+            <div class="receipt-gallery">
+                {% for receipt in pages %}
+                    <section class="receipt-frame" aria-label="{{ receipt.name|title }} receipt">
+                        <div class="receipt-meta">
+                            <strong>{{ receipt.name|title }} page</strong>
+                            {% if receipt.sample %}
+                                <span class="badge due">Illustrative example</span>
+                            {% else %}
+                                <span class="badge">{{ 'Generated' if source == 'live' else 'Sent to printer' }} <time datetime="{{ receipt.captured_at }}">{{ receipt.captured_local or 'time unavailable' }}</time></span>
+                            {% endif %}
+                        </div>
+                        <div class="paper-roll">
+                            {% for block in receipt.blocks %}
+                                {% if block.image %}
+                                    <img class="paper-image"
+                                         src="{{ block.image }}"
+                                         style="width:{{ block.width_percent }}%"
+                                         alt="Printed chart">
+                                {% else %}
+                                    <pre class="paper-text">{{ block.text }}</pre>
+                                {% endif %}
+                            {% endfor %}
+                            <div class="paper-cut">CUT</div>
+                        </div>
+                    </section>
+                {% endfor %}
+            </div>
+        </main>
+        {% if preview_status and preview_status.state == 'running' %}
+            <!-- djlint:off -->
+            <script>
 (() => {
     const tracker = document.getElementById('preview-tracker');
     const message = document.getElementById('preview-message');
@@ -131,7 +210,8 @@
     setInterval(updateElapsed, 1000);
     update();
 })();
-</script>
-{% endif %}
-</body>
+            </script>
+            <!-- djlint:on -->
+        {% endif %}
+    </body>
 </html>

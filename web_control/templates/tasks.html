@@ -1,22 +1,254 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ 'Exercises' if kind == 'exercises' else 'To-do list' }} · Receipt Control</title><link rel="stylesheet" href="{{ url_for('static',filename='control.css') }}"></head><body>{% include 'navigation.html' %}<main id="main-content">
-<header><p class="eyebrow">{{ 'Daily movement' if kind == 'exercises' else 'Small steps for today' }}</p><h1>{{ 'Exercises' if kind == 'exercises' else 'To-do list' }}</h1><p class="muted">{{ 'Choose today’s exercises, tick them off, and keep your equipment up to date. Completion resets each UK day.' if kind == 'exercises' else 'Finish a task, undo a tick or add a local item. Completed tasks stay off newly generated receipts until you undo them.' }}</p></header>
-<nav class="finance-jumps" aria-label="Task views"><a href="{{ url_for('task_list') }}" {% if kind == 'tasks' %}aria-current="page"{% endif %}>To-do list</a><a href="{{ url_for('exercise_list') }}" {% if kind == 'exercises' %}aria-current="page"{% endif %}>Exercises</a><a href="{{ url_for('index',view='tasks') }}">Routines & future plans</a></nav>
-{% with messages=get_flashed_messages() %}{% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}{% endwith %}
-{% if kind == 'exercises' %}
-<section><h2>Today’s workout</h2><p>{{ selected_done }} of {{ selected|length }} exercises complete</p><progress max="{{ selected|length or 1 }}" value="{{ selected_done }}" aria-label="Today’s workout progress"></progress>
-{% for item in selected %}<div class="checklist-row"><form method="post" action="{{ url_for('checklist_update',kind=kind) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ item.id }}"><button class="checklist-check" name="action" value="toggle" aria-pressed="{{ 'true' if item.completed else 'false' }}" aria-label="{{ 'Undo completion of ' if item.completed else 'Complete ' }}{{ item.title }}">{{ '✓' if item.completed else '○' }}</button><span>{{ item.display_title }}</span>{% if not item.completed %}<button name="action" value="skip">Skip today</button>{% endif %}</form></div>{% else %}<p class="muted">No exercises selected for today.</p>{% endfor %}
-<form method="post" action="{{ url_for('exercise_workout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="primary" name="action" value="suggest">Suggest workout with my equipment</button></form><p class="muted">Chooses up to five exercises from your library. Set equipment requirements in each exercise’s options; unfamiliar exercises without confirmed requirements are left out. Review the instructions and suitability before starting. This is a selection tool, not a tailored training programme.</p>
-<details><summary>Equipment I have access to</summary><form method="post" action="{{ url_for('exercise_workout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% for key,label in equipment.items() %}<label><input type="checkbox" name="equipment" value="{{ key }}" {% if key in owned %}checked{% endif %}> {{ label }}</label>{% endfor %}<button name="action" value="equipment">Save equipment</button></form></details>
-<details><summary>Choose today’s exercises myself</summary><form method="post" action="{{ url_for('exercise_workout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% for item in items %}<label><input type="checkbox" name="exercise" value="{{ item.id }}" {% if item.on_receipt %}checked{% endif %}> {{ item.title }}</label>{% endfor %}<p class="muted">Choose up to five. Manual choices can include equipment you haven’t marked as available.</p><button name="action" value="choose">Use these today</button></form></details></section>
-{% endif %}
-<form method="get" class="list-add"><label for="list-search">Search {{ kind }}</label><input id="list-search" name="q" value="{{ query }}" placeholder="Search your list"><button>Search</button>{% if query %}<a href="{{ url_for('exercise_list' if kind == 'exercises' else 'task_list') }}">Clear</a>{% endif %}</form>
-<section><div class="finance-section-heading"><h2>{{ 'Exercise library' if kind == 'exercises' else 'Your tasks' }}</h2><span class="badge">{{ done }} / {{ items|length }} complete</span></div>{% if kind == 'tasks' %}<progress max="{{ items|length or 1 }}" value="{{ done }}" aria-label="Completed list items"></progress>{% endif %}
-<form method="post" action="{{ url_for('checklist_update',kind=kind) }}" class="list-add"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="add"><label for="new-list-item">{{ 'New exercise' if kind == 'exercises' else 'New task' }}</label><input id="new-list-item" name="title" maxlength="240" required placeholder="{{ 'e.g. Squats — 3 sets of 10' if kind == 'exercises' else 'What needs doing?' }}"><button class="primary">Add</button></form>
-{% for group in (['Today','Upcoming','Completed'] if kind == 'tasks' else ['Pending','Completed']) %}{% set completed = group == 'Completed' %}{% if completed %}<details class="section-disclosure"><summary>Completed ({{ done }})</summary>{% else %}<h3>{{ group }}</h3>{% endif %}
-{% for item in items if (item.group == group if kind == 'tasks' else item.completed == completed) %}<div class="checklist-row"><form method="post" action="{{ url_for('checklist_update',kind=kind) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ item.id }}"><input type="hidden" name="action" value="toggle"><button class="checklist-check" aria-pressed="{{ 'true' if completed else 'false' }}" aria-label="{{ 'Undo completion of ' if completed else 'Complete ' }}{{ item.title }}">{{ '✓' if completed else '○' }}</button><span class="{{ 'completed-title' if completed else '' }}">{{ item.title }}<small class="muted">{{ 'Google Doc' if item.source == 'doc' else 'Local' }}{% if item.on_receipt %} · Today’s receipt{% endif %}{% if item.due %} · {{ 'Overdue: ' if item.overdue else 'Due ' }}{{ item.due }}{% endif %}{% if item.priority == 'high' %} · High priority{% endif %}{% if item.repeat and item.repeat != 'none' %} · Repeats {{ item.repeat }}{% endif %}{% if kind == 'exercises' %} · {{ item.history|default([])|length }} completions (recent history){% if item.skipped %} · Skipped today{% endif %}{% endif %}</small></span></form>
-<details><summary>{{ 'Edit' if item.source == 'local' else 'Options' }}</summary><form method="post" action="{{ url_for('checklist_update',kind=kind) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ item.id }}">{% if item.source == 'local' %}<label>Title<input name="title" value="{{ item.title }}" maxlength="240" required></label>{% endif %}
-{% if kind == 'tasks' %}<label>Due date<input type="date" name="due" value="{{ item.due|default('') }}"></label><label>Priority<select name="priority">{% for value in ['normal','high','low'] %}<option value="{{ value }}" {% if item.priority|default('normal') == value %}selected{% endif %}>{{ value|capitalize }}</option>{% endfor %}</select></label><label>Repeat<select name="repeat">{% for value in ['none','daily','weekly'] %}<option value="{{ value }}" {% if item.repeat|default('none') == value %}selected{% endif %}>{{ value|capitalize }}</option>{% endfor %}</select></label>
-{% else %}<p>Equipment required (leave all unchecked for no equipment):</p>{% for key,label in equipment.items() %}<label><input type="checkbox" name="equipment" value="{{ key }}" {% if key in item.required %}checked{% endif %}> {{ label }}</label>{% endfor %}{% for field,label in [('sets','Sets'),('reps','Repetitions'),('duration','Duration (e.g. 10 minutes)')] %}<label>{{ label }}<input name="{{ field }}" value="{{ item[field]|default('') }}" maxlength="40"></label>{% endfor %}{% if item.history %}<details><summary>Recent completions</summary>{% for day in item.history|reverse %}<p>{{ day }}</p>{% endfor %}</details>{% endif %}<button name="action" value="skip" formnovalidate>{{ 'Undo skip' if item.skipped else 'Skip today' }}</button>{% endif %}
-<button name="action" value="{{ 'save' if item.source == 'local' else 'details' }}">Save</button>{% if item.source == 'local' %}<button name="action" value="delete" formnovalidate>Remove</button>{% endif %}</form></details></div>{% else %}<p class="muted">No {{ group|lower }} items{{ ' matching your search' if query else '' }}.</p>{% endfor %}{% if completed %}</details>{% endif %}{% endfor %}
-{% if not items %}<p class="muted">Add your first item above or refresh the configured Google Doc below.</p>{% endif %}</section>
-<section><details><summary>Google Doc source & refresh</summary><p class="muted">Lists update when a live receipt is generated, or when you refresh here. Source text stays in Google Docs; completion marks and added items are stored privately on this computer. {{ 'To-do document lines must end with a full stop, matching the receipt.' if kind == 'tasks' else 'Put each exercise and its instructions on a separate line.' }}</p><form method="post" action="{{ url_for('checklist_refresh',kind=kind) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Refresh Google Doc</button></form></details></section></main></body></html>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>{{ 'Exercises' if kind == 'exercises' else 'To-do list' }} · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <header>
+                <p class="eyebrow">{{ 'Daily movement' if kind == 'exercises' else 'Small steps for today' }}</p>
+                <h1>{{ 'Exercises' if kind == 'exercises' else 'To-do list' }}</h1>
+                <p class="muted">
+                    {{ 'Choose today’s exercises, tick them off, and keep your equipment up to date. Completion resets each UK day.' if kind == 'exercises' else 'Finish a task, undo a tick or add a local item. Completed tasks stay off newly generated receipts until you undo them.' }}
+                </p>
+            </header>
+            <nav class="finance-jumps" aria-label="Task views">
+                <a href="{{ url_for('task_list') }}"
+                   {% if kind == 'tasks' %}aria-current="page"{% endif %}>To-do list</a><a href="{{ url_for('exercise_list') }}"
+   {% if kind == 'exercises' %}aria-current="page"{% endif %}>Exercises</a><a href="{{ url_for('index',view='tasks') }}">Routines & future plans</a>
+            </nav>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            {% if kind == 'exercises' %}
+                <section>
+                    <h2>Today’s workout</h2>
+                    <p>{{ selected_done }} of {{ selected|length }} exercises complete</p>
+                    <progress max="{{ selected|length or 1 }}"
+                              value="{{ selected_done }}"
+                              aria-label="Today’s workout progress"></progress>
+                    {% for item in selected %}
+                        <div class="checklist-row">
+                            <form method="post" action="{{ url_for('checklist_update',kind=kind) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="id" value="{{ item.id }}">
+                                <button class="checklist-check"
+                                        name="action"
+                                        value="toggle"
+                                        aria-pressed="{{ 'true' if item.completed else 'false' }}"
+                                        aria-label="{{ 'Undo completion of ' if item.completed else 'Complete ' }}{{ item.title }}">
+                                    {{ '✓' if item.completed else '○' }}
+                                </button>
+                                <span>{{ item.display_title }}</span>
+                                {% if not item.completed %}<button name="action" value="skip">Skip today</button>{% endif %}
+                            </form>
+                        </div>
+                    {% else %}
+                        <p class="muted">No exercises selected for today.</p>
+                    {% endfor %}
+                    <form method="post" action="{{ url_for('exercise_workout') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="primary" name="action" value="suggest">Suggest workout with my equipment</button>
+                    </form>
+                    <p class="muted">
+                        Chooses up to five exercises from your library. Set equipment requirements in each exercise’s options; unfamiliar exercises without confirmed requirements are left out. Review the instructions and suitability before starting. This is a selection tool, not a tailored training programme.
+                    </p>
+                    <details>
+                        <summary>Equipment I have access to</summary>
+                        <form method="post" action="{{ url_for('exercise_workout') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            {% for key,label in equipment.items() %}
+                                <label>
+                                    <input type="checkbox"
+                                           name="equipment"
+                                           value="{{ key }}"
+                                           {% if key in owned %}checked{% endif %}>
+                                    {{ label }}
+                                </label>
+                            {% endfor %}
+                            <button name="action" value="equipment">Save equipment</button>
+                        </form>
+                    </details>
+                    <details>
+                        <summary>Choose today’s exercises myself</summary>
+                        <form method="post" action="{{ url_for('exercise_workout') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            {% for item in items %}
+                                <label>
+                                    <input type="checkbox"
+                                           name="exercise"
+                                           value="{{ item.id }}"
+                                           {% if item.on_receipt %}checked{% endif %}>
+                                    {{ item.title }}
+                                </label>
+                            {% endfor %}
+                            <p class="muted">Choose up to five. Manual choices can include equipment you haven’t marked as available.</p>
+                            <button name="action" value="choose">Use these today</button>
+                        </form>
+                    </details>
+                </section>
+            {% endif %}
+            <form method="get" class="list-add">
+                <label for="list-search">Search {{ kind }}</label>
+                <input id="list-search"
+                       name="q"
+                       value="{{ query }}"
+                       placeholder="Search your list">
+                <button>Search</button>
+                {% if query %}<a href="{{ url_for('exercise_list' if kind == 'exercises' else 'task_list') }}">Clear</a>{% endif %}
+            </form>
+            <section>
+                <div class="finance-section-heading">
+                    <h2>{{ 'Exercise library' if kind == 'exercises' else 'Your tasks' }}</h2>
+                    <span class="badge">{{ done }} / {{ items|length }} complete</span>
+                </div>
+                {% if kind == 'tasks' %}
+                    <progress max="{{ items|length or 1 }}"
+                              value="{{ done }}"
+                              aria-label="Completed list items"></progress>
+                {% endif %}
+                <form method="post"
+                      action="{{ url_for('checklist_update',kind=kind) }}"
+                      class="list-add">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="add">
+                    <label for="new-list-item">{{ 'New exercise' if kind == 'exercises' else 'New task' }}</label>
+                    <input id="new-list-item"
+                           name="title"
+                           maxlength="240"
+                           required
+                           placeholder="{{ 'e.g. Squats — 3 sets of 10' if kind == 'exercises' else 'What needs doing?' }}">
+                    <button class="primary">Add</button>
+                </form>
+                {% for group in (['Today','Upcoming','Completed'] if kind == 'tasks' else ['Pending','Completed']) %}
+                    {% set completed = group == 'Completed' %}
+                    {% if completed %}
+                        <details class="section-disclosure">
+                            <summary>Completed ({{ done }})</summary>
+                        {% else %}
+                            <h3>{{ group }}</h3>
+                        {% endif %}
+                        {% for item in items if (item.group == group if kind == 'tasks' else item.completed == completed) %}
+                            <div class="checklist-row">
+                                <form method="post" action="{{ url_for('checklist_update',kind=kind) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="id" value="{{ item.id }}">
+                                    <input type="hidden" name="action" value="toggle">
+                                    <button class="checklist-check"
+                                            aria-pressed="{{ 'true' if completed else 'false' }}"
+                                            aria-label="{{ 'Undo completion of ' if completed else 'Complete ' }}{{ item.title }}">
+                                        {{ '✓' if completed else '○' }}
+                                    </button>
+                                    <span class="{{ 'completed-title' if completed else '' }}">{{ item.title }}<small class="muted">{{ 'Google Doc' if item.source == 'doc' else 'Local' }}
+                                        {% if item.on_receipt %}· Today’s receipt{% endif %}
+                                        {% if item.due %}· {{ 'Overdue: ' if item.overdue else 'Due ' }}{{ item.due }}{% endif %}
+                                        {% if item.priority == 'high' %}· High priority{% endif %}
+                                        {% if item.repeat and item.repeat != 'none' %}· Repeats {{ item.repeat }}{% endif %}
+                                        {% if kind == 'exercises' %}
+                                            · {{ item.history|default([])|length }} completions (recent history)
+                                            {% if item.skipped %}· Skipped today{% endif %}
+                                        {% endif %}
+                                    </small></span>
+                                </form>
+                                <details>
+                                    <summary>{{ 'Edit' if item.source == 'local' else 'Options' }}</summary>
+                                    <form method="post" action="{{ url_for('checklist_update',kind=kind) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="id" value="{{ item.id }}">
+                                        {% if item.source == 'local' %}
+                                            <label>
+                                                Title
+                                                <input name="title" value="{{ item.title }}" maxlength="240" required>
+                                            </label>
+                                        {% endif %}
+                                        {% if kind == 'tasks' %}
+                                            <label>
+                                                Due date
+                                                <input type="date" name="due" value="{{ item.due|default('') }}">
+                                            </label>
+                                            <label>
+                                                Priority
+                                                <select name="priority">
+                                                    {% for value in ['normal','high','low'] %}
+                                                        <option value="{{ value }}"
+                                                                {% if item.priority|default('normal') == value %}selected{% endif %}>
+                                                            {{ value|capitalize }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </label>
+                                            <label>
+                                                Repeat
+                                                <select name="repeat">
+                                                    {% for value in ['none','daily','weekly'] %}
+                                                        <option value="{{ value }}"
+                                                                {% if item.repeat|default('none') == value %}selected{% endif %}>
+                                                            {{ value|capitalize }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </label>
+                                        {% else %}
+                                            <p>Equipment required (leave all unchecked for no equipment):</p>
+                                            {% for key,label in equipment.items() %}
+                                                <label>
+                                                    <input type="checkbox"
+                                                           name="equipment"
+                                                           value="{{ key }}"
+                                                           {% if key in item.required %}checked{% endif %}>
+                                                    {{ label }}
+                                                </label>
+                                            {% endfor %}
+                                            {% for field,label in [('sets','Sets'),('reps','Repetitions'),('duration','Duration (e.g. 10 minutes)')] %}
+                                                <label>
+                                                    {{ label }}
+                                                    <input name="{{ field }}"
+                                                           value="{{ item[field]|default('') }}"
+                                                           maxlength="40">
+                                                </label>
+                                            {% endfor %}
+                                            {% if item.history %}
+                                                <details>
+                                                    <summary>Recent completions</summary>
+                                                    {% for day in item.history|reverse %}<p>{{ day }}</p>{% endfor %}
+                                                </details>
+                                            {% endif %}
+                                            <button name="action" value="skip" formnovalidate>{{ 'Undo skip' if item.skipped else 'Skip today' }}</button>
+                                        {% endif %}
+                                        <button name="action"
+                                                value="{{ 'save' if item.source == 'local' else 'details' }}">
+                                            Save
+                                        </button>
+                                        {% if item.source == 'local' %}<button name="action" value="delete" formnovalidate>Remove</button>{% endif %}
+                                    </form>
+                                </details>
+                            </div>
+                        {% else %}
+                            <p class="muted">No {{ group|lower }} items{{ ' matching your search' if query else '' }}.</p>
+                        {% endfor %}
+                        {% if completed %}</details>{% endif %}
+                {% endfor %}
+                {% if not items %}
+                    <p class="muted">Add your first item above or refresh the configured Google Doc below.</p>
+                {% endif %}
+            </section>
+            <section>
+                <details>
+                    <summary>Google Doc source & refresh</summary>
+                    <p class="muted">
+                        Lists update when a live receipt is generated, or when you refresh here. Source text stays in Google Docs; completion marks and added items are stored privately on this computer. {{ 'To-do document lines must end with a full stop, matching the receipt.' if kind == 'tasks' else 'Put each exercise and its instructions on a separate line.' }}
+                    </p>
+                    <form method="post" action="{{ url_for('checklist_refresh',kind=kind) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button>Refresh Google Doc</button>
+                    </form>
+                </details>
+            </section>
+        </main>
+    </body>
+</html>

@@ -334,3 +334,17 @@ It overrides merchant-wide categories for that transaction only. Merge it with
 any existing private merchant rules; do not replace your whole file. If there
 are two purchases at the same merchant for the same amount on the same day,
 this format will match both and needs a more specific transaction identifier.
+
+
+### HTML template formatting
+
+Templates use four-space indentation with the Jinja-aware settings in `.djlintrc`.
+Install `requirements-dev.txt`, then run:
+
+```bash
+python -m djlint web_control/templates --reformat
+python -m djlint web_control/templates --check
+```
+
+Inline scripts and styles are excluded from HTML reformatting to preserve their contents.
+Receipt text in `pre` blocks and editable textarea contents retain their whitespace.

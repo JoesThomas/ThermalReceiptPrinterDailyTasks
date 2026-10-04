@@ -1,10 +1,60 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Deliveries</title><link rel="stylesheet" href="{{ url_for('static',filename='control.css') }}"></head><body>{% include 'navigation.html' %}<main id="main-content"><header><h1>Deliveries</h1><p class="muted">Updated when you generate a live receipt or preview. Confirm items you have received to leave them off future receipts. Saved receipt copies remain unchanged.</p></header><section>
-{% for received in [false,true] %}{% if received %}<details><summary>Received history</summary>{% else %}<h2>Pending deliveries</h2>{% endif %}
-{% for item in items if item.confirmed == received %}
-<form method="post" action="{{ url_for('delivery_confirm') }}" class="tesco-item">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ item.id }}"><input type="hidden" name="confirmed" value="0">
-<div><strong>{{ item.title }}</strong><p class="muted">{{ item.carrier }} · {{ item.date or 'Date unknown' }}{% if item.confirmed %} · Received{% endif %}</p></div>
-<label><input type="checkbox" name="confirmed" value="1" {% if item.confirmed %}checked{% endif %}> Received</label><button>Save</button>
-</form>
-{% else %}<p>{{ 'No confirmed deliveries yet.' if received else 'No pending notices. Generate a live receipt preview to check for upcoming deliveries.' }}</p>{% endfor %}{% if received %}</details>{% endif %}{% endfor %}
-</section></main></body></html>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Deliveries</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <header>
+                <h1>Deliveries</h1>
+                <p class="muted">
+                    Updated when you generate a live receipt or preview. Confirm items you have received to leave them off future receipts. Saved receipt copies remain unchanged.
+                </p>
+            </header>
+            <section>
+                {% for received in [false,true] %}
+                    {% if received %}
+                        <details>
+                            <summary>Received history</summary>
+                        {% else %}
+                            <h2>Pending deliveries</h2>
+                        {% endif %}
+                        {% for item in items if item.confirmed == received %}
+                            <form method="post"
+                                  action="{{ url_for('delivery_confirm') }}"
+                                  class="tesco-item">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="id" value="{{ item.id }}">
+                                <input type="hidden" name="confirmed" value="0">
+                                <div>
+                                    <strong>{{ item.title }}</strong>
+                                    <p class="muted">
+                                        {{ item.carrier }} · {{ item.date or 'Date unknown' }}
+                                        {% if item.confirmed %}· Received{% endif %}
+                                    </p>
+                                </div>
+                                <label>
+                                    <input type="checkbox"
+                                           name="confirmed"
+                                           value="1"
+                                           {% if item.confirmed %}checked{% endif %}>
+                                    Received
+                                </label>
+                                <button>Save</button>
+                            </form>
+                        {% else %}
+                            <p>
+                                {{ 'No confirmed deliveries yet.' if received else 'No pending notices. Generate a live receipt preview to check for upcoming deliveries.' }}
+                            </p>
+                        {% endfor %}
+                        {% if received %}</details>{% endif %}
+                {% endfor %}
+            </section>
+        </main>
+    </body>
+</html>

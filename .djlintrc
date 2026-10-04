@@ -1,0 +1,12 @@
+{
+    "profile": "jinja",
+    "indent": 4,
+    "max_line_length": 120,
+    "single_attribute_per_line": true,
+    "preserve_blank_lines": true,
+    "no_function_formatting": true,
+    "no_set_formatting": true,
+    "no_entity_formatting": true,
+    "format_js": false,
+    "format_css": false
+}

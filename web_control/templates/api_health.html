@@ -1,4 +1,109 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Integration health · Receipt Control</title><link rel="stylesheet" href="{{ url_for('static',filename='control.css') }}"></head><body>{% include 'navigation.html' %}<main id="main-content"><header><p class="eyebrow">Connections</p><h1>Integration health</h1><p class="muted">Lightweight checks run while the web server is running. Bank, email and paid integrations are observed when the app uses them. Results describe those checks, not guaranteed service uptime.</p></header>{% with messages=get_flashed_messages() %}{% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}{% endwith %}
-<section><h2>{{ 'Checking integrations…' if running else 'Latest checks' }}</h2>{% if running %}<p role="status">{{ current_service or 'Starting' }}</p><progress aria-label="Integration checks running"></progress><p><a href="{{ url_for('api_health_page') }}">Refresh results</a></p>{% endif %}<p class="muted">Last periodic/manual cycle: {{ last_cycle or 'not yet' }}. {{ 'Automatic checks enabled' if health_options.enabled else 'Automatic checks disabled' }}.</p><form method="post" action="{{ url_for('api_health_check') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="primary" {% if running %}disabled{% endif %}>Check integrations now</button></form></section>
-<div class="health-grid">{% for row in rows %}<section class="health-card"><div class="finance-section-heading"><h2>{{ row.name }}</h2><span class="badge {{ row.status }}">{{ 'Stale' if row.stale else row.status|title }}</span></div><p class="muted">{{ row.mode }}</p><p>Last checked: {{ row.checked or 'not yet' }}{% if row.stale %} · last result {{ row.status }}{% endif %}</p>{% if row.last_success %}<p class="muted">Last successful check: {{ row.last_success }}</p>{% endif %}{% if row.code %}<p>HTTP {{ row.code }}{% if row.code == 401 or row.code == 403 %} · Check permissions or credentials.{% elif row.code == 429 %} · Provider rate limit.{% endif %}</p>{% endif %}{% if row.duration is not none %}<p class="muted">{{ row.duration }} ms</p>{% endif %}{% if row.failures %}<p>{{ row.failures }} consecutive unsuccessful checks</p>{% endif %}{% if row.history %}<details><summary>Recent checks ({{ row.history|length }})</summary>{% for item in row.history %}<p>{{ item.local }} · {{ item.status }}{% if item.code %} · HTTP {{ item.code }}{% endif %}{% if item.reason %} · {{ item.reason|replace('_',' ') }}{% endif %}</p>{% endfor %}</details>{% endif %}</section>{% endfor %}</div>
-<section><h2>Check frequency</h2><form method="post" action="{{ url_for('api_health_settings') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label><input type="checkbox" name="enabled" {% if health_options.enabled %}checked{% endif %}> Check periodically while server runs</label><label>Interval<select name="interval">{% for value in intervals %}<option value="{{ value }}" {% if value == health_options.interval_minutes %}selected{% endif %}>{{ value }} minutes</option>{% endfor %}</select></label><button>Save frequency</button></form><p class="muted">Checks pause for receipt jobs. They do not print, refresh bank tokens, send emails or make purchases. Private URLs, keys, response bodies and account details are never saved in the health history.</p></section></main></body></html>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Integration health · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <header>
+                <p class="eyebrow">Connections</p>
+                <h1>Integration health</h1>
+                <p class="muted">
+                    Lightweight checks run while the web server is running. Bank, email and paid integrations are observed when the app uses them. Results describe those checks, not guaranteed service uptime.
+                </p>
+            </header>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            <section>
+                <h2>{{ 'Checking integrations…' if running else 'Latest checks' }}</h2>
+                {% if running %}
+                    <p role="status">{{ current_service or 'Starting' }}</p>
+                    <progress aria-label="Integration checks running"></progress>
+                    <p>
+                        <a href="{{ url_for('api_health_page') }}">Refresh results</a>
+                    </p>
+                {% endif %}
+                <p class="muted">
+                    Last periodic/manual cycle: {{ last_cycle or 'not yet' }}. {{ 'Automatic checks enabled' if health_options.enabled else 'Automatic checks disabled' }}.
+                </p>
+                <form method="post" action="{{ url_for('api_health_check') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="primary" {% if running %}disabled{% endif %}>Check integrations now</button>
+                </form>
+            </section>
+            <div class="health-grid">
+                {% for row in rows %}
+                    <section class="health-card">
+                        <div class="finance-section-heading">
+                            <h2>{{ row.name }}</h2>
+                            <span class="badge {{ row.status }}">{{ 'Stale' if row.stale else row.status|title }}</span>
+                        </div>
+                        <p class="muted">{{ row.mode }}</p>
+                        <p>
+                            Last checked: {{ row.checked or 'not yet' }}
+                            {% if row.stale %}· last result {{ row.status }}{% endif %}
+                        </p>
+                        {% if row.last_success %}<p class="muted">Last successful check: {{ row.last_success }}</p>{% endif %}
+                        {% if row.code %}
+                            <p>
+                                HTTP {{ row.code }}
+                                {% if row.code == 401 or row.code == 403 %}
+                                    · Check permissions or credentials.
+                                {% elif row.code == 429 %}
+                                    · Provider rate limit.
+                                {% endif %}
+                            </p>
+                        {% endif %}
+                        {% if row.duration is not none %}<p class="muted">{{ row.duration }} ms</p>{% endif %}
+                        {% if row.failures %}<p>{{ row.failures }} consecutive unsuccessful checks</p>{% endif %}
+                        {% if row.history %}
+                            <details>
+                                <summary>Recent checks ({{ row.history|length }})</summary>
+                                {% for item in row.history %}
+                                    <p>
+                                        {{ item.local }} · {{ item.status }}
+                                        {% if item.code %}· HTTP {{ item.code }}{% endif %}
+                                        {% if item.reason %}· {{ item.reason|replace('_',' ') }}{% endif %}
+                                    </p>
+                                {% endfor %}
+                            </details>
+                        {% endif %}
+                    </section>
+                {% endfor %}
+            </div>
+            <section>
+                <h2>Check frequency</h2>
+                <form method="post" action="{{ url_for('api_health_settings') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label>
+                        <input type="checkbox"
+                               name="enabled"
+                               {% if health_options.enabled %}checked{% endif %}>
+                        Check periodically while server runs
+                    </label>
+                    <label>
+                        Interval
+                        <select name="interval">
+                            {% for value in intervals %}
+                                <option value="{{ value }}"
+                                        {% if value == health_options.interval_minutes %}selected{% endif %}>
+                                    {{ value }} minutes
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <button>Save frequency</button>
+                </form>
+                <p class="muted">
+                    Checks pause for receipt jobs. They do not print, refresh bank tokens, send emails or make purchases. Private URLs, keys, response bodies and account details are never saved in the health history.
+                </p>
+            </section>
+        </main>
+    </body>
+</html>

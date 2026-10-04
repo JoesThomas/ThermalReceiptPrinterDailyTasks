@@ -1,2 +1,58 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tesco shopping review · Receipt Control</title><link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}"></head><body>
-{% include "navigation.html" %}<main id="main-content"><a class="section-link" href="{{ url_for('index') }}">← Back to control</a><header><p class="eyebrow">Shopping handoff</p><h1>Review for Tesco</h1><p class="muted">Food-shop items and planned recipe ingredients. Choose the exact product and quantity on Tesco, add it to your basket there, then mark it done here. This page cannot read or change your Tesco basket.</p></header>{% if error %}<p class="helper">Food-shop Google Doc unavailable: {{ error }}. Planned recipe items can still appear below.</p>{% endif %}<section><h2>Items to find ({{ items|length }})</h2>{% for item in items %}<div class="tesco-item"><span>{% if progress[item] %}<span class="badge">Added by you</span>{% endif %} {{ item }}</span><div class="actions"><a class="button" href="{{ url_for('tesco_search', item=item) }}" target="_blank" rel="noopener noreferrer">Search Tesco</a><form method="post" action="{{ url_for('tesco_mark') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="item" value="{{ item }}"><input type="hidden" name="added" value="{{ '0' if progress[item] else '1' }}"><button>{{ 'Undo' if progress[item] else 'Mark added' }}</button></form></div></div>{% else %}<p>No shopping items yet.</p>{% endfor %}<p><a class="button primary" href="https://www.tesco.com/shop/en-GB/landing/groceries" target="_blank" rel="noopener noreferrer">Open Tesco basket</a></p></section></main></body></html>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Tesco shopping review · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static', filename='control.css') }}">
+    </head>
+    <body>
+        {% include "navigation.html" %}
+        <main id="main-content">
+            <a class="section-link" href="{{ url_for('index') }}">← Back to control</a>
+            <header>
+                <p class="eyebrow">Shopping handoff</p>
+                <h1>Review for Tesco</h1>
+                <p class="muted">
+                    Food-shop items and planned recipe ingredients. Choose the exact product and quantity on Tesco, add it to your basket there, then mark it done here. This page cannot read or change your Tesco basket.
+                </p>
+            </header>
+            {% if error %}
+                <p class="helper">Food-shop Google Doc unavailable: {{ error }}. Planned recipe items can still appear below.</p>
+            {% endif %}
+            <section>
+                <h2>Items to find ({{ items|length }})</h2>
+                {% for item in items %}
+                    <div class="tesco-item">
+                        <span>
+                            {% if progress[item] %}<span class="badge">Added by you</span>{% endif %}
+                        {{ item }}</span>
+                        <div class="actions">
+                            <a class="button"
+                               href="{{ url_for('tesco_search', item=item) }}"
+                               target="_blank"
+                               rel="noopener noreferrer">Search Tesco</a>
+                            <form method="post" action="{{ url_for('tesco_mark') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="item" value="{{ item }}">
+                                <input type="hidden"
+                                       name="added"
+                                       value="{{ '0' if progress[item] else '1' }}">
+                                <button>{{ 'Undo' if progress[item] else 'Mark added' }}</button>
+                            </form>
+                        </div>
+                    </div>
+                {% else %}
+                    <p>No shopping items yet.</p>
+                {% endfor %}
+                <p>
+                    <a class="button primary"
+                       href="https://www.tesco.com/shop/en-GB/landing/groceries"
+                       target="_blank"
+                       rel="noopener noreferrer">Open Tesco basket</a>
+                </p>
+            </section>
+        </main>
+    </body>
+</html>

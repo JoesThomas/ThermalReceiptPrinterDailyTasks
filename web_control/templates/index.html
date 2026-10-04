@@ -1,16 +1,14 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
-<head>
-    <meta charset="utf-8">
-    <meta
-        name="viewport"
-        content="width=device-width,initial-scale=1"
-    >
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
 
-    <title>Receipt Control</title>
+        <title>Receipt Control</title>
 
-    <style>
+        <!-- djlint:off -->
+        <style>
         body {
             font-family: system-ui;
             background: #eee;
@@ -212,1007 +210,1189 @@
                 text-align: left;
             }
         }
-    </style>
-    <link rel="stylesheet" href="{{ url_for('static', filename='control.css') }}">
-</head>
+        </style>
+        <!-- djlint:on -->
+        <link rel="stylesheet"
+              href="{{ url_for('static', filename='control.css') }}">
+    </head>
 
-<body data-control-view="{{ active_view }}">
-{% include "navigation.html" %}
+    <body data-control-view="{{ active_view }}">
+        {% include "navigation.html" %}
 
-<main id="main-content">
+        <main id="main-content">
 
-    <!-- HEADER -->
+            <!-- HEADER -->
 
-    <header>
-        <div>
-            <p class="eyebrow">Daily paper, your way</p>
-            <h1>{{ {'dashboard':'Your day, on paper','receipt':'Receipt','tasks':'Tasks & lists','accounts':'Account settings','settings':'Settings'}[active_view] }}</h1>
-            <div class="muted">
-                {{ {'dashboard':'A little clarity for the day ahead.','receipt':'Choose what goes on your next print.','tasks':'Routines, future plans and things to buy.','accounts':'Manage commitments and repayment details.','settings':'Location, reminders and printer controls.'}[active_view] }}
-            </div>
-        </div>
-
-        <form
-            method="post"
-            action="{{ url_for('logout') }}"
-        ><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button>Sign out</button>
-        </form>
-    </header>
-
-
-    <!-- FLASH MESSAGES -->
-
-    {% with messages=get_flashed_messages() %}
-        {% for m in messages %}
-            <div class="flash">
-                {{ m }}
-            </div>
-        {% endfor %}
-    {% endwith %}
-
-
-    {% if active_view == 'dashboard' %}
-    {% include 'renewal_reminders.html' %}
-    <section id="overview">
-        <p class="eyebrow">At a glance</p>
-        <h2>Make room for the day</h2>
-        <div class="dashboard-stats">
-            <div><span>Next scheduled print</span><strong>{{ scheduled_at.strftime('%H:%M') if scheduled_at else 'Off' }}</strong><small>{% if scheduled_at %}{{ scheduled_at.strftime('%a %d %b · %Z') }} · while the server runs{% else %}Automatic printing is disabled{% endif %} · <a href="{{ url_for('index',view='settings') }}#printing">Change time</a></small></div>
-            <div><span>Receipt location</span><strong>{{ settings.location.name }}</strong><small>{{ settings.location.region }}</small></div>
-            <div><span>Daily routines</span><strong>{{ routines|length }}</strong><small><a href="{{ url_for('index',view='tasks') }}">Manage your routines</a></small></div>
-        </div>
-        <div class="quick-actions">
-            <form method="post" action="{{ url_for('print_now') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="primary">Print receipt</button></form>
-            <a class="button" href="{{ url_for('preview') }}">Open receipt</a>
-            <a class="button" id="finance-review-link" href="{{ url_for('finance_review') }}">Review finances</a>
-        </div>
-        <p class="muted">Open your saved live receipt, generate a fresh preview or print a new copy.</p>
-        <div class="status-line" aria-live="polite">
-            <strong>Last print:</strong>
-            {% if print_status %}
-                <span class="badge {{ print_status.state }}">{{ "Sent to printer" if print_status.state == "completed" else print_status.state|title }}</span>
-                <span>{{ print_status.page|replace('_', ' ')|title }} · {{ last_print_local or 'Time unavailable' }}</span>
-            {% else %}
-                <span class="muted">No recent web print.</span>
-            {% endif %}
-        </div>
-        {% if print_status and print_status.state == "completed" %}<p class="muted">Sending completed successfully. The app cannot confirm that paper was physically printed.</p>{% endif %}
-        {% if print_status and print_status.state in ('failed','interrupted','timed_out','cancelled') %}
-            <p class="helper">{{ "The job reached the 10-minute limit." if print_status.state == "timed_out" else "The job was cancelled." if print_status.state == "cancelled" else "The job did not finish." }} Last step: {{ print_status.stage or 'unavailable' }}. Check the receipt before printing again, as it may be partly printed. <a href="{{ url_for('preview') }}">Open receipt</a>.</p><form method="post" action="{{ url_for('print_now') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Retry print</button></form>
-        {% endif %}
-    </section>
-
-    {% include "today.html" %}
-    <section><h2>Connections</h2><p class="muted">Review recent API checks and connection issues.</p><a href="{{ url_for('api_health_page') }}">View integration health</a></section>
-    <section id="live-data"><p class="eyebrow">Live data</p><h2>Plan and review</h2><div class="quick-actions"><a class="button" href="{{ url_for('delivery_checklist') }}">Confirm deliveries</a><a class="button" href="{{ url_for('gigs_page') }}">Gigs today</a><a class="button" href="{{ url_for('calendar_map') }}">Calendar map</a><a class="button" href="{{ url_for('meals_page') }}">Meals & recipes</a><a class="button" href="{{ url_for('tesco_list') }}">Tesco shopping review</a></div></section>
-
-    {% endif %}
-
-    {% if active_view == 'settings' %}<section><h2>Setup checklist</h2><p class="muted">Review configuration, test the printer connection, and find the right settings.</p><a class="button" href="{{ url_for('setup_page') }}">Review setup</a><a class="button" href="{{ url_for('backup_page') }}">Automatic backups</a></section><section><h2>Integration health</h2><p class="muted">Review API failures, recent checks and the automatic check interval.</p><a class="button" href="{{ url_for('api_health_page') }}">API health & frequency</a></section><section><h2>Bin collections</h2><p class="muted">Change the collection address and get day-before bin reminders.</p><a class="button" href="{{ url_for('bin_settings') }}">Manage bin collections</a></section><section id="receipt-layout"><h2>Receipt layout</h2><p class="muted">The default order stays Information → Actions → Food → Finance. Finance appears when requested. A custom order collects all selected pages before sending them to the printer.</p><form method="post" action="{{ url_for('save_receipt_layout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% for name in settings.layout.order %}<label>Page {{ loop.index }}<select name="page_{{ loop.index0 }}">{% for value in ['information','actions','food','finance'] %}<option value="{{ value }}" {% if value == name %}selected{% endif %}>{{ value|title }}</option>{% endfor %}</select></label>{% endfor %}<label>Detail<select name="detail"><option value="detailed" {% if settings.layout.detail == 'detailed' %}selected{% endif %}>Detailed (current behaviour)</option><option value="compact" {% if settings.layout.detail == 'compact' %}selected{% endif %}>Compact</option></select></label><p class="muted">Compact uses shorter weather and at most two headlines per news section. Tasks, exercise instructions and finance amounts stay complete.</p><button>Save receipt layout</button></form></section>{% endif %}
-    {% if active_view in ['receipt','settings'] %}
-    <!-- RECEIPT SETTINGS -->
-
-    <form
-        method="post"
-        action="{{ url_for('save') }}"
-    ><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="return_view" value="{{ active_view }}">
-
-        <section>
-
-            <h2>Next receipt</h2>
-
-            <p class="muted">
-                One-shot requests reset after
-                successful processing.
-            </p>
-
-            {% for key,label in [
-                ('finance_check','Finance check'),
-                ('food_shop','Food shop'),
-                ('shopping_list','Shopping list'),
-                ('to_buy','To buy'),
-                ('future_tasks','Future tasks')
-            ] %}
-
-                <label class="option">
-
-                    <span>
-                        {{ label }}
-                    </span>
-
-                    <input
-                        type="checkbox"
-                        name="{{ key }}"
-                        {% if settings.one_shot[key] %}
-                            checked
-                        {% endif %}
-                    >
-
-                </label>
-
-            {% endfor %}
-
-        </section>
-
-
-        <section>
-
-            <h2>Daily receipt</h2>
-
-            {% for key,label in [
-                ('calendar','Calendar'),
-                ('deliveries','Deliveries'),
-                ('weather','Weather'),
-                ('national_news','National news'),
-                ('local_news','BBC local news'),
-                ('sport_news','Sport news'),
-                ('local_gigs','Gigs today'),
-                ('villa','Villa match information'),
-                ('villa_trains','Villa match-day trains')
-            ] %}
-
-                <label class="option">
-
-                    <span>
-                        {{ label }}
-                    </span>
-
-                    <input
-                        type="checkbox"
-                        name="{{ key }}"
-                        {% if settings.features[key] %}
-                            checked
-                        {% endif %}
-                    >
-
-                </label>
-
-            {% endfor %}
-
-        </section>
-
-
-        <section>
-            <h2>Therapy payment reminder</h2>
-            <p class="muted">When therapy is two or three days away, check recent bank payments before adding “Pay for therapy” to the receipt. Enter the payee as it appears in your bank.</p>
-            <div class="grid">
-                <label>Bank payment reference<input name="therapy_payee" maxlength="80" autocomplete="off" value="{{ settings.therapy_payment.payee }}" placeholder="Name or reference on bank payment"></label>
-                <label>Paying account<select name="therapy_provider">
-                    {% for provider in ['MONZO', 'HSBC'] %}
-                        <option value="{{ provider }}" {% if settings.therapy_payment.provider == provider %}selected{% endif %}>{{ provider|title }}</option>
-                    {% endfor %}
-                </select></label>
-            </div>
-        </section>
-
-
-        <section>
-            <h2>Salary identification</h2>
-            <p class="muted">Salary and payroll references are recognised automatically. If your employer appears under a different name in bank transactions, enter that name here so its payments are listed under salary.</p>
-            <label>Salary bank reference<input name="salary_payee" maxlength="80" autocomplete="off" value="{{ settings.finance.salary_payee }}" placeholder="Employer name on bank payment"></label>
-        </section>
-
-
-        <section id="receipt-location">
-            <h2>Receipt location</h2>
-            <p class="muted">The name and region appear in the receipt header and weather. Coordinates choose the weather forecast; the BBC RSS feed chooses the local headlines.</p>
-            <div class="grid">
-                <label>Place name<input name="name" maxlength="18" required value="{{ settings.location.name }}"></label>
-                <label>Region<input name="region" maxlength="19" required value="{{ settings.location.region }}"></label>
-                <label>Latitude<input type="number" name="latitude" min="-90" max="90" step="any" required value="{{ settings.location.latitude }}"></label>
-                <label>Longitude<input type="number" name="longitude" min="-180" max="180" step="any" required value="{{ settings.location.longitude }}"></label>
-                <label>Local news heading<input name="local_news_label" maxlength="35" required value="{{ settings.location.local_news_label }}"></label>
-                <label>BBC local RSS feed<input type="url" name="local_news_feed" required value="{{ settings.location.local_news_feed }}"></label>
-            </div>
-            <p class="muted">Use a regional feed from feeds.bbci.co.uk/news/. Villa match-day information is controlled separately.</p>
-        </section>
-
-
-        <section>
-
-            <h2>Output</h2>
-
-            <label class="option">
-
-                <span>
-                    Weather detail
-                </span>
-
-                <select name="weather_detail">
-
-                    {% for v in [
-                        'auto',
-                        'compact',
-                        'full'
-                    ] %}
-
-                        <option
-                            value="{{ v }}"
-                            {% if settings.display.weather_detail == v %}
-                                selected
-                            {% endif %}
-                        >
-                            {{ v|title }}
-                        </option>
-
-                    {% endfor %}
-
-                </select>
-
-            </label>
-
-
-            <label class="option">
-
-                <span>
-                    News stories
-                </span>
-
-                <input
-                    type="number"
-                    name="news_count"
-                    min="1"
-                    max="10"
-                    value="{{ settings.display.news_count }}"
-                >
-
-            </label>
-
-
-            <label class="option">
-                <span>Sport stories</span>
-                <input type="number" name="sport_count" min="1" max="5"
-                       value="{{ settings.display.sport_count }}">
-            </label>
-
-        </section>
-
-
-        <button class="primary">
-            Save settings
-        </button>
-
-    </form>
-
-
-    {% endif %}
-
-    {% if active_view == 'tasks' %}
-    <!-- ROUTINES -->
-
-    <section id="routines">
-
-        <div class="quick-actions"><a class="button primary" href="{{ url_for('task_list') }}">To-do checklist</a><a class="button" href="{{ url_for('exercise_list') }}">Exercises</a></div><h2>Routines</h2>
-
-        <p class="muted">
-            Due routines are added to the receipt
-            as tick-box tasks.
-        </p>
-
-
-        {% for r in routines %}
-
-            <div class="routine">
-
+            <header>
                 <div>
+                    <p class="eyebrow">Daily paper, your way</p>
+                    <h1>
+                        {{ {'dashboard':'Your day, on paper','receipt':'Receipt','tasks':'Tasks & lists','accounts':'Account settings','settings':'Settings'}[active_view] }}
+                    </h1>
+                    <div class="muted">
+                        {{ {'dashboard':'A little clarity for the day ahead.','receipt':'Choose what goes on your next print.','tasks':'Routines, future plans and things to buy.','accounts':'Manage commitments and repayment details.','settings':'Location, reminders and printer controls.'}[active_view] }}
+                    </div>
+                </div>
 
-                    <strong>
-                        {{ r.name }}
-                    </strong>
+                <form method="post" action="{{ url_for('logout') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button>Sign out</button>
+                </form>
+            </header>
 
-                    <br>
 
-                    <small>
+            <!-- FLASH MESSAGES -->
 
-                        {% if r.schedule_type == 'weekly' %}
+            {% with messages=get_flashed_messages() %}
+                {% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}
+            {% endwith %}
 
-                            Every {{ r.weekday|title }}
 
+            {% if active_view == 'dashboard' %}
+                {% include 'renewal_reminders.html' %}
+                <section id="overview">
+                    <p class="eyebrow">At a glance</p>
+                    <h2>Make room for the day</h2>
+                    <div class="dashboard-stats">
+                        <div>
+                            <span>Next scheduled print</span><strong>{{ scheduled_at.strftime('%H:%M') if scheduled_at else 'Off' }}</strong><small>
+                                {% if scheduled_at %}
+                                    {{ scheduled_at.strftime('%a %d %b · %Z') }} · while the server runs
+                                {% else %}
+                                    Automatic printing is disabled
+                                {% endif %}
+                            · <a href="{{ url_for('index',view='settings') }}#printing">Change time</a></small>
+                        </div>
+                        <div>
+                            <span>Receipt location</span><strong>{{ settings.location.name }}</strong><small>{{ settings.location.region }}</small>
+                        </div>
+                        <div>
+                            <span>Daily routines</span><strong>{{ routines|length }}</strong><small><a href="{{ url_for('index',view='tasks') }}">Manage your routines</a></small>
+                        </div>
+                    </div>
+                    <div class="quick-actions">
+                        <form method="post" action="{{ url_for('print_now') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="primary">Print receipt</button>
+                        </form>
+                        <a class="button" href="{{ url_for('preview') }}">Open receipt</a>
+                        <a class="button"
+                           id="finance-review-link"
+                           href="{{ url_for('finance_review') }}">Review finances</a>
+                    </div>
+                    <p class="muted">Open your saved live receipt, generate a fresh preview or print a new copy.</p>
+                    <div class="status-line" aria-live="polite">
+                        <strong>Last print:</strong>
+                        {% if print_status %}
+                            <span class="badge {{ print_status.state }}">{{ "Sent to printer" if print_status.state == "completed" else print_status.state|title }}</span>
+                            <span>{{ print_status.page|replace('_', ' ')|title }} · {{ last_print_local or 'Time unavailable' }}</span>
                         {% else %}
-
-                            Every {{ r.interval_days }} days
-
+                            <span class="muted">No recent web print.</span>
                         {% endif %}
+                    </div>
+                    {% if print_status and print_status.state == "completed" %}
+                        <p class="muted">Sending completed successfully. The app cannot confirm that paper was physically printed.</p>
+                    {% endif %}
+                    {% if print_status and print_status.state in ('failed','interrupted','timed_out','cancelled') %}
+                        <p class="helper">
+                            {{ "The job reached the 10-minute limit." if print_status.state == "timed_out" else "The job was cancelled." if print_status.state == "cancelled" else "The job did not finish." }} Last step: {{ print_status.stage or 'unavailable' }}. Check the receipt before printing again, as it may be partly printed. <a href="{{ url_for('preview') }}">Open receipt</a>.
+                        </p>
+                        <form method="post" action="{{ url_for('print_now') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button>Retry print</button>
+                        </form>
+                    {% endif %}
+                </section>
 
-                        · Next {{ r.next_due_display }}
+                {% include "today.html" %}
+                <section>
+                    <h2>Connections</h2>
+                    <p class="muted">Review recent API checks and connection issues.</p>
+                    <a href="{{ url_for('api_health_page') }}">View integration health</a>
+                </section>
+                <section id="live-data">
+                    <p class="eyebrow">Live data</p>
+                    <h2>Plan and review</h2>
+                    <div class="quick-actions">
+                        <a class="button" href="{{ url_for('delivery_checklist') }}">Confirm deliveries</a><a class="button" href="{{ url_for('gigs_page') }}">Gigs today</a><a class="button" href="{{ url_for('calendar_map') }}">Calendar map</a><a class="button" href="{{ url_for('meals_page') }}">Meals & recipes</a><a class="button" href="{{ url_for('tesco_list') }}">Tesco shopping review</a>
+                    </div>
+                </section>
 
-                        {% if not r.enabled %}
-                            · Disabled
-                        {% endif %}
+            {% endif %}
 
-                    </small>
-
-                </div>
-
-
-                <div class="actions">
-
-                    <form
-                        method="post"
-                        action="{{ url_for(
-                            'routine_done',
-                            routine_id=r.id
-                        ) }}"
-                    ><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button>
-                            Done
-                        </button>
+            {% if active_view == 'settings' %}
+                <section>
+                    <h2>Setup checklist</h2>
+                    <p class="muted">Review configuration, test the printer connection, and find the right settings.</p>
+                    <a class="button" href="{{ url_for('setup_page') }}">Review setup</a><a class="button" href="{{ url_for('backup_page') }}">Automatic backups</a>
+                </section>
+                <section>
+                    <h2>Integration health</h2>
+                    <p class="muted">Review API failures, recent checks and the automatic check interval.</p>
+                    <a class="button" href="{{ url_for('api_health_page') }}">API health & frequency</a>
+                </section>
+                <section>
+                    <h2>Bin collections</h2>
+                    <p class="muted">Change the collection address and get day-before bin reminders.</p>
+                    <a class="button" href="{{ url_for('bin_settings') }}">Manage bin collections</a>
+                </section>
+                <section id="receipt-layout">
+                    <h2>Receipt layout</h2>
+                    <p class="muted">
+                        The default order stays Information → Actions → Food → Finance. Finance appears when requested. A custom order collects all selected pages before sending them to the printer.
+                    </p>
+                    <form method="post" action="{{ url_for('save_receipt_layout') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% for name in settings.layout.order %}
+                            <label>
+                                Page {{ loop.index }}
+                                <select name="page_{{ loop.index0 }}">
+                                    {% for value in ['information','actions','food','finance'] %}
+                                        <option value="{{ value }}" {% if value == name %}selected{% endif %}>{{ value|title }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                        {% endfor %}
+                        <label>
+                            Detail
+                            <select name="detail">
+                                <option value="detailed"
+                                        {% if settings.layout.detail == 'detailed' %}selected{% endif %}>
+                                    Detailed (current behaviour)
+                                </option>
+                                <option value="compact"
+                                        {% if settings.layout.detail == 'compact' %}selected{% endif %}>
+                                    Compact
+                                </option>
+                            </select>
+                        </label>
+                        <p class="muted">
+                            Compact uses shorter weather and at most two headlines per news section. Tasks, exercise instructions and finance amounts stay complete.
+                        </p>
+                        <button>Save receipt layout</button>
                     </form>
+                </section>
+            {% endif %}
+            {% if active_view in ['receipt','settings'] %}
+                <!-- RECEIPT SETTINGS -->
 
+                <form method="post" action="{{ url_for('save') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="return_view" value="{{ active_view }}">
 
-                    <form
-                        method="post"
-                        action="{{ url_for(
-                            'routine_toggle',
-                            routine_id=r.id
-                        ) }}"
-                    ><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <section>
 
-                        <input
-                            type="hidden"
-                            name="enabled"
-                            value="{{
-                                '0'
-                                if r.enabled
-                                else '1'
-                            }}"
-                        >
+                        <h2>Next receipt</h2>
 
-                        <button>
-                            {{
-                                'Disable'
-                                if r.enabled
-                                else 'Enable'
-                            }}
-                        </button>
+                        <p class="muted">
+                            One-shot requests reset after
+                            successful processing.
+                        </p>
 
-                    </form>
+                        {% for key,label in [
+                            ('finance_check','Finance check'),
+                            ('food_shop','Food shop'),
+                            ('shopping_list','Shopping list'),
+                            ('to_buy','To buy'),
+                            ('future_tasks','Future tasks')
+                            ] %}
 
+                            <label class="option">
 
-                    <form
-                        method="post"
-                        action="{{ url_for(
-                            'routine_delete',
-                            routine_id=r.id
-                        ) }}"
-                        onsubmit="
-                            return confirm(
-                                'Delete this routine?'
-                            )
-                        "
-                    ><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <span>{{ label }}</span>
 
-                        <button>
-                            Delete
-                        </button>
+                                <input type="checkbox"
+                                       name="{{ key }}"
+                                       {% if settings.one_shot[key] %}checked{% endif %}>
 
-                    </form>
-
-                </div>
-
-            </div>
-
-        {% else %}
-
-            <p>
-                No routines configured.
-            </p>
-
-        {% endfor %}
-
-
-        <h3>Add routine</h3>
-
-
-        <form
-            method="post"
-            action="{{ url_for('routine_add') }}"
-        ><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-            <div class="grid">
-
-                <label>
-                    Name
-                    <br>
-
-                    <input
-                        name="name"
-                        placeholder="Laundry"
-                        required
-                    >
-                </label>
-
-
-                <label>
-                    Type
-                    <br>
-
-                    <select name="schedule_type">
-                        <option value="weekly">
-                            Fixed weekday
-                        </option>
-
-                        <option value="interval">
-                            After completion
-                        </option>
-                    </select>
-                </label>
-
-
-                <label>
-                    Weekday
-                    <br>
-
-                    <select name="weekday">
-
-                        {% for d in weekdays %}
-
-                            <option value="{{ d }}">
-                                {{ d|title }}
-                            </option>
+                            </label>
 
                         {% endfor %}
 
-                    </select>
-                </label>
+                    </section>
 
 
-                <label>
-                    Interval days
-                    <br>
+                    <section>
 
-                    <input
-                        type="number"
-                        name="interval_days"
-                        min="1"
-                        value="7"
-                    >
-                </label>
+                        <h2>Daily receipt</h2>
 
+                        {% for key,label in [
+                            ('calendar','Calendar'),
+                            ('deliveries','Deliveries'),
+                            ('weather','Weather'),
+                            ('national_news','National news'),
+                            ('local_news','BBC local news'),
+                            ('sport_news','Sport news'),
+                            ('local_gigs','Gigs today'),
+                            ('villa','Villa match information'),
+                            ('villa_trains','Villa match-day trains')
+                            ] %}
 
-                <label>
-                    Show days before
-                    <br>
+                            <label class="option">
 
-                    <input
-                        type="number"
-                        name="show_days_before"
-                        min="0"
-                        value="0"
-                    >
-                </label>
+                                <span>{{ label }}</span>
 
-            </div>
+                                <input type="checkbox"
+                                       name="{{ key }}"
+                                       {% if settings.features[key] %}checked{% endif %}>
 
-            <p>
-                <button>
-                    Add routine
-                </button>
-            </p>
+                            </label>
 
-        </form>
+                        {% endfor %}
 
-    </section>
+                    </section>
 
 
-    <!-- ========================================
-         INSTALMENTS
-         ======================================== -->
-
-    {% endif %}
-
-    {% if active_view == 'accounts' %}
-    <p><a class="button" href="{{ url_for('finance_review') }}">Back to finance review</a></p>
-    <section id="instalments">
-
-        <h2>Instalments</h2>
-
-        <p class="muted">
-            Temporary payment commitments.
-            Changes are used by the next finance receipt. Set the regular amount and next payment date to help verify a matching bank debit.
-        </p>
-
-
-        {% if subscriptions.instalments %}
-
-            {% for item in subscriptions.instalments %}
-
-                <form
-                    method="post"
-                    action="{{ url_for(
-                        'instalment_update',
-                        index=loop.index0
-                    ) }}"
-                    class="instalment"
-                ><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                    <div class="instalment-header">
-
-                        <div>
-
-                            <h3>
-                                {{ item.name }}
-                            </h3>
-
-                            {% if item.next_payment %}
-
-                                <small>
-                                    Next payment:
-                                    {{ item.next_payment }}
-                                </small>
-
-                            {% endif %}
-
+                    <section>
+                        <h2>Therapy payment reminder</h2>
+                        <p class="muted">
+                            When therapy is two or three days away, check recent bank payments before adding “Pay for therapy” to the receipt. Enter the payee as it appears in your bank.
+                        </p>
+                        <div class="grid">
+                            <label>
+                                Bank payment reference
+                                <input name="therapy_payee"
+                                       maxlength="80"
+                                       autocomplete="off"
+                                       value="{{ settings.therapy_payment.payee }}"
+                                       placeholder="Name or reference on bank payment">
+                            </label>
+                            <label>
+                                Paying account
+                                <select name="therapy_provider">
+                                    {% for provider in ['MONZO', 'HSBC'] %}
+                                        <option value="{{ provider }}"
+                                                {% if settings.therapy_payment.provider == provider %}selected{% endif %}>
+                                            {{ provider|title }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
                         </div>
+                    </section>
 
 
-                        {% if item.remaining_balance is not none %}
-
-                            <div class="balance">
-
-                                <small>
-                                    Remaining
-                                </small>
-
-                                <strong>
-                                    £{{ "%.2f"|format(
-                                        item.remaining_balance
-                                    ) }}
-                                </strong>
-
-                            </div>
-
-                        {% endif %}
-
-                    </div>
-
-
-                    {% if item.progress %}
-                    <figure class="repayment-progress">
-                        <progress value="{{ item.progress.paid }}" max="{{ item.progress.total }}" aria-label="{{ item.name }} repayment progress: {{ item.progress.percent }} percent paid"></progress>
-                        <figcaption><span>{{ item.progress.percent }}% repaid · £{{ '%.2f'|format(item.progress.paid) }} paid</span><span>£{{ '%.2f'|format(item.progress.remaining) }} remaining</span></figcaption>
-                    </figure>
-                    {% endif %}
-
-                    <div class="grid">
-
+                    <section>
+                        <h2>Salary identification</h2>
+                        <p class="muted">
+                            Salary and payroll references are recognised automatically. If your employer appears under a different name in bank transactions, enter that name here so its payments are listed under salary.
+                        </p>
                         <label>
-                            Name
-                            <br>
-
-                            <input
-                                type="text"
-                                name="name"
-                                value="{{ item.name }}"
-                                required
-                            >
+                            Salary bank reference
+                            <input name="salary_payee"
+                                   maxlength="80"
+                                   autocomplete="off"
+                                   value="{{ settings.finance.salary_payee }}"
+                                   placeholder="Employer name on bank payment">
                         </label>
+                    </section>
 
 
-                        <label>
-                            Regular payment (£)
-                            <br>
-
-                            <input
-                                type="number"
-                                name="amount"
-                                min="0"
-                                step="0.01"
-                                value="{{
-                                    item.amount
-                                    if item.amount is not none
-                                    else ''
-                                }}"
-                            >
-                        </label>
-
-
-                        <label>
-                            Original total (£)
-                            <br>
-
-                            <input
-                                type="number"
-                                name="total_price"
-                                min="0"
-                                step="0.01"
-                                value="{{
-                                    item.total_price
-                                    if item.total_price is not none
-                                    else ''
-                                }}"
-                            >
-                        </label>
-
-
-                        <label>
-                            Paid to date (£)
-                            <br>
-
-                            <input
-                                type="number"
-                                name="paid_to_date"
-                                min="0"
-                                step="0.01"
-                                value="{{
-                                    item.paid_to_date
-                                    if item.paid_to_date is not none
-                                    else ''
-                                }}"
-                            >
-                        </label>
-
-
-                        <label>
-                            Remaining balance (£)
-                            <br>
-
-                            <input
-                                type="number"
-                                name="remaining_balance"
-                                min="0"
-                                step="0.01"
-                                value="{{
-                                    item.remaining_balance
-                                    if item.remaining_balance is not none
-                                    else ''
-                                }}"
-                            >
-                        </label>
-
-
-                        <label>
-                            Payments remaining
-                            <br>
-
-                            <input
-                                type="number"
-                                name="payments_remaining"
-                                min="0"
-                                step="1"
-                                value="{{
-                                    item.payments_remaining
-                                    if item.payments_remaining is not none
-                                    else ''
-                                }}"
-                            >
-                        </label>
-
-
-                        <label>
-                            Next payment
-                            <br>
-
-                            <input
-                                type="date"
-                                name="next_payment"
-                                value="{{ item.next_payment or '' }}"
-                            >
-                        </label>
-
-                    </div>
-
-
-                    <!-- SCHEDULE -->
-
-                    {% if item.schedule %}
-
-                        <div class="schedule">
-
-                            <h4>
-                                Payment schedule
-                            </h4>
-
-                            {% for payment in item.schedule %}
-
-                                <div class="schedule-row">
-
-                                    <span>
-                                        {{ payment.date }}
-                                    </span>
-
-                                    <strong>
-                                        £{{ "%.2f"|format(
-                                            payment.amount
-                                        ) }}
-                                    </strong>
-
-                                </div>
-
-                            {% endfor %}
-
+                    <section id="receipt-location">
+                        <h2>Receipt location</h2>
+                        <p class="muted">
+                            The name and region appear in the receipt header and weather. Coordinates choose the weather forecast; the BBC RSS feed chooses the local headlines.
+                        </p>
+                        <div class="grid">
+                            <label>
+                                Place name
+                                <input name="name"
+                                       maxlength="18"
+                                       required
+                                       value="{{ settings.location.name }}">
+                            </label>
+                            <label>
+                                Region
+                                <input name="region"
+                                       maxlength="19"
+                                       required
+                                       value="{{ settings.location.region }}">
+                            </label>
+                            <label>
+                                Latitude
+                                <input type="number"
+                                       name="latitude"
+                                       min="-90"
+                                       max="90"
+                                       step="any"
+                                       required
+                                       value="{{ settings.location.latitude }}">
+                            </label>
+                            <label>
+                                Longitude
+                                <input type="number"
+                                       name="longitude"
+                                       min="-180"
+                                       max="180"
+                                       step="any"
+                                       required
+                                       value="{{ settings.location.longitude }}">
+                            </label>
+                            <label>
+                                Local news heading
+                                <input name="local_news_label"
+                                       maxlength="35"
+                                       required
+                                       value="{{ settings.location.local_news_label }}">
+                            </label>
+                            <label>
+                                BBC local RSS feed
+                                <input type="url"
+                                       name="local_news_feed"
+                                       required
+                                       value="{{ settings.location.local_news_feed }}">
+                            </label>
                         </div>
+                        <p class="muted">
+                            Use a regional feed from feeds.bbci.co.uk/news/. Villa match-day information is controlled separately.
+                        </p>
+                    </section>
 
-                    {% endif %}
 
+                    <section>
 
-                    <!-- HISTORY -->
+                        <h2>Output</h2>
 
-                    {% if item.history %}
+                        <label class="option">
 
-                        <details class="history">
+                            <span>Weather detail</span>
 
-                            <summary>
-                                Payment history
-                                ({{ item.history|length }})
-                            </summary>
+                            <select name="weather_detail">
 
-                            <div class="schedule">
+                                {% for v in [
+                                    'auto',
+                                    'compact',
+                                    'full'
+                                    ] %}
 
-                                {% for payment in item.history %}
-
-                                    <div class="schedule-row">
-
-                                        <span>
-
-                                            {{ payment.date }}
-
-                                            {% if payment.type %}
-                                                · {{ payment.type|title }}
-                                            {% endif %}
-
-                                        </span>
-
-                                        <strong>
-                                            £{{ "%.2f"|format(
-                                                payment.amount
-                                            ) }}
-                                        </strong>
-
-                                    </div>
+                                    <option value="{{ v }}"
+                                            {% if settings.display.weather_detail == v %}selected{% endif %}>
+                                        {{ v|title }}
+                                    </option>
 
                                 {% endfor %}
 
+                            </select>
+
+                        </label>
+
+
+                        <label class="option">
+
+                            <span>News stories</span>
+
+                            <input type="number"
+                                   name="news_count"
+                                   min="1"
+                                   max="10"
+                                   value="{{ settings.display.news_count }}">
+
+                        </label>
+
+
+                        <label class="option">
+                            <span>Sport stories</span>
+                            <input type="number"
+                                   name="sport_count"
+                                   min="1"
+                                   max="5"
+                                   value="{{ settings.display.sport_count }}">
+                        </label>
+
+                    </section>
+
+
+                    <button class="primary">Save settings</button>
+
+                </form>
+
+
+            {% endif %}
+
+            {% if active_view == 'tasks' %}
+                <!-- ROUTINES -->
+
+                <section id="routines">
+
+                    <div class="quick-actions">
+                        <a class="button primary" href="{{ url_for('task_list') }}">To-do checklist</a><a class="button" href="{{ url_for('exercise_list') }}">Exercises</a>
+                    </div>
+                    <h2>Routines</h2>
+
+                    <p class="muted">
+                        Due routines are added to the receipt
+                        as tick-box tasks.
+                    </p>
+
+
+                    {% for r in routines %}
+
+                        <div class="routine">
+
+                            <div>
+
+                                <strong>{{ r.name }}</strong>
+
+                                <br>
+
+                                <small>
+
+                                    {% if r.schedule_type == 'weekly' %}
+
+                                        Every {{ r.weekday|title }}
+
+                                    {% else %}
+
+                                        Every {{ r.interval_days }} days
+
+                                    {% endif %}
+
+                                    · Next {{ r.next_due_display }}
+
+                                    {% if not r.enabled %}· Disabled{% endif %}
+
+                                </small>
+
                             </div>
 
-                        </details>
+
+                            <div class="actions">
+
+                                <form method="post"
+                                      action="{{ url_for( 'routine_done', routine_id=r.id ) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button>Done</button>
+                                </form>
+
+
+                                <form method="post"
+                                      action="{{ url_for( 'routine_toggle', routine_id=r.id ) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                                    <input type="hidden" name="enabled" value="{{ '0' if r.enabled else '1' }}">
+
+                                    <button>
+                                        {{
+                                        'Disable'
+                                        if r.enabled
+                                        else 'Enable'
+                                        }}
+                                    </button>
+
+                                </form>
+
+
+                                <form method="post"
+                                      action="{{ url_for( 'routine_delete', routine_id=r.id ) }}"
+                                      onsubmit=" return confirm( 'Delete this routine?' ) ">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                                    <button>Delete</button>
+
+                                </form>
+
+                            </div>
+
+                        </div>
+
+                    {% else %}
+
+                        <p>No routines configured.</p>
+
+                    {% endfor %}
+
+
+                    <h3>Add routine</h3>
+
+
+                    <form method="post" action="{{ url_for('routine_add') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="grid">
+
+                            <label>
+                                Name
+                                <br>
+
+                                <input name="name" placeholder="Laundry" required>
+                            </label>
+
+
+                            <label>
+                                Type
+                                <br>
+
+                                <select name="schedule_type">
+                                    <option value="weekly">Fixed weekday</option>
+
+                                    <option value="interval">After completion</option>
+                                </select>
+                            </label>
+
+
+                            <label>
+                                Weekday
+                                <br>
+
+                                <select name="weekday">
+
+                                    {% for d in weekdays %}<option value="{{ d }}">{{ d|title }}</option>{% endfor %}
+
+                                </select>
+                            </label>
+
+
+                            <label>
+                                Interval days
+                                <br>
+
+                                <input type="number" name="interval_days" min="1" value="7">
+                            </label>
+
+
+                            <label>
+                                Show days before
+                                <br>
+
+                                <input type="number" name="show_days_before" min="0" value="0">
+                            </label>
+
+                        </div>
+
+                        <p>
+                            <button>Add routine</button>
+                        </p>
+
+                    </form>
+
+                </section>
+
+
+                <!-- ========================================
+         INSTALMENTS
+         ======================================== -->
+
+            {% endif %}
+
+            {% if active_view == 'accounts' %}
+                <p>
+                    <a class="button" href="{{ url_for('finance_review') }}">Back to finance review</a>
+                </p>
+                <section id="instalments">
+
+                    <h2>Instalments</h2>
+
+                    <p class="muted">
+                        Temporary payment commitments.
+                        Changes are used by the next finance receipt. Set the regular amount and next payment date to help verify a matching bank debit.
+                    </p>
+
+
+                    {% if subscriptions.instalments %}
+
+                        {% for item in subscriptions.instalments %}
+
+                            <form method="post"
+                                  action="{{ url_for( 'instalment_update', index=loop.index0 ) }}"
+                                  class="instalment">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                                <div class="instalment-header">
+
+                                    <div>
+
+                                        <h3>{{ item.name }}</h3>
+
+                                        {% if item.next_payment %}
+
+                                            <small>
+                                                Next payment:
+                                                {{ item.next_payment }}
+                                            </small>
+
+                                        {% endif %}
+
+                                    </div>
+
+
+                                    {% if item.remaining_balance is not none %}
+
+                                        <div class="balance">
+
+                                            <small>Remaining</small>
+
+                                            <strong>
+                                                £{{ "%.2f"|format(
+                                                item.remaining_balance
+                                                ) }}
+                                            </strong>
+
+                                        </div>
+
+                                    {% endif %}
+
+                                </div>
+
+
+                                {% if item.progress %}
+                                    <figure class="repayment-progress">
+                                        <progress value="{{ item.progress.paid }}"
+                                                  max="{{ item.progress.total }}"
+                                                  aria-label="{{ item.name }} repayment progress: {{ item.progress.percent }} percent paid"></progress>
+                                        <figcaption>
+                                            <span>{{ item.progress.percent }}% repaid · £{{ '%.2f'|format(item.progress.paid) }} paid</span><span>£{{ '%.2f'|format(item.progress.remaining) }} remaining</span>
+                                        </figcaption>
+                                    </figure>
+                                {% endif %}
+
+                                <div class="grid">
+
+                                    <label>
+                                        Name
+                                        <br>
+
+                                        <input type="text" name="name" value="{{ item.name }}" required>
+                                    </label>
+
+
+                                    <label>
+                                        Regular payment (£)
+                                        <br>
+
+                                        <input type="number"
+                                               name="amount"
+                                               min="0"
+                                               step="0.01"
+                                               value="{{ item.amount if item.amount is not none else '' }}">
+                                    </label>
+
+
+                                    <label>
+                                        Original total (£)
+                                        <br>
+
+                                        <input type="number"
+                                               name="total_price"
+                                               min="0"
+                                               step="0.01"
+                                               value="{{ item.total_price if item.total_price is not none else '' }}">
+                                    </label>
+
+
+                                    <label>
+                                        Paid to date (£)
+                                        <br>
+
+                                        <input type="number"
+                                               name="paid_to_date"
+                                               min="0"
+                                               step="0.01"
+                                               value="{{ item.paid_to_date if item.paid_to_date is not none else '' }}">
+                                    </label>
+
+
+                                    <label>
+                                        Remaining balance (£)
+                                        <br>
+
+                                        <input type="number"
+                                               name="remaining_balance"
+                                               min="0"
+                                               step="0.01"
+                                               value="{{ item.remaining_balance if item.remaining_balance is not none else '' }}">
+                                    </label>
+
+
+                                    <label>
+                                        Payments remaining
+                                        <br>
+
+                                        <input type="number"
+                                               name="payments_remaining"
+                                               min="0"
+                                               step="1"
+                                               value="{{ item.payments_remaining if item.payments_remaining is not none else '' }}">
+                                    </label>
+
+
+                                    <label>
+                                        Next payment
+                                        <br>
+
+                                        <input type="date" name="next_payment" value="{{ item.next_payment or '' }}">
+                                    </label>
+
+                                </div>
+
+
+                                <!-- SCHEDULE -->
+
+                                {% if item.schedule %}
+
+                                    <div class="schedule">
+
+                                        <h4>Payment schedule</h4>
+
+                                        {% for payment in item.schedule %}
+
+                                            <div class="schedule-row">
+
+                                                <span>{{ payment.date }}</span>
+
+                                                <strong>
+                                                    £{{ "%.2f"|format(
+                                                    payment.amount
+                                                    ) }}
+                                                </strong>
+
+                                            </div>
+
+                                        {% endfor %}
+
+                                    </div>
+
+                                {% endif %}
+
+
+                                <!-- HISTORY -->
+
+                                {% if item.history %}
+
+                                    <details class="history">
+
+                                        <summary>
+                                            Payment history
+                                            ({{ item.history|length }})
+                                        </summary>
+
+                                        <div class="schedule">
+
+                                            {% for payment in item.history %}
+
+                                                <div class="schedule-row">
+
+                                                    <span>
+
+                                                        {{ payment.date }}
+
+                                                        {% if payment.type %}· {{ payment.type|title }}{% endif %}
+
+                                                    </span>
+
+                                                    <strong>
+                                                        £{{ "%.2f"|format(
+                                                        payment.amount
+                                                        ) }}
+                                                    </strong>
+
+                                                </div>
+
+                                            {% endfor %}
+
+                                        </div>
+
+                                    </details>
+
+                                {% endif %}
+
+
+                                <button type="submit" class="save-instalment">Save {{ item.name }}</button>
+
+                            </form>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <p>No instalments configured.</p>
 
                     {% endif %}
 
-
-                    <button
-                        type="submit"
-                        class="save-instalment"
-                    >
-                        Save {{ item.name }}
-                    </button>
-
-                </form>
-
-            {% endfor %}
-
-        {% else %}
-
-            <p>
-                No instalments configured.
-            </p>
-
-        {% endif %}
-
-    </section>
+                </section>
 
 
-    <section id="commitments"><p class="eyebrow">Edit live data</p><h2>Monthly commitments</h2><p class="muted">Entries here appear on the finance receipt. Instalment balances remain in the separate section below; avoid entering the same repayment twice.</p>{% for item in subscriptions.monthly %}<div class="instalment"><form method="post" action="{{ url_for('commitment_update', index=loop.index0) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="grid"><label>Name<input name="name" value="{{ item.name }}" required></label><label>Monthly amount (£)<input type="number" name="amount" min="0.01" step="0.01" value="{{ item.amount }}" required></label><label>Usual payment day (optional)<input type="number" name="due_day" min="1" max="31" value="{{ item.due_day or '' }}"></label><label>Contract end date (optional)<input type="date" name="end_date" value="{{ item.end_date or '' }}"></label><label>Bank matching words (comma-separated)<input name="match" value="{{ (item.match or [])|join(', ') if item.match is not string else item.match }}"></label><label>Type<select name="category">{% for value in ['bill','subscription','savings','repayment'] %}<option value="{{ value }}" {% if item.category == value %}selected{% endif %}>{{ value|title }}</option>{% endfor %}</select></label></div><button>Save {{ item.name }}</button></form><form method="post" action="{{ url_for('commitment_delete', index=loop.index0) }}" onsubmit="return confirm('Remove this monthly commitment?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Remove</button></form></div>{% endfor %}<h3>Add monthly commitment</h3><form method="post" action="{{ url_for('commitment_add') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="grid"><label>Name<input name="name" required></label><label>Monthly amount (£)<input type="number" name="amount" min="0.01" step="0.01" required></label><label>Usual payment day (optional)<input type="number" name="due_day" min="1" max="31"></label><label>Contract end date (optional)<input type="date" name="end_date"></label><label>Bank matching words<input name="match" placeholder="e.g. netflix.com"></label><label>Type<select name="category"><option value="subscription">Subscription</option><option value="bill">Bill</option><option value="savings">Savings</option><option value="repayment">Repayment</option></select></label></div><button>Add commitment</button></form></section>
+                <section id="commitments">
+                    <p class="eyebrow">Edit live data</p>
+                    <h2>Monthly commitments</h2>
+                    <p class="muted">
+                        Entries here appear on the finance receipt. Instalment balances remain in the separate section below; avoid entering the same repayment twice.
+                    </p>
+                    {% for item in subscriptions.monthly %}
+                        <div class="instalment">
+                            <form method="post"
+                                  action="{{ url_for('commitment_update', index=loop.index0) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="grid">
+                                    <label>
+                                        Name
+                                        <input name="name" value="{{ item.name }}" required>
+                                    </label>
+                                    <label>
+                                        Monthly amount (£)
+                                        <input type="number"
+                                               name="amount"
+                                               min="0.01"
+                                               step="0.01"
+                                               value="{{ item.amount }}"
+                                               required>
+                                    </label>
+                                    <label>
+                                        Usual payment day (optional)
+                                        <input type="number"
+                                               name="due_day"
+                                               min="1"
+                                               max="31"
+                                               value="{{ item.due_day or '' }}">
+                                    </label>
+                                    <label>
+                                        Contract end date (optional)
+                                        <input type="date" name="end_date" value="{{ item.end_date or '' }}">
+                                    </label>
+                                    <label>
+                                        Bank matching words (comma-separated)
+                                        <input name="match"
+                                               value="{{ (item.match or [])|join(', ') if item.match is not string else item.match }}">
+                                    </label>
+                                    <label>
+                                        Type
+                                        <select name="category">
+                                            {% for value in ['bill','subscription','savings','repayment'] %}
+                                                <option value="{{ value }}"
+                                                        {% if item.category == value %}selected{% endif %}>
+                                                    {{ value|title }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </label>
+                                </div>
+                                <button>Save {{ item.name }}</button>
+                            </form>
+                            <form method="post"
+                                  action="{{ url_for('commitment_delete', index=loop.index0) }}"
+                                  onsubmit="return confirm('Remove this monthly commitment?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button>Remove</button>
+                            </form>
+                        </div>
+                    {% endfor %}
+                    <h3>Add monthly commitment</h3>
+                    <form method="post" action="{{ url_for('commitment_add') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="grid">
+                            <label>
+                                Name
+                                <input name="name" required>
+                            </label>
+                            <label>
+                                Monthly amount (£)
+                                <input type="number" name="amount" min="0.01" step="0.01" required>
+                            </label>
+                            <label>
+                                Usual payment day (optional)
+                                <input type="number" name="due_day" min="1" max="31">
+                            </label>
+                            <label>
+                                Contract end date (optional)
+                                <input type="date" name="end_date">
+                            </label>
+                            <label>
+                                Bank matching words
+                                <input name="match" placeholder="e.g. netflix.com">
+                            </label>
+                            <label>
+                                Type
+                                <select name="category">
+                                    <option value="subscription">Subscription</option>
+                                    <option value="bill">Bill</option>
+                                    <option value="savings">Savings</option>
+                                    <option value="repayment">Repayment</option>
+                                </select>
+                            </label>
+                        </div>
+                        <button>Add commitment</button>
+                    </form>
+                </section>
 
-    <section id="annual-subscriptions">
-        <p class="eyebrow">Edit live data</p>
-        <h2>Annual subscriptions</h2>
-        <p class="muted">These appear separately from monthly commitments. A bank match is checked only near the renewal date; older payments remain recorded but unverified.</p>
-        {% for item in subscriptions.yearly %}
-            <div class="instalment">
-                <form method="post" action="{{ url_for('annual_update', index=loop.index0) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="grid">
-                        <label>Name<input name="name" value="{{ item.name }}" required></label>
-                        <label>Annual amount (£)<input type="number" name="amount" min="0.01" step="0.01" value="{{ item.amount }}" required></label>
-                        <label>Renewal date<input type="date" name="renewal_date" value="{{ item.renewal_date or '' }}" required></label>
-                        <label>Bank matching words<input name="match" value="{{ (item.match or [])|join(', ') if item.match is not string else item.match }}" placeholder="e.g. adobe"></label>
+                <section id="annual-subscriptions">
+                    <p class="eyebrow">Edit live data</p>
+                    <h2>Annual subscriptions</h2>
+                    <p class="muted">
+                        These appear separately from monthly commitments. A bank match is checked only near the renewal date; older payments remain recorded but unverified.
+                    </p>
+                    {% for item in subscriptions.yearly %}
+                        <div class="instalment">
+                            <form method="post"
+                                  action="{{ url_for('annual_update', index=loop.index0) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="grid">
+                                    <label>
+                                        Name
+                                        <input name="name" value="{{ item.name }}" required>
+                                    </label>
+                                    <label>
+                                        Annual amount (£)
+                                        <input type="number"
+                                               name="amount"
+                                               min="0.01"
+                                               step="0.01"
+                                               value="{{ item.amount }}"
+                                               required>
+                                    </label>
+                                    <label>
+                                        Renewal date
+                                        <input type="date"
+                                               name="renewal_date"
+                                               value="{{ item.renewal_date or '' }}"
+                                               required>
+                                    </label>
+                                    <label>
+                                        Bank matching words
+                                        <input name="match"
+                                               value="{{ (item.match or [])|join(', ') if item.match is not string else item.match }}"
+                                               placeholder="e.g. adobe">
+                                    </label>
+                                </div>
+                                <button>Save {{ item.name }}</button>
+                            </form>
+                            <form method="post"
+                                  action="{{ url_for('annual_delete', index=loop.index0) }}"
+                                  onsubmit="return confirm('Remove this annual subscription?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button>Remove</button>
+                            </form>
+                        </div>
+                    {% endfor %}
+                    <h3>Add annual subscription</h3>
+                    <form method="post" action="{{ url_for('annual_add') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="grid">
+                            <label>
+                                Name
+                                <input name="name" required>
+                            </label>
+                            <label>
+                                Annual amount (£)
+                                <input type="number" name="amount" min="0.01" step="0.01" required>
+                            </label>
+                            <label>
+                                Renewal date
+                                <input type="date" name="renewal_date" required>
+                            </label>
+                            <label>
+                                Bank matching words
+                                <input name="match" placeholder="e.g. adobe">
+                            </label>
+                        </div>
+                        <button>Add annual subscription</button>
+                    </form>
+                </section>
+
+                <!-- FOOD SHOP -->
+
+            {% endif %}
+
+            {% if active_view == 'tasks' %}
+                <section id="food-shop">
+
+                    <h2>Food shop</h2>
+
+                    <p class="muted">
+                        Open each item as a Tesco Groceries search.
+                        The Tesco site remains responsible for choosing
+                        the exact product and adding it to your basket.
+                    </p>
+
+                    <p>
+                        <a class="button" href="{{ url_for('tesco_list') }}">Review list for Tesco</a>
+                    </p>
+                    <details>
+                        <summary>Edit items used by this page and the printed food shop</summary>
+                        <p class="muted">Save to use a local list instead of the Google Doc. Put one item on each line.</p>
+                        <form method="post" action="{{ url_for('food_shop_save') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <label for="shop-items">Shopping items</label>
+                            <textarea id="shop-items" name="items" rows="8" style="width:100%">{{ food_shop_text }}</textarea>
+                            <button>Save shopping list</button>
+                        </form>
+                        {% if food_shop_is_local %}
+                            <form method="post" action="{{ url_for('food_shop_reset') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button>Return to Google Doc</button>
+                            </form>
+                        {% endif %}
+                    </details>
+
+                    {% if food_shop_error %}
+
+                        <p>
+                            Food shop unavailable:
+                            {{ food_shop_error }}
+                        </p>
+
+                    {% elif food_shop_items %}
+
+                        {% for item in food_shop_items %}
+
+                            <div class="tesco-item">
+
+                                <span>{{ item }}</span>
+
+                                <a class="tesco-link"
+                                   href="{{ url_for( 'tesco_search', item=item ) }}"
+                                   target="_blank"
+                                   rel="noopener">Find at Tesco</a>
+
+                            </div>
+
+                        {% endfor %}
+
+                        <p>
+                            <a class="tesco-link"
+                               href="https://www.tesco.com/shop/en-GB/landing/groceries"
+                               target="_blank"
+                               rel="noopener">Open Tesco Groceries</a>
+                        </p>
+
+                    {% else %}
+
+                        <p>No food-shop items found.</p>
+
+                    {% endif %}
+
+                </section>
+
+
+                <section id="to-buy">
+                    <h2>To buy</h2>
+                    <p class="muted">
+                        Your wish list is saved on this computer. Tick “To buy” under Next receipt and save settings to print it once. Put one item on each line.
+                    </p>
+                    <form method="post" action="{{ url_for('to_buy_save') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <label for="to-buy-items">Wish list</label>
+                        <textarea id="to-buy-items" name="items" rows="12" style="width:100%">{{ to_buy_items|join('\n') }}</textarea>
+                        <button>Save to buy list</button>
+                    </form>
+                </section>
+
+                <section id="future-tasks">
+                    <h2>Future tasks</h2>
+                    <p class="muted">
+                        Keep longer-term goals here, with a small next step. Entries are saved privately on this server. Tick “Future tasks” under Next receipt to include unfinished goals once.
+                    </p>
+                    {% for task in future_tasks %}
+                        <form method="post" action="{{ url_for('future_tasks_save') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="task_id" value="{{ task.id }}">
+                            <p>
+                                <strong>{{ 'Completed' if task.done else 'Future goal' }}</strong>
+                            </p>
+                            <label for="goal-{{ task.id }}">Goal</label>
+                            <input id="goal-{{ task.id }}"
+                                   name="title"
+                                   value="{{ task.title }}"
+                                   maxlength="160"
+                                   required>
+                            <label for="step-{{ task.id }}">Next step (optional)</label>
+                            <input id="step-{{ task.id }}"
+                                   name="next_step"
+                                   value="{{ task.next_step }}"
+                                   maxlength="240">
+                            <button name="action" value="save">Save changes</button>
+                            <button name="action" value="toggle">{{ 'Reopen' if task.done else 'Mark completed' }}</button>
+                            <button name="action" value="delete" formnovalidate>Delete</button>
+                        </form>
+                    {% else %}
+                        <p class="muted">No future tasks yet.</p>
+                    {% endfor %}
+                    <form method="post" action="{{ url_for('future_tasks_save') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <label for="new-goal">New goal</label>
+                        <input id="new-goal" name="title" maxlength="160" required>
+                        <label for="new-step">Next step (optional)</label>
+                        <input id="new-step" name="next_step" maxlength="240">
+                        <button>Add future task</button>
+                    </form>
+                </section>
+
+            {% endif %}
+
+            {% if active_view in ['receipt','settings'] %}
+                <!-- DEBUG PRINTING -->
+
+                <section id="print-pages">
+
+                    <h2>Print individual page</h2>
+
+                    <p class="muted">
+                        Print one physical receipt page for debugging. For a paper-free example, use the preview links below.
+                    </p>
+
+                    <div class="debug-grid">
+
+                        {% for key,label in [
+                            ('information','Information'),
+                            ('actions','Actions'),
+                            ('food','Food / meal planner'),
+                            ('finance','Finance')
+                            ] %}
+
+                            <form method="post" action="{{ url_for('print_page') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="page" value="{{ key }}">
+                                <button>Print {{ label }}</button>
+                                <a class="section-link" href="{{ url_for('preview', page=key) }}">Example preview</a>
+                            </form>
+
+                        {% endfor %}
+
                     </div>
-                    <button>Save {{ item.name }}</button>
-                </form>
-                <form method="post" action="{{ url_for('annual_delete', index=loop.index0) }}" onsubmit="return confirm('Remove this annual subscription?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Remove</button></form>
-            </div>
-        {% endfor %}
-        <h3>Add annual subscription</h3>
-        <form method="post" action="{{ url_for('annual_add') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="grid">
-                <label>Name<input name="name" required></label>
-                <label>Annual amount (£)<input type="number" name="amount" min="0.01" step="0.01" required></label>
-                <label>Renewal date<input type="date" name="renewal_date" required></label>
-                <label>Bank matching words<input name="match" placeholder="e.g. adobe"></label>
-            </div>
-            <button>Add annual subscription</button>
-        </form>
-    </section>
 
-    <!-- FOOD SHOP -->
-
-    {% endif %}
-
-    {% if active_view == 'tasks' %}
-    <section id="food-shop">
-
-        <h2>Food shop</h2>
-
-        <p class="muted">
-            Open each item as a Tesco Groceries search.
-            The Tesco site remains responsible for choosing
-            the exact product and adding it to your basket.
-        </p>
-
-        <p><a class="button" href="{{ url_for('tesco_list') }}">Review list for Tesco</a></p><details><summary>Edit items used by this page and the printed food shop</summary><p class="muted">Save to use a local list instead of the Google Doc. Put one item on each line.</p><form method="post" action="{{ url_for('food_shop_save') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label for="shop-items">Shopping items</label><textarea id="shop-items" name="items" rows="8" style="width:100%">{{ food_shop_text }}</textarea><button>Save shopping list</button></form>{% if food_shop_is_local %}<form method="post" action="{{ url_for('food_shop_reset') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Return to Google Doc</button></form>{% endif %}</details>
-
-        {% if food_shop_error %}
-
-            <p>
-                Food shop unavailable:
-                {{ food_shop_error }}
-            </p>
-
-        {% elif food_shop_items %}
-
-            {% for item in food_shop_items %}
-
-                <div class="tesco-item">
-
-                    <span>
-                        {{ item }}
-                    </span>
-
-                    <a
-                        class="tesco-link"
-                        href="{{ url_for(
-                            'tesco_search',
-                            item=item
-                        ) }}"
-                        target="_blank"
-                        rel="noopener"
-                    >
-                        Find at Tesco
-                    </a>
-
-                </div>
-
-            {% endfor %}
-
-            <p>
-                <a
-                    class="tesco-link"
-                    href="https://www.tesco.com/shop/en-GB/landing/groceries"
-                    target="_blank"
-                    rel="noopener"
-                >
-                    Open Tesco Groceries
-                </a>
-            </p>
-
-        {% else %}
-
-            <p>
-                No food-shop items found.
-            </p>
-
-        {% endif %}
-
-    </section>
+                </section>
 
 
-    <section id="to-buy">
-        <h2>To buy</h2>
-        <p class="muted">Your wish list is saved on this computer. Tick “To buy” under Next receipt and save settings to print it once. Put one item on each line.</p>
-        <form method="post" action="{{ url_for('to_buy_save') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <label for="to-buy-items">Wish list</label>
-            <textarea id="to-buy-items" name="items" rows="12" style="width:100%">{{ to_buy_items|join('\n') }}</textarea>
-            <button>Save to buy list</button>
-        </form>
-    </section>
+                <!-- PRINTER -->
 
-    <section id="future-tasks">
-        <h2>Future tasks</h2>
-        <p class="muted">Keep longer-term goals here, with a small next step. Entries are saved privately on this server. Tick “Future tasks” under Next receipt to include unfinished goals once.</p>
-        {% for task in future_tasks %}
-        <form method="post" action="{{ url_for('future_tasks_save') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="task_id" value="{{ task.id }}">
-            <p><strong>{{ 'Completed' if task.done else 'Future goal' }}</strong></p>
-            <label for="goal-{{ task.id }}">Goal</label>
-            <input id="goal-{{ task.id }}" name="title" value="{{ task.title }}" maxlength="160" required>
-            <label for="step-{{ task.id }}">Next step (optional)</label>
-            <input id="step-{{ task.id }}" name="next_step" value="{{ task.next_step }}" maxlength="240">
-            <button name="action" value="save">Save changes</button>
-            <button name="action" value="toggle">{{ 'Reopen' if task.done else 'Mark completed' }}</button>
-            <button name="action" value="delete" formnovalidate>Delete</button>
-        </form>
-        {% else %}<p class="muted">No future tasks yet.</p>{% endfor %}
-        <form method="post" action="{{ url_for('future_tasks_save') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <label for="new-goal">New goal</label>
-            <input id="new-goal" name="title" maxlength="160" required>
-            <label for="new-step">Next step (optional)</label>
-            <input id="new-step" name="next_step" maxlength="240">
-            <button>Add future task</button>
-        </form>
-    </section>
+                <section id="printing">
 
-    {% endif %}
-
-    {% if active_view in ['receipt','settings'] %}
-    <!-- DEBUG PRINTING -->
-
-    <section id="print-pages">
-
-        <h2>Print individual page</h2>
-
-        <p class="muted">
-            Print one physical receipt page for debugging. For a paper-free example, use the preview links below.
-        </p>
-
-        <div class="debug-grid">
-
-            {% for key,label in [
-                ('information','Information'),
-                ('actions','Actions'),
-                ('food','Food / meal planner'),
-                ('finance','Finance')
-            ] %}
-
-                <form
-                    method="post"
-                    action="{{ url_for('print_page') }}"
-                ><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input
-                        type="hidden"
-                        name="page"
-                        value="{{ key }}"
-                    >
-                    <button>
-                        Print {{ label }}
-                    </button>
-                    <a class="section-link" href="{{ url_for('preview', page=key) }}">Example preview</a>
-                </form>
-
-            {% endfor %}
-
-        </div>
-
-    </section>
+                    <h2>Printer</h2>
+                    <form method="post" action="{{ url_for('save_print_schedule') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <h3>Daily automatic print</h3>
+                        <label>
+                            <input type="checkbox"
+                                   name="enabled"
+                                   {% if settings.print_schedule.enabled %}checked{% endif %}>
+                            Enable daily printing
+                        </label>
+                        <label>
+                            Print time
+                            <input type="time"
+                                   name="time"
+                                   value="{{ settings.print_schedule.time }}"
+                                   required>
+                        </label>
+                        <p class="muted">
+                            Europe/London time, including daylight saving. The server and computer must be running. At most one scheduled job is launched each day; failures are not automatically reprinted.
+                        </p>
+                        <button>Save print schedule</button>
+                    </form>
 
 
-    <!-- PRINTER -->
+                    <form method="post" action="{{ url_for('print_now') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-    <section id="printing">
+                        <button class="primary">Print receipt now</button>
 
-        <h2>Printer</h2>
-        <form method="post" action="{{ url_for('save_print_schedule') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <h3>Daily automatic print</h3>
-            <label><input type="checkbox" name="enabled" {% if settings.print_schedule.enabled %}checked{% endif %}> Enable daily printing</label>
-            <label>Print time <input type="time" name="time" value="{{ settings.print_schedule.time }}" required></label>
-            <p class="muted">Europe/London time, including daylight saving. The server and computer must be running. At most one scheduled job is launched each day; failures are not automatically reprinted.</p>
-            <button>Save print schedule</button>
-        </form>
+                    </form>
+
+                </section>
 
 
-        <form
-            method="post"
-            action="{{ url_for('print_now') }}"
-        ><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-            <button class="primary">
-                Print receipt now
-            </button>
-
-        </form>
-
-    </section>
+            {% endif %}
+        </main>
 
 
-    {% endif %}
-</main>
-
-
-</body>
+    </body>
 
 </html>

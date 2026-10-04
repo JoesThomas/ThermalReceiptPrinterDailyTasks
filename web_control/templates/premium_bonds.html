@@ -1,8 +1,133 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Premium Bonds winnings</title><link rel="stylesheet" href="{{ url_for('static',filename='control.css') }}"></head><body>{% include 'navigation.html' %}<main id="main-content"><header><h1>Premium Bonds winnings</h1><p class="muted">Private prize history. Finance checks save recognised bank credits from now on; enter earlier prizes to fill gaps.</p></header>{% with messages=get_flashed_messages() %}{% for message in messages %}<p class="helper">{{ message }}</p>{% endfor %}{% endwith %}
-<form method="get"><label>Calendar year<input type="number" name="year" min="1900" max="{{ today.year }}" value="{{ bonds.year }}" required></label><button>Show year</button></form>
-<section><div class="flow-totals"><div><span>Recorded winnings · {{ bonds.year }}</span><strong>£{{ '%.2f'|format(bonds.total) }}</strong></div><div><span>Average held · balance period</span><strong>{{ '£%.2f'|format(bonds.average) if bonds.average is not none else 'Add balance history' }}</strong></div><div><span>{{ 'Annual' if bonds.full_year else 'Recorded period' }} winnings return</span><strong>{{ '%.2f%%'|format(bonds.percent) if bonds.percent is not none else 'Unavailable' }}</strong></div></div>
-{% if bonds.start %}<p>Return covers {{ bonds.start.strftime('%d %b %Y') }} to {{ bonds.end.strftime('%d %b %Y') }}, using £{{ '%.2f'|format(bonds.period_total) }} of recorded prizes during that period.</p>{% endif %}<p class="muted">Return = recorded prizes during the balance period ÷ average amount held × 100. Balances apply from their entered date until the next record. Enter the opening balance and every deposit or withdrawal as a new total balance. Zero average balance has no percentage. This is a winnings return, not guaranteed interest; partial periods are never annualised.</p><p class="helper">{{ 'You confirmed all prizes are entered through the end of this period.' if bonds.complete else 'Prize history is not confirmed complete. Missing bank checks or earlier prizes may understate the return.' }}</p>
-<details><summary>Confirm prize history completeness</summary><form method="post" action="{{ url_for('premium_bonds_confirm') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="year" value="{{ bonds.year }}"><label><input type="checkbox" name="complete" required> I have entered all prizes for {{ bonds.year }} through {{ bonds.end.strftime('%d %b %Y') }}.</label><button>Confirm recorded coverage</button></form><p class="muted">This confirms prize coverage only; check that balance history is complete too. New or removed prizes clear this confirmation.</p></details></section>
-<section><h2>Monthly winnings</h2>{% for month in bonds.months %}<div class="category-row"><div class="chart-label"><span>{{ month.label }}</span><strong>£{{ '%.2f'|format(month.total) }}</strong></div><div class="bar-track" role="img" aria-label="{{ month.label }} winnings £{{ '%.2f'|format(month.total) }}"><div class="bar-fill" style="width:{{ month.width }}%"></div></div><small>Year running total £{{ '%.2f'|format(month.cumulative) }}</small></div>{% endfor %}</section>
-<section><h2>Add a historical prize or balance</h2><form method="post" action="{{ url_for('premium_bonds_record') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="grid"><label>Record type<select name="kind"><option value="prize">Prize received</option><option value="balance">Total amount held</option></select></label><label>Date<input type="date" name="date" max="{{ today.isoformat() }}" required></label><label>Amount (£)<input type="number" name="amount" min="0" step="0.01" required></label></div><button>Save record</button></form></section>
-{% for kind,rows in [('prize',bonds.prizes),('balance',bonds.balances)] %}<details class="section-disclosure"><summary>{{ kind|title }} records</summary>{% for row in rows %}<div class="merchant-payment"><span>{{ row.date }} · {{ row.source or 'Balance' }}</span><strong>£{{ '%.2f'|format(row.amount|float) }}</strong><form method="post" action="{{ url_for('premium_bonds_remove') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="id" value="{{ row.id }}"><button>{{ 'Exclude' if row.bank_key else 'Remove' }}</button></form></div>{% else %}<p>No records.</p>{% endfor %}</details>{% endfor %}</main></body></html>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Premium Bonds winnings</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <header>
+                <h1>Premium Bonds winnings</h1>
+                <p class="muted">
+                    Private prize history. Finance checks save recognised bank credits from now on; enter earlier prizes to fill gaps.
+                </p>
+            </header>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="helper">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            <form method="get">
+                <label>
+                    Calendar year
+                    <input type="number"
+                           name="year"
+                           min="1900"
+                           max="{{ today.year }}"
+                           value="{{ bonds.year }}"
+                           required>
+                </label>
+                <button>Show year</button>
+            </form>
+            <section>
+                <div class="flow-totals">
+                    <div>
+                        <span>Recorded winnings · {{ bonds.year }}</span><strong>£{{ '%.2f'|format(bonds.total) }}</strong>
+                    </div>
+                    <div>
+                        <span>Average held · balance period</span><strong>{{ '£%.2f'|format(bonds.average) if bonds.average is not none else 'Add balance history' }}</strong>
+                    </div>
+                    <div>
+                        <span>{{ 'Annual' if bonds.full_year else 'Recorded period' }} winnings return</span><strong>{{ '%.2f%%'|format(bonds.percent) if bonds.percent is not none else 'Unavailable' }}</strong>
+                    </div>
+                </div>
+                {% if bonds.start %}
+                    <p>
+                        Return covers {{ bonds.start.strftime('%d %b %Y') }} to {{ bonds.end.strftime('%d %b %Y') }}, using £{{ '%.2f'|format(bonds.period_total) }} of recorded prizes during that period.
+                    </p>
+                {% endif %}
+                <p class="muted">
+                    Return = recorded prizes during the balance period ÷ average amount held × 100. Balances apply from their entered date until the next record. Enter the opening balance and every deposit or withdrawal as a new total balance. Zero average balance has no percentage. This is a winnings return, not guaranteed interest; partial periods are never annualised.
+                </p>
+                <p class="helper">
+                    {{ 'You confirmed all prizes are entered through the end of this period.' if bonds.complete else 'Prize history is not confirmed complete. Missing bank checks or earlier prizes may understate the return.' }}
+                </p>
+                <details>
+                    <summary>Confirm prize history completeness</summary>
+                    <form method="post" action="{{ url_for('premium_bonds_confirm') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="year" value="{{ bonds.year }}">
+                        <label>
+                            <input type="checkbox" name="complete" required>
+                            I have entered all prizes for {{ bonds.year }} through {{ bonds.end.strftime('%d %b %Y') }}.
+                        </label>
+                        <button>Confirm recorded coverage</button>
+                    </form>
+                    <p class="muted">
+                        This confirms prize coverage only; check that balance history is complete too. New or removed prizes clear this confirmation.
+                    </p>
+                </details>
+            </section>
+            <section>
+                <h2>Monthly winnings</h2>
+                {% for month in bonds.months %}
+                    <div class="category-row">
+                        <div class="chart-label">
+                            <span>{{ month.label }}</span><strong>£{{ '%.2f'|format(month.total) }}</strong>
+                        </div>
+                        <div class="bar-track"
+                             role="img"
+                             aria-label="{{ month.label }} winnings £{{ '%.2f'|format(month.total) }}">
+                            <div class="bar-fill" style="width:{{ month.width }}%"></div>
+                        </div>
+                        <small>Year running total £{{ '%.2f'|format(month.cumulative) }}</small>
+                    </div>
+                {% endfor %}
+            </section>
+            <section>
+                <h2>Add a historical prize or balance</h2>
+                <form method="post" action="{{ url_for('premium_bonds_record') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="grid">
+                        <label>
+                            Record type
+                            <select name="kind">
+                                <option value="prize">Prize received</option>
+                                <option value="balance">Total amount held</option>
+                            </select>
+                        </label>
+                        <label>
+                            Date
+                            <input type="date" name="date" max="{{ today.isoformat() }}" required>
+                        </label>
+                        <label>
+                            Amount (£)
+                            <input type="number" name="amount" min="0" step="0.01" required>
+                        </label>
+                    </div>
+                    <button>Save record</button>
+                </form>
+            </section>
+            {% for kind,rows in [('prize',bonds.prizes),('balance',bonds.balances)] %}
+                <details class="section-disclosure">
+                    <summary>{{ kind|title }} records</summary>
+                    {% for row in rows %}
+                        <div class="merchant-payment">
+                            <span>{{ row.date }} · {{ row.source or 'Balance' }}</span><strong>£{{ '%.2f'|format(row.amount|float) }}</strong>
+                            <form method="post" action="{{ url_for('premium_bonds_remove') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="kind" value="{{ kind }}">
+                                <input type="hidden" name="id" value="{{ row.id }}">
+                                <button>{{ 'Exclude' if row.bank_key else 'Remove' }}</button>
+                            </form>
+                        </div>
+                    {% else %}
+                        <p>No records.</p>
+                    {% endfor %}
+                </details>
+            {% endfor %}
+        </main>
+    </body>
+</html>

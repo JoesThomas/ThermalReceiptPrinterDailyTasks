@@ -1,36 +1,166 @@
 <section id="wealth-history">
-<h2>Savings &amp; investment balances</h2><a class="button" href="{{ url_for('savings_goals_page') }}">Goals & ISA contributions</a><a class="button" href="{{ url_for('premium_bonds_page') }}">Premium Bonds winnings & return</a>
-<p class="muted">Balances and history stay on this server. Local observations come from your saved files, not a live provider check. Add a current valuation here for accounts such as an ISA. Investments are not automatically treated as accessible cash for runway.</p>
-{% if wealth_error %}<p class="helper">{{ wealth_error }}</p>{% endif %}
-{% if wealth %}
-<div class="flow-totals"><div><span>Savings</span><strong>£{{ '%.2f'|format(wealth.savings) }}</strong></div><div><span>Investments</span><strong>£{{ '%.2f'|format(wealth.investments) }}</strong></div><div><span>Combined latest recorded balances</span><strong>£{{ '%.2f'|format(wealth.total) }}</strong></div></div>
-<form method="get" action="{{ url_for('savings_review') }}"><label>Comparison month <input type="month" name="month" value="{{ wealth.month }}" required></label><button>Show month</button></form>
-<p class="muted">Opening is the last valuation on or before month-start, or the first valuation recorded in that month. Closing is the latest available valuation in the selected month. Comparison dates below show the actual coverage. Percentage is balance change, not an investment return.</p>
-{% for account in wealth.accounts %}
-<article class="panel"><h3>{{ account.name }} · {{ account.kind|title }}</h3><p><strong>£{{ '%.2f'|format(account.balance) }}</strong> as of {{ account.latest.date }} · {{ account.latest.source }}</p>
-{% if account.change is not none %}
-<p>{{ account.opening.date }} (£{{ '%.2f'|format(account.opening.balance|float) }}) → {{ account.closing.date }} (£{{ '%.2f'|format(account.closing.balance|float) }})</p>
-<p>Balance change: <strong>£{{ '%+.2f'|format(account.change) }}{% if account.percent is not none %} ({{ '%+.1f'|format(account.percent) }}%){% endif %}</strong></p>
-{% if account.growth is not none %}<p>Net deposits less withdrawals: £{{ '%+.2f'|format(account.net_contributions) }} · Growth excluding these flows: £{{ '%+.2f'|format(account.growth) }}</p>{% else %}<p class="muted">Growth is unknown until deposits and withdrawals are recorded for every interval. Leave these fields blank if you do not know.</p>{% endif %}
-{% else %}<p class="muted">Two dated valuations are needed for a comparison.</p>{% endif %}
-{% if account.chart|length > 1 %}
-<svg viewBox="0 0 600 170" role="img" aria-label="Recorded balance history for {{ account.name }}" style="width:100%;height:auto;max-height:250px">
-<title>{{ account.name }} balance history. {{ account.chart[0].date }} to {{ account.chart[-1].date }}. Range £{{ '%.2f'|format(account.low) }} to £{{ '%.2f'|format(account.high) }}.</title>
-<line x1="30" y1="130" x2="570" y2="130" stroke="#c4cec8"/><polyline points="{{ account.points }}" fill="none" stroke="#286b58" stroke-width="3"/>
-{% for point in account.chart %}<circle cx="{{ point.x }}" cy="{{ point.y }}" r="3" fill="#286b58"><title>{{ point.date }}: £{{ point.balance }}</title></circle>{% endfor %}
-<text x="30" y="18" font-size="12">£{{ '%.2f'|format(account.high) }}</text><text x="30" y="145" font-size="12">£{{ '%.2f'|format(account.low) }}</text><text x="30" y="164" font-size="12">{{ account.chart[0].date }}</text><text x="570" y="164" text-anchor="end" font-size="12">{{ account.chart[-1].date }}</text>
-</svg>{% endif %}
-<details><summary>Recorded valuations / edit or remove</summary>
-{% for entry in account.entries %}
-<form method="post" action="{{ url_for('savings_record') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="name" value="{{ account.name }}"><input type="hidden" name="kind" value="{{ account.kind }}"><input type="hidden" name="date" value="{{ entry.date }}">
-<div class="grid"><label>{{ entry.date }} · Balance (£)<input name="balance" type="number" min="0" step="0.01" value="{{ entry.balance }}" required></label><label>Deposits since previous valuation (£)<input name="deposits" type="number" min="0" step="0.01" value="{{ entry.deposits or '' }}"></label><label>Withdrawals since previous valuation (£)<input name="withdrawals" type="number" min="0" step="0.01" value="{{ entry.withdrawals or '' }}"></label></div><button>Update valuation</button></form>
-<form method="post" action="{{ url_for('savings_delete') }}" onsubmit="return confirm('Remove this dated valuation? Recheck cash flows on the next entry afterwards.')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="entry_id" value="{{ entry.id }}"><button>Remove {{ entry.date }}</button></form>
-{% endfor %}</details></article>
-{% else %}<p>No balances recorded yet.</p>{% endfor %}
+    <h2>Savings &amp; investment balances</h2>
+    <a class="button" href="{{ url_for('savings_goals_page') }}">Goals & ISA contributions</a><a class="button" href="{{ url_for('premium_bonds_page') }}">Premium Bonds winnings & return</a>
+    <p class="muted">
+        Balances and history stay on this server. Local observations come from your saved files, not a live provider check. Add a current valuation here for accounts such as an ISA. Investments are not automatically treated as accessible cash for runway.
+    </p>
+    {% if wealth_error %}<p class="helper">{{ wealth_error }}</p>{% endif %}
+    {% if wealth %}
+        <div class="flow-totals">
+            <div>
+                <span>Savings</span><strong>£{{ '%.2f'|format(wealth.savings) }}</strong>
+            </div>
+            <div>
+                <span>Investments</span><strong>£{{ '%.2f'|format(wealth.investments) }}</strong>
+            </div>
+            <div>
+                <span>Combined latest recorded balances</span><strong>£{{ '%.2f'|format(wealth.total) }}</strong>
+            </div>
+        </div>
+        <form method="get" action="{{ url_for('savings_review') }}">
+            <label>
+                Comparison month
+                <input type="month" name="month" value="{{ wealth.month }}" required>
+            </label>
+            <button>Show month</button>
+        </form>
+        <p class="muted">
+            Opening is the last valuation on or before month-start, or the first valuation recorded in that month. Closing is the latest available valuation in the selected month. Comparison dates below show the actual coverage. Percentage is balance change, not an investment return.
+        </p>
+        {% for account in wealth.accounts %}
+            <article class="panel">
+                <h3>{{ account.name }} · {{ account.kind|title }}</h3>
+                <p>
+                    <strong>£{{ '%.2f'|format(account.balance) }}</strong> as of {{ account.latest.date }} · {{ account.latest.source }}
+                </p>
+                {% if account.change is not none %}
+                    <p>
+                        {{ account.opening.date }} (£{{ '%.2f'|format(account.opening.balance|float) }}) → {{ account.closing.date }} (£{{ '%.2f'|format(account.closing.balance|float) }})
+                    </p>
+                    <p>
+                        Balance change: <strong>£{{ '%+.2f'|format(account.change) }}
+                        {% if account.percent is not none %}
+                            ({{ '%+.1f'|format(account.percent) }}%)
+                        {% endif %}
+                    </strong>
+                </p>
+                {% if account.growth is not none %}
+                    <p>
+                        Net deposits less withdrawals: £{{ '%+.2f'|format(account.net_contributions) }} · Growth excluding these flows: £{{ '%+.2f'|format(account.growth) }}
+                    </p>
+                {% else %}
+                    <p class="muted">
+                        Growth is unknown until deposits and withdrawals are recorded for every interval. Leave these fields blank if you do not know.
+                    </p>
+                {% endif %}
+            {% else %}
+                <p class="muted">Two dated valuations are needed for a comparison.</p>
+            {% endif %}
+            {% if account.chart|length > 1 %}
+                <svg viewBox="0 0 600 170"
+                     role="img"
+                     aria-label="Recorded balance history for {{ account.name }}"
+                     style="width:100%;
+                            height:auto;
+                            max-height:250px">
+                    <title>{{ account.name }} balance history. {{ account.chart[0].date }} to {{ account.chart[-1].date }}. Range £{{ '%.2f'|format(account.low) }} to £{{ '%.2f'|format(account.high) }}.</title>
+                    <line x1="30" y1="130" x2="570" y2="130" stroke="#c4cec8" /><polyline points="{{ account.points }}" fill="none" stroke="#286b58" stroke-width="3" />
+                    {% for point in account.chart %}
+                        <circle cx="{{ point.x }}" cy="{{ point.y }}" r="3" fill="#286b58"><title>{{ point.date }}: £{{ point.balance }}</title></circle>
+                    {% endfor %}
+                    <text x="30" y="18" font-size="12">£{{ '%.2f'|format(account.high) }}</text><text x="30" y="145" font-size="12">£{{ '%.2f'|format(account.low) }}</text><text x="30" y="164" font-size="12">{{ account.chart[0].date }}</text><text x="570" y="164" text-anchor="end" font-size="12">{{ account.chart[-1].date }}</text>
+                </svg>
+            {% endif %}
+            <details>
+                <summary>Recorded valuations / edit or remove</summary>
+                {% for entry in account.entries %}
+                    <form method="post" action="{{ url_for('savings_record') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="name" value="{{ account.name }}">
+                        <input type="hidden" name="kind" value="{{ account.kind }}">
+                        <input type="hidden" name="date" value="{{ entry.date }}">
+                        <div class="grid">
+                            <label>
+                                {{ entry.date }} · Balance (£)
+                                <input name="balance"
+                                       type="number"
+                                       min="0"
+                                       step="0.01"
+                                       value="{{ entry.balance }}"
+                                       required>
+                            </label>
+                            <label>
+                                Deposits since previous valuation (£)
+                                <input name="deposits"
+                                       type="number"
+                                       min="0"
+                                       step="0.01"
+                                       value="{{ entry.deposits or '' }}">
+                            </label>
+                            <label>
+                                Withdrawals since previous valuation (£)
+                                <input name="withdrawals"
+                                       type="number"
+                                       min="0"
+                                       step="0.01"
+                                       value="{{ entry.withdrawals or '' }}">
+                            </label>
+                        </div>
+                        <button>Update valuation</button>
+                    </form>
+                    <form method="post"
+                          action="{{ url_for('savings_delete') }}"
+                          onsubmit="return confirm('Remove this dated valuation? Recheck cash flows on the next entry afterwards.')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="entry_id" value="{{ entry.id }}">
+                        <button>Remove {{ entry.date }}</button>
+                    </form>
+                {% endfor %}
+            </details>
+        </article>
+    {% else %}
+        <p>No balances recorded yet.</p>
+    {% endfor %}
 {% endif %}
 <h3>Add a dated valuation</h3>
-<p class="muted">Use the same account name and type each time. Deposits and withdrawals cover the interval since its previous valuation: enter zero in both if there were none, or leave both blank if unknown. Backdating or deleting entries changes those intervals; check the cash-flow amounts afterwards. Enter opening balances to backfill earlier months.</p>
-<form method="post" action="{{ url_for('savings_record') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="grid">
-<label>Account name<input name="name" maxlength="90" required></label><label>Type<select name="kind"><option value="savings">Savings</option><option value="investment">Investment</option></select></label><label>Valuation date<input type="date" name="date" value="{{ today.isoformat() if today else checked_at.isoformat() }}" required></label><label>Balance (£)<input type="number" name="balance" min="0" step="0.01" required></label><label>Deposits since previous valuation (£)<input type="number" name="deposits" min="0" step="0.01"></label><label>Withdrawals since previous valuation (£)<input type="number" name="withdrawals" min="0" step="0.01"></label></div><button>Save dated balance</button></form>
+<p class="muted">
+    Use the same account name and type each time. Deposits and withdrawals cover the interval since its previous valuation: enter zero in both if there were none, or leave both blank if unknown. Backdating or deleting entries changes those intervals; check the cash-flow amounts afterwards. Enter opening balances to backfill earlier months.
+</p>
+<form method="post" action="{{ url_for('savings_record') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="grid">
+        <label>
+            Account name
+            <input name="name" maxlength="90" required>
+        </label>
+        <label>
+            Type
+            <select name="kind">
+                <option value="savings">Savings</option>
+                <option value="investment">Investment</option>
+            </select>
+        </label>
+        <label>
+            Valuation date
+            <input type="date"
+                   name="date"
+                   value="{{ today.isoformat() if today else checked_at.isoformat() }}"
+                   required>
+        </label>
+        <label>
+            Balance (£)
+            <input type="number" name="balance" min="0" step="0.01" required>
+        </label>
+        <label>
+            Deposits since previous valuation (£)
+            <input type="number" name="deposits" min="0" step="0.01">
+        </label>
+        <label>
+            Withdrawals since previous valuation (£)
+            <input type="number" name="withdrawals" min="0" step="0.01">
+        </label>
+    </div>
+    <button>Save dated balance</button>
+</form>
 <a href="{{ url_for('savings_review') }}">Open full savings and investment editor</a>
 </section>

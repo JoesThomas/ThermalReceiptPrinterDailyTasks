@@ -1,8 +1,69 @@
-{% if salary_plan %}<details class="section-disclosure"><summary>Salary plan · bills, savings & spending</summary><section><h2>Where your salary could go</h2><p>Salary is identified from incoming bank payments using salary wording or your configured employer/payee. Latest identified salary date: {{ salary_plan.latest or 'Not found' }} · received that day: <strong>£{{ '%.2f'|format(salary_plan.received) }}</strong>.</p><p>Planning through {{ salary_plan.end.strftime('%d %b %Y') }}{% if projection.payday %}, before your next payday{% else %}, using a 30-day horizon because payday is unset{% endif %}. This is a plan for money already received; it does not add future salary to runway.</p>
-{% for reason in salary_plan.reasons %}<p class="helper">{{ reason }}</p>{% endfor %}
-{% if salary_plan.reserve.hsbc_balance is not none %}<p>HSBC available now: £{{ '%.2f'|format(salary_plan.reserve.hsbc_balance) }} · reserve target £{{ '%.2f'|format(salary_plan.reserve.bank) }}{% if salary_plan.reserve.hsbc_gap %} · £{{ '%.2f'|format(salary_plan.reserve.hsbc_gap) }} below target{% endif %}.</p>{% endif %}
-{% if salary_plan.valid %}<p>External spending since the salary date: £{{ '%.2f'|format(salary_plan.spent) }}. Amount available to allocate: <strong>£{{ '%.2f'|format(salary_plan.available) }}</strong>.</p>
-<p class="muted">Uses the smaller of observed salary remaining and current cash after protected reserves. Salary is already in your bank balance and is not added a second time. Same-day spending is included conservatively; balances also cap the plan after transfers or card payments.</p>
-{% for bucket in salary_plan.buckets %}<div class="category-row"><div class="chart-label"><span>{{ bucket.name }}</span><strong>£{{ '%.2f'|format(bucket.amount) }}</strong></div><div class="bar-track" role="img" aria-label="{{ bucket.name }} allocated £{{ '%.2f'|format(bucket.amount) }}"><div class="bar-fill" style="width:{{ bucket.percent }}%"></div></div>{% if bucket.gap %}<small>£{{ '%.2f'|format(bucket.gap) }} below the listed amount or target.</small>{% endif %}</div>{% endfor %}
-<p class="muted">Everyday spending is reserved before suggesting savings. Additional spending money is what remains beyond those reserves; your total everyday spending budget includes both. A savings target is a goal, not a required payment. Savings already listed as forecast payments should not also be included in the target.</p><details><summary>Upcoming commitments reserved</summary>{% for payment in salary_plan.bills %}<div class="merchant-payment"><span>{{ payment.date.strftime('%d %b') }} · {{ payment.name }} · {{ payment.basis }}</span><strong>£{{ '%.2f'|format(payment.amount) }}</strong></div>{% else %}<p>No listed commitments in this period.</p>{% endfor %}</details>{% endif %}
-<p class="muted">The forecast pools bank cash; it cannot guarantee that individual bills leave HSBC above its reserve. Check which account pays each bill and arrange transfers yourself. Other incoming funds and pre-existing savings are not treated as salary here.</p></section></details>{% endif %}
+{% if salary_plan %}
+    <details class="section-disclosure">
+        <summary>Salary plan · bills, savings & spending</summary>
+        <section>
+            <h2>Where your salary could go</h2>
+            <p>
+                Salary is identified from incoming bank payments using salary wording or your configured employer/payee. Latest identified salary date: {{ salary_plan.latest or 'Not found' }} · received that day: <strong>£{{ '%.2f'|format(salary_plan.received) }}</strong>.
+            </p>
+            <p>
+                Planning through {{ salary_plan.end.strftime('%d %b %Y') }}
+                {% if projection.payday %}
+                    , before your next payday
+                {% else %}
+                    , using a 30-day horizon because payday is unset
+                {% endif %}
+                . This is a plan for money already received; it does not add future salary to runway.
+            </p>
+            {% for reason in salary_plan.reasons %}<p class="helper">{{ reason }}</p>{% endfor %}
+            {% if salary_plan.reserve.hsbc_balance is not none %}
+                <p>
+                    HSBC available now: £{{ '%.2f'|format(salary_plan.reserve.hsbc_balance) }} · reserve target £{{ '%.2f'|format(salary_plan.reserve.bank) }}
+                    {% if salary_plan.reserve.hsbc_gap %}
+                        · £{{ '%.2f'|format(salary_plan.reserve.hsbc_gap) }} below target
+                    {% endif %}
+                    .
+                </p>
+            {% endif %}
+            {% if salary_plan.valid %}
+                <p>
+                    External spending since the salary date: £{{ '%.2f'|format(salary_plan.spent) }}. Amount available to allocate: <strong>£{{ '%.2f'|format(salary_plan.available) }}</strong>.
+                </p>
+                <p class="muted">
+                    Uses the smaller of observed salary remaining and current cash after protected reserves. Salary is already in your bank balance and is not added a second time. Same-day spending is included conservatively; balances also cap the plan after transfers or card payments.
+                </p>
+                {% for bucket in salary_plan.buckets %}
+                    <div class="category-row">
+                        <div class="chart-label">
+                            <span>{{ bucket.name }}</span><strong>£{{ '%.2f'|format(bucket.amount) }}</strong>
+                        </div>
+                        <div class="bar-track"
+                             role="img"
+                             aria-label="{{ bucket.name }} allocated £{{ '%.2f'|format(bucket.amount) }}">
+                            <div class="bar-fill" style="width:{{ bucket.percent }}%"></div>
+                        </div>
+                        {% if bucket.gap %}
+                            <small>£{{ '%.2f'|format(bucket.gap) }} below the listed amount or target.</small>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                <p class="muted">
+                    Everyday spending is reserved before suggesting savings. Additional spending money is what remains beyond those reserves; your total everyday spending budget includes both. A savings target is a goal, not a required payment. Savings already listed as forecast payments should not also be included in the target.
+                </p>
+                <details>
+                    <summary>Upcoming commitments reserved</summary>
+                    {% for payment in salary_plan.bills %}
+                        <div class="merchant-payment">
+                            <span>{{ payment.date.strftime('%d %b') }} · {{ payment.name }} · {{ payment.basis }}</span><strong>£{{ '%.2f'|format(payment.amount) }}</strong>
+                        </div>
+                    {% else %}
+                        <p>No listed commitments in this period.</p>
+                    {% endfor %}
+                </details>
+            {% endif %}
+            <p class="muted">
+                The forecast pools bank cash; it cannot guarantee that individual bills leave HSBC above its reserve. Check which account pays each bill and arrange transfers yourself. Other incoming funds and pre-existing savings are not treated as salary here.
+            </p>
+        </section>
+    </details>
+{% endif %}

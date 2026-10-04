@@ -1,1 +1,109 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quick actions</title><link rel="stylesheet" href="{{ url_for('static',filename='control.css') }}"></head><body>{% include 'navigation.html' %}<main id="main-content" class="quick-page"><header><p class="eyebrow">One place for your day</p><h1>Quick actions</h1><p class="muted">Saved tasks, workouts and delivery notices. Tick an item and stay on this page.</p></header>{% with messages=get_flashed_messages() %}{% for message in messages %}<p class="helper" role="status">{{ message }}</p>{% endfor %}{% endwith %}<nav class="finance-jumps"><a href="#quick-tasks">Tasks</a><a href="#quick-workout">Workout</a><a href="#quick-deliveries">Deliveries</a><a href="#quick-meals">Meals</a></nav><section id="quick-tasks"><h2>Today's tasks</h2>{% for item in today_view.tasks %}<form class="quick-row" method="post" action="{{ url_for('checklist_update',kind='tasks') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="toggle"><input type="hidden" name="id" value="{{ item.id }}"><input type="hidden" name="return_quick" value="1"><button aria-label="Complete {{ item.title }}">✓</button><span>{{ item.title }}</span></form>{% else %}<p>No tasks due today.</p>{% endfor %}<a href="{{ url_for('task_list') }}">Manage tasks and undo completions</a></section><section id="quick-workout"><h2>Today's workout</h2>{% for item in today_view.exercises %}<form class="quick-row" method="post" action="{{ url_for('checklist_update',kind='exercises') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="toggle"><input type="hidden" name="id" value="{{ item.id }}"><input type="hidden" name="return_quick" value="1"><button aria-label="{{ 'Undo' if item.completed else 'Complete' }} {{ item.title }}">{{ 'Undo' if item.completed else '✓' }}</button><span class="{{ 'completed' if item.completed else '' }}">{{ item.title }}</span></form>{% else %}<p>No workout selected.</p>{% endfor %}<a href="{{ url_for('exercise_list') }}">Choose a workout</a></section><section id="quick-deliveries"><h2>Deliveries to confirm</h2>{% for item in today_view.deliveries %}<form class="quick-row" method="post" action="{{ url_for('delivery_confirm') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ item.id }}"><input type="hidden" name="confirmed" value="1"><input type="hidden" name="return_quick" value="1"><button aria-label="Confirm delivery of {{ item.title }}">✓</button><span>{{ item.title }}<small>{{ item.carrier }} · {{ item.expected }}</small></span></form>{% else %}<p>No saved deliveries awaiting confirmation.</p>{% endfor %}<a href="{{ url_for('delivery_checklist') }}">Delivery history and undo</a></section><section id="quick-meals"><h2>Meal eaten</h2>{% if confirmed %}<p>Recorded: {{ confirmed.recipe }}</p><form method="post" action="{{ url_for('meal_eaten_clear') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="return_quick" value="1"><button>Undo meal confirmation</button></form>{% endif %}{% if recipes %}<form method="post" action="{{ url_for('meal_eaten') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="return_quick" value="1"><label>Recipe you ate<select name="recipe">{% for recipe in recipes %}<option value="{{ recipe.name }}">{{ recipe.name }}</option>{% endfor %}</select></label><button class="primary">Confirm eaten</button></form>{% else %}<p>No saved recipes available.</p>{% endif %}<a href="{{ url_for('meals_page') }}">Meal plan and recipes</a></section></main></body></html>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Quick actions</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content" class="quick-page">
+            <header>
+                <p class="eyebrow">One place for your day</p>
+                <h1>Quick actions</h1>
+                <p class="muted">Saved tasks, workouts and delivery notices. Tick an item and stay on this page.</p>
+            </header>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="helper" role="status">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            <nav class="finance-jumps">
+                <a href="#quick-tasks">Tasks</a><a href="#quick-workout">Workout</a><a href="#quick-deliveries">Deliveries</a><a href="#quick-meals">Meals</a>
+            </nav>
+            <section id="quick-tasks">
+                <h2>Today's tasks</h2>
+                {% for item in today_view.tasks %}
+                    <form class="quick-row"
+                          method="post"
+                          action="{{ url_for('checklist_update',kind='tasks') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="toggle">
+                        <input type="hidden" name="id" value="{{ item.id }}">
+                        <input type="hidden" name="return_quick" value="1">
+                        <button aria-label="Complete {{ item.title }}">✓</button>
+                        <span>{{ item.title }}</span>
+                    </form>
+                {% else %}
+                    <p>No tasks due today.</p>
+                {% endfor %}
+                <a href="{{ url_for('task_list') }}">Manage tasks and undo completions</a>
+            </section>
+            <section id="quick-workout">
+                <h2>Today's workout</h2>
+                {% for item in today_view.exercises %}
+                    <form class="quick-row"
+                          method="post"
+                          action="{{ url_for('checklist_update',kind='exercises') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="toggle">
+                        <input type="hidden" name="id" value="{{ item.id }}">
+                        <input type="hidden" name="return_quick" value="1">
+                        <button aria-label="{{ 'Undo' if item.completed else 'Complete' }} {{ item.title }}">
+                            {{ 'Undo' if item.completed else '✓' }}
+                        </button>
+                        <span class="{{ 'completed' if item.completed else '' }}">{{ item.title }}</span>
+                    </form>
+                {% else %}
+                    <p>No workout selected.</p>
+                {% endfor %}
+                <a href="{{ url_for('exercise_list') }}">Choose a workout</a>
+            </section>
+            <section id="quick-deliveries">
+                <h2>Deliveries to confirm</h2>
+                {% for item in today_view.deliveries %}
+                    <form class="quick-row"
+                          method="post"
+                          action="{{ url_for('delivery_confirm') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="id" value="{{ item.id }}">
+                        <input type="hidden" name="confirmed" value="1">
+                        <input type="hidden" name="return_quick" value="1">
+                        <button aria-label="Confirm delivery of {{ item.title }}">✓</button>
+                        <span>{{ item.title }}<small>{{ item.carrier }} · {{ item.expected }}</small></span>
+                    </form>
+                {% else %}
+                    <p>No saved deliveries awaiting confirmation.</p>
+                {% endfor %}
+                <a href="{{ url_for('delivery_checklist') }}">Delivery history and undo</a>
+            </section>
+            <section id="quick-meals">
+                <h2>Meal eaten</h2>
+                {% if confirmed %}
+                    <p>Recorded: {{ confirmed.recipe }}</p>
+                    <form method="post" action="{{ url_for('meal_eaten_clear') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="return_quick" value="1">
+                        <button>Undo meal confirmation</button>
+                    </form>
+                {% endif %}
+                {% if recipes %}
+                    <form method="post" action="{{ url_for('meal_eaten') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="return_quick" value="1">
+                        <label>
+                            Recipe you ate
+                            <select name="recipe">
+                                {% for recipe in recipes %}<option value="{{ recipe.name }}">{{ recipe.name }}</option>{% endfor %}
+                            </select>
+                        </label>
+                        <button class="primary">Confirm eaten</button>
+                    </form>
+                {% else %}
+                    <p>No saved recipes available.</p>
+                {% endif %}
+                <a href="{{ url_for('meals_page') }}">Meal plan and recipes</a>
+            </section>
+        </main>
+    </body>
+</html>
