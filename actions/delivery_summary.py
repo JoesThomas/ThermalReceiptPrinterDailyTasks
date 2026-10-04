@@ -1,5 +1,6 @@
 """Compact delivery notices without claiming unrelated notices are one parcel."""
 import hashlib
+from html import unescape
 import re
 from collections import OrderedDict
 from textwrap import wrap
@@ -14,8 +15,10 @@ def references(subject, body):
             'notice_id':hashlib.sha256(text.encode()).hexdigest()}
 
 
-def item_title(delivery):
+def item_title(delivery, *, decode_entities=True):
     title = str(delivery.get('event_title') or delivery.get('subject') or '')
+    if decode_entities:
+        title = unescape(title)
     title = re.sub(r"^(?:out for delivery|ordered|dispatched|shipped|arriving(?: today)?|delivered)\s*:\s*", '', title, flags=re.I)
     title = re.sub(r'\s+', ' ', title).strip()
     title = re.sub(r"^(\d+)\s+['\"]", r'\1 x ', title).strip("'\" ")
@@ -26,11 +29,11 @@ def identity(delivery):
     carrier = str(delivery.get('carrier') or '').upper()
     if delivery.get('tracking_ref'):
         return (carrier, 'tracking', delivery['tracking_ref'])
-    if delivery.get('order_ref') and item_title(delivery):
+    if delivery.get('order_ref') and item_title(delivery, decode_entities=False):
         # Match order updates for the same item, keeping different items separate.
-        return (carrier, 'order-item', delivery['order_ref'], item_title(delivery).casefold())
+        return (carrier, 'order-item', delivery['order_ref'], item_title(delivery, decode_entities=False).casefold())
     return (carrier, 'notice', delivery.get('notice_id') or
-            (delivery.get('order_ref', ''), item_title(delivery), str(delivery.get('delivery_date'))))
+            (delivery.get('order_ref', ''), item_title(delivery, decode_entities=False), str(delivery.get('delivery_date'))))
 
 
 def consolidate(deliveries):
@@ -63,6 +66,7 @@ def summary_lines(deliveries, carrier, expected):
         groups.setdefault((carrier(delivery),expected(delivery)),[]).append(delivery)
     lines = []
     for (name, when), notices in groups.items():
+        name, when = unescape(str(name)), unescape(str(when))
         lines.append(name + (f' / {len(notices)} items' if len(notices)>1 else ''))
         lines.append(when)
         for index, delivery in enumerate(notices,1):

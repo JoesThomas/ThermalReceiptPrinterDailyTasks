@@ -1,5 +1,6 @@
 """Private delivery checklist shared by receipt generation and the web app."""
 import hashlib
+from html import unescape
 import json
 from contextlib import contextmanager
 from pathlib import Path
@@ -57,6 +58,8 @@ def record_deliveries(deliveries, carrier, expected):
 
 def checklist():
     items = [row for row in load_state()['items'].values() if isinstance(row, dict)]
+    # Normalise existing cached labels too; retain IDs and confirmation state.
+    items = [dict(row, **{field:unescape(str(row.get(field) or '')) for field in ('title','carrier','expected')}) for row in items]
     return sorted(items, key=lambda row: (bool(row.get('confirmed')), row.get('date', ''), row.get('title', '')))
 
 

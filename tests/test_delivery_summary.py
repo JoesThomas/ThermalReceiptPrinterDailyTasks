@@ -32,3 +32,28 @@ class DeliverySummaryTests(unittest.TestCase):
         self.assertEqual(delivery['delivery_date'],date(2026,9,21))
         self.assertEqual(delivery['time_from'],'14:30')
         self.assertEqual(delivery['time_to'],'16:30')
+
+
+class DeliveryEntityTests(unittest.TestCase):
+    def test_entities_are_decoded_for_receipt_but_saved_identity_is_stable(self):
+        from actions.delivery_summary import item_title
+        import hashlib
+        from actions.delivery_state import delivery_id
+        import json
+        row={'carrier':'AMAZON','event_title':'Reminder about your upcoming Subscribe &amp; Save delivery and charge','order_ref':'123-1234567-1234567'}
+        expected=(row['carrier'],'order-item',row['order_ref'],row['event_title'].casefold())
+        self.assertEqual(delivery_id(row),hashlib.sha256(json.dumps(expected).encode()).hexdigest())
+        self.assertIn('Subscribe & Save',item_title(row))
+        lines=summary_lines([row],lambda row:'AMAZON',lambda row:'Expected today')
+        self.assertNotIn('&amp;', '\n'.join(lines))
+        self.assertIn('Subscribe & Save', '\n'.join(lines))
+
+    def test_old_checklist_labels_are_decoded_without_losing_confirmation(self):
+        from actions import delivery_state
+        from unittest.mock import patch
+        with patch.object(delivery_state,'load_state',return_value={'items':{'existing':{'id':'existing','title':'Subscribe &amp; Save','carrier':'A&amp;B','expected':'Today &amp; tomorrow','confirmed':True}}}):
+            row=delivery_state.checklist()[0]
+        self.assertEqual(row['id'],'existing')
+        self.assertTrue(row['confirmed'])
+        self.assertEqual(row['title'],'Subscribe & Save')
+        self.assertEqual(row['carrier'],'A&B')
