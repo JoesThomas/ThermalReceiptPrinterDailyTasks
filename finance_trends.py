@@ -18,6 +18,8 @@ DEFAULT_CATEGORIES = [
     "EATING OUT",
     "TRANSPORT",
     "ENTERTAINMENT",
+    "SPORTS",
+    "DRINKS",
     "SHOPPING",
     "GIFTS",
     "HOUSEHOLD",
