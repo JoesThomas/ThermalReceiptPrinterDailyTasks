@@ -62,6 +62,14 @@ with tempfile.TemporaryDirectory() as folder,patch.object(web,'PROJECT_ROOT',Pat
     save.reset_mock()
     client.post('/settings/receipt-layout',data={'csrf_token':'test','detail':'compact','page_0':'actions','page_1':'actions','page_2':'food','page_3':'finance'})
     save.assert_not_called()
+  from services import bin_collections as bins
+  with patch.object(bins,'FILE',root/'data'/'bin_collections.json'):
+   assert client.get('/bins').status_code==200
+   assert client.post('/bins/save',data={'address':'Example'}).status_code==403
+   assert client.post('/bins/refresh').status_code==403
+   assert client.post('/bins/lookup').status_code==403
+   assert client.post('/bins/save',data={'csrf_token':'test','enabled':'on','provider':'manual','address':'Example Road','postcode':'B1 1AA','manual':'2026-10-05 | General waste | 7'}).status_code==302
+   response=client.get('/bins');assert response.status_code==200 and b'Example Road' in response.data
   assert client.get('/jobs/status').status_code==200
   assert client.post('/jobs/cancel',data={'kind':'print'}).status_code==403
   assert client.get('/deliveries').status_code==200

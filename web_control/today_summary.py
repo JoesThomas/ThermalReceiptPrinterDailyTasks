@@ -68,7 +68,10 @@ def dashboard():
     for path in (CAPTURE_FILE, LIVE_PREVIEW_FILE):
         for name, row in (load_capture(path) or {}).get('freshness', {}).items():
             if name not in checks or row['checked_at'] > checks[name]['checked_at']: checks[name] = row
-    return dict(tasks=tasks, exercises=exercises, deliveries=deliveries,
+    from services import bin_collections
+    try: bin_state=bin_collections.load(); bin_lines=bin_collections.reminder_lines(bin_state)
+    except ValueError: bin_lines=['Bin schedule unavailable']
+    return dict(bin_lines=bin_lines, tasks=tasks, exercises=exercises, deliveries=deliveries,
                 events=[e for e in calendar.get('events', []) if isinstance(e, dict) and e.get('date') == checklists.today()] if isinstance(calendar.get('events', []), list) else [],
                 calendar_checked=uk_receipt_time(calendar.get('checked_at')),
                 checks=[{'name': name, 'status': row['status'], 'local': uk_receipt_time(row['checked_at'])} for name, row in checks.items()],

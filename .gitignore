@@ -134,3 +134,7 @@ data/daily_lists.lock
 # Private dashboard caches and comparison snapshots
 data/today_calendar.json
 data/receipt_changes.json
+
+# Private collection address and bin schedule
+data/bin_collections.json
+data/bin_collections.lock

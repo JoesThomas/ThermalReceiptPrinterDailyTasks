@@ -8801,6 +8801,18 @@ def run_live_pipeline(
     preview_progress("Checking actions and events", 1, 5)
     if print_actions_page:
         begin_page(printer, "actions")
+        try:
+            from services.bin_collections import reminder_lines
+            preview_progress("Checking bin collections", 1, 5)
+            bin_lines = reminder_lines()
+            if bin_lines:
+                print_line(printer, "=")
+                left(printer, "BINS FOR TOMORROW")
+                print_line(printer, "-")
+                for line in bin_lines:
+                    print_wrapped(printer, printer_safe_text(line), width=40)
+        except (OSError, ValueError):
+            left(printer, "BIN SCHEDULE UNAVAILABLE")
         # ==========================================
         # VEHICLE CHECK
         # ==========================================
