@@ -40,7 +40,7 @@ def main():
     scheduled = bool(args and args[0] == '--scheduled')
     if scheduled:
         args = args[1:]
-    page = args[1] if len(args) == 2 and args[0] == "--only" else "full receipt"
+    page = " + ".join(args[1:]) if args and args[0] == "--pages" else args[1] if len(args) == 2 and args[0] == "--only" else "full receipt"
     # The parent writes the lock immediately after starting this process.
     # Wait for that write so a quick job cannot leave a stale lock behind.
     for _ in range(100):

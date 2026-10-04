@@ -31,8 +31,13 @@ def build(salary,transactions,balances,projection,settings,goals,today):
     bills_cost=sum((e['amount'] for e in bills),Decimal(0))
     variable=projection.get('daily_cost',projection['daily'])*(end-today).days
     manual=money(settings.get('salary_savings_target'))
-    target=manual if manual is not None else (goals or {}).get('monthly',{}).get('amount')
-    valid=bool(latest and projection['valid'] and reserve['hsbc_gap'] is not None and reserve['hsbc_gap']==0)
+    priorities=[];planning_error=False
+    if manual is None:
+        from finance.planning import load as load_plans
+        try: priorities=load_plans().get('priorities',[])
+        except (ValueError,TypeError,OSError): planning_error=True
+    target=manual if manual is not None else sum((money(row['amount'],Decimal(0)) for row in priorities),Decimal(0)) if priorities else (goals or {}).get('monthly',{}).get('amount')
+    valid=bool(not planning_error and latest and projection['valid'] and reserve['hsbc_gap'] is not None and reserve['hsbc_gap']==0)
     available=min(max(Decimal(0),received-spent),max(Decimal(0),(projection.get('cash') or Decimal(0))-projection['buffer'])) if valid else None
     buckets=[];left=available
     if valid:
@@ -46,7 +51,8 @@ def build(salary,transactions,balances,projection,settings,goals,today):
     if not projection['valid']: reasons.append('Complete bank balances, spending coverage and repayment assumptions are needed.')
     if reserve['hsbc_gap'] is None: reasons.append('The HSBC balance is unavailable.')
     elif reserve['hsbc_gap']>0: reasons.append('The HSBC emergency reserve is below target. Savings and spending allocations are withheld until that reserve is covered.')
-    if manual is None and target is not None and not (goals or {}).get('shared',{}).get('complete',False): reasons.append('The ISA savings target is an estimate based on recorded contributions; confirm tax-year coverage before relying on it.')
+    if planning_error: reasons.append('Private savings priorities could not be loaded; allocations are withheld.')
+    if manual is None and not priorities and target is not None and not (goals or {}).get('shared',{}).get('complete',False): reasons.append('The ISA savings target is an estimate based on recorded contributions; confirm tax-year coverage before relying on it.')
     if reserve['target'] and reserve['held'] is None: reasons.append('Cash on hand is not recorded. The full physical cash target is reserved conservatively.')
     return {'reserve':reserve,'latest':latest,'received':received,'spent':spent,'end':end,'available':available,
             'bills':bills,'bills_cost':bills_cost,'variable':variable,'target':target,'buckets':buckets,'reasons':reasons,'valid':valid}

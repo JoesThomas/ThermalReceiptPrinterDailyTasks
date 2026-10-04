@@ -3,6 +3,19 @@ from flask import abort,flash,redirect,render_template,request,url_for
 
 
 def register(app,login_required):
+    @app.post('/receipt/selected-print')
+    @login_required
+    def print_selected_sections():
+        from receipt.selection import validate
+        try: sections=validate(request.form.getlist('sections'))
+        except ValueError: abort(400)
+        # Reuse the normal job mutex, timeout and progress reporting.
+        from flask import current_app
+        start=current_app.config['SELECTED_PRINT_START']
+        started,error=start(['--pages',*sections])
+        flash('Selected receipt sections started.' if started else error)
+        return redirect(url_for('preview',source='printed',sections=','.join(sections)))
+
     @app.get('/diagnostics/download')
     @login_required
     def diagnostic_download():

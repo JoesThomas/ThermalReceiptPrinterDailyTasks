@@ -12,6 +12,20 @@
 <script src="{{ url_for('static',filename='control.js') }}" defer></script>
 <!-- djlint:on -->
 
+<details class="accessibility-settings">
+    <summary>Display & accessibility</summary>
+    <p>Saved in this browser. Printed receipts keep their existing size.</p>
+    <label>Text size
+        <select id="accessibility-text">
+            <option value="normal">Normal</option>
+            <option value="large">Large</option>
+            <option value="larger">Larger</option>
+        </select>
+    </label>
+    <label><input type="checkbox" id="accessibility-contrast"> Stronger contrast</label>
+    <label><input type="checkbox" id="accessibility-motion"> Reduce animation</label>
+    <button type="button" id="accessibility-reset">Use defaults</button>
+</details>
 <div class="private-tools-links">
     <a href="{{ url_for('quick_actions') }}">Quick actions</a><a href="{{ url_for('printer_diagnostics') }}">Printer diagnostics</a><a href="{{ url_for('setup_page') }}">Setup checklist</a><a href="{{ url_for('latest_receipt') }}">Latest receipt</a><a href="{{ url_for('archive_list') }}">Receipt archive</a><a href="{{ url_for('corrections') }}">Correct information</a><a href="{{ url_for('backup_page') }}">Private backup</a>
 </div>

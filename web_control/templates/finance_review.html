@@ -35,7 +35,7 @@
                 {% if not error %}
                     <a href="#finance-overview">Overview</a><a href="#finance-activity">Income & spending</a><a href="#finance-bills">Bills & repayments</a><a href="#finance-forecast">Cash runway</a>
                 {% endif %}
-                <a href="#finance-savings">Savings</a>
+                <a href="#finance-savings">Savings</a><a href="{{ url_for('finance_planning_page') }}">Private plans</a>
             </nav>
             {% if error %}
                 <section id="finance-overview" class="helper" role="status">
@@ -70,6 +70,7 @@
                 {% include 'salary_plan.html' %}
                 {% include 'cash_reserve.html' %}
                 {% include 'finance_insights.html' %}
+                {% include 'finance_planning.html' %}
                 <div class="finance-group" id="finance-activity">
                     <div class="finance-section-heading">
                         <div>

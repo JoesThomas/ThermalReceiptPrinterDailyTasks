@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path('web_control').resolve()))
 from app import app
 import finance.receipt as receipt
 from web_control import finance_suggestions, finance_insights
+from finance import planning
 transactions = [{'date': date.today().isoformat(), 'amount': -30, 'description': 'Everyday store'}]
 status = {'monthly': [{'name': 'Example bill', 'amount': 80, 'due_day': 15}], 'yearly': [], 'ended': []}
 pipeline = SimpleNamespace(
@@ -42,11 +43,31 @@ with tempfile.TemporaryDirectory() as directory:
          patch.object(receipt, 'FINANCE_SETTINGS_FILE', settings), \\
          patch.object(receipt, 'load_finance_settings', side_effect=lambda: json.loads(settings.read_text())), \\
          patch.object(finance_insights, 'FILE', Path(directory) / 'observations.json'), \\
-         patch.object(finance_suggestions, 'DISMISSED_FILE', Path(directory) / 'dismissed.json'):
+         patch.object(finance_suggestions, 'DISMISSED_FILE', Path(directory) / 'dismissed.json'), \\
+         patch.object(planning, 'FILE', Path(directory) / 'planning.json'):
         with app.test_client() as client:
             with client.session_transaction() as session:
                 session['authenticated'] = True
                 session['csrf_token'] = 'test-csrf'
+            assert client.get('/finance/planning').status_code == 200
+            assert client.post('/finance/planning', data={'kind':'purchases'}).status_code == 403
+            assert client.post('/finance/planning', data={'csrf_token':'test-csrf','kind':'purchases','name':'Optional item','amount':'200','date':'2026-10-20','enabled':'on'}).status_code == 302
+            assert planning.load()['purchases'][0]['name'] == 'Optional item'
+            assert client.post('/finance/planning', data={'csrf_token':'test-csrf','kind':'priorities','name':'ISA target','amount':'100','priority':'1','account_kind':'isa'}).status_code == 302
+            assert b'Optional item' in client.get('/finance/planning').data
+            old={'month':'2020-01','as_of':'2020-01-30','coverage':'partial','whole_month':False,'income':'100','spending':'50','cash':'200','card_debt':'0','savings':'300','investments':'400'}
+            finance_insights.FILE.write_text(json.dumps([old]))
+            assert client.post('/finance/month-review',data={'csrf_token':'test-csrf','month':'2020-01','confirmed':'on'}).status_code == 302
+            old['income']='999'
+            finance_insights.FILE.write_text(json.dumps([old]))
+            assert planning.load()['reviews']['2020-01']['snapshot']['income']=='100'
+            assert b'partial coverage' in client.get('/finance/planning').data
+
+            assert client.post('/receipt/selected-print', data={'sections':['actions']}).status_code == 403
+            assert client.post('/receipt/selected-print', data={'csrf_token':'test-csrf'}).status_code == 400
+            with patch.dict(app.config, {'SELECTED_PRINT_START':lambda args:(args == ['--pages','actions','finance'],None)}):
+                assert client.post('/receipt/selected-print',data={'csrf_token':'test-csrf','sections':['actions','finance']}).status_code == 302
+            assert client.post('/preview/generate',data={'csrf_token':'test-csrf','selected_sections':'1','sections':[]}).status_code == 400
             response = client.get('/finance-review')
             assert response.status_code == 200, response.status_code
             assert b'Finance suggestions' in response.data

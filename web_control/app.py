@@ -1020,6 +1020,11 @@ def preview():
     capture = (live_capture if source == "live" else printed_capture) or {"pages": {}, "page_times": {}}
     examples = example_pages(_local_today())
     selected = (capture.get("page_order") or PAGE_NAMES) if page == "all" else (page,)
+    if request.args.get('sections'):
+        from receipt.selection import validate as validate_sections
+        try: requested=validate_sections(request.args['sections'].split(','))
+        except ValueError: abort(400)
+        selected=[name for name in selected if name in requested]
     pages = [{"name": name, "text": capture["pages"].get(name) or examples[name],
               "blocks": receipt_blocks(capture["pages"].get(name) or examples[name],
                                        capture.get("page_images", {}).get(name, [])),
@@ -1063,6 +1068,10 @@ def generate_live_preview():
 
 
 def _generate_live_preview_locked():
+    if request.form.get('selected_sections') == '1':
+        from receipt.selection import validate as validate_sections
+        try: validate_sections(request.form.getlist('sections'))
+        except ValueError: abort(400)
     if request.form.get("page", "all") not in {"all", *PRINT_PAGES}:
         abort(400)
     if _job_active(PROJECT_ROOT / 'data' / '.print_now.lock'):
@@ -1084,7 +1093,12 @@ def _generate_live_preview_locked():
             if page not in {'all', *PRINT_PAGES}:
                 abort(400)
             args = ["--finance"] if request.form.get("include_finance") == "on" or page == 'finance' else []
-            if page != 'all':
+            if request.form.get('selected_sections') == '1':
+                from receipt.selection import validate as validate_sections
+                try: sections=validate_sections(request.form.getlist('sections'))
+                except ValueError: abort(400)
+                args += ['--pages', *sections]
+            elif page != 'all':
                 args += ['--only', page]
             process = subprocess.Popen(
                 [sys.executable, str(PROJECT_ROOT / "web_control" / "preview_job.py"), *args],
@@ -1099,7 +1113,7 @@ def _generate_live_preview_locked():
         app.logger.exception("Could not start live preview")
         lock.unlink(missing_ok=True)
         flash("Could not start live preview. Please try again.")
-    return redirect(url_for("preview", source="live"))
+    return redirect(url_for("preview", source="live", sections=','.join(request.form.getlist('sections')) if request.form.get('selected_sections')=='1' else None))
 
 
 def _wealth_view():
@@ -1271,8 +1285,19 @@ def finance_review():
         except (ValueError,OSError,KeyError,TypeError): goals_view=None
         insights=build_insights(projection,balances,finance_data[4],month,income,wealth,goals_view,today)
         from finance.salary_plan import build as build_salary_plan
+        from finance import planning as private_planning
+        try: plans=private_planning.load()
+        except (ValueError,TypeError,OSError): plans=None
         salary_plan=build_salary_plan(salary,transactions,balances,projection,forecast_settings,goals_view,today)
-        return render_template("finance_review.html", insights=insights, salary_plan=salary_plan, has_uncertain_payments=has_uncertain_payments, reviewable_payment_ids=reviewable_payment_ids, rows=rows, charts=charts,
+        try:
+            if plans is None: raise ValueError("Planning data unavailable")
+            planning_view={'state':plans,
+                'scenario':private_planning.scenario(projection,plans.get('purchases',[]),today),
+                'allocation':private_planning.allocation(salary_plan,plans.get('priorities',[]),goals_view,plans.get('purchases',[]),today),
+                'reminders':private_planning.reminders(projection,status['monthly'],status['yearly'],forecast_settings,today)}
+        except (ValueError,TypeError,OSError,KeyError):
+            planning_view={'error':'Private plans could not be read. Restore a valid backup.'}
+        return render_template("finance_review.html", planning_view=planning_view, insights=insights, salary_plan=salary_plan, has_uncertain_payments=has_uncertain_payments, reviewable_payment_ids=reviewable_payment_ids, rows=rows, charts=charts,
                                wealth=wealth, wealth_error=wealth_error, bonds_summary=bonds_summary,
                                month=month, income=income, cash_flow=cash_flow,
                                annual=annual,
@@ -1484,7 +1509,11 @@ from web_control.savings_goal_tools import register as register_savings_goals
 register_savings_goals(app, login_required, _wealth_view)
 
 from web_control.project_tools import register as register_project_tools
+app.config['SELECTED_PRINT_START']=_start_print_command
 register_project_tools(app,login_required)
+
+from web_control.planning_tools import register as register_planning
+register_planning(app, login_required)
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

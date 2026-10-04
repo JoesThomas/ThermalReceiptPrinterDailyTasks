@@ -167,3 +167,6 @@ data/calendar_location_overrides.json
 data/backup_health.json
 data/receipt_recovery.lock
 data/calendar_location_overrides.lock
+
+data/finance_planning.json
+data/finance_planning.lock

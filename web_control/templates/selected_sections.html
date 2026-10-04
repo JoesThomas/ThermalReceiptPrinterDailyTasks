@@ -1,0 +1,19 @@
+<details class="section-disclosure">
+    <summary>Choose receipt sections</summary>
+    <p>Generate selected sections together, in your configured receipt order.</p>
+    <form method="post" action="{{ url_for('generate_live_preview') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="selected_sections" value="1">
+        <input type="hidden" name="page" value="all">
+        <fieldset>
+            <legend>Sections to generate</legend>
+            {% for value in ['information','actions','food','finance'] %}
+                <label><input type="checkbox" name="sections" value="{{ value }}"> {{ value|title }}</label>
+            {% endfor %}
+        </fieldset>
+        <div class="page-actions">
+            <button>Generate selected preview</button>
+            <button formaction="{{ url_for('print_selected_sections') }}">Print selected sections</button>
+        </div>
+    </form>
+</details>

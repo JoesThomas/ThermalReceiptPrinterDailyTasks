@@ -4,7 +4,7 @@ from services import live_pipeline
 from services.live_pipeline import run_live_pipeline
 
 
-def run_live(*, finance_requested=False, only_page=None, live_preview=False):
+def run_live(*, finance_requested=False, only_page=None, live_preview=False, selected_pages=None):
     """Generate and save once; optionally send the same buffered operations."""
     from receipt.freshness import reset
     from receipt.build import build
@@ -14,14 +14,14 @@ def run_live(*, finance_requested=False, only_page=None, live_preview=False):
         from receipt.live_preview import isolated_preview, VirtualPrinter
         with isolated_preview():
             build(live_pipeline, run_live_pipeline, VirtualPrinter,
-                  finance_requested=finance_requested, only_page=only_page)
+                  finance_requested=finance_requested, only_page=only_page, selected_pages=selected_pages)
         report('Preview saved', 5, 5)
         return
 
     from receipt.printer import open_printer, DeferredPhysicalPrinter
     recorder = build(live_pipeline, run_live_pipeline,
                      lambda: DeferredPhysicalPrinter(open_printer),
-                     finance_requested=finance_requested, only_page=only_page)
+                     finance_requested=finance_requested, only_page=only_page, selected_pages=selected_pages)
     if recorder is not None:
         try:
             report('Sending receipt to printer', 4, 5)

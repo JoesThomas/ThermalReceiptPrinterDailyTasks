@@ -25,7 +25,11 @@ def parse_args():
         choices=("information", "actions", "food", "finance"),
         help="Print only one live receipt page for debugging/testing.",
     )
-    return parser.parse_args()
+    parser.add_argument('--pages', nargs='+', choices=('information','actions','food','finance'), help='Generate selected live sections in your configured order.')
+    args=parser.parse_args()
+    if args.pages and args.only: parser.error('Use either --pages or --only.')
+    if args.pages and len(set(args.pages)) != len(args.pages): parser.error('Choose each section once.')
+    return args
 
 
 def simulated_date(value: str | None) -> date:
@@ -102,6 +106,7 @@ def main():
             finance_requested=args.finance,
             only_page=args.only,
             live_preview=args.live_preview,
+            selected_pages=args.pages,
         )
     except PrinterConnectionError as error:
         raise SystemExit(str(error)) from None

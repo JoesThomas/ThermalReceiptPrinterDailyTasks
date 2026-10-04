@@ -8303,6 +8303,7 @@ def run_live_pipeline(
     *,
     force_finance=False,
     only_page=None,
+    selected_pages=None,
 ):
 
     print(
@@ -8336,7 +8337,11 @@ def run_live_pipeline(
     if compact:
         settings['display']['news_count'] = min(2, settings['display']['news_count'])
         settings['display']['sport_count'] = min(2, settings['display']['sport_count'])
-    if only_page is None and layout['order'] != ['information', 'actions', 'food', 'finance']:
+    if selected_pages is not None:
+        from receipt.selection import validate as validate_sections
+        validate_sections(selected_pages)
+        if only_page is not None: raise ValueError('Choose --pages or --only.')
+    if selected_pages is not None or (only_page is None and layout['order'] != ['information', 'actions', 'food', 'finance']):
         printer = OrderedPrinter(printer, layout['order'])
 
     valid_pages = {
@@ -8353,16 +8358,16 @@ def run_live_pipeline(
         )
 
     print_information_page = (
-        only_page in (None, "information")
+        ("information" in selected_pages) if selected_pages is not None else only_page in (None, "information")
     )
     print_actions_page = (
-        only_page in (None, "actions")
+        ("actions" in selected_pages) if selected_pages is not None else only_page in (None, "actions")
     )
     print_food_page = (
-        only_page in (None, "food")
+        ("food" in selected_pages) if selected_pages is not None else only_page in (None, "food")
     )
     print_finance_page = (
-        only_page in (None, "finance")
+        ("finance" in selected_pages) if selected_pages is not None else only_page in (None, "finance")
     )
 
     today = datetime.now(
@@ -8381,6 +8386,7 @@ def run_live_pipeline(
     should_run_finance = (
         force_finance
         or only_page == "finance"
+        or (selected_pages is not None and "finance" in selected_pages)
         or scheduled_finance
         or web_finance
     )
@@ -8767,6 +8773,7 @@ def run_live_pipeline(
 
         should_run_finance = (
             force_finance
+            or (selected_pages is not None and "finance" in selected_pages)
             or scheduled_finance
             or doc_finance
             or web_finance

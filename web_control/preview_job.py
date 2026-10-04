@@ -46,9 +46,14 @@ def main():
         parser = argparse.ArgumentParser()
         parser.add_argument('--finance', action='store_true')
         parser.add_argument('--only', choices=['information', 'actions', 'food', 'finance'])
+        parser.add_argument('--pages', nargs='+', choices=['information','actions','food','finance'])
         options = parser.parse_args()
         args = ['--finance'] if options.finance or options.only == 'finance' else []
-        if options.only:
+        if options.pages:
+            from receipt.selection import validate
+            validate(options.pages)
+            args += ['--pages', *options.pages]
+        elif options.only:
             args += ['--only', options.only]
         job_id = json.loads(STATUS.read_text())['job_id']
         log_event(job_id, 'preview started')

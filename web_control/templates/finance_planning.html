@@ -1,0 +1,96 @@
+{% macro plan_form(kind, row={}) %}
+    <form method="post" action="{{ url_for('save_finance_plan') }}" class="grid">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="kind" value="{{ kind }}">
+        <input type="hidden" name="id" value="{{ row.get('id','') }}">
+        <label>Name <input name="name" maxlength="120" required value="{{ row.get('name','') }}"></label>
+        <label>Amount (£) <input name="amount" type="number" min="0" max="10000000" step="0.01" required value="{{ row.get('amount','') }}"></label>
+        {% if kind == 'purchases' %}
+            <label>Purchase date <input name="date" type="date" required value="{{ row.get('date','') }}"></label>
+            <label><input type="checkbox" name="enabled" {% if row.get('enabled',true) %}checked{% endif %}> Include in hypothetical forecast</label>
+        {% else %}
+            <label>Priority (1 first) <input name="priority" type="number" min="1" max="100" required value="{{ row.get('priority',1) }}"></label>
+            <label>Destination
+                <select name="account_kind">
+                    {% for key,label in [('cash','Emergency cash'),('premium','Premium Bonds'),('isa','ISA'),('other','Other savings')] %}
+                        <option value="{{ key }}" {% if row.get('kind') == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+        {% endif %}
+        <div class="page-actions">
+            <button name="mode" value="save">{{ 'Update' if row else 'Add' }}</button>
+            {% if row %}<button name="mode" value="delete" formnovalidate>Delete</button>{% endif %}
+        </div>
+    </form>
+{% endmacro %}
+{% if planning_view %}
+    <details class="section-disclosure" id="finance-planning" {% if request.endpoint == 'finance_planning_page' %}open{% endif %}>
+        <summary>Plan purchases, allocate savings & review a month</summary>
+        {% if planning_view.error %}
+            <p class="helper">{{ planning_view.error }}</p>
+        {% else %}
+            <section>
+                <h2>Upcoming renewals and contract endings</h2>
+                <p class="muted">Next 60 days, using recorded renewal and end dates. Check cancellation notice periods with the provider.</p>
+                {% for row in planning_view.reminders %}
+                    <p><strong>{{ row.name }}</strong> · {{ row.kind }} · {{ row.date.strftime('%d %b %Y') }} ({{ row.days }} days)</p>
+                {% else %}<p>No recorded renewals or contract endings in this period.</p>{% endfor %}
+            </section>
+            <section>
+                <h2>Planned purchases</h2>
+                <p>These are optional scenarios. They do not change actual spending, commitments or the main runway. Past purchases are excluded; disable a plan or delete it once it becomes a real payment.</p>
+                {% if planning_view.scenario.valid %}
+                    <p>Main runway before these purchases: {{ planning_view.scenario.baseline_duration or 'Beyond the forecast horizon' }}.</p>
+                    <p>Runway with enabled purchases:
+                        <strong>{{ planning_view.scenario.duration ~ ' (' ~ planning_view.scenario.days ~ ' days)' if planning_view.scenario.days is not none else 'Beyond the forecast horizon' }}</strong>
+                        {% if planning_view.scenario.date %} · runs out {{ planning_view.scenario.date.strftime('%d %b %Y') }}{% endif %}
+                    </p>
+                    <p>Total enabled future purchases: £{{ '%.2f'|format(planning_view.scenario.total) }}.</p>
+                    {% if planning_view.scenario.outside %}<p>{{ planning_view.scenario.outside }} purchase(s) fall beyond the forecast horizon and do not affect this runway.</p>{% endif %}
+                {% else %}<p>Complete the cash forecast before comparing a purchase scenario.</p>{% endif %}
+                {% for row in planning_view.state.purchases %}
+                    <details><summary>{{ row.name }} · £{{ row.amount }} · {{ row.date }}</summary>{{ plan_form('purchases',row) }}</details>
+                {% endfor %}
+                <details><summary>Add a purchase</summary>{{ plan_form('purchases') }}</details>
+            </section>
+            <section>
+                <h2>Divide the affordable savings contribution</h2>
+                <p>Priorities use your monthly contribution targets. Their combined target is used when no manual salary savings target is configured; otherwise that manual target limits the contribution. Lower numbers come first. Protected bank reserves and physical cash shortfalls are already reserved separately. No transfers happen automatically.</p>
+                {% if planning_view.allocation.available is not none %}
+                    <p>Available to allocate: <strong>£{{ '%.2f'|format(planning_view.allocation.available) }}</strong>, after allowing for £{{ '%.2f'|format(planning_view.allocation.purchase_cost) }} of enabled purchases before payday. Additional spending money covers purchases first; the savings recommendation is reduced by £{{ '%.2f'|format(planning_view.allocation.savings_reduction) }}.</p>
+                    {% for row in planning_view.allocation.rows %}
+                        <p>{{ row.name }}: £{{ '%.2f'|format(row.allocated) }} / £{{ row.amount }} · shortfall £{{ '%.2f'|format(row.gap) }}</p>
+                        <progress max="100" value="{{ row.percent }}" aria-label="{{ row.name }} contribution target"></progress>
+                        {% if row.limit_unknown %}<p>Allowance or holding space is unknown; allocation withheld for this destination.</p>{% endif %}
+                    {% endfor %}
+                    <p>Unallocated: £{{ '%.2f'|format(planning_view.allocation.unallocated) }}. ISA and Premium Bonds allocations are capped by recorded remaining space; confirm that records are complete.</p>
+                {% else %}<p>A verified salary allocation is needed before recommending contributions.</p>{% endif %}
+                {% for row in planning_view.state.priorities %}
+                    <details><summary>{{ row.priority }} · {{ row.name }} · £{{ row.amount }}/month</summary>{{ plan_form('priorities',row) }}</details>
+                {% endfor %}
+                <details><summary>Add a savings priority</summary>{{ plan_form('priorities') }}</details>
+            </section>
+            <section>
+                <h2>Monthly review</h2>
+                <p>Confirm an ended month after checking transactions and savings. This freezes the latest saved observation; it does not reconstruct missing bank history. Coverage and the observation date remain recorded.</p>
+                {% for row in insights.history if row.month < checked_at.strftime('%Y-%m') %}
+                    <p>{{ row.month }} · observed {{ row.as_of }} · {{ row.coverage }} coverage · {{ 'whole month covered' if row.whole_month else 'partial-month observation' }}</p>
+                    <form method="post" action="{{ url_for('close_finance_month') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="month" value="{{ row.month }}">
+                        <label><input type="checkbox" name="confirmed" required> I reviewed transactions and savings, including coverage limitations.</label>
+                        <button>{{ 'Replace reviewed snapshot' if row.month in planning_view.state.reviews else 'Confirm monthly review' }}</button>
+                    </form>
+                {% else %}<p>No ended-month observations yet.</p>{% endfor %}
+                {% for month,review in planning_view.state.reviews|dictsort(reverse=true) %}
+                    <details>
+                        <summary>{{ month }} · reviewed {{ planning_local_time(review.reviewed_at) }}</summary>
+                        <p>Observation date: {{ review.snapshot.as_of }} · {{ review.snapshot.coverage }} coverage.</p>
+                        <p>Incoming £{{ review.snapshot.income }} · spending £{{ review.snapshot.spending }} · savings {{ review.snapshot.savings or 'Unknown' }} · investments {{ review.snapshot.investments or 'Unknown' }}.</p>
+                    </details>
+                {% endfor %}
+            </section>
+        {% endif %}
+    </details>
+{% endif %}

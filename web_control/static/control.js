@@ -112,3 +112,34 @@
   });
   window.addEventListener('pageshow', () => { notice.hidden=true; });
 })();
+
+// Display preferences contain no account or finance data and stay in this browser.
+(() => {
+    const key = 'receipt-display-preferences';
+    const text = document.getElementById('accessibility-text');
+    const contrast = document.getElementById('accessibility-contrast');
+    const motion = document.getElementById('accessibility-motion');
+    const reset = document.getElementById('accessibility-reset');
+    if (!text || !contrast || !motion || !reset) return;
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch (_) {}
+    const apply = () => {
+        document.documentElement.dataset.textSize = text.value;
+        document.documentElement.dataset.highContrast = String(contrast.checked);
+        document.documentElement.dataset.reduceMotion = String(motion.checked);
+    };
+    text.value = ['normal', 'large', 'larger'].includes(saved.text) ? saved.text : 'normal';
+    contrast.checked = saved.contrast === true;
+    motion.checked = saved.motion === true || (saved.motion === undefined && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    for (const input of [text, contrast, motion]) input.addEventListener('change', () => {
+        apply();
+        try { localStorage.setItem(key, JSON.stringify({text: text.value, contrast: contrast.checked, motion: motion.checked})); } catch (_) {}
+    });
+    reset.addEventListener('click', () => {
+        text.value = 'normal'; contrast.checked = false;
+        motion.checked = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        try { localStorage.removeItem(key); } catch (_) {}
+        apply();
+    });
+    apply();
+})();

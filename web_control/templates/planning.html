@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Private finance plans</title>
+        <link rel="stylesheet" href="{{ url_for('static',filename='control.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <header>
+                <h1>Private finance plans</h1>
+                <p>Edit locally even when your bank connection is unavailable. Open Finance to calculate scenarios and allocations using current data.</p>
+                <a class="button" href="{{ url_for('finance_review') }}">Calculate in Finance</a>
+            </header>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="helper" role="status">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            {% include 'finance_planning.html' %}
+        </main>
+    </body>
+</html>
