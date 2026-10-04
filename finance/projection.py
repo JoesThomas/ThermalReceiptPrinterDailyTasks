@@ -9,6 +9,13 @@ from finance_trends import _parse_date
 from web_control.payments import external_payments
 
 
+def amazon_purchase(transaction):
+    """Identify Amazon shopping without removing it from actual spending totals."""
+    description = " ".join(str(transaction.get(field) or "") for field in
+                           ("merchant_name", "merchant", "description", "spend_description", "transaction_description"))
+    return bool(re.search(r"\bAMAZON\b|\bAMZNMKTPLACE", description, re.I))
+
+
 def format_runway(days, start=None):
     """Calendar months followed by weeks/days; preserve exact elapsed days."""
     start = start or date.today()
@@ -254,7 +261,8 @@ def build_projection(balances, transactions, monthly, yearly, settings, today,
             return False
         due = date(paid.year, paid.month, min(anchor.day, monthrange(paid.year, paid.month)[1]))
         return abs((paid - due).days) <= 2 and money(item.get('amount')) == abs(money(tx.get('amount'), Decimal(0)))
-    variable = [tx for tx in recent if not any(fixed_match(item, tx) for item in configured)]
+    variable = [tx for tx in recent if not amazon_purchase(tx)
+                and not any(fixed_match(item, tx) for item in configured)]
     daily = sum((money(tx.get('spend_amount'), Decimal(0)) for tx in variable), Decimal(0)) / 30
     override = money(settings.get('runway_daily_spend'))
     if override is not None and override >= 0:

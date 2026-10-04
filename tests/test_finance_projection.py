@@ -72,6 +72,19 @@ class ProjectionTests(unittest.TestCase):
         self.assertEqual(len(result['upcoming']), 1)
         self.assertEqual(result['upcoming'][0]['date'], date(2026, 9, 5))
 
+    def test_amazon_shopping_excluded_from_daily_estimate_but_repayments_remain(self):
+        transactions = [
+            {'date': '2026-08-31', 'amount': -120, 'description': 'AMAZON.CO.UK AMAZON.CO.UK'},
+            {'date': '2026-08-31', 'amount': -60, 'description': 'AMZNMKTPLACE*ORDER AMAZON.CO.UK'},
+            {'date': '2026-08-31', 'amount': -30, 'description': 'Everyday store'},
+        ]
+        result = self.project(transactions=transactions, settings={'commitments': [
+            {'name': 'Amazon repayment', 'amount': 50, 'due_date': '2026-09-05', 'repeat': 'monthly'}]})
+        self.assertEqual(result['daily'], Decimal('1.00'))
+        self.assertTrue(any(event['amount'] == Decimal('50') for event in result['upcoming']))
+        from web_control.payments import external_payments
+        self.assertEqual(sum(tx['spend_amount'] for tx in external_payments(transactions)), 210)
+
     def test_future_salary_not_counted_and_missing_card_repayment_flagged(self):
         result = self.project(settings={'runway_daily_spend': 10, 'forecast_events': [
             {'name': 'Salary', 'date': '2026-09-02', 'amount': 10000}]})
