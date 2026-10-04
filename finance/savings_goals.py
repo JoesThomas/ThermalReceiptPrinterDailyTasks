@@ -1,4 +1,5 @@
 """Private savings targets and dated ISA subscriptions, separate from valuations."""
+import calendar
 import fcntl
 import hashlib
 import json
@@ -6,7 +7,7 @@ import re
 import uuid
 from contextlib import contextmanager
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_CEILING
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from finance.wealth_history import amount
@@ -56,6 +57,9 @@ def validate(value):
     for year,row in value['years'].items():
         if not re.fullmatch(r'\d{4}',str(year)) or not 2000 <= int(year) <= 2100 or not isinstance(row,dict) or type(row.get('complete',False)) is not bool:
             raise ValueError('Invalid tax-year preferences.')
+        if row.get('first_payment'):
+            first=date.fromisoformat(row['first_payment'])
+            if not date(int(year),4,6)<=first<=date(int(year)+1,4,5): raise ValueError('Choose a payment date within this tax year.')
         for key in ('allowance','cash_limit'):
             if row.get(key) is not None and amount(row[key]) <= 0: raise ValueError('Enter a positive limit.')
         if row.get('allowance') is not None and row.get('cash_limit') is not None and amount(row['cash_limit'])>amount(row['allowance']):
@@ -114,22 +118,49 @@ def remove(entry_id):
         state['years'].setdefault(str(tax_year(date.fromisoformat(row['date']))),{})['complete']=False
 
 
-def year_settings(year,allowance,cash_limit,complete):
+def year_settings(year,allowance,cash_limit,complete,first_payment=None):
     year=int(year)
     if not 2000<=year<=tax_year(today())+1: raise ValueError('Choose a valid tax year.')
     allowance=amount(allowance) if allowance not in ('',None) else None
     cash_limit=amount(cash_limit) if cash_limit not in ('',None) else None
     if allowance is not None and allowance<=0 or cash_limit is not None and cash_limit<=0: raise ValueError('Use positive limits.')
     if cash_limit is not None and allowance is not None and cash_limit>allowance: raise ValueError('Cash limit cannot exceed the overall allowance.')
+    first_payment=date.fromisoformat(first_payment).isoformat() if first_payment else None
+    if first_payment and not date(year,4,6)<=date.fromisoformat(first_payment)<=date(year+1,4,5): raise ValueError('Choose a payment date within this tax year.')
     with edit() as state:
         state['years'][str(year)]={'allowance':str(allowance) if allowance is not None else None,
-                                  'cash_limit':str(cash_limit) if cash_limit is not None else None,'complete':bool(complete)}
+                                  'cash_limit':str(cash_limit) if cash_limit is not None else None,'complete':bool(complete),'first_payment':first_payment}
 
 
 def bar(value,limit):
     if value is None or limit is None or limit<=0: return {'percent':None,'remaining':None,'over':None}
     return {'percent':min(Decimal(100),max(Decimal(0),value/limit*100)),
             'remaining':max(Decimal(0),limit-value),'over':max(Decimal(0),value-limit)}
+
+
+def monthly_plan(remaining,year,on,first_payment=None):
+    """Monthly payment opportunities; keep the original day through short months."""
+    start,end=date(year,4,6),date(year+1,4,5)
+    anchor=date.fromisoformat(first_payment) if first_payment else max(start,on)
+    dates=[]
+    for offset in range(13):
+        month_index=anchor.year*12+anchor.month-1+offset
+        y,m=divmod(month_index,12);m+=1
+        payment=date(y,m,min(anchor.day,calendar.monthrange(y,m)[1]))
+        if payment>end: break
+        if payment>=max(start,on): dates.append(payment)
+    result={'anchor':anchor,'dates':dates,'count':len(dates),'deadline':end,'amount':None,'final_amount':None,
+            'status':'Tax year ended' if on>end else 'Enter the applicable allowance' if remaining is None else 'No monthly payments before the deadline' if not dates else 'Allowance already used' if remaining==0 else 'Monthly target'}
+    if remaining is not None and dates:
+        # Distribute whole pennies evenly; the last payment absorbs the remainder.
+        pennies=int(remaining*100)
+        regular=(remaining/len(dates)).quantize(Decimal('0.01'),rounding=ROUND_CEILING)
+        amounts=[];left=Decimal(pennies)/100
+        for index in range(len(dates)):
+            value=left if index==len(dates)-1 else min(regular,left)
+            amounts.append(value);left-=value
+        result.update(amount=regular,final_amount=amounts[-1],payments=list(zip(dates,amounts)))
+    return result
 
 
 def review(wealth=None,year=None,state=None,on=None,bond_balances=None):
@@ -176,7 +207,7 @@ def review(wealth=None,year=None,state=None,on=None,bond_balances=None):
     pb_total=sum((row['balance'] for row in pb),Decimal(0)) if pb and all(row.get('balance') is not None for row in pb) else None
     years=sorted({tax_year(on),tax_year(on)-1,tax_year(on)-2,year,*[tax_year(date.fromisoformat(e['date'])) for e in state['entries']]},reverse=True)
     return {'accounts':list(accounts.values()),'year':year,'label':f'{year}/{str(year+1)[2:]}','start':date(year,4,6),'end':date(year+1,4,5),
-            'shared':shared,'cash':cash,'premium':{'balance':pb_total,'limit':Decimal(50000),**bar(pb_total,Decimal(50000))},
+            'shared':shared,'cash':cash,'monthly':monthly_plan(shared['remaining'],year,on,config.get('first_payment')),'premium':{'balance':pb_total,'limit':Decimal(50000),**bar(pb_total,Decimal(50000))},
             'years':years,'has_isa':bool(entries) or any(row['type'] in ISA for row in accounts.values()),'has_cash':cash_used>0 or any(row['type']=='cash_isa' for row in accounts.values()),'today':on}
 
 
@@ -196,6 +227,11 @@ def receipt_lines(view):
             if account['type'] in ISA: lines.append(f"{account['name']}: GBP {account['contributions']:.2f}")
         if row['complete'] and row['remaining'] is not None: lines.append(f"RECORDED SPACE GBP {row['remaining']:.2f}")
         else: lines.append('RECORDS MAY BE INCOMPLETE')
+        plan=view['monthly']
+        if plan['amount'] is not None:
+            lines += [f"ISA MONTHLY TARGET GBP {plan['amount']:.2f}",f"{plan['count']} PAYMENTS BY {plan['deadline']}",f"FINAL PAYMENT GBP {plan['final_amount']:.2f}"]
+            if not row['complete']: lines.append('ESTIMATE FROM RECORDED CONTRIBUTIONS')
+        else: lines.append(plan['status'].upper())
         if row['over']: lines.append('RECORDED CONTRIBUTIONS EXCEED LIMIT')
         if view['has_cash'] and view['cash']['limit'] is None: lines.append('VERIFY CASH ISA LIMIT FOR THIS YEAR')
     return [part for line in lines for part in wrap(line,width=40)]

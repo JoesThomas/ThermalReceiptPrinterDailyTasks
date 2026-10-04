@@ -48,7 +48,7 @@ def register(app,login_required,wealth_fn):
     @login_required
     def isa_year_settings():
         try:
-            goals.year_settings(request.form.get('year'),request.form.get('allowance'),request.form.get('cash_limit'),request.form.get('complete')=='on')
+            goals.year_settings(request.form.get('year'),request.form.get('allowance'),request.form.get('cash_limit'),request.form.get('complete')=='on',request.form.get('first_payment') or None)
             flash('Tax-year preferences saved privately.')
         except (ValueError,TypeError,OSError) as error: flash(str(error) if isinstance(error,ValueError) else 'Check the tax year and limits.')
         return redirect(url_for('savings_goals_page',tax_year=request.form.get('year')))

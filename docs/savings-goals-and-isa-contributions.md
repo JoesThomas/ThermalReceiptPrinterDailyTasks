@@ -56,3 +56,5 @@ Sources:
 - https://www.gov.uk/individual-savings-accounts/transferring-your-isa
 - https://www.gov.uk/individual-savings-accounts/withdrawing-your-money
 - https://www.gov.uk/government/publications/fiscal-events-2026-factsheets/isa-reform-2027-anti-circumvention-rules-factsheet
+
+Monthly ISA planning divides the recorded shared allowance remaining by the monthly payment dates remaining before 5 April. Set the first payment date to choose a monthly day; elapsed dates roll forward and short months use their last day without changing the original day. Payments include today if it is a scheduled date. Targets recalculate as contributions are recorded. Regular amounts round upwards to pennies; the final payment adjusts so the schedule totals exactly the remaining allowance. Incomplete contribution records produce an estimate. This is a shared adult ISA plan, not a separate allowance per account or permission to exceed cash/product-specific limits. Past years and unknown allowances have no monthly target. Planning preferences stay in the private, backed-up savings goals file.
