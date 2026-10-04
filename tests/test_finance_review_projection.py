@@ -26,7 +26,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path('web_control').resolve()))
 from app import app
 import finance.receipt as receipt
-from web_control import finance_suggestions
+from web_control import finance_suggestions, finance_insights
 transactions = [{'date': date.today().isoformat(), 'amount': -30, 'description': 'Everyday store'}]
 status = {'monthly': [{'name': 'Example bill', 'amount': 80, 'due_day': 15}], 'yearly': [], 'ended': []}
 pipeline = SimpleNamespace(
@@ -41,6 +41,7 @@ with tempfile.TemporaryDirectory() as directory:
     with patch.dict(sys.modules, {'services.live_pipeline': pipeline}), \\
          patch.object(receipt, 'FINANCE_SETTINGS_FILE', settings), \\
          patch.object(receipt, 'load_finance_settings', side_effect=lambda: json.loads(settings.read_text())), \\
+         patch.object(finance_insights, 'FILE', Path(directory) / 'observations.json'), \\
          patch.object(finance_suggestions, 'DISMISSED_FILE', Path(directory) / 'dismissed.json'):
         with app.test_client() as client:
             with client.session_transaction() as session:
@@ -50,6 +51,9 @@ with tempfile.TemporaryDirectory() as directory:
             assert response.status_code == 200, response.status_code
             assert b'Finance suggestions' in response.data
             assert b'Cash runway' in response.data
+            assert b'Understand the figures' in response.data
+            assert b'Private monthly observations' in response.data
+            assert (Path(directory)/'observations.json').exists()
             assert b'Example bill' in response.data
             assert client.post('/finance-review/forecast-settings', data={
                 'csrf_token': 'test-csrf', 'next_payday': '2026-10-30', 'payday_repeat': 'monthly',

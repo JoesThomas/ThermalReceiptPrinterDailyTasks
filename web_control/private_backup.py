@@ -9,7 +9,7 @@ MAX_BYTES = 900_000
 OBJECT_FILES = {'savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
                 'investments.json', 'finance_settings.json', 'finance_categories.json',
                 'food_shop_override.json', 'tesco_progress.json', 'meals_eaten.json'}
-LIST_FILES = {'routines.json', 'future_tasks.json', 'wealth_history.json'}
+LIST_FILES = {'finance_monthly_snapshots.json','routines.json', 'future_tasks.json', 'wealth_history.json'}
 FILES = OBJECT_FILES | LIST_FILES | {'to_buy.json', 'freezer.json', 'pantry.json'}
 
 def _finite_tree(value, depth=0):
@@ -62,6 +62,9 @@ def _validate_file(name, content):
         if 'location' in content:
             from receipt.location_settings import validate_location
             validate_location(content['location'])
+    elif name == 'finance_monthly_snapshots.json':
+        from web_control.finance_insights import validate as validate_snapshots
+        validate_snapshots(content)
     elif name == 'savings_goals.json':
         from finance.savings_goals import validate as validate_goals
         validate_goals(content)

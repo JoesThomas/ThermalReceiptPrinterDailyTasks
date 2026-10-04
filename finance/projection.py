@@ -317,7 +317,7 @@ def build_projection(balances, transactions, monthly, yearly, settings, today,
     if not recent and override is None:
         warnings.append('No variable spending history is available; add a daily spending estimate.')
         valid = False
-    return {'cash': cash if balances_ok else None, 'buffer': buffer, 'daily': daily.quantize(Decimal('0.01')),
+    return {'cash': cash if balances_ok else None, 'buffer': buffer, 'daily_cost':daily, 'daily': daily.quantize(Decimal('0.01')),
             'cash_days': cash_days if valid else None, 'total_days': total_days if valid else None,
             'cash_duration': format_runway(cash_days, today) if valid and cash_days is not None else None,
             'total_duration': format_runway(total_days, today) if valid and total_days is not None else None,

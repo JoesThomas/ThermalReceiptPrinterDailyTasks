@@ -76,6 +76,16 @@ def build_suggestions(projection, rows, annual, ended, charts, recurring, transa
         add('Payments after a recorded contract end', 'A matching payment appeared after the end date. Check whether the contract rolled over or the date needs updating.',
             'attention', 'commitments', [i['name'] for i in still_charged])
     configured = [r['item'] for r in rows] + list(annual) + list(ended)
+    for index,first in enumerate(configured):
+        for second in configured[index+1:]:
+            # Only explicit matching-term overlap; do not guess that different services are redundant.
+            def terms(item):
+                raw=item.get('match') or [item.get('name','')]
+                return {key(t) for t in ([raw] if isinstance(raw,str) else raw) if key(t)}
+            overlap=terms(first)&terms(second)
+            if overlap and first.get('name') != second.get('name'):
+                add('Review overlapping commitment matches', 'Two configured commitments use the same bank matching term. They may be separate services; review them before changing anything.',
+                    'review','commitments',[str(first.get('name')),str(second.get('name'))])
     for candidate in recurring or []:
         name = str(candidate.get('name', 'Recurring merchant'))
         if any(key(i.get('name')) == key(name) or any(key(t) and key(t) in key(name)

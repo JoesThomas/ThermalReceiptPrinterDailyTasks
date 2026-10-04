@@ -6600,6 +6600,7 @@ def get_regular_finance_data():
 
     provider_tokens = {}
     transaction_range_info = {}
+    source_coverage = []
     fetch_attempted = 0
     fetch_succeeded = 0
     fetch_failed = 0
@@ -6627,6 +6628,7 @@ def get_regular_finance_data():
 
             provider_tokens[provider] = None
             fetch_failed += 1
+            source_coverage.append({'provider':provider,'source':'Connection','status':'Unavailable','count':None})
 
     # Bank accounts: transactions, DDs and standing orders.
     for provider in ("HSBC", "MONZO"):
@@ -6642,10 +6644,12 @@ def get_regular_finance_data():
         except requests.RequestException as error:
             print(f"{provider} account-list error:", error)
             fetch_failed += 1
+            source_coverage.append({'provider':provider,'source':'Account list','status':'Unavailable','count':None})
             continue
         if not account_ids:
             fetch_failed += 1
-        for account_id in account_ids:
+            source_coverage.append({'provider':provider,'source':'Account list','status':'No accounts returned','count':0})
+        for source_number,account_id in enumerate(account_ids,1):
             try:
                 dd_items = _truelayer_regular_payments(
                     access_token,
@@ -6688,8 +6692,7 @@ def get_regular_finance_data():
 
             try:
                 fetch_attempted += 1
-                all_transactions.extend(
-                    _truelayer_transactions(
+                fetched = _truelayer_transactions(
                         access_token,
                         "accounts",
                         account_id,
@@ -6697,10 +6700,12 @@ def get_regular_finance_data():
                         today,
                         range_info=transaction_range_info,
                     )
-                )
+                all_transactions.extend(fetched)
+                source_coverage.append({'provider':provider,'source':f'Account {source_number}','status':'Loaded','count':len(fetched)})
                 fetch_succeeded += 1
             except requests.RequestException as error:
                 fetch_failed += 1
+                source_coverage.append({'provider':provider,'source':f'Account {source_number}','status':'Unavailable','count':None})
                 print(
                     f"{provider} transaction error:",
                     error,
@@ -6720,7 +6725,10 @@ def get_regular_finance_data():
             print("AMEX card-list error:", error)
             fetch_failed += 1
             card_ids = []
-        for card_id in card_ids:
+        if not card_ids:
+            fetch_failed += 1
+            source_coverage.append({'provider':'AMEX','source':'Card list','status':'Unavailable or empty','count':None})
+        for source_number,card_id in enumerate(card_ids,1):
             try:
                 fetch_attempted += 1
                 card_transactions = _truelayer_transactions(
@@ -6736,9 +6744,11 @@ def get_regular_finance_data():
                         **transaction,
                         "_source_provider": "AMEX",
                     })
+                source_coverage.append({'provider':'AMEX','source':f'Card {source_number}','status':'Loaded','count':len(card_transactions)})
                 fetch_succeeded += 1
             except requests.RequestException as error:
                 fetch_failed += 1
+                source_coverage.append({'provider':'AMEX','source':f'Card {source_number}','status':'Unavailable','count':None})
                 print(
                     "AMEX transaction error:",
                     error,
@@ -6813,6 +6823,9 @@ def get_regular_finance_data():
     spending_summary = {
         "average_period_days": average_days,
         "bank_data_status": bank_data_status,
+        "source_coverage": source_coverage,
+        "requested_from": (today-timedelta(days=29) if transaction_range_info.get("shortened") else from_date).isoformat(),
+        "requested_to": today.isoformat(),
         "bank_fetch_attempted": fetch_attempted,
         "bank_fetch_succeeded": fetch_succeeded,
         "normal_monthly_burn": ninety_day_average,

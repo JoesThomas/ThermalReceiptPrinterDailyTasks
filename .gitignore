@@ -154,3 +154,7 @@ data/finance_categories.lock
 # Private savings targets and ISA contributions
 data/savings_goals.json
 data/savings_goals.lock
+
+# Private aggregate finance observations
+data/finance_monthly_snapshots.json
+data/finance_monthly_snapshots.lock

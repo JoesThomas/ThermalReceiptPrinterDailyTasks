@@ -1260,7 +1260,12 @@ def finance_review():
                                       forecast_settings, today, savings, bank_data_status)
         suggestions = build_suggestions(projection, rows, annual, status["ended"], charts,
                                         finance_data[3], transactions, today)
-        return render_template("finance_review.html", rows=rows, charts=charts,
+        from web_control.finance_insights import build as build_insights
+        from finance.savings_goals import review as goals_review
+        try: goals_view=goals_review(wealth,on=today)
+        except (ValueError,OSError,KeyError,TypeError): goals_view=None
+        insights=build_insights(projection,balances,finance_data[4],month,income,wealth,goals_view,today)
+        return render_template("finance_review.html", insights=insights, rows=rows, charts=charts,
                                wealth=wealth, wealth_error=wealth_error, bonds_summary=bonds_summary,
                                month=month, income=income, cash_flow=cash_flow,
                                annual=annual,
