@@ -163,6 +163,8 @@ def get_gigs(location, on, radius=25):
                 # Do not expose request URLs or API keys through errors/logs.
                 status = 'partial' if raw else 'unavailable'
                 break
+        from services.api_health import record
+        record("Ticketmaster", "healthy" if status == "ok" else "degraded" if status == "partial" else "failed")
         result.update(events=normalise(raw,on,location,radius), status=status,
                       checked_at=datetime.now(ZoneInfo('Europe/London')))
         # Shorter retry interval after a provider failure.

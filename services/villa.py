@@ -32,7 +32,8 @@ def get_aston_villa_match_today(
         london
     ).date()
 
-    response = get(
+    from services.api_health import observed_call
+    response = observed_call("Football API", get,
         (
             "https://api.football-data.org/"
             f"v4/teams/{ASTON_VILLA_TEAM_ID}/"

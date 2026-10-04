@@ -31,9 +31,10 @@ class WebServerStartupTests(unittest.TestCase):
         start_print = lambda args: (True, None)
         with patch.dict(sys.modules, {'waitress': SimpleNamespace(serve=lambda *a, **k: calls.append('serve')),
                                       'app': SimpleNamespace(_start_print_command=start_print)}), \
-             patch('web_control.scheduled_print.start_scheduler', side_effect=lambda fn: calls.append(fn)):
+             patch('web_control.scheduled_print.start_scheduler', side_effect=lambda fn: calls.append(fn)), \
+             patch('services.api_health.start_monitor',side_effect=lambda: calls.append('health')):
             main(application=object(), environ={})
-        self.assertEqual(calls, [start_print, 'serve'])
+        self.assertEqual(calls, [start_print, 'health', 'serve'])
 
 if __name__ == '__main__':
     unittest.main()

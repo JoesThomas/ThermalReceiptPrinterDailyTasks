@@ -174,6 +174,8 @@ def refresh(force=False):
         collections=None;error='Council check failed. Verify the dates on the council website or use a manual schedule.'
     with transaction() as current:
         if identity!=tuple(current[key] for key in ('address','postcode','uprn','provider')): return current
+        from services.api_health import record
+        record('Bin collections','failed' if error else 'healthy')
         current.update(last_attempt=now().isoformat(),error=error)
         if collections is not None: current.update(collections=collections,last_success=now().isoformat())
         return dict(current)

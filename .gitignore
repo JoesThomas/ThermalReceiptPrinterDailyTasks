@@ -138,3 +138,8 @@ data/receipt_changes.json
 # Private collection address and bin schedule
 data/bin_collections.json
 data/bin_collections.lock
+
+# Redacted integration health history and worker locks
+data/api_health.json
+data/api_health.lock
+data/api_health_run.lock

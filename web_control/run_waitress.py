@@ -54,6 +54,8 @@ def main(serve_fn=None, application=None, environ=None):
             from app import _start_print_command
             from web_control.scheduled_print import start_scheduler
             start_scheduler(_start_print_command)
+            from services.api_health import start_monitor
+            start_monitor()
         serve_fn(application, host=host, port=port, threads=4)
     except OSError as exc:
         raise SystemExit(bind_error_message(exc, host, port)) from exc

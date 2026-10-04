@@ -48,7 +48,8 @@ def get_vehicle_status(
             "DVLA API key is not configured."
         )
 
-    response = requests.post(
+    from services.api_health import observed_request
+    response = observed_request("DVLA", "post",
         DVLA_URL,
         headers={
             "x-api-key": api_key,

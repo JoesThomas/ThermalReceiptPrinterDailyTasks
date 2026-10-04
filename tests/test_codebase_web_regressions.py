@@ -70,6 +70,21 @@ with tempfile.TemporaryDirectory() as folder,patch.object(web,'PROJECT_ROOT',Pat
    assert client.post('/bins/lookup').status_code==403
    assert client.post('/bins/save',data={'csrf_token':'test','enabled':'on','provider':'manual','address':'Example Road','postcode':'B1 1AA','manual':'2026-10-05 | General waste | 7'}).status_code==302
    response=client.get('/bins');assert response.status_code==200 and b'Example Road' in response.data
+  from services import api_health as health
+  with patch.object(health,'ROOT',root),patch.object(health,'FILE',root/'data'/'health.json'),patch.object(health,'RUN_LOCK',root/'data'/'health_run.lock'):
+   health.record('Gmail','failed',code=403,reason='http')
+   response=client.get('/api-health');assert response.status_code==200 and b'HTTP 403' in response.data
+   assert client.post('/api-health/settings',data={'interval':'60'}).status_code==403
+   assert client.post('/api-health/check').status_code==403
+   with patch('web_control.health_tools.load_receipt_settings',return_value=deepcopy(DEFAULT_SETTINGS)),patch('web_control.health_tools.save_receipt_settings') as save:
+    assert client.post('/api-health/settings',data={'csrf_token':'test','enabled':'on','interval':'180'}).status_code==302
+    assert save.call_args.args[0]['api_health']=={'enabled':True,'interval_minutes':180}
+    save.reset_mock()
+    client.post('/api-health/settings',data={'csrf_token':'test','interval':'1'})
+    save.assert_not_called()
+   with patch('web_control.health_tools.Thread') as thread:
+    assert client.post('/api-health/check',data={'csrf_token':'test'}).status_code==302
+    thread.return_value.start.assert_called_once()
   assert client.get('/jobs/status').status_code==200
   assert client.post('/jobs/cancel',data={'kind':'print'}).status_code==403
   assert client.get('/deliveries').status_code==200

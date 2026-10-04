@@ -1416,5 +1416,8 @@ register_task_tools(app, login_required)
 from web_control.bin_tools import register as register_bin_tools
 register_bin_tools(app, login_required)
 
+from web_control.health_tools import register as register_health_tools
+register_health_tools(app, login_required)
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

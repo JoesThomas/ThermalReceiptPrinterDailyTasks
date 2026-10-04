@@ -620,6 +620,7 @@ def get_gmail_delivery_emails():
     try:
         mailbox = imaplib.IMAP4_SSL(GMAIL_IMAP_HOST, timeout=15)
 
+        from services.api_health import record as health_record
         mailbox.login(
             GMAIL_ADDRESS,
             GMAIL_APP_PASSWORD,
@@ -631,9 +632,11 @@ def get_gmail_delivery_emails():
         )
 
         if status != "OK":
+            health_record("Gmail", "failed", reason="unavailable")
             print("Could not open Gmail inbox.")
             return []
 
+        health_record("Gmail", "healthy")
         since_date = (
             datetime.now(
                 ZoneInfo("Europe/London")
@@ -648,6 +651,7 @@ def get_gmail_delivery_emails():
         )
 
         if status != "OK" or not data:
+            health_record("Gmail", "failed", reason="unavailable")
             return []
 
         message_ids = data[0].split()
@@ -713,6 +717,8 @@ def get_gmail_delivery_emails():
         return records
 
     except imaplib.IMAP4.error as error:
+        from services.api_health import record as health_record
+        health_record("Gmail", "failed", reason="unavailable")
         print(
             "Gmail IMAP login/search failed:",
             error,
@@ -720,6 +726,8 @@ def get_gmail_delivery_emails():
         return []
 
     except OSError as error:
+        from services.api_health import record as health_record
+        health_record("Gmail", "failed", reason="connection")
         print(
             "Could not connect to Gmail IMAP:",
             error,
@@ -744,7 +752,8 @@ def _transportapi_bournville_departures(
         "timetable.json"
     )
 
-    response = requests.get(
+    from services.api_health import observed_request
+    response = observed_request("Transport API", "get",
         url,
         params={
             "app_id": TRANSPORT_API_APP_ID,
@@ -2228,7 +2237,8 @@ def get_google_doc_text(value):
         f"{document_id}/export?format=txt"
     )
 
-    response = requests.get(
+    from services.api_health import observed_request
+    response = observed_request("Google Docs", "get",
         export_url,
         timeout=15,
     )
@@ -2271,7 +2281,8 @@ def get_random_lines(number_of_lines):
 # ============================================================
 
 def get_calendar_events(ical_url, days_ahead=0):
-    response = requests.get(ical_url, timeout=15)
+    from services.api_health import observed_request
+    response = observed_request("Google Calendar", "get", ical_url, timeout=15)
     response.raise_for_status()
     calendar_data = Calendar.from_ical(response.content)
     tz = ZoneInfo("Europe/London")
