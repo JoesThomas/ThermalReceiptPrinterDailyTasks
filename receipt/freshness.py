@@ -6,9 +6,12 @@ def reset():
     _current.clear()
 
 def mark(name, status='checked', **metadata):
-    _current[name] = {'checked_at': datetime.now(timezone.utc).isoformat(), 'status': status, **metadata}
+    from domain_models import SourceObservation
+    observation=SourceObservation(name,status,datetime.now(timezone.utc).isoformat())
+    _current[name] = {'checked_at': observation.checked_at, 'status': status, 'state':observation.state.value, **metadata}
     from services.api_health import record
-    record(name, 'healthy' if status in {'checked','available','ok'} else 'degraded' if status in {'partial', 'cached', 'cached after error'} else 'failed')
+    from services.source_status import health
+    record(name,health(status))
 
 def snapshot():
     return {name: dict(value) for name, value in _current.items()}

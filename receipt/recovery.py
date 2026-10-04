@@ -8,11 +8,13 @@ from storage import write_json
 FILE=Path(__file__).resolve().parents[1]/'data'/'receipt_recovery.json'
 
 
+def store():
+    from storage import PrivateStore
+    return PrivateStore(FILE,default=dict,validate=validate)
+
+
 def read():
-    try:
-        value=json.loads(FILE.read_text())
-        validate(value)
-        return value
+    try: return store().read()
     except (ValueError,TypeError,OSError): return {}
 
 
@@ -26,14 +28,11 @@ def validate(value):
 
 def mark(identifier,field,enabled=True):
     if field not in {'sent_at','collected_at'}: raise ValueError('Invalid receipt status.')
-    FILE.parent.mkdir(parents=True,exist_ok=True)
-    with FILE.with_suffix('.lock').open('a') as lock:
-        fcntl.flock(lock,fcntl.LOCK_EX)
-        value=read();row=value.setdefault(identifier,{})
+    def change(value):
+        row=value.setdefault(identifier,{})
         row[field]=datetime.now(timezone.utc).isoformat() if enabled else None
-        if len(value)>5000:
-            value=dict(list(value.items())[-5000:])
-        validate(value);write_json(FILE,value)
+        while len(value)>5000: value.pop(next(iter(value)))
+    store().update(change)
 
 
 def status(identifier,source):

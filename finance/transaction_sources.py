@@ -11,8 +11,9 @@ def validate(value):
 
 
 def load():
-    if not FILE.exists():return {'monzo':'first'}
-    value=json.loads(FILE.read_text());validate(value);return {'monzo':'first',**value}
+    from storage import PrivateStore
+    value=PrivateStore(FILE,default=lambda:{'monzo':'first'},validate=validate).read()
+    return {'monzo':'first',**value}
 
 
 def save(mode):

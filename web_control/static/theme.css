@@ -1,0 +1,114 @@
+/* Shared visual system. Receipt paper keeps its physical dimensions. */
+:root {
+    --ink: #17243b;
+    --sub: #566579;
+    --border: #dce3ed;
+    --paper: #ffffff;
+    --mint: #edf2ff;
+    --green: #3657b3;
+    --red: #a33439;
+    --surface: #f5f7fb;
+    --radius: 16px;
+}
+body { background: var(--surface); color: var(--ink); line-height: 1.6; }
+main { max-width: 1080px; padding: 24px clamp(16px, 3vw, 32px) 72px; }
+main > header { padding: 16px 0 26px; border-bottom: 0; }
+h1 { font-size: clamp(2rem, 4vw, 2.75rem); font-weight: 740; letter-spacing: -.045em; }
+h2 { font-size: 1.25rem; font-weight: 690; letter-spacing: -.025em; }
+h3 { font-size: 1rem; letter-spacing: -.01em; }
+p { margin: .6rem 0 1rem; }
+.app-topbar { max-width: 1120px; padding: 22px 32px 16px; }
+.app-brand { font-size: 1.05rem; letter-spacing: -.025em; }
+.brand-mark { width: 36px; height: 36px; border-radius: 11px; background: var(--ink); font: 750 18px system-ui; }
+.app-subtitle { font-size: .8rem; }
+.app-navigation { max-width: 1056px; gap: 5px; padding: 6px; border: 1px solid var(--border); border-radius: 13px; background: var(--paper); overflow: visible; }
+.app-navigation a { flex: 1 1 auto; text-align: center; padding: 10px 14px; border-radius: 9px; color: var(--sub); font-size: .9rem; }
+.app-navigation a:hover { background: var(--surface); color: var(--ink); }
+.app-navigation a[aria-current=page] { background: var(--mint); color: var(--green); box-shadow: inset 0 0 0 1px #d3ddff; }
+.utility-strip { max-width: 1056px; margin: 9px auto 0; display: flex; gap: 12px; align-items: flex-start; }
+.utility-strip > details { min-width: 0; margin: 0; padding: 0; flex: 1 1 0; border: 1px solid transparent; border-radius: 10px; }
+.utility-strip > details > summary { cursor: pointer; font-size: .8rem; color: var(--sub); padding: 8px 12px; }
+.utility-strip > details[open] { background: var(--paper); border-color: var(--border); padding-bottom: 12px; }
+.accessibility-settings p, .accessibility-settings label, .accessibility-settings button { margin-left: 12px; margin-right: 12px; }
+.accessibility-settings p { font-size: .85rem; }
+.private-tools-links { display: flex; gap: 4px; padding: 4px 10px; margin: 0; font-size: .85rem; }
+.private-tools-links a { padding: 8px 10px; border-radius: 7px; text-decoration: none; }
+.private-tools-links a:hover { background: var(--mint); }
+section, .panel { border-radius: var(--radius); border: 1px solid var(--border); background: var(--paper); box-shadow: 0 3px 12px #152f5510; }
+section + section { margin-top: 22px; }
+.today-grid, .setup-grid, .health-grid { gap: 16px; }
+.today-grid article { background: var(--paper); border-color: var(--border); border-radius: 13px; padding: 20px; }
+.today-item, .quick-row, .checklist-row { border-bottom-color: var(--border); padding-top: 14px; padding-bottom: 14px; }
+.today-item:last-of-type, .checklist-row:last-of-type { border-bottom: 0; }
+.dashboard-stats { gap: 12px; margin: 20px 0 28px; }
+.dashboard-stats > div { background: var(--paper); border: 1px solid var(--border); border-radius: 13px; padding: 18px 20px; }
+.dashboard-stats > div:last-child { border: 1px solid var(--border); }
+.finance-metrics article, .finance-bill-summary, .flow-totals > div { background: var(--paper); border-color: var(--border); border-radius: 13px; }
+.finance-metrics strong { font-size: clamp(1.5rem, 2.8vw, 2.15rem); }
+.finance-metrics small { line-height: 1.5; }
+button, .button { border-radius: 9px; border: 1px solid #c9d3e3; background: var(--paper); color: var(--ink); padding: 10px 16px; box-shadow: 0 1px 2px #152f5508; font-weight: 620; }
+button:hover, .button:hover { background: var(--mint); border-color: #a5b8ee; }
+.primary, .button.primary { color: white; background: var(--green); border-color: var(--green); }
+.primary:hover, .button.primary:hover { background: #29438d; }
+.danger { color: var(--red); border-color: #e5b5b8; }
+input, select, textarea { border: 1px solid #becada; border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; padding: 10px 12px; }
+label { color: var(--ink); }
+label:has(input:not([type=checkbox]):not([type=radio])), label:has(select), label:has(textarea) { line-height: 1.45; }
+fieldset { border: 1px solid var(--border); border-radius: 11px; padding: 16px; margin: 14px 0; }
+legend { color: var(--sub); font-size: .88rem; padding: 0 6px; }
+:focus-visible { outline: 3px solid #4269cd; outline-offset: 3px; }
+summary:focus-visible { border-radius: 8px; }
+.section-disclosure { border: 1px solid var(--border); border-radius: 13px; background: var(--paper); margin: 14px 0; overflow: hidden; }
+.section-disclosure > summary { padding: 16px 20px; margin: 0; list-style-position: inside; color: var(--ink); font-size: .95rem; }
+.section-disclosure[open] > summary { margin: 0; border-bottom: 1px solid var(--border); background: var(--surface); }
+.section-disclosure > section { margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+.section-disclosure > form, .section-disclosure > p { margin: 16px 20px; }
+.finance-page .section-disclosure[open] > summary { background: var(--surface); }
+.finance-jumps a { border-radius: 9px; font-size: .85rem; background: transparent; }
+.finance-jumps a:hover { background: var(--paper); }
+.helper, .flash { background: #eff4ff; border: 1px solid #cbdafd; color: #263f79; border-radius: 10px; padding: 12px 16px; }
+.job-panel { background: #eff4ff; border-color: #cbdafd; box-shadow: none; }
+progress { accent-color: var(--green); height: 10px; }
+progress::-webkit-progress-bar { background: #e5eaf4; }
+progress::-webkit-progress-value { background: var(--green); }
+progress::-moz-progress-bar { background: var(--green); }
+.badge { padding: 4px 9px; border-radius: 6px; font-size: .76rem; font-weight: 650; }
+.paper-roll { box-shadow: 0 8px 24px #1b30451a; }
+.form-feedback { font-size: .86rem; color: var(--sub); margin-top: 8px; }
+input:user-invalid, select:user-invalid, textarea:user-invalid { border-color: var(--red); }
+html[data-high-contrast="true"] { --ink: #000; --sub: #222; --border: #333; --paper: #fff; --green: #003d24; --mint: #fff; --surface: #fff; }
+html[data-high-contrast="true"] .app-navigation a[aria-current=page] { outline: 2px solid currentColor; box-shadow: none; }
+html[data-high-contrast="true"] :is(.helper,.flash,.job-panel) { background: #fff; color: #000; border-color: #333; }
+@media (max-width: 700px) {
+    .app-topbar { padding: 18px 16px 12px; }
+    .app-navigation { margin: 0 14px; padding: 5px; gap: 3px; }
+    .app-navigation a { flex: 1 1 22%; padding: 10px 6px; font-size: .83rem; }
+    .utility-strip { margin: 8px 14px 0; gap: 6px; }
+    .utility-strip > details > summary { padding: 9px 8px; }
+    .utility-strip:has(details[open]) { flex-wrap: wrap; }
+    .utility-strip > details[open] { flex-basis: 100%; }
+    main { padding: 18px 14px 56px; }
+    section, .panel { padding: 18px; }
+    .dashboard-stats { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+    .dashboard-stats > div, .dashboard-stats > div:last-child { padding: 13px 10px; border: 1px solid var(--border); }
+    .dashboard-stats strong { font-size: 1.2rem; overflow-wrap: anywhere; }
+    .dashboard-stats small { font-size: .7rem; }
+    .section-disclosure > summary, .finance-page .section-disclosure > summary { padding: 16px; }
+    .finance-header { gap: 12px; }
+    .private-tools-links a { flex: 1 1 40%; }
+}
+@media (max-width: 420px) {
+    .finance-metrics { grid-template-columns: minmax(0,1fr); }
+    .finance-metrics article { padding: 16px; }
+    .dashboard-stats { grid-template-columns: minmax(0,1fr); }
+}
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+[aria-invalid="true"] { border-color: var(--red); }
+
+.login-page { min-height: 100dvh; display: grid; place-items: center; }
+.login-page main.card { width: min(420px,calc(100vw - 32px)); padding: 32px; border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 12px 40px #152f5512; background: var(--paper); }
+.login-page h1 { font-size: 2rem; margin-top: 18px; }
+.login-mark { width: 42px; height: 42px; border-radius: 12px; background: var(--ink); color: white; display: grid; place-items: center; font-size: 1.2rem; font-weight: 750; }
+.login-page label { display: block; font-weight: 600; margin-top: 22px; }
+.login-page input { margin-top: 6px; }
+.login-page button { margin-top: 18px; }

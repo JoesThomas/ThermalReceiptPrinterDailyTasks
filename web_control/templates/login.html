@@ -6,9 +6,14 @@
         <title>Receipt Control</title><!-- djlint:off -->
         <style>body{font-family:system-ui;background:#eee;display:grid;place-items:center;min-height:100vh;margin:0}.card{background:white;padding:28px;border-radius:16px;width:min(360px,calc(100vw - 60px));box-shadow:0 8px 30px #0002}input,button{width:100%;box-sizing:border-box;padding:12px;margin-top:10px;font:inherit}.flash{background:#f5dddd;padding:10px}</style>
         <!-- djlint:on -->
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+        <script src="{{ url_for('static',filename='control.js') }}" defer></script>
     </head>
-    <body>
+    <body class="login-page">
         <main class="card">
+            <div class="login-mark" aria-hidden="true">R</div>
             <h1>Receipt Control</h1>
             <p>Sign in to manage the printer.</p>
             {% with messages=get_flashed_messages() %}
@@ -16,13 +21,15 @@
             {% endwith %}
             <form method="post">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="password"
+                <label for="login-password">Password</label>
+                <input id="login-password"
+                       type="password"
                        name="password"
                        autocomplete="current-password"
                        required
                        autofocus
                        placeholder="Password">
-                <button>Sign in</button>
+                <button class="primary">Sign in</button>
             </form>
         </main>
     </body>

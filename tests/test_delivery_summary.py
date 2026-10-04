@@ -24,7 +24,7 @@ class DeliverySummaryTests(unittest.TestCase):
         self.assertNotEqual(identity(second),identity(third))
     def test_relative_date_uses_email_date_and_preserves_time(self):
         source=ast.parse(Path('services/live_pipeline.py').read_text())
-        names=['extract_delivery_from_email','_normalise_delivery_time']
+        names=['extract_delivery_from_email','_normalise_delivery_time','_parse_delivery_date']
         nodes=[n for n in source.body if isinstance(n,ast.FunctionDef) and n.name in names]
         namespace=dict(re=re,datetime=datetime,date=date,timedelta=timedelta,ZoneInfo=ZoneInfo,printer_safe_text=lambda t:t)
         exec(compile(ast.Module(body=nodes,type_ignores=[]),'<delivery>','exec'),namespace)

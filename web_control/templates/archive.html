@@ -6,6 +6,7 @@
         <title>Receipt archive</title>
         <link rel="stylesheet"
               href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
     </head>
     <body>
         {% include 'navigation.html' %}
@@ -36,7 +37,9 @@
                 {% endif %}
                 <details>
                     <summary>What changed since the previous saved receipt?</summary>
-                    <p class="muted">Compared separately for each page. Text changes include refreshed headlines and times; graphs are not compared.</p>
+                    <p class="muted">
+                        Compared separately for each page. Text changes include refreshed headlines and times; graphs are not compared.
+                    </p>
                     {% for change in receipt_changes %}
                         <h3>{{ change.page|title }}</h3>
                         {% if not change.baseline %}
@@ -47,17 +50,13 @@
                             {% if change.added %}
                                 <p>Added or updated</p>
                                 <ul>
-                                    {% for line in change.added %}
-                                        <li>{{ line }}</li>
-                                    {% endfor %}
+                                    {% for line in change.added %}<li>{{ line }}</li>{% endfor %}
                                 </ul>
                             {% endif %}
                             {% if change.removed %}
                                 <p>Previous text</p>
                                 <ul>
-                                    {% for line in change.removed %}
-                                        <li>{{ line }}</li>
-                                    {% endfor %}
+                                    {% for line in change.removed %}<li>{{ line }}</li>{% endfor %}
                                 </ul>
                             {% endif %}
                             {% if change.truncated %}<p>Showing the first 50 lines of each change type.</p>{% endif %}
@@ -70,7 +69,7 @@
                         Check times show when a source request returned; they do not guarantee complete coverage or current manually entered balances.
                     </p>
                     {% for item in freshness %}
-                        <p>{{ item.name }}: {{ item.status }} · {{ item.local }}</p>
+                        <p>{{ item.name }}: {{ item.status|source_status_label }} · {{ item.local }}</p>
                     {% else %}
                         <p>Source checks were not recorded for this receipt.</p>
                     {% endfor %}

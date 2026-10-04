@@ -6,6 +6,7 @@
         <title>Cash accounts</title>
         <link rel="stylesheet"
               href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
     </head>
     <body>
         {% include 'navigation.html' %}
@@ -45,11 +46,16 @@
             <a class="button" href="{{ url_for('finance_review') }}">Refresh Finance & balances</a>
             <section>
                 <h2>Monzo transaction sources</h2>
-                <p>By default, collect transactions, direct debits and standing orders from only the first Monzo account returned by the connection. HSBC and Amex collection is unchanged.</p>
-                <p>This is separate from cash balance selection above. Excluded accounts' purchases and incoming payments will not contribute to finance totals or spending estimates. The provider's first account may change after reconnecting.</p>
+                <p>
+                    By default, collect transactions, direct debits and standing orders from only the first Monzo account returned by the connection. HSBC and Amex collection is unchanged.
+                </p>
+                <p>
+                    This is separate from cash balance selection above. Excluded accounts' purchases and incoming payments will not contribute to finance totals or spending estimates. The provider's first account may change after reconnecting.
+                </p>
                 <form method="post" action="{{ url_for('save_transaction_sources') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <label>Monzo collection
+                    <label>
+                        Monzo collection
                         <select name="monzo">
                             <option value="first" {% if monzo_scope == 'first' %}selected{% endif %}>First account only</option>
                             <option value="all" {% if monzo_scope == 'all' %}selected{% endif %}>All connected accounts</option>

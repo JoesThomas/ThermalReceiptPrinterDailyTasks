@@ -3,6 +3,8 @@ from flask import abort,flash,redirect,render_template,request,url_for
 
 
 def register(app,login_required):
+    from services.source_status import label
+    app.jinja_env.filters["source_status_label"]=label
     @app.post('/receipt/selected-print')
     @login_required
     def print_selected_sections():

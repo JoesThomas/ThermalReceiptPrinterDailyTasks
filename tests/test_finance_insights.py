@@ -28,13 +28,24 @@ class InsightTests(unittest.TestCase):
             raw=insights.FILE.read_text()
             self.assertNotIn('Example bill',raw)
             self.assertNotIn('account_id',raw)
-            html=Environment(loader=FileSystemLoader('web_control/templates'),autoescape=True).get_template('finance_insights.html').render(url_for=lambda endpoint:"/"+endpoint,insights=result,projection=projection,checked_at=today,bank_data_status='complete',accessible_savings=0,wealth=None)
+            environment=Environment(loader=FileSystemLoader('web_control/templates'),autoescape=True)
+            from services.source_status import label
+            environment.filters['source_status_label']=label
+            html=environment.get_template('finance_insights.html').render(url_for=lambda endpoint:"/"+endpoint,insights=result,projection=projection,checked_at=today,bank_data_status='complete',accessible_savings=0,wealth=None)
             self.assertIn('<svg',html)
             self.assertIn('Lowest expected cash balance',html)
             self.assertIn('£800.00',html)
             self.assertIn('Observed income £500',html)
             insights.build(projection,balances,{}, {'total':Decimal(101)}, {'month_total':Decimal(501)},None,None,today)
             self.assertEqual(len(__import__('json').loads(insights.FILE.read_text())),1)
+
+    def test_midmonth_scope_is_preserved_without_whole_month_claim(self):
+        today, balances, projection = self.fixture()
+        scope = {'monzo': 'first', 'sources': [{'provider': 'MONZO', 'mode': 'first', 'included': 1, 'available': 11}]}
+        with tempfile.TemporaryDirectory() as folder, patch.object(insights, 'FILE', Path(folder) / 'history.json'):
+            result = insights.build(projection, balances, {'bank_data_status': 'complete', 'requested_from': '2026-10-01', 'collection_scope': scope}, {'total': Decimal(100)}, {'month_total': Decimal(500)}, None, None, today)
+            self.assertFalse(result['history'][0]['whole_month'])
+            self.assertEqual(result['history'][0]['collection_scope'], scope)
 
     def test_partial_forecast_withheld_and_unknown_savings(self):
         today,balances,projection=self.fixture('partial')

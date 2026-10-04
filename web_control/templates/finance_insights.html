@@ -26,7 +26,9 @@
                 {% endfor %}
             {% endfor %}
             <h3>Bank data coverage</h3>
-            <p>Coverage applies to enabled transaction sources. Monzo defaults to its first returned account; disabled accounts are excluded from spending and income totals. Manage transaction sources under Choose cash accounts.</p>
+            <p>
+                Coverage applies to enabled transaction sources. Monzo defaults to its first returned account; disabled accounts are excluded from spending and income totals. Manage transaction sources under Choose cash accounts.
+            </p>
             <p>
                 {{ bank_data_status|title }} transaction data · {{ insights.succeeded if insights.succeeded is not none else 'Unknown' }} successful fetches / {{ insights.attempted if insights.attempted is not none else 'unknown' }} attempted. Requested window: {{ insights.requested_from or 'Unknown' }} to {{ insights.requested_to or 'Unknown' }}.
             </p>
@@ -35,7 +37,7 @@
             </p>
             {% for source in insights.coverage %}
                 <div class="merchant-payment">
-                    <span>{{ source.provider }} · {{ source.source }}</span><span>{{ source.status }}
+                    <span>{{ source.provider }} · {{ source.source }}</span><span>{{ source.status|source_status_label }}
                         {% if source.count is not none %}· {{ source.count }} transactions{% endif %}
                     </span>
                 </div>
@@ -112,6 +114,13 @@
                 <span class="badge paid">Income</span> <span class="badge due">Spending</span> · Bars share one amount scale across observations.
             </p>
             {% for row in insights.history %}
+                {% if row.collection_scope %}
+                    <p class="muted">
+                        {{ row.month }} collection scope: Monzo {{ 'first account only' if row.collection_scope.monzo == 'first' else 'all connected accounts' }}.
+                    </p>
+                {% else %}
+                    <p class="muted">{{ row.month }}: historical account scope was not recorded.</p>
+                {% endif %}
                 <div class="flow-week">
                     <strong>{{ row.month }} · observed {{ row.as_of }}</strong>
                     <div class="flow-track"

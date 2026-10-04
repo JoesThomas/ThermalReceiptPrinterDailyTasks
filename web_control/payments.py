@@ -46,14 +46,16 @@ def monthly_payments(transactions, today: date):
         paid_on = _parse_date(tx)
         if paid_on is None or (paid_on.year, paid_on.month) != (today.year, today.month) or paid_on > today:
             continue
-        amount = tx.get("spend_amount", 0)
-        if not math.isfinite(amount) or amount <= 0:
-            continue
+        from domain_models import Transaction
+        try: transaction=Transaction.from_mapping(tx)
+        except ValueError: continue
+        amount=transaction.amount
+        if amount <= 0: continue
         label = merchant_name(tx)
         key = label.casefold()
         names.setdefault(key, label)
-        grouped[key].append({"date": paid_on, "amount": Decimal(str(amount)).quantize(Decimal("0.01")),
-                             "review_id":payment_identity(paid_on,str(tx.get("merchant_name") or tx.get("merchant") or tx.get("description") or "").strip(),amount),
+        grouped[key].append({"date": paid_on, "amount": amount,
+                             "review_id":payment_identity(paid_on,transaction.merchant,amount),
                              "description": str(tx.get("spend_description") or tx.get("description") or label)})
     merchants = []
     for key, records in grouped.items():

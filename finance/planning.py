@@ -35,17 +35,18 @@ def validate(value):
         except (KeyError,TypeError,ValueError): raise ValueError('Invalid reviewed snapshot') from None
 
 
+def store():
+    from storage import PrivateStore
+    return PrivateStore(FILE,default=lambda:{'purchases':[],'priorities':[],'reviews':{}},validate=validate)
+
+
 def load():
-    if not FILE.exists(): return {'purchases':[],'priorities':[],'reviews':{}}
-    value=json.loads(FILE.read_text());validate(value)
-    return {'purchases':[], 'priorities':[], 'reviews':{}, **value}
+    value=store().read()
+    return {'purchases':[],'priorities':[],'reviews':{},**value}
 
 
 def update(change):
-    FILE.parent.mkdir(parents=True,exist_ok=True)
-    with FILE.with_suffix('.lock').open('a') as lock:
-        fcntl.flock(lock,fcntl.LOCK_EX)
-        value=load();change(value);validate(value);write_json(FILE,value)
+    store().update(change)
 
 
 def scenario(projection,purchases,today):

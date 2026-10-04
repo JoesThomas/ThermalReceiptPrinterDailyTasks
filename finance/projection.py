@@ -37,11 +37,8 @@ def format_runway(days, start=None):
 
 
 def money(value, default=None):
-    try:
-        amount = Decimal(str(value))
-        return amount.quantize(Decimal('0.01')) if amount.is_finite() else default
-    except (InvalidOperation, ValueError, TypeError):
-        return default
+    from finance.money import parse
+    return parse(value,default)
 
 
 def day(value):
@@ -92,7 +89,9 @@ def payment_schedule(monthly, yearly, transactions, settings, today, horizon=182
         amount = money(amount)
         if not amount or amount <= 0 or not today <= due <= end:
             return
-        final = day(item.get('end_date'))
+        from domain_models import Commitment
+        commitment = Commitment.from_mapping(dict(item, amount=amount))
+        final = commitment.end
         if final and (due.year, due.month) > (final.year, final.month):
             return
         name = str(item.get('name') or 'Listed payment')

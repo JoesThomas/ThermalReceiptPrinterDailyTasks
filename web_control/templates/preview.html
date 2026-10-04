@@ -6,6 +6,7 @@
         <title>Receipt preview · Receipt Control</title>
         <link rel="stylesheet"
               href="{{ url_for('static', filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
     </head>
     <body>
         {% include "navigation.html" %}
@@ -116,7 +117,9 @@
                     <p class="muted">
                         Times show when requests returned; partial bank data and manually entered balances may be incomplete.
                     </p>
-                    {% for item in freshness %}<p>{{ item.name }}: {{ item.status }} · {{ item.local }}</p>{% endfor %}
+                    {% for item in freshness %}
+                        <p>{{ item.name }}: {{ item.status|source_status_label }} · {{ item.local }}</p>
+                    {% endfor %}
                 </details>
             {% endif %}
             {% if quality_warnings %}
@@ -160,8 +163,7 @@
                 {% endfor %}
             </div>
         </main>
-        {% if preview_status and preview_status.state == 'running' %}
-            <!-- djlint:off -->
+        {% if preview_status and preview_status.state == 'running' %}<!-- djlint:off -->
             <script>
 (() => {
     const tracker = document.getElementById('preview-tracker');
@@ -212,7 +214,6 @@
     update();
 })();
             </script>
-            <!-- djlint:on -->
-        {% endif %}
+            <!-- djlint:on -->{% endif %}
     </body>
 </html>

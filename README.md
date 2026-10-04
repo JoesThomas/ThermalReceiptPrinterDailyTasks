@@ -342,9 +342,29 @@ Templates use four-space indentation with the Jinja-aware settings in `.djlintrc
 Install `requirements-dev.txt`, then run:
 
 ```bash
-python -m djlint web_control/templates --reformat
-python -m djlint web_control/templates --check
+python tools/format_templates.py
+python tools/format_templates.py --check
 ```
 
 Inline scripts and styles are excluded from HTML reformatting to preserve their contents.
 Receipt text in `pre` blocks and editable textarea contents retain their whitespace.
+
+
+### Shared boundaries and interface checks
+
+The interface uses a shared theme, responsive navigation and a collapsible More tools menu.
+Display preferences include larger text, higher contrast and reduced motion. Form validation
+opens hidden sections and focuses the first invalid field; submission feedback is announced.
+
+`storage.PrivateStore` provides locked, validated, atomic updates for migrated private state.
+Invalid files are retained for recovery rather than overwritten. `finance.money` handles
+Decimal parsing and penny rounding at shared calculation boundaries; legacy provider and
+receipt dictionaries remain compatible. Typed models normalise transactions, commitments,
+deliveries and source observations. Delivery parsing and bank collection now have separate
+service modules with injected dependencies.
+
+Source observations distinguish fresh, cached, partial, unavailable and disabled results.
+Monthly finance observations retain the collection scope without account identifiers.
+Older observations with no scope are labelled accordingly, and a mid-month observation is
+never marked as covering a whole month. CI runs Python 3.11–3.14 tests, lint, security checks
+and template formatting checks. The template wrapper preserves excluded scripts and styles.

@@ -2,6 +2,7 @@
 import fcntl
 import json
 from datetime import timedelta, date
+from calendar import monthrange
 from decimal import Decimal
 from pathlib import Path
 from finance.projection import money
@@ -19,21 +20,21 @@ def validate(rows):
         if row['month']!=on.strftime('%Y-%m') or row['month'] in months: raise ValueError('Invalid snapshot month.')
         months.add(row['month'])
         if row.get('coverage') not in {'complete','partial','unavailable'} or type(row.get('whole_month')) is not bool: raise ValueError('Invalid snapshot coverage.')
+        scope=row.get('collection_scope')
+        if scope is not None:
+            from finance.scope import validate as validate_scope
+            validate_scope(scope)
         for field in ('income','spending','savings','investments','card_debt','cash'):
             value=row.get(field)
             if value is not None and (money(value) is None or (field!='cash' and money(value)<0)): raise ValueError('Invalid snapshot amount.')
 
 
 def snapshots(row):
-    FILE.parent.mkdir(parents=True,exist_ok=True)
-    with FILE.with_suffix('.lock').open('a') as lock:
-        fcntl.flock(lock,fcntl.LOCK_EX)
-        rows=json.loads(FILE.read_text()) if FILE.exists() else []
-        validate(rows)
-        rows=[r for r in rows if r['month']!=row['month']]+[row]
-        rows=sorted(rows,key=lambda r:r['month'])[-60:]
-        validate(rows)
-        write_json(FILE,rows)
+    from storage import PrivateStore
+    store=PrivateStore(FILE,default=list,validate=validate)
+    def change(rows):
+        rows[:]=sorted([r for r in rows if r['month']!=row['month']]+[row],key=lambda r:r['month'])[-60:]
+    rows=store.update(change)
     activity_max=max((max(money(r.get('income'),Decimal(0)),money(r.get('spending'),Decimal(0))) for r in rows),default=Decimal(0))
     maximum=max((money(r.get('savings'),Decimal(0))+money(r.get('investments'),Decimal(0)) for r in rows),default=Decimal(0))
     return [dict(r,income_percent=float(money(r.get('income'),Decimal(0))/activity_max*100) if activity_max else 0,spending_percent=float(money(r.get('spending'),Decimal(0))/activity_max*100) if activity_max else 0,percent=float((money(r.get('savings'),Decimal(0))+money(r.get('investments'),Decimal(0)))/maximum*100) if maximum and r.get('savings') is not None and r.get('investments') is not None else None) for r in rows]
@@ -69,8 +70,9 @@ def build(projection,balances,summary,month,income,wealth,goals,today):
               'income':str(income['month_total']),'spending':str(month['total']),
               'savings':str(wealth['savings']) if wealth else None,'investments':str(wealth['investments']) if wealth else None,
               'card_debt':str(max(Decimal(0),money(balances.get('AMEX',{}).get('current')))) if money(balances.get('AMEX',{}).get('current')) is not None else None,
-              'whole_month':bool(start and start<=today.replace(day=1).isoformat() and summary.get('bank_data_status')=='complete'),
-              'cash':str(projection['cash']) if projection.get('cash') is not None else None}
+              'whole_month':bool(start and start<=today.replace(day=1).isoformat() and today.day==monthrange(today.year,today.month)[1] and summary.get('bank_data_status')=='complete'),
+              'cash':str(projection['cash']) if projection.get('cash') is not None else None,
+              'collection_scope':summary.get('collection_scope')}
     try: history=snapshots(snapshot);history_error=None
     except (ValueError,TypeError,OSError): history=[];history_error='Private monthly snapshots could not be updated.'
     accounts=[{'provider':provider,'value':money(balances.get(provider,{}).get('available',balances.get(provider,{}).get('current'))),

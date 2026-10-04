@@ -8,6 +8,8 @@ import calendar
 import json
 import math
 import re
+from decimal import Decimal
+from finance.money import parse as decimal_money
 
 from finance.investments import (
     load_investments,
@@ -492,16 +494,16 @@ def spending_total(
         return 0.0
     as_of = as_of or date.today()
     start = as_of - timedelta(days=days - 1)
-    total = 0.0
+    total = Decimal(0)
     for tx in transactions or []:
         d = _parse_date(tx)
         if d is None or not (start <= d <= as_of):
             continue
         try:
-            total += float(tx.get("spend_amount", _amount(tx)) or 0)
+            total += decimal_money(tx.get("spend_amount", _amount(tx)),Decimal(0))
         except (TypeError, ValueError):
             continue
-    return round(total, 2)
+    return float(decimal_money(total))
 
 
 def usual_30_day_spend(
@@ -521,17 +523,17 @@ def usual_30_day_spend(
     baseline_end = current_start - timedelta(days=1)
     baseline_start = baseline_end - timedelta(days=baseline_days - 1)
 
-    total = 0.0
+    total = Decimal(0)
     for tx in transactions or []:
         d = _parse_date(tx)
         if d is None or not (baseline_start <= d <= baseline_end):
             continue
         try:
-            total += float(tx.get("spend_amount", _amount(tx)) or 0)
+            total += decimal_money(tx.get("spend_amount", _amount(tx)),Decimal(0))
         except (TypeError, ValueError):
             continue
 
-    return round(total * (30.0 / baseline_days), 2)
+    return float(decimal_money(total * Decimal(30) / baseline_days))
 
 
 def debug_spending_transactions(
@@ -686,7 +688,7 @@ def _window_totals(
     start: date,
     end: date,
 ) -> dict[str, float]:
-    totals = defaultdict(float)
+    totals = defaultdict(Decimal)
 
     for tx in transactions:
         d = _parse_date(tx)
@@ -699,17 +701,17 @@ def _window_totals(
             rules,
         )
 
-        amount = float(
+        amount = decimal_money(
             tx.get(
                 "spend_amount",
                 _amount(tx),
             )
-            or 0
+            or 0, Decimal(0)
         )
 
         totals[category] += amount
 
-    return dict(totals)
+    return {key:float(value) for key,value in totals.items()}
 
 def uncategorised_merchants(
     transactions: list[dict], rules: dict, *, as_of: date | None = None,
@@ -718,7 +720,7 @@ def uncategorised_merchants(
     """Largest uncategorised merchants, summed across the recent window."""
     as_of = as_of or date.today()
     start = as_of - timedelta(days=days - 1)
-    totals = defaultdict(float)
+    totals = defaultdict(Decimal)
     labels = {}
     for tx in transactions:
         when = _parse_date(tx)
@@ -731,10 +733,10 @@ def uncategorised_merchants(
         if not key:
             continue
         labels.setdefault(key, label)
-        totals[key] += float(tx.get("spend_amount", _amount(tx)) or 0)
+        totals[key] += decimal_money(tx.get("spend_amount", _amount(tx)),Decimal(0))
     ranked = sorted(
-        ((labels[key], round(amount, 2)) for key, amount in totals.items()
-         if amount >= minimum_amount),
+        ((labels[key], float(decimal_money(amount))) for key, amount in totals.items()
+         if amount >= decimal_money(minimum_amount,Decimal(0))),
         key=lambda item: (-item[1], item[0]),
     )
     return [{"merchant": name, "amount": amount} for name, amount in ranked[:limit]]

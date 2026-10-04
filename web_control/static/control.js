@@ -143,3 +143,44 @@
     });
     apply();
 })();
+
+// Keep error feedback visible and keyboard focus in the user's current task.
+(() => {
+    const messages = [...document.querySelectorAll('.flash, .helper[role="status"]')];
+    const live = document.createElement('div');
+    live.className = 'sr-only';
+    live.setAttribute('role', 'status');
+    live.setAttribute('aria-live', 'polite');
+    document.body.append(live);
+    let afterSubmit = false;
+    try { afterSubmit = sessionStorage.getItem('receipt-form-pending') === '1'; sessionStorage.removeItem('receipt-form-pending'); } catch (_) {}
+    document.addEventListener('submit', event => {
+        if (event.target.method.toLowerCase() === 'post') {
+            try { sessionStorage.setItem('receipt-form-pending','1'); } catch (_) {}
+        }
+    });
+    if (messages.length) {
+        messages.forEach(node => {
+            node.tabIndex = -1;
+            node.setAttribute('role', 'status');
+        });
+        live.textContent = messages.map(node => node.textContent.trim()).join(' ');
+        if (afterSubmit) messages[0].focus({preventScroll: true});
+    }
+    document.addEventListener('invalid', event => {
+        const input = event.target;
+        let parent = input.parentElement;
+        while (parent) {
+            if (parent.tagName === 'DETAILS') parent.open = true;
+            parent = parent.parentElement;
+        }
+        input.setAttribute('aria-invalid', 'true');
+        const first = input.form?.querySelector('input:invalid,select:invalid,textarea:invalid');
+        if (first && first !== input) return;
+        live.textContent = input.validationMessage || 'Check the highlighted field.';
+        requestAnimationFrame(() => input.focus());
+    }, true);
+    document.addEventListener('input', event => {
+        if (event.target.matches('input,select,textarea') && event.target.validity.valid) event.target.removeAttribute('aria-invalid');
+    });
+})();

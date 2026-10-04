@@ -18,8 +18,8 @@ def validate(value):
 
 
 def selection():
-    if not SELECTION.exists(): return {}
-    value=json.loads(SELECTION.read_text());validate(value);return value
+    from storage import PrivateStore
+    return PrivateStore(SELECTION,default=dict,validate=validate).read()
 
 
 def catalog():
@@ -40,8 +40,9 @@ def choose(value):
 
 
 def number(value):
-    result=Decimal(str(value))
-    if not result.is_finite(): raise ValueError('Balance is unavailable.')
+    from finance.money import parse
+    result=parse(value,rounded=False)
+    if result is None: raise ValueError('Balance is unavailable.')
     return result
 
 
