@@ -130,3 +130,7 @@ data/delivery_state.lock
 # Private daily tasks and exercise completions
 data/daily_lists.json
 data/daily_lists.lock
+
+# Private dashboard caches and comparison snapshots
+data/today_calendar.json
+data/receipt_changes.json

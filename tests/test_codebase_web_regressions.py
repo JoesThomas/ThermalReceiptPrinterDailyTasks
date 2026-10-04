@@ -51,6 +51,17 @@ with tempfile.TemporaryDirectory() as folder,patch.object(web,'PROJECT_ROOT',Pat
    response=client.get('/exercises');assert response.status_code==200 and b'Today' in response.data
    assert {r['title'] for r in checklists.exercise_plan(5)}=={'Dumbbell curls','Plank'}
    assert client.get('/tasks?q=missing').status_code==200
+   with patch.object(web,'load_food_shop_items',return_value=([],None)),patch.object(web,'load_routines',return_value=[]),patch.object(web,'load_subscriptions',return_value={}),patch.object(web,'load_receipt_settings',return_value=deepcopy(DEFAULT_SETTINGS)):
+    response=client.get('/');assert response.status_code==200,response.data
+    assert b'Tasks, plans and arrivals' in response.data
+    assert b'Data freshness' in response.data
+   with patch.object(web,'load_receipt_settings',return_value=deepcopy(DEFAULT_SETTINGS)),patch.object(web,'save_receipt_settings') as save:
+    assert client.post('/settings/receipt-layout',data={'page_0':'actions'}).status_code==403
+    assert client.post('/settings/receipt-layout',data={'csrf_token':'test','detail':'compact','page_0':'actions','page_1':'information','page_2':'food','page_3':'finance'}).status_code==302
+    assert save.call_args.args[0]['layout']['order'][0]=='actions'
+    save.reset_mock()
+    client.post('/settings/receipt-layout',data={'csrf_token':'test','detail':'compact','page_0':'actions','page_1':'actions','page_2':'food','page_3':'finance'})
+    save.assert_not_called()
   assert client.get('/jobs/status').status_code==200
   assert client.post('/jobs/cancel',data={'kind':'print'}).status_code==403
   assert client.get('/deliveries').status_code==200

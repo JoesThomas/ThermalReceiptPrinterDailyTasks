@@ -270,21 +270,24 @@
         <div class="status-line" aria-live="polite">
             <strong>Last print:</strong>
             {% if print_status %}
-                <span class="badge {{ print_status.state }}">{{ print_status.state|title }}</span>
+                <span class="badge {{ print_status.state }}">{{ "Sent to printer" if print_status.state == "completed" else print_status.state|title }}</span>
                 <span>{{ print_status.page|replace('_', ' ')|title }} · {{ last_print_local or 'Time unavailable' }}</span>
             {% else %}
                 <span class="muted">No recent web print.</span>
             {% endif %}
         </div>
+        {% if print_status and print_status.state == "completed" %}<p class="muted">Sending completed successfully. The app cannot confirm that paper was physically printed.</p>{% endif %}
         {% if print_status and print_status.state in ('failed','interrupted','timed_out','cancelled') %}
             <p class="helper">{{ "The job reached the 10-minute limit." if print_status.state == "timed_out" else "The job was cancelled." if print_status.state == "cancelled" else "The job did not finish." }} Last step: {{ print_status.stage or 'unavailable' }}. Check the receipt before printing again, as it may be partly printed. <a href="{{ url_for('preview') }}">Open receipt</a>.</p><form method="post" action="{{ url_for('print_now') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Retry print</button></form>
         {% endif %}
     </section>
 
+    {% include "today.html" %}
     <section id="live-data"><p class="eyebrow">Live data</p><h2>Plan and review</h2><div class="quick-actions"><a class="button" href="{{ url_for('delivery_checklist') }}">Confirm deliveries</a><a class="button" href="{{ url_for('gigs_page') }}">Gigs today</a><a class="button" href="{{ url_for('calendar_map') }}">Calendar map</a><a class="button" href="{{ url_for('meals_page') }}">Meals & recipes</a><a class="button" href="{{ url_for('tesco_list') }}">Tesco shopping review</a></div></section>
 
     {% endif %}
 
+    {% if active_view == 'settings' %}<section id="receipt-layout"><h2>Receipt layout</h2><p class="muted">The default order stays Information → Actions → Food → Finance. Finance appears when requested. A custom order collects all selected pages before sending them to the printer.</p><form method="post" action="{{ url_for('save_receipt_layout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% for name in settings.layout.order %}<label>Page {{ loop.index }}<select name="page_{{ loop.index0 }}">{% for value in ['information','actions','food','finance'] %}<option value="{{ value }}" {% if value == name %}selected{% endif %}>{{ value|title }}</option>{% endfor %}</select></label>{% endfor %}<label>Detail<select name="detail"><option value="detailed" {% if settings.layout.detail == 'detailed' %}selected{% endif %}>Detailed (current behaviour)</option><option value="compact" {% if settings.layout.detail == 'compact' %}selected{% endif %}>Compact</option></select></label><p class="muted">Compact uses shorter weather and at most two headlines per news section. Tasks, exercise instructions and finance amounts stay complete.</p><button>Save receipt layout</button></form></section>{% endif %}
     {% if active_view in ['receipt','settings'] %}
     <!-- RECEIPT SETTINGS -->
 

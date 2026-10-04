@@ -20,6 +20,7 @@ class RecordingPrinter:
         self.lines = []
         self.images = []
         self.align = "left"
+        self.capture_order = None
 
     def __getattr__(self, name):
         return getattr(self.printer, name)
@@ -78,7 +79,7 @@ class RecordingPrinter:
             page_times[name] = captured_at
 
         if only_page is None:
-            names = PAGE_NAMES[:3] + (("finance",) if len(sections) > 3 else ())
+            names = self.capture_order or PAGE_NAMES[:3] + (("finance",) if len(sections) > 3 else ())
             for name, section in zip(names, sections):
                 store_section(name, section)
         else:
@@ -86,12 +87,19 @@ class RecordingPrinter:
         path.parent.mkdir(parents=True, exist_ok=True)
         from receipt.freshness import snapshot
         from storage import write_json
-        write_json(path, {"freshness": snapshot(), "page_times": page_times, "pages": pages,
+        order = self.capture_order or ((existing or {}).get("page_order") if only_page else None) or PAGE_NAMES
+        write_json(path, {"page_order": list(order), "freshness": snapshot(), "page_times": page_times, "pages": pages,
                           "page_images": page_images})
         from receipt.archive import save as archive_save
         from receipt.freshness import snapshot
-        fresh = {name: value for name, value in pages.items() if page_times.get(name) == captured_at}
+        fresh = {name: pages[name] for name in order if name in pages and page_times.get(name) == captured_at}
         if fresh:
+            try:
+                from web_control.today_summary import snapshot_changes
+                snapshot_changes(fresh)
+            except (OSError, ValueError):
+                import logging
+                logging.getLogger(__name__).warning("Receipt comparison could not be saved.")
             try:
                 archive_save(fresh, {name: page_images[name] for name in fresh}, captured_at,
                              "preview" if path == LIVE_PREVIEW_FILE else "printed", snapshot())
@@ -112,7 +120,11 @@ def load_capture(path=CAPTURE_FILE):
         images = {key: value for key, value in raw_images.items() if key in pages and isinstance(value, list)} if isinstance(raw_images, dict) else {}
         raw_checks = data.get('freshness', {})
         checks = {key: value for key, value in raw_checks.items() if isinstance(value, dict) and isinstance(value.get('status'), str) and isinstance(value.get('checked_at'), str)} if isinstance(raw_checks, dict) else {}
-        return dict(pages=pages, page_times=times, page_images=images, freshness=checks)
+        order = data.get('page_order', list(PAGE_NAMES))
+        if not isinstance(order, list) or not order or any(not isinstance(name, str) or name not in PAGE_NAMES for name in order) or len(order) != len(set(order)):
+            order = list(PAGE_NAMES)
+        order += [name for name in PAGE_NAMES if name not in order]
+        return dict(page_order=order, pages=pages, page_times=times, page_images=images, freshness=checks)
     except (OSError, ValueError, TypeError, RecursionError):
         return None
 

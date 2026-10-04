@@ -16,4 +16,4 @@ def register(app, login_required):
             abort(400)
         if not confirm_delivery(request.form.get('id', ''), '1' in values):
             abort(404)
-        return redirect(url_for('delivery_checklist'))
+        return redirect(url_for('index') if request.form.get('return_home') == '1' else url_for('delivery_checklist'))

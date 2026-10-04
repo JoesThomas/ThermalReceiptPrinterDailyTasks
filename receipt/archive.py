@@ -57,7 +57,7 @@ def entries(on=None):
 def reprint(identifier, page='all'):
     from receipt.printer import open_printer
     item = load(identifier)
-    names = [name for name in PAGE_NAMES if name in item['pages']] if page == 'all' else [page]
+    names = list(item['pages']) if page == 'all' else [page]
     if not names or any(name not in item['pages'] for name in names):
         raise ValueError('Page unavailable')
     printer = open_printer()

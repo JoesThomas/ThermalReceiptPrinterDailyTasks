@@ -9,6 +9,7 @@ from services.subscriptions import (
     update_subscriptions_from_transactions,
 )
 import email
+import os
 import imaplib
 import traceback
 from pathlib import Path
@@ -8286,7 +8287,7 @@ def print_google_doc(printer, text, upcoming_events, therapy_paid=False):
 def print_random_document_lines(printer, text):
     print_line(printer, "=")
     printer.set(bold=True)
-    left(printer, "EXERCISES TO DO")
+    left(printer, "TODAY'S WORKOUT")
     printer.set(bold=False)
     print_line(printer, "-")
 
@@ -8362,8 +8363,8 @@ def print_compact_weather(printer, weather, location=DEFAULT_LOCATION):
     left(printer, "DRY WITH LIGHT WINDS")
 
 
-def print_weather(printer, weather, location=DEFAULT_LOCATION):
-    if is_definitively_boring_weather(weather):
+def print_weather(printer, weather, location=DEFAULT_LOCATION, detail="auto"):
+    if detail == "compact" or (detail != "full" and is_definitively_boring_weather(weather)):
         print_compact_weather(printer, weather, location)
         return
 
@@ -8578,6 +8579,14 @@ def run_live_pipeline(
     ]["width"]["pixels"] = 576
 
     setup_printer(printer)
+    from receipt.layout import validate as validate_layout, OrderedPrinter, begin as begin_page, checked_lines
+    layout = validate_layout(settings.get('layout', {}))
+    compact = layout['detail'] == 'compact'
+    if compact:
+        settings['display']['news_count'] = min(2, settings['display']['news_count'])
+        settings['display']['sport_count'] = min(2, settings['display']['sport_count'])
+    if only_page is None and layout['order'] != ['information', 'actions', 'food', 'finance']:
+        printer = OrderedPrinter(printer, layout['order'])
 
     valid_pages = {
         None,
@@ -8629,6 +8638,7 @@ def run_live_pipeline(
     preview_progress("Starting information page", 0, 5)
 
     if print_information_page:
+        begin_page(printer, "information")
         print_header(printer, location)
 
     if print_information_page:
@@ -8654,6 +8664,7 @@ def run_live_pipeline(
                     printer,
                     weather,
                     location,
+                    detail="compact" if compact else display_value(settings, "weather_detail", "auto"),
                 )
 
             except Exception as error:
@@ -8662,6 +8673,8 @@ def run_live_pipeline(
                     repr(error),
                 )
 
+                from receipt.freshness import mark
+                mark("Weather", "unavailable")
                 _print_section_error(
                     printer,
                     "WEATHER ERROR",
@@ -8779,12 +8792,15 @@ def run_live_pipeline(
         # CUT RECEIPT
         # ==========================================
 
+        for check in checked_lines({'Weather'}):
+            print_wrapped(printer, printer_safe_text(check), width=40)
         cut_receipt_section(
             printer
         )
 
     preview_progress("Checking actions and events", 1, 5)
     if print_actions_page:
+        begin_page(printer, "actions")
         # ==========================================
         # VEHICLE CHECK
         # ==========================================
@@ -8867,6 +8883,8 @@ def run_live_pipeline(
                 upcoming_events = get_calendar_events(CALENDAR_ICAL_URL, days_ahead=3)
                 from receipt.freshness import mark
                 mark("Calendar")
+                from web_control.today_summary import save_calendar
+                save_calendar(upcoming_events)
                 events = [event for event in upcoming_events if event["date"] == today]
 
                 print_calendar(
@@ -9186,12 +9204,15 @@ def run_live_pipeline(
         # CUT DAILY ACTIONS
         # ==========================================
 
+        for check in checked_lines({'Calendar'}):
+            print_wrapped(printer, printer_safe_text(check), width=40)
         cut_receipt_section(
             printer
         )
 
     preview_progress("Preparing meals", 2, 5)
     if print_food_page:
+        begin_page(printer, "food")
         # ==========================================
         # MEAL PLANNER
         # ==========================================
@@ -9252,6 +9273,7 @@ def run_live_pipeline(
         print_finance_page
         and should_run_finance
     ):
+        begin_page(printer, "finance")
 
         finance_success = False
 
@@ -9296,6 +9318,8 @@ def run_live_pipeline(
                 )
 
             else:
+                from receipt.freshness import mark
+                mark("Bank transactions", "unavailable")
                 transactions = []
                 direct_debits = []
                 standing_orders = []
@@ -9344,6 +9368,9 @@ def run_live_pipeline(
                 printer, left, print_line, subscriptions_data, transactions, today,
             )
 
+            for check in checked_lines({'Bank transactions'}):
+                print_wrapped(printer, printer_safe_text(check), width=40)
+
             finance_success = True
 
         except Exception as error:
@@ -9375,5 +9402,8 @@ def run_live_pipeline(
 
         printer.cut()
 
+    if isinstance(printer, OrderedPrinter):
+        preview_progress("Sending receipt pages in chosen order", 4, 5)
+        printer.flush()
     preview_progress("Saving generated preview", 4, 5)
-    print("Receipt printed successfully.")
+    print("Preview generated." if os.environ.get('RECEIPT_LIVE_PREVIEW') == '1' else "Receipt sent to printer. Paper output is not confirmed.")

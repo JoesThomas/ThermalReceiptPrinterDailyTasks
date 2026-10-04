@@ -428,9 +428,12 @@ def index():
         food_shop_error,
     ) = load_food_shop_items()
 
+    from web_control.today_summary import dashboard
+    today_view = dashboard() if active_view == "dashboard" else {}
     return render_template(
         "index.html",
         print_status=status,
+        today_view=today_view,
         active_view=active_view, scheduled_at=scheduled_at, last_print_local=last_print_local,
         settings=settings,
         routines=routines,
@@ -458,6 +461,21 @@ def save_print_schedule():
     settings['print_schedule'] = {'enabled': _checked('enabled'), 'time': value}
     save_receipt_settings(settings)
     flash('Daily print schedule saved. Changes take effect within 30 seconds.')
+    return redirect(url_for('index', view='settings'))
+
+@app.post('/settings/receipt-layout')
+@login_required
+def save_receipt_layout():
+    from receipt.layout import validate as validate_layout
+    try:
+        layout = validate_layout({'order': [request.form.get(f'page_{n}', '') for n in range(4)],
+                                  'detail': request.form.get('detail', 'detailed')})
+        settings = load_receipt_settings()
+        settings['layout'] = layout
+        save_receipt_settings(settings)
+        flash('Receipt layout saved. The current order remains unless you choose a different order.')
+    except ValueError as error:
+        flash(str(error))
     return redirect(url_for('index', view='settings'))
 
 @app.post("/save")
@@ -631,6 +649,8 @@ def calendar_map():
             raise ValueError("Calendar iCal URL is not configured.")
         from services.live_pipeline import get_calendar_events
         events = get_calendar_events(ical_url, days_ahead=7)
+        from web_control.today_summary import save_calendar
+        save_calendar(events)
         for event in events:
             event["map_url"] = map_embed_url(event.get("location", ""))
             event["map_link"] = map_link_url(event.get("location", ""))
@@ -995,7 +1015,7 @@ def preview():
     printed_capture = load_capture()
     capture = (live_capture if source == "live" else printed_capture) or {"pages": {}, "page_times": {}}
     examples = example_pages(_local_today())
-    selected = PAGE_NAMES if page == "all" else (page,)
+    selected = (capture.get("page_order") or PAGE_NAMES) if page == "all" else (page,)
     pages = [{"name": name, "text": capture["pages"].get(name) or examples[name],
               "blocks": receipt_blocks(capture["pages"].get(name) or examples[name],
                                        capture.get("page_images", {}).get(name, [])),

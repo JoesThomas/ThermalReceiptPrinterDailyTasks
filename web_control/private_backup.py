@@ -35,7 +35,7 @@ def _amount(value):
 def _validate_file(name, content):
     from datetime import date
     if name == 'receipt_settings.json':
-        for key in ('features', 'one_shot', 'display', 'therapy_payment', 'finance', 'location', 'print_schedule'):
+        for key in ('features', 'one_shot', 'display', 'therapy_payment', 'finance', 'location', 'print_schedule', 'layout'):
             if key in content and not isinstance(content[key], dict):
                 raise ValueError()
         for key in ('features', 'one_shot'):
@@ -48,6 +48,9 @@ def _validate_file(name, content):
                 raise ValueError()
             if 'time' in config and (not isinstance(config['time'], str) or not re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d', config['time'])):
                 raise ValueError()
+        if 'layout' in content:
+            from receipt.layout import validate as validate_layout
+            validate_layout(content['layout'])
         if 'location' in content:
             from receipt.location_settings import validate_location
             validate_location(content['location'])

@@ -66,7 +66,7 @@
                     {% if receipt.sample %}
                         <span class="badge due">Illustrative example</span>
                     {% else %}
-                        <span class="badge">{{ 'Generated' if source == 'live' else 'Last printed' }} <time datetime="{{ receipt.captured_at }}">{{ receipt.captured_local or 'time unavailable' }}</time></span>
+                        <span class="badge">{{ 'Generated' if source == 'live' else 'Sent to printer' }} <time datetime="{{ receipt.captured_at }}">{{ receipt.captured_local or 'time unavailable' }}</time></span>
                     {% endif %}
                 </div>
                 <div class="paper-roll">

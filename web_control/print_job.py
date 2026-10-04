@@ -30,7 +30,7 @@ def save_status(state, page):
         payload.update(started_at=now, job_id=uuid.uuid4().hex[:12], stage='Connecting to printer',
                        completed=0, total=5, timeout_seconds=MAX_SECONDS)
     if state == 'completed':
-        payload.update(completed=5, stage='Receipt finished')
+        payload.update(completed=5, stage='Sent to printer; paper output not confirmed')
     write_json(STATUS, payload)
 
 
