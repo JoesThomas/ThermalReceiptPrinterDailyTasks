@@ -1265,7 +1265,9 @@ def finance_review():
         try: goals_view=goals_review(wealth,on=today)
         except (ValueError,OSError,KeyError,TypeError): goals_view=None
         insights=build_insights(projection,balances,finance_data[4],month,income,wealth,goals_view,today)
-        return render_template("finance_review.html", insights=insights, rows=rows, charts=charts,
+        from finance.salary_plan import build as build_salary_plan
+        salary_plan=build_salary_plan(salary,transactions,balances,projection,forecast_settings,goals_view,today)
+        return render_template("finance_review.html", insights=insights, salary_plan=salary_plan, rows=rows, charts=charts,
                                wealth=wealth, wealth_error=wealth_error, bonds_summary=bonds_summary,
                                month=month, income=income, cash_flow=cash_flow,
                                annual=annual,
@@ -1290,6 +1292,29 @@ def dismiss_finance_suggestion():
     except ValueError:
         return ("Invalid suggestion", 400)
     return redirect(url_for("finance_review") + "#finance-suggestions")
+
+
+@app.post('/finance-review/salary-settings')
+@login_required
+def salary_settings():
+    from finance.receipt import FINANCE_SETTINGS_FILE,load_finance_settings
+    from finance.projection import money
+    from storage import write_json
+    try:
+        settings=load_finance_settings()
+        for field in ('hsbc_emergency_reserve','physical_cash_target','physical_cash_held','salary_savings_target'):
+            raw=request.form.get(field,'').strip()
+            value=money(raw) if raw else None
+            if raw and (value is None or value<0): raise ValueError('Use non-negative amounts.')
+            settings[field]=float(value) if value is not None else None
+        recorded=request.form.get('physical_cash_date','').strip()
+        on=date.fromisoformat(recorded) if recorded else None
+        if settings['physical_cash_held'] is not None and (not on or on>_local_today()): raise ValueError('Record a cash count date no later than today.')
+        settings['physical_cash_date']=on.isoformat() if on else None
+        write_json(FINANCE_SETTINGS_FILE,settings)
+        flash('Salary targets and emergency reserves saved privately.')
+    except (ValueError,TypeError,OSError): flash('Use valid amounts and a cash count date no later than today.')
+    return redirect(url_for('savings_review' if request.form.get('return_to')=='savings' else 'finance_review'))
 
 
 @app.post("/finance-review/forecast-settings")
@@ -1440,6 +1465,15 @@ from web_control.reconciliation import register as register_reconciliation
 register_reconciliation(app, login_required)
 from web_control.daily_tools import register as register_daily_tools
 register_daily_tools(app, login_required, PROJECT_ROOT, _start_print_command, _recipe_items, meal_confirmation)
+
+@app.context_processor
+def salary_reserve_context():
+    from finance.receipt import load_finance_settings
+    from finance.salary_plan import reserves
+    try:
+        settings=load_finance_settings()
+        return {'reserve_settings':settings,'cash_reserve':reserves(settings)}
+    except (ValueError,OSError,TypeError): return {'reserve_settings':{},'cash_reserve':None}
 
 from web_control.savings_goal_tools import register as register_savings_goals
 register_savings_goals(app, login_required, _wealth_view)

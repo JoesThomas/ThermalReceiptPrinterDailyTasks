@@ -3,6 +3,7 @@
 <a href="{{ url_for('index') }}">Back to control</a> · <a href="{{ url_for('finance_review') }}">Finance review</a>
 <header><h1>Savings &amp; investments</h1><p class="muted">Private dated balances. No code changes needed.</p></header>
 {% for message in get_flashed_messages() %}<p class="helper" role="status">{{ message }}</p>{% endfor %}
+{% include 'cash_reserve.html' %}
 {% set goals = savings_goals_summary(wealth) %}{% include 'savings_goal_summary.html' %}
 {% include 'wealth_section.html' %}
 </main></body></html>

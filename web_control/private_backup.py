@@ -62,6 +62,10 @@ def _validate_file(name, content):
         if 'location' in content:
             from receipt.location_settings import validate_location
             validate_location(content['location'])
+    elif name == 'finance_settings.json':
+        for field in ('hsbc_emergency_reserve','physical_cash_target','physical_cash_held','salary_savings_target'):
+            if content.get(field) is not None: _amount(content[field])
+        if content.get('physical_cash_date'): date.fromisoformat(content['physical_cash_date'])
     elif name == 'finance_monthly_snapshots.json':
         from web_control.finance_insights import validate as validate_snapshots
         validate_snapshots(content)

@@ -648,6 +648,30 @@ def print_integrated_finance(
     print_incoming_payments(printer, left, print_line, spending_summary,
                             total_outgoings, today)
 
+    if any(finance_settings.get(field) is not None for field in ('hsbc_emergency_reserve','physical_cash_target','salary_savings_target')):
+        try:
+            from finance.salary_plan import build as build_salary_plan
+            salary_goals=goal_review(wealth,on=today)
+            allocation=build_salary_plan(spending_summary.get('salary_incomings',[]),transactions,balances,projection,finance_settings,salary_goals,today)
+            printer.text("\n")
+            left(printer,'SALARY ALLOCATION [E]')
+            print_line(printer)
+            left(printer,_amount_line('HSBC RESERVE TARGET',allocation['reserve']['bank']))
+            left(printer,_amount_line('PHYSICAL CASH TARGET',allocation['reserve']['target']))
+            if allocation['reserve']['held'] is not None:
+                left(printer,_amount_line('PHYSICAL CASH RECORDED',allocation['reserve']['held']))
+            left(printer,_amount_line('CASH TOP-UP RESERVED',allocation['reserve']['gap']))
+            if allocation['valid']:
+                left(printer,_amount_line('SALARY AVAILABLE TO PLAN',allocation['available']))
+                for bucket in allocation['buckets']:
+                    for row in _amount_rows(bucket['name'].upper(),bucket['amount']): left(printer,row)
+                left(printer,'PLAN ONLY / NO TRANSFERS MADE')
+            else:
+                left(printer,'ALLOCATION NEEDS SALARY / COMPLETE DATA')
+                if allocation['reserve']['hsbc_gap']:
+                    left(printer,_amount_line('HSBC BELOW RESERVE BY',allocation['reserve']['hsbc_gap']))
+        except (ValueError,OSError,KeyError,TypeError): left(printer,'SALARY ALLOCATION UNAVAILABLE')
+
     # ==========================================
     # CATEGORY TRENDS
     # ==========================================

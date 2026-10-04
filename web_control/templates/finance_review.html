@@ -16,6 +16,8 @@
 <article><span>Money out</span><strong>£{{ '%.2f'|format(month.total) }}</strong><small>{{ month.count }} outgoing payments this month</small></article>
 <article><span>Monthly balance</span>{% set month_net = income.month_total - month.total %}<strong class="{{ 'negative' if month_net < 0 else '' }}">{{ '-' if month_net < 0 else '+' }}£{{ '%.2f'|format(month_net|abs) }}</strong><small>Money in minus money out · not your bank balance</small></article>
 </div><p class="muted finance-footnote">Internal transfers and card repayments are excluded from activity totals. Bank coverage may not include the entire month.</p></section>
+{% include 'salary_plan.html' %}
+{% include 'cash_reserve.html' %}
 {% include 'finance_insights.html' %}
 <div class="finance-group" id="finance-activity"><div class="finance-section-heading"><div><p class="eyebrow">Understand your activity</p><h2>Income & spending</h2></div></div><p class="muted">Open a merchant or income category to see its individual payments. Each section states its reporting period.</p>
 <details class="section-disclosure" open><summary>Money in and out · last 30 days</summary><section aria-labelledby="cash-flow-title">

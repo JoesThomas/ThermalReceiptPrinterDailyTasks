@@ -59,6 +59,18 @@ with tempfile.TemporaryDirectory() as directory:
                 'csrf_token': 'test-csrf', 'next_payday': '2026-10-30', 'payday_repeat': 'monthly',
                 'emergency_buffer': '100', 'runway_daily_spend': '8'}).status_code == 302
             assert json.loads(settings.read_text())['runway_daily_spend'] == 8
+            assert client.post('/finance-review/salary-settings',data={'csrf_token':'test-csrf','hsbc_emergency_reserve':'500','physical_cash_target':'150','physical_cash_held':'50','physical_cash_date':date.today().isoformat(),'salary_savings_target':'100'}).status_code==302
+            assert json.loads(settings.read_text())['hsbc_emergency_reserve']==500
+            assert json.loads(settings.read_text())['physical_cash_held']==50
+            assert client.post('/finance-review/salary-settings',data={'hsbc_emergency_reserve':'0'}).status_code==403
+            before=settings.read_text()
+            assert client.post('/finance-review/salary-settings',data={'csrf_token':'test-csrf','physical_cash_held':'NaN'}).status_code==302
+            assert settings.read_text()==before
+            response=client.get('/finance-review')
+            assert response.status_code==200
+            assert b'Salary plan' in response.data
+            assert b'Physical cash recorded' in response.data
+
             assert client.post('/finance-review/payment/add', data={
                 'csrf_token': 'test-csrf', 'name': 'Example card', 'amount': '50',
                 'due_date': '2026-10-10', 'repeat': 'once'}).status_code == 302

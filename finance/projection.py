@@ -239,7 +239,8 @@ def build_projection(balances, transactions, monthly, yearly, settings, today,
             balances_ok = False
         else:
             cash += value
-    buffer = max(Decimal(0), money(settings.get('emergency_buffer'), Decimal(0)))
+    from finance.salary_plan import reserves
+    buffer = reserves(settings)['buffer']
     recent = [tx for tx in external_payments(transactions)
               if (d := _parse_date(tx)) and today - timedelta(days=29) <= d <= today]
     # Remove actual configured bill matches before averaging variable spending.
