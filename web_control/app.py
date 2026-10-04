@@ -1230,7 +1230,10 @@ def finance_review():
             tx = transactions[index] if index is not None else None
             rows.append({"item": item, "transaction": tx, "method": method})
         from web_control.reconciliation import save_review
-        try: save_review(transactions, rows, today)
+        has_uncertain_payments=False
+        try:
+            review_queue=save_review(transactions,rows,today)
+            has_uncertain_payments=bool(review_queue['payments'] or review_queue['unmatched'])
         except (OSError,ValueError): app.logger.warning("Finance review queue could not be saved.")
         payments = external_payments(transactions)
         charts = finance_charts(payments, status["monthly"], today)
@@ -1267,7 +1270,7 @@ def finance_review():
         insights=build_insights(projection,balances,finance_data[4],month,income,wealth,goals_view,today)
         from finance.salary_plan import build as build_salary_plan
         salary_plan=build_salary_plan(salary,transactions,balances,projection,forecast_settings,goals_view,today)
-        return render_template("finance_review.html", insights=insights, salary_plan=salary_plan, rows=rows, charts=charts,
+        return render_template("finance_review.html", insights=insights, salary_plan=salary_plan, has_uncertain_payments=has_uncertain_payments, rows=rows, charts=charts,
                                wealth=wealth, wealth_error=wealth_error, bonds_summary=bonds_summary,
                                month=month, income=income, cash_flow=cash_flow,
                                annual=annual,

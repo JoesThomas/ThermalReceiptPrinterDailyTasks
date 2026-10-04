@@ -47,7 +47,9 @@ def save_review(transactions, rows, today):
         identity = hashlib.sha256(f'{paid}|{merchant}|{amount}'.encode()).hexdigest()
         payments.append(dict(id=identity, date=paid.isoformat(), merchant=merchant, amount=amount))
     unmatched = [dict(name=row['item']['name'],amount=row['item']['amount']) for row in rows if row['transaction'] is None]
-    write_json(QUEUE, {'checked_at':datetime.now(timezone.utc).isoformat(),'payments':payments[:300], 'unmatched':unmatched})
+    state={'checked_at':datetime.now(timezone.utc).isoformat(),'payments':payments[:300], 'unmatched':unmatched}
+    write_json(QUEUE,state)
+    return state
 
 
 def register(app, login_required):

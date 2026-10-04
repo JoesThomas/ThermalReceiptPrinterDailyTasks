@@ -50,6 +50,7 @@ with tempfile.TemporaryDirectory() as directory:
             response = client.get('/finance-review')
             assert response.status_code == 200, response.status_code
             assert b'Finance suggestions' in response.data
+            assert b'Review uncertain payments' in response.data
             assert b'Cash runway' in response.data
             assert b'Understand the figures' in response.data
             assert b'Private monthly observations' in response.data
@@ -70,6 +71,11 @@ with tempfile.TemporaryDirectory() as directory:
             assert response.status_code==200
             assert b'Salary plan' in response.data
             assert b'Physical cash recorded' in response.data
+            transactions.clear()
+            status['monthly']=[]
+            response=client.get('/finance-review')
+            assert response.status_code==200
+            assert b'Review uncertain payments' not in response.data
 
             assert client.post('/finance-review/payment/add', data={
                 'csrf_token': 'test-csrf', 'name': 'Example card', 'amount': '50',
