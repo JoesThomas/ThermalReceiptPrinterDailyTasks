@@ -32,10 +32,12 @@ class SavingsGoalTests(unittest.TestCase):
             goals.record(cash,'2026-04-05',1000)
             goals.record(cash,'2026-04-06',3000)
             goals.record(stocks,'2026-06-01',4000)
-            for event in ('transfer','withdrawal','replacement'):goals.record(stocks,'2026-07-01',5000,event)
+            for event in ('transfer','withdrawal','replacement','interest'):goals.record(stocks,'2026-07-01',5000,event)
             wealth={'accounts':[{'name':'Example stocks ISA','kind':'investment','balance':Decimal(99999),'latest':{'date':'2026-10-04','source':'manual'}}]}
             view=goals.review(wealth,on=date(2026,10,4),bond_balances=[])
             self.assertEqual(view['shared']['used'],7000)
+            self.assertEqual(next(a for a in view['accounts'] if a['id']==stocks)['interest'],5000)
+            self.assertIn('RECORDED INTEREST GBP 5000.00',' '.join(goals.receipt_lines(view)))
             self.assertEqual(view['shared']['percent'],35)
             self.assertEqual(view['cash']['used'],3000)
             self.assertFalse(view['shared']['complete'])
@@ -64,6 +66,17 @@ class SavingsGoalTests(unittest.TestCase):
         self.assertEqual(view['cash']['used'],23000)
         self.assertIsNone(view['cash']['limit'])
         self.assertIn('VERIFY CASH ISA LIMIT',' '.join(goals.receipt_lines(view)))
+
+    def test_cash_rate_edit_keeps_contributions_and_survives_settings(self):
+        with tempfile.TemporaryDirectory() as folder,patch.object(goals,'FILE',Path(folder)/'goals.json'):
+            goals.account_settings('Example cash ISA','savings','cash_isa')
+            key=goals.identity('Example cash ISA','savings')
+            goals.interest_rate(key,'4.25','2026-10-01')
+            goals.interest_rate(key,'3.75','2026-11-01')
+            goals.account_settings('Example cash ISA','savings','cash_isa')
+            self.assertEqual(goals.load()['accounts'][key]['interest_rate'],'3.75')
+            self.assertEqual(goals.load()['entries'],[])
+            with self.assertRaises(ValueError): goals.interest_rate(key,'101','2026-10-01')
 
     def test_unknown_or_invalid_records_rejected(self):
         with tempfile.TemporaryDirectory() as folder,patch.object(goals,'FILE',Path(folder)/'goals.json'):

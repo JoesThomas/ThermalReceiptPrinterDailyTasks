@@ -16,7 +16,7 @@ from storage import write_json
 FILE = Path(__file__).resolve().parents[1] / 'data' / 'savings_goals.json'
 TYPES = {'savings':'Savings goal','premium_bonds':'Premium Bonds','cash_isa':'Adult cash ISA',
          'stocks_isa':'Adult stocks & shares ISA','other_isa':'Other adult ISA (shared allowance only)','junior_isa':'Junior ISA (child allowance not calculated)'}
-EVENTS = {'contribution':'New ISA contribution','transfer':'Provider ISA transfer',
+EVENTS = {'contribution':'New ISA contribution','interest':'Interest credited','transfer':'Provider ISA transfer',
           'withdrawal':'Withdrawal','replacement':'Provider-confirmed flexible ISA replacement'}
 ISA = {'cash_isa','stocks_isa','other_isa'}
 
@@ -47,6 +47,9 @@ def validate(value):
         if not isinstance(row,dict) or not isinstance(row.get('name'),str) or not 1 <= len(row['name']) <= 90 or any(ord(c)<32 for c in row['name']) or row.get('kind') not in {'savings','investment'} or key != identity(row['name'],row['kind']) or row.get('type') not in TYPES:
             raise ValueError('Invalid savings account settings.')
         if row.get('target') is not None: amount(row['target'])
+        if row.get('interest_rate') is not None:
+            if amount(row['interest_rate'])>100 or row.get('type')!='cash_isa': raise ValueError('Use a cash ISA interest rate between 0 and 100%.')
+            date.fromisoformat(row['rate_date'])
     identifiers=set()
     if len(value['entries']) > 10000: raise ValueError('Contribution ledger limit reached.')
     for row in value['entries']:
@@ -90,9 +93,18 @@ def account_settings(name,kind,account_type,target=None):
     with edit() as value:
         key=identity(name,kind)
         old=value['accounts'].get(key,{})
-        value['accounts'][key]={'name':name,'kind':kind,'type':account_type,'target':str(target) if target is not None else None}
+        value['accounts'][key]={**{k:v for k,v in old.items() if k in {'interest_rate','rate_date'} and account_type=='cash_isa'},'name':name,'kind':kind,'type':account_type,'target':str(target) if target is not None else None}
         if old.get('type') != account_type:
             for row in value['years'].values(): row['complete']=False
+
+
+def interest_rate(account,rate,on):
+    rate=amount(rate);on=date.fromisoformat(on)
+    if rate>100 or on.year<2000: raise ValueError('Use an annual rate between 0 and 100% and a valid effective date.')
+    with edit() as state:
+        row=state['accounts'].get(account)
+        if not row or row['type']!='cash_isa': raise ValueError('Choose an existing cash ISA.')
+        row.update(interest_rate=str(rate),rate_date=on.isoformat())
 
 
 def record(account,on,value,event='contribution',entry_id=None):
@@ -194,6 +206,7 @@ def review(wealth=None,year=None,state=None,on=None,bond_balances=None):
     used=sum((amount(e['amount']) for e in entries if e['event']=='contribution'),Decimal(0))
     cash_used=sum((amount(e['amount']) for e in entries if e['event']=='contribution' and e.get('isa_type',state['accounts'][e['account']]['type'])=='cash_isa'),Decimal(0))
     for key,row in accounts.items():
+        row['interest']=sum((amount(e['amount']) for e in entries if e['account']==key and e['event']=='interest'),Decimal(0))
         row['contributions']=sum((amount(e['amount']) for e in entries if e['account']==key and e['event']=='contribution'),Decimal(0))
         if row['type'] in ISA:
             row.update(bar(row['contributions'],allowance));row['limit']=allowance
@@ -224,7 +237,10 @@ def receipt_lines(view):
         row=view['shared'];lines += ['ISA NEW CONTRIBUTIONS '+view['label'],f"RECORDED GBP {row['used']:.2f}"]
         if row['limit'] is not None: lines.append(f"SHARED ALLOWANCE GBP {row['limit']:.2f}")
         for account in view['accounts']:
-            if account['type'] in ISA: lines.append(f"{account['name']}: GBP {account['contributions']:.2f}")
+            if account['type'] in ISA:
+                lines.append(f"{account['name']}: GBP {account['contributions']:.2f}")
+                if account.get('balance') is not None: lines.append(f"BALANCE GBP {account['balance']:.2f}")
+                if account['interest']: lines.append(f"RECORDED INTEREST GBP {account['interest']:.2f}")
         if row['complete'] and row['remaining'] is not None: lines.append(f"RECORDED SPACE GBP {row['remaining']:.2f}")
         else: lines.append('RECORDS MAY BE INCOMPLETE')
         plan=view['monthly']

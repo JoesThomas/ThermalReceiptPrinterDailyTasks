@@ -113,6 +113,14 @@ with tempfile.TemporaryDirectory() as folder,patch.object(web,'PROJECT_ROOT',Pat
    assert reconciliation.RULES.read_bytes()==before
   from finance import savings_goals as goals, wealth_history
   with patch.object(goals,'FILE',root/'data'/'goals.json'),patch.object(wealth_history,'HISTORY_FILE',root/'data'/'history.json'),patch('finance.premium_bonds.load',return_value={'balances':[]}):
+   assert client.post('/savings/isa/create').status_code==403
+   assert client.post('/savings/isa/balance').status_code==403
+   assert client.post('/savings/isa/rate').status_code==403
+   assert client.post('/savings/isa/create',data={'csrf_token':'test','name':'Created cash ISA','type':'cash_isa','date':web._local_today().isoformat(),'balance':'1250'}).status_code==302
+   created=goals.identity('Created cash ISA','savings')
+   assert created in goals.load()['accounts']
+   assert client.post('/savings/isa/balance',data={'csrf_token':'test','account':created,'date':web._local_today().isoformat(),'balance':'1300'}).status_code==302
+   assert client.post('/savings/goals/contribution',data={'csrf_token':'test','name':'Created cash ISA','kind':'savings','date':web._local_today().isoformat(),'amount':'50','event':'interest'}).status_code==302
    assert client.post('/savings/goals/account',data={'name':'Example ISA'}).status_code==403
    assert client.post('/savings/goals/contribution').status_code==403
    assert client.post('/savings/goals/contribution/remove').status_code==403
@@ -126,9 +134,10 @@ with tempfile.TemporaryDirectory() as folder,patch.object(web,'PROJECT_ROOT',Pat
    year=goals.tax_year(web._local_today())
    assert client.post('/savings/goals/year',data={'csrf_token':'test','year':year,'allowance':'20000','cash_limit':'20000','complete':'on'}).status_code==302
    response=client.get('/savings/goals');assert b'19,000.00' in response.data
-   identity=goals.load()['entries'][0]['id']
+   identity=next(e['id'] for e in goals.load()['entries'] if e['event']=='contribution')
    assert client.post('/savings/goals/contribution/remove',data={'csrf_token':'test','id':identity}).status_code==302
-   assert not goals.load()['entries']
+   assert all(e['event']=='interest' for e in goals.load()['entries'])
+   assert b'1,300.00' in client.get('/savings/goals').data
   assert client.get('/jobs/status').status_code==200
   assert client.post('/jobs/cancel',data={'kind':'print'}).status_code==403
   assert client.get('/deliveries').status_code==200
