@@ -1,0 +1,13 @@
+# Receipt generation and troubleshooting
+
+Live previews and physical prints use `receipt.build.build`: collect and format into the same buffered `RecordingPrinter`, then save the generated copy. Physical printing opens the device only after this completes and sends the buffered operations. Preview isolation continues to prevent consumption of one-shot flags and meal/bill bookkeeping changes. Print failure does not automatically retry; inspect the saved copy before reprinting, since a connection failure can happen after some paper was printed.
+
+RSS collection and parsing live in `services/news_source.py`; bounded public downloads and caching live in `services/public_sources.py`. Weather and news use a five-minute cache, with cached fallback up to one hour on error, keyed by UK date and location/feed. Documents use a one-minute cache and up to one day of explicitly stale fallback. Downloads have connection/read timeouts, a size cap and a checked elapsed-time budget. Calendar and delivery collection retain their bounded workers and caches. Other integrations retain their request timeouts and section-level failure handling; finance remains unavailable rather than silently substituting stale balances. The isolated web job has a ten-minute overall limit. Request timeouts alone are not a guaranteed wall-clock limit for all DNS or operating-system stalls.
+
+Archive detail pages compare each included page against the most recent older saved copy of that page. The comparison shows added/updated and removed text, including refreshed timestamps and headlines. Partial receipts preserve earlier baselines for other pages. Graph pixels are not compared. Changes are capped at 50 lines per type and are escaped by the template. Receipt order is unchanged.
+
+Under **Correct information**, download a redacted diagnostic JSON containing runtime/package versions, job state, source health and timing. It excludes receipt content, settings, URLs, bank transactions, account identifiers, credentials, raw logs and exception messages. Download requires the normal login and is marked no-store. It does not contact providers or the printer.
+
+The automatic everyday forecast excludes configured bills and Amazon shopping. Actual spending remains intact. A manually configured daily estimate takes precedence; scheduled repayments are separate dated commitments.
+
+Regression coverage includes matching buffered preview/print operations, generation saved before printer failure, stale-source fallback and expiry, oversized-response cleanup, partial-page comparisons, diagnostic redaction and authenticated archive/diagnostic journeys. Bank and physical printer tests use mocks and require real-device validation separately.

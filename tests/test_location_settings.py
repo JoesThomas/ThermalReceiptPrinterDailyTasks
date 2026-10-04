@@ -49,8 +49,9 @@ class LocationSettingsTests(unittest.TestCase):
         requests = SimpleNamespace(get=lambda url, **kw: SimpleNamespace(
             raise_for_status=lambda: None, json=lambda: kw['params']))
         get_weather = renderer('get_weather', requests=requests)
-        self.assertEqual(get_weather(53.4072, -2.9916)['latitude'], 53.4072)
-        self.assertEqual(get_weather(53.4072, -2.9916)['longitude'], -2.9916)
+        with patch('services.public_sources.weather', side_effect=lambda url, params: params):
+            self.assertEqual(get_weather(53.4072, -2.9916)['latitude'], 53.4072)
+            self.assertEqual(get_weather(53.4072, -2.9916)['longitude'], -2.9916)
 
         import datetime
         sent = []

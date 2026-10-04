@@ -41,6 +41,7 @@ with tempfile.TemporaryDirectory() as directory:
  with patch.object(archive,'DIRECTORY',root/'data'/'receipt_archive'),app.test_client() as client:
   assert client.get('/backup').status_code==302
   assert client.get('/finance/accounts').status_code==302
+  assert client.get('/diagnostics/download').status_code==302
   with client.session_transaction() as session:
    session['authenticated']=True;session['csrf_token']='test'
   assert client.post('/backup/restore').status_code==403
@@ -77,6 +78,10 @@ with tempfile.TemporaryDirectory() as directory:
   assert b'&lt;script&gt;bad&lt;/script&gt;' in response.data
   assert client.get('/receipts/latest').headers['Location'].endswith('/receipts/'+identifier)
   assert client.get('/corrections').status_code==200
+  response=client.get('/diagnostics/download')
+  assert response.status_code==200 and response.headers['Cache-Control']=='no-store'
+  assert 'attachment' in response.headers['Content-Disposition']
+  assert b'What changed since the previous saved receipt?' in client.get('/receipts/'+identifier).data
   assert client.post('/receipts/'+identifier+'/collected').status_code==403
   assert client.get('/receipts/'+identifier+'?page=finance').status_code==404
   assert client.post('/receipts/'+identifier+'/print',data={'csrf_token':'test','page':'unknown'}).status_code==400

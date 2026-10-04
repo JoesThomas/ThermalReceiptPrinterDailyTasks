@@ -33,7 +33,8 @@ def register(app, login_required, start_print, root, print_lock):
         freshness = [dict(name=name, status=value['status'], local=uk_receipt_time(value.get('source_checked_at') or value['checked_at']))
                      for name, value in item.get('freshness', {}).items()]
         from receipt.quality import check
-        return render_template('archive.html', quality_warnings=check(item['pages'], item.get('freshness', {})), receipt=item, pages=pages, freshness=freshness,
+        from receipt.changes import compare
+        return render_template('archive.html', receipt_changes=compare(item), quality_warnings=check(item['pages'], item.get('freshness', {})), receipt=item, pages=pages, freshness=freshness,
                                captured_local=uk_receipt_time(item['captured_at']))
 
     @app.post('/receipts/<identifier>/print')

@@ -3,6 +3,17 @@ from flask import abort,flash,redirect,render_template,request,url_for
 
 
 def register(app,login_required):
+    @app.get('/diagnostics/download')
+    @login_required
+    def diagnostic_download():
+        import json
+        from flask import Response
+        from web_control.diagnostics import export
+        response = Response(json.dumps(export(), indent=2), mimetype='application/json')
+        response.headers['Content-Disposition'] = 'attachment; filename="receipt-diagnostics.json"'
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+
     @app.get('/finance/accounts')
     @login_required
     def cash_accounts():

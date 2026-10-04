@@ -2178,9 +2178,8 @@ def get_weather(latitude=DEFAULT_LOCATION["latitude"], longitude=DEFAULT_LOCATIO
         "timezone": "Europe/London",
     }
 
-    response = requests.get(url, params=params, timeout=15)
-    response.raise_for_status()
-    return response.json()
+    from services.public_sources import weather
+    return weather(url, params)
 
 
 def get_hourly_weather(
@@ -2265,14 +2264,8 @@ def get_google_doc_text(value):
         f"{document_id}/export?format=txt"
     )
 
-    from services.api_health import observed_request
-    response = observed_request("Google Docs", "get",
-        export_url,
-        timeout=15,
-    )
-    response.raise_for_status()
-
-    return response.text
+    from services.public_sources import document
+    return document(export_url)
 
 def get_random_lines(number_of_lines):
     url = ("https://docs.google.com/document/d/"
@@ -7169,163 +7162,28 @@ def _rank_birmingham_news(stories):
 
     return ranked
 
-def _news_stories(
-    url,
-    number=3,
-    params=None,
-    max_age_hours=None,
-):
-    response = requests.get(
-        url,
-        params=params,
-        timeout=15,
-        headers={
-            "User-Agent": (
-                "Mozilla/5.0 "
-                "(compatible; ReceiptNews/2.0)"
-            )
-        },
-    )
-
-    response.raise_for_status()
-
-    root = parse_feed(response.content)
-
-    now = datetime.now(
-        ZoneInfo("Europe/London")
-    )
-
-    stories = []
-
-    for item in root.findall(
-        "./channel/item"
-    ):
-        title_el = item.find("title")
-        desc_el = item.find("description")
-        date_el = item.find("pubDate")
-        link_el = item.find("link")
-
-        if (
-            title_el is None
-            or not title_el.text
-        ):
-            continue
-
-        title = printer_safe_text(
-            " ".join(
-                title_el.text.split()
-            )
-        )
-
-        source = ""
-
-        if " - " in title:
-            title, source = title.rsplit(
-                " - ",
-                1,
-            )
-
-            title = title.strip()
-            source = source.strip()
-
-        # -----------------------------
-        # PUBLICATION AGE
-        # -----------------------------
-
-        published = None
-
-        if (
-            date_el is not None
-            and date_el.text
-        ):
-            try:
-                published = (
-                    parsedate_to_datetime(
-                        date_el.text
-                    )
-                    .astimezone(
-                        ZoneInfo(
-                            "Europe/London"
-                        )
-                    )
-                )
-            except (
-                TypeError,
-                ValueError,
-                OverflowError,
-            ):
-                published = None
-
-        if (
-            max_age_hours is not None
-            and published is not None
-        ):
-            age_hours = (
-                now - published
-            ).total_seconds() / 3600
-
-            if (
-                age_hours < 0
-                or age_hours > max_age_hours
-            ):
-                continue
-
-        # -----------------------------
-        # SUMMARY
-        # -----------------------------
-
-        description = (
-            desc_el.text
-            if (
-                desc_el is not None
-                and desc_el.text
-            )
-            else ""
-        )
-
-        summary = _compact_news_summary(
-            description
-        )
-
-        # Don't print a second copy of the
-        # headline as the article body.
-        if not _news_summary_is_useful(
-            title,
-            summary,
-        ):
-            summary = ""
-
-        stories.append({
-            "headline": title,
-            "summary": summary,
-            "published": published,
-            "source": source,
-            "link": link_el.text.strip() if link_el is not None and link_el.text else "",
-        })
-
-        # Fetch a larger candidate pool.
-        if len(stories) >= number:
-            break
-
-    return stories
+def _news_stories(url, number=3, params=None, max_age_hours=None):
+    from services.news_source import stories
+    return stories(url, number, params, max_age_hours,
+                   sanitize=printer_safe_text, compact_summary=_compact_news_summary,
+                   useful_summary=_news_summary_is_useful)
 
 def get_top_news_headlines(number=3):
-    return _news_stories(NEWS_RSS_URL, number)
+    from services.public_sources import cached
+    return cached("UK news", NEWS_RSS_URL, number, lambda: _news_stories(NEWS_RSS_URL, number))
 
 def get_local_news_headlines(number=3, feed_url=BBC_LOCAL_FEED):
     """Recent actual articles from the selected BBC regional feed."""
-    stories = _news_stories(feed_url, number=25, max_age_hours=72)
-    return select_bbc_articles(
-        _deduplicate_news_stories(stories), "local", number
-    )
+    from services.public_sources import cached
+    return cached("Local news", feed_url, number, lambda: select_bbc_articles(
+        _deduplicate_news_stories(_news_stories(feed_url, number=25, max_age_hours=72)), "local", number))
 
 
 def get_sport_news_headlines(number=3):
     """Recent BBC Sport articles, leaving out live pages and previews."""
-    stories = _news_stories(BBC_SPORT_FEED, number=25, max_age_hours=48)
-    return select_bbc_articles(
-        _deduplicate_news_stories(stories), "sport", number
-    )
+    from services.public_sources import cached
+    return cached("Sport news", BBC_SPORT_FEED, number, lambda: select_bbc_articles(
+        _deduplicate_news_stories(_news_stories(BBC_SPORT_FEED, number=25, max_age_hours=48)), "sport", number))
 
 def _print_news_stories(
     printer,
@@ -8551,7 +8409,7 @@ def run_live_pipeline(
 
                 weather = get_weather(location["latitude"], location["longitude"])
                 from receipt.freshness import mark
-                mark("Weather")
+                # Freshness is recorded by the bounded source collector.
 
                 print_weather(
                     printer,
@@ -8602,7 +8460,7 @@ def run_live_pipeline(
                 )
 
                 from receipt.freshness import mark
-                mark("UK news")
+                # Freshness is recorded by the bounded source collector.
                 print_news(
                     printer,
                     headlines,
@@ -8613,6 +8471,7 @@ def run_live_pipeline(
                     "UK news error:",
                     repr(error),
                 )
+                _print_section_error(printer, "UK NEWS UNAVAILABLE")
 
         # ==========================================
         # LOCAL NEWS
@@ -8644,7 +8503,7 @@ def run_live_pipeline(
                 )
 
                 from receipt.freshness import mark
-                mark("Local news")
+                # Freshness is recorded by the bounded source collector.
                 print_local_news(
                     printer,
                     local_headlines,
@@ -8656,6 +8515,7 @@ def run_live_pipeline(
                     "Local news error:",
                     repr(error),
                 )
+                _print_section_error(printer, "LOCAL NEWS UNAVAILABLE")
 
         # ==========================================
         # SPORT NEWS

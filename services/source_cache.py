@@ -91,7 +91,7 @@ def get(name, identity, collect, *, ttl=300, max_age=86400):
 def record(identity, row):
     with locked():
         state = load(); state[identity] = row
-        state = dict(sorted(state.items(), key=lambda x: str(x[1].get('attempted_at', '')), reverse=True)[:12])
+        state = dict(sorted(state.items(), key=lambda x: str(x[1].get('attempted_at', '')), reverse=True)[:32])
         write_json(FILE, state)
 
 

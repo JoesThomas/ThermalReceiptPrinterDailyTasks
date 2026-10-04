@@ -35,6 +35,36 @@
                     </form>
                 {% endif %}
                 <details>
+                    <summary>What changed since the previous saved receipt?</summary>
+                    <p class="muted">Compared separately for each page. Text changes include refreshed headlines and times; graphs are not compared.</p>
+                    {% for change in receipt_changes %}
+                        <h3>{{ change.page|title }}</h3>
+                        {% if not change.baseline %}
+                            <p>No earlier saved version of this page.</p>
+                        {% elif not change.changed %}
+                            <p>No text changes.</p>
+                        {% else %}
+                            {% if change.added %}
+                                <p>Added or updated</p>
+                                <ul>
+                                    {% for line in change.added %}
+                                        <li>{{ line }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                            {% if change.removed %}
+                                <p>Previous text</p>
+                                <ul>
+                                    {% for line in change.removed %}
+                                        <li>{{ line }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                            {% if change.truncated %}<p>Showing the first 50 lines of each change type.</p>{% endif %}
+                        {% endif %}
+                    {% endfor %}
+                </details>
+                <details>
                     <summary>Source freshness at generation</summary>
                     <p class="muted">
                         Check times show when a source request returned; they do not guarantee complete coverage or current manually entered balances.

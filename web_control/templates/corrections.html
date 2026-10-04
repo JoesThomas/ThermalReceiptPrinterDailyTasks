@@ -47,6 +47,11 @@
                     <a class="button" href="{{ url_for('cash_accounts') }}">Choose included accounts</a>
                 </section>
             </div>
+            <section class="card">
+                <h2>Diagnose a problem</h2>
+                <p>Download versions, job state and source health. Receipt text, transactions, credentials and raw logs are excluded.</p>
+                <a class="button" href="{{ url_for('diagnostic_download') }}">Download redacted diagnostics</a>
+            </section>
         </main>
     </body>
 </html>
