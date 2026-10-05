@@ -18,21 +18,8 @@ from web_control.job_runtime import run_bounded, JobCancelled, log_event, MAX_SE
 
 
 def save_status(state, page):
-    from storage import write_json
-    previous = {}
-    try:
-        previous = json.loads(STATUS.read_text())
-    except (OSError, ValueError):
-        pass
-    now = datetime.now(timezone.utc).isoformat()
-    payload = {**previous, "state": state, "page": page, "updated_at": now}
-    if state == 'running':
-        payload.pop('preview_saved', None)
-        payload.update(started_at=now, job_id=uuid.uuid4().hex[:12], stage='Connecting to printer',
-                       completed=0, total=5, timeout_seconds=MAX_SECONDS)
-    if state == 'completed':
-        payload.update(completed=5, stage='Sent to printer; paper output not confirmed')
-    write_json(STATUS, payload)
+    from web_control.job_status import save
+    return save(STATUS, state, page=page)
 
 
 def main():
@@ -91,7 +78,8 @@ def main():
         save_status("failed", page)
         raise
     finally:
-        LOCK.unlink(missing_ok=True)
+        from web_control.job_runtime import release_owned_lock
+        release_owned_lock(LOCK)
 
 
 if __name__ == "__main__":

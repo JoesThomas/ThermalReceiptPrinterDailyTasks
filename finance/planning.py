@@ -12,6 +12,7 @@ FILE = Path(__file__).resolve().parents[1]/'data'/'finance_planning.json'
 
 
 def validate(value):
+    if isinstance(value, dict) and value.get('schema_version', 1) != 1: raise ValueError('Unsupported planning version')
     if not isinstance(value,dict): raise ValueError('Invalid planning data')
     for field in ('purchases','priorities'):
         rows=value.get(field,[])
@@ -37,7 +38,7 @@ def validate(value):
 
 def store():
     from storage import PrivateStore
-    return PrivateStore(FILE,default=lambda:{'purchases':[],'priorities':[],'reviews':{}},validate=validate)
+    return PrivateStore(FILE,default=lambda:{'purchases':[],'priorities':[],'reviews':{}},validate=validate, schema_version=1, migrations={0: lambda value: value})
 
 
 def load():

@@ -52,7 +52,19 @@
     <progress id="global-job-progress"
               max="5"
               aria-label="Receipt stages completed"></progress>
+    <div class="job-working" aria-hidden="true">
+        <span></span>
+    </div>
     <small id="global-job-time"></small>
+    <ol id="global-job-steps"
+        class="job-stage-history"
+        aria-label="Generation steps">
+    </ol>
+    <details class="job-timings">
+        <summary>Generation timings</summary>
+        <ul id="global-job-timings">
+        </ul>
+    </details>
     <p class="muted">Stages show completed sections, not estimated time. Jobs stop after 10 minutes.</p>
     <form method="post" action="{{ url_for('cancel_receipt_job') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

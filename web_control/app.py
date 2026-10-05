@@ -38,29 +38,13 @@ SUBSCRIPTIONS_FILE = (
 
 
 def load_subscriptions():
-    if not SUBSCRIPTIONS_FILE.exists():
-        return {
-            "monthly": [],
-            "yearly": [],
-            "instalments": [],
-        }
-
-    with SUBSCRIPTIONS_FILE.open(
-        "r",
-        encoding="utf-8",
-    ) as file:
-        data = json.load(file)
-
-    data.setdefault("monthly", [])
-    data.setdefault("yearly", [])
-    data.setdefault("instalments", [])
-
-    return data
+    from finance.subscription_store import load
+    return load(SUBSCRIPTIONS_FILE)
 
 
 def save_subscriptions(data):
-    from storage import write_json
-    write_json(SUBSCRIPTIONS_FILE, data)
+    from finance.subscription_store import save
+    save(SUBSCRIPTIONS_FILE, data)
 
 
 PROJECT_PASSWORDS_FILE = (

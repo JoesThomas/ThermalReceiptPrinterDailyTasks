@@ -67,16 +67,8 @@ def _decimal(value):
 
 
 def _amount_rows(label, value, width=40):
-    label = str(label).upper().strip()
-    amount = _decimal(value)
-    formatted = (f"-£{abs(amount):,.2f}" if amount < 0
-                 else f"£{amount:,.2f}")
-    if len(label) + len(formatted) + 1 <= width:
-        return [label + formatted.rjust(width - len(label))]
-    from textwrap import wrap
-    rows = wrap(label, width=width, break_long_words=True)
-    rows.append(formatted.rjust(width))
-    return rows
+    from receipt.layout import amount_rows
+    return amount_rows(str(label).upper(), value, width)
 
 
 def _amount_line(label, value):

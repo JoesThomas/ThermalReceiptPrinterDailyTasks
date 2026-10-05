@@ -160,7 +160,9 @@
                                     {% endfor %}
                                 </div>
                             {% else %}
-                                <p>No payments found for this month.</p>
+                                <p class="empty-state">
+                                    No outgoings were found in the available records for this month. Source coverage below explains which accounts were checked.
+                                </p>
                             {% endif %}
                         </section>
                     </details>
@@ -225,7 +227,9 @@
                                     {% endfor %}
                                 </figure>
                             {% else %}
-                                <p>No recent spending transactions to chart.</p>
+                                <p class="empty-state">
+                                    There are no spending records in the available period. Check the connected accounts and their collection status below.
+                                </p>
                             {% endif %}
                         </section>
                     </details>
@@ -342,7 +346,11 @@
                                     {% endif %}
                                 </div>
                             {% else %}
-                                <p>No monthly commitments configured.</p>
+                                <p class="empty-state">
+                                    Add bills, subscriptions and repayments to track what is paid and what is coming up.
+                                    <br>
+                                    <a href="{{ url_for('index',view='accounts') }}#commitments">Add your first commitment</a>
+                                </p>
                             {% endfor %}
                         </section>
                     </details>

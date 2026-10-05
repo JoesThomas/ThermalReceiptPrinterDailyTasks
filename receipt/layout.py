@@ -67,3 +67,29 @@ def checked_lines(names):
             stamp = uk_receipt_time(check.get('source_checked_at') or check['checked_at'])
             result.append(f"{name}: {check['status']} {stamp}")
     return result
+
+
+from finance.money import parse
+from textwrap import wrap
+
+
+def amount_rows(label, value, width=40):
+    amount = parse(value)
+    if amount is None:
+        raise ValueError('Invalid receipt amount')
+    formatted = f"{'-' if amount < 0 else ''}£{abs(amount):,.2f}"
+    label = str(label).strip()
+    if len(label) + len(formatted) + 1 <= width:
+        return [label + formatted.rjust(width - len(label))]
+    return [*wrap(label, width=width, break_long_words=True), formatted.rjust(width)]
+
+
+def progress_bar(percent, cells=16):
+    if percent is None:
+        return 'Progress not available'
+    amount = parse(percent)
+    if amount is None:
+        return 'Progress not available'
+    bounded = min(100, max(0, amount))
+    filled = int(bounded * cells / 100)
+    return '[' + '#' * filled + '.' * (cells - filled) + f'] {amount:.0f}%'

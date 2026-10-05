@@ -18,21 +18,8 @@ from web_control.job_runtime import run_bounded, JobCancelled, log_event, MAX_SE
 
 
 def save_status(state):
-    STATUS.parent.mkdir(parents=True, exist_ok=True)
-    temporary = STATUS.with_name(f"{STATUS.name}.{os.getpid()}.tmp")
-    now = datetime.now(timezone.utc).isoformat()
-    previous = {}
-    try:
-        previous = json.loads(STATUS.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        pass
-    temporary.write_text(json.dumps({"state": state, "stage": "Starting receipt" if state == "running" else state,
-                                     "completed": 0 if state == "running" else previous.get("completed", 0),
-                                     "job_id": uuid.uuid4().hex[:12] if state == "running" else previous.get("job_id"),
-                                     "timeout_seconds": MAX_SECONDS, "total": 5, "started_at": now if state == "running" else previous.get("started_at", now),
-                                     "updated_at": now}),
-                         encoding="utf-8")
-    temporary.replace(STATUS)
+    from web_control.job_status import save
+    return save(STATUS, state)
 
 
 def main():
@@ -75,7 +62,8 @@ def main():
         save_status("failed")
         raise
     finally:
-        LOCK.unlink(missing_ok=True)
+        from web_control.job_runtime import release_owned_lock
+        release_owned_lock(LOCK)
 
 
 if __name__ == "__main__":

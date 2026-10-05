@@ -82,6 +82,16 @@
       const start = Date.parse(job.started_at || job.updated_at);
       const seconds = Number.isFinite(start) ? Math.max(0, Math.floor((Date.now()-start)/1000)) : 0;
       document.getElementById('global-job-time').textContent = `${done}/5 sections · ${Math.floor(seconds/60)}m ${seconds%60}s elapsed · Job ${job.job_id || 'earlier job'}`;
+      const history = document.getElementById('global-job-steps');
+      history.replaceChildren(...(job.stages || [job.stage]).filter(Boolean).slice(-5).map((stage, index, rows) => {
+        const li = document.createElement('li');
+        li.textContent = (index === rows.length - 1 ? 'In progress: ' : 'Completed: ') + stage;
+        li.className = index === rows.length - 1 ? 'active' : 'done';
+        return li;
+      }));
+      document.getElementById('global-job-timings').replaceChildren(...(job.timings || []).map(row => {
+        const li = document.createElement('li'); li.textContent = `${row.stage}: ${Number(row.seconds).toFixed(1)}s`; return li;
+      }));
       document.querySelectorAll('form[action$="/print-page"], form[action$="/print-now"], form[action$="/preview/generate"]').forEach(form => {
         form.querySelectorAll('button[type="submit"],button:not([type])').forEach(button => button.disabled = true);
       });

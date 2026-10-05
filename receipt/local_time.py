@@ -13,3 +13,11 @@ def uk_receipt_time(value):
         return timestamp.astimezone(ZoneInfo("Europe/London")).strftime("%d %b %Y, %H:%M %Z")
     except (ValueError, TypeError):
         return ""
+
+
+def uk_now():
+    return datetime.now(ZoneInfo("Europe/London"))
+
+
+def uk_today():
+    return uk_now().date()

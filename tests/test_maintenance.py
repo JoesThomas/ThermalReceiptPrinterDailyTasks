@@ -85,7 +85,7 @@ class MaintenanceTests(unittest.TestCase):
         import sys
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder); lock = root / 'lock'; status = root / 'status.json'
-            lock.write_text('123')
+            lock.write_text(str(os.getpid()))
             with patch.object(print_job, 'ROOT', root), patch.object(print_job, 'LOCK', lock), \
                  patch.object(print_job, 'STATUS', status), patch.object(sys, 'argv', ['worker', '--scheduled']), \
                  patch('receipt.printer.readiness', return_value=(False, 'Offline')), \

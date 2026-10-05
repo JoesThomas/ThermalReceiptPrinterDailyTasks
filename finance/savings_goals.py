@@ -226,16 +226,21 @@ def review(wealth=None,year=None,state=None,on=None,bond_balances=None):
 
 def receipt_lines(view):
     from textwrap import wrap
+    from receipt.layout import progress_bar
     lines=[]
     if view['premium']['balance'] is not None:
         row=view['premium'];lines+=['PREMIUM BONDS HOLDING GOAL',f"GBP {row['balance']:.2f} / 50000.00",f"{row['percent']:.0f}% FULL / GBP {row['remaining']:.2f} SPACE"]
+        lines.append(progress_bar(row['percent']))
         if row['over']: lines.append('RECORDED HOLDINGS EXCEED LIMIT')
     for row in view['accounts']:
         if row['type']=='savings' and row['limit'] and row['balance'] is not None:
             lines += [row['name'].upper()+' GOAL',f"GBP {row['balance']:.2f} / {row['limit']:.2f} ({row['percent']:.0f}%)"]
+            lines.append(progress_bar(row['percent']))
     if view['has_isa']:
         row=view['shared'];lines += ['ISA NEW CONTRIBUTIONS '+view['label'],f"RECORDED GBP {row['used']:.2f}"]
-        if row['limit'] is not None: lines.append(f"SHARED ALLOWANCE GBP {row['limit']:.2f}")
+        if row['limit'] is not None:
+            lines.append(f"SHARED ALLOWANCE GBP {row['limit']:.2f}")
+            lines.append(progress_bar(row['percent']))
         for account in view['accounts']:
             if account['type'] in ISA:
                 lines.append(f"{account['name']}: GBP {account['contributions']:.2f}")

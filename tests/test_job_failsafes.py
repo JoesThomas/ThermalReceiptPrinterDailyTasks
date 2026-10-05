@@ -23,7 +23,7 @@ class JobFailsafeTests(unittest.TestCase):
                 with self.subTest(worker=worker.__name__, state=state), tempfile.TemporaryDirectory() as folder:
                     lock = Path(folder) / 'job.lock'
                     status = Path(folder) / 'status.json'
-                    lock.write_text('123')
+                    lock.write_text(str(os.getpid()))
                     with patch.object(worker, 'LOCK', lock), patch.object(worker, 'STATUS', status), \
                          patch.object(worker, 'run_bounded', side_effect=error), \
                          patch.object(sys, 'argv', ['worker']):

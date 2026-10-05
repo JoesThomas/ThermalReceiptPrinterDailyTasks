@@ -1316,43 +1316,9 @@ def format_delivery_expected(delivery):
 
 
 def print_upcoming_deliveries(printer, deliveries):
-    """
-    Print only useful delivery information.
-
-    Example:
-        ROYAL MAIL
-        Expected today
-        AMAZON
-        Expected 13:00-16:00
-
-    The entire section is omitted when there are no deliveries.
-    """
-    from actions.delivery_state import record_deliveries
-    deliveries = record_deliveries(deliveries, _normalise_delivery_carrier, format_delivery_expected)
-    if not deliveries:
-        return
-
-    if isinstance(deliveries, dict):
-        deliveries = [deliveries]
-
-    deliveries = [
-        item for item in deliveries
-        if isinstance(item, dict)
-    ]
-
-    if not deliveries:
-        return
-
-    print_line(printer, "=")
-    printer.set(bold=True)
-    left(printer, "UPCOMING DELIVERIES")
-    printer.set(bold=False)
-    print_line(printer, "-")
-
-    from actions.delivery_summary import summary_lines
-    for row in summary_lines(deliveries, _normalise_delivery_carrier, format_delivery_expected):
-        left(printer, printer_safe_text(row))
-
+    from receipt.sections import print_upcoming_deliveries as render
+    return render(printer, deliveries,
+                  _normalise_delivery_carrier=_normalise_delivery_carrier, format_delivery_expected=format_delivery_expected, print_line=print_line, left=left, printer_safe_text=printer_safe_text)
 
 # ============================================================
 # FINANCE CHECK - LIVE OPEN BANKING DATA
@@ -3275,47 +3241,12 @@ def finance_quick_summary(
     return lines
 
 def load_subscriptions():
-    if not SUBSCRIPTIONS_FILE.exists():
-        return {
-            "monthly": [],
-            "yearly": [],
-            "instalments": [],
-        }
-
+    from finance.subscription_store import load
     try:
-        with SUBSCRIPTIONS_FILE.open(
-            "r",
-            encoding="utf-8",
-        ) as file:
-            data = json.load(file)
-
-    except (
-        OSError,
-        json.JSONDecodeError,
-    ) as error:
-        print(
-            "Subscription file error:",
-            repr(error),
-        )
-
-        return {
-            "monthly": [],
-            "yearly": [],
-            "instalments": [],
-        }
-
-    if not isinstance(data, dict):
-        return {
-            "monthly": [],
-            "yearly": [],
-            "instalments": [],
-        }
-
-    data.setdefault("monthly", [])
-    data.setdefault("yearly", [])
-    data.setdefault("instalments", [])
-
-    return data
+        return load(SUBSCRIPTIONS_FILE)
+    except (OSError, ValueError):
+        print("Subscription data unavailable; saved file retained for recovery.")
+        return {"monthly": [], "yearly": [], "instalments": []}
 
 
 def subscription_was_paid(
@@ -3666,11 +3597,8 @@ def print_instalment_status(printer, subscriptions_data):
 
 def receipt_right_amount(label, amount, width=40):
     """Align a money value with the right end of the receipt rule."""
-    label = str(label).strip()
-    money = f"£{float(amount):,.2f}"
-    if len(label) + len(money) + 1 > width:
-        return [label[:width], money.rjust(width)]
-    return [label + money.rjust(width - len(label))]
+    from receipt.layout import amount_rows
+    return amount_rows(label, amount, width)
 
 
 def print_subscription_status(
@@ -6462,6 +6390,7 @@ def setup_printer(printer):
     )
 
 def print_line(printer, character="-"):
+    character = "-" if character == "=" else character
     printer_text(printer, character * RECEIPT_WIDTH + "\n")
 
 def centre(printer, text):
@@ -6997,25 +6926,9 @@ def _public_transport_route(option):
     )
 
 def print_calendar(printer, events):
-    """Print today's events with their locations, without journey directions."""
-    if not events:
-        return
-
-    print_line(printer, "=")
-    printer.set(bold=True)
-    left(printer, "TODAY'S CALENDAR")
-    printer.set(bold=False)
-    print_line(printer, "-")
-
-    for event in events:
-        time_text = event.get("time") or ""
-        title = event.get("title") or "EVENT"
-        print_wrapped(printer, f"[ ] {time_text}  {title}", width=40)
-
-        location = str(event.get("location") or "").strip()
-        if location:
-            print_wrapped(printer, f"LOCATION: {location}", width=40)
-
+    from receipt.sections import print_calendar as render
+    return render(printer, events,
+                  print_line=print_line, left=left, print_wrapped=print_wrapped)
 
 def print_vehicle_expiry_checks(
     printer,
@@ -7468,7 +7381,15 @@ def print_subscriptions(
     print_line(printer, "-")
 
 def print_footer(printer):
-    print_line(printer, "=")
+    from receipt.local_time import uk_now
+    from receipt.freshness import snapshot
+    print_line(printer, "-")
+    left(printer, "Generated " + uk_now().strftime("%d %b %Y %H:%M %Z"))
+    states = [row.get('state') for row in snapshot().values()]
+    if 'cached' in states:
+        left(printer, "Includes cached information")
+    if any(state in ('partial', 'unavailable') for state in states):
+        left(printer, "Some information incomplete")
 
     printer_text(printer, "\n\n\n")
 

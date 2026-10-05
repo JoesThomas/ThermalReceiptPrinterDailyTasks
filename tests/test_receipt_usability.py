@@ -84,7 +84,7 @@ class ReceiptUsabilityTests(unittest.TestCase):
         import sys
         from web_control import print_job
         with tempfile.TemporaryDirectory() as folder:
-            root=Path(folder);lock=root/'lock';status=root/'status.json';lock.write_text('123')
+            root=Path(folder);lock=root/'lock';status=root/'status.json';lock.write_text(str(os.getpid()))
             with patch.object(print_job,'ROOT',root),patch.object(print_job,'LOCK',lock),patch.object(print_job,'STATUS',status), \
                  patch.object(sys,'argv',['worker','--printer-test']),patch.object(print_job,'run_bounded',return_value=0) as run:
                 self.assertEqual(print_job.main(),0)

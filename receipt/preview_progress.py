@@ -25,8 +25,21 @@ def report(stage, completed, total):
                "total": total, "updated_at": datetime.now(timezone.utc).isoformat()}
     if started_at:
         payload["started_at"] = started_at
-    temporary = status_file.with_name(f"{status_file.name}.{os.getpid()}.tmp")
-    temporary.write_text(json.dumps(payload), encoding="utf-8")
-    temporary.replace(status_file)
+    now = datetime.now(timezone.utc)
+    timings = list(previous.get('timings', []))
+    if previous.get('stage') != stage:
+        try:
+            began = datetime.fromisoformat(previous.get('stage_started_at', previous.get('updated_at', '')))
+            seconds = max(0, (now - began).total_seconds())
+            if previous.get('stage'):
+                timings.append({'stage': previous['stage'], 'seconds': round(seconds, 2)})
+        except (ValueError, TypeError):
+            pass
+        payload['stage_started_at'] = now.isoformat()
+    payload['timings'] = timings[-80:]
+    payload['stages'] = list(dict.fromkeys([*previous.get('stages', []), stage]))[-80:]
+    from storage import write_json
+    write_json(status_file, payload)
     from web_control.job_runtime import log_event
     log_event(os.environ.get("RECEIPT_JOB_ID", "preview"), stage)
+    return

@@ -368,3 +368,43 @@ Monthly finance observations retain the collection scope without account identif
 Older observations with no scope are labelled accordingly, and a mid-month observation is
 never marked as covering a whole month. CI runs Python 3.11–3.14 tests, lint, security checks
 and template formatting checks. The template wrapper preserves excluded scripts and styles.
+
+### Receipt generation and interface regression checks
+
+Scheduled printing, manual printing and previews share the bounded child supervisor
+and lifecycle status writer. Workers release only a lock bearing their own PID.
+The shared receipt builder saves its buffered output before opening hardware; a failed
+printer connection leaves the generated copy available. A successful socket send does
+not certify that paper was produced.
+
+The loading panel shows actual stage names, recently completed steps and elapsed time.
+The moving indicator means work is in progress; the stage count is not a time estimate.
+Expand **Generation timings** to find slow collection stages. Timings contain stage
+names and durations only, and are bounded to the latest 80 stages of the job.
+
+PrivateStore supports explicit schema versions and sequential migrations. Finance
+planning and subscriptions are versioned stores: legacy data is migrated in memory and persisted
+on its next successful update. Unsupported future versions and damaged files are
+preserved instead of overwritten. Other private stores retain their existing formats
+until an explicit migration is introduced; take a private backup before upgrades.
+
+The receipt uses shared width-safe money columns, compact savings indicators, dashed
+rules and a local-time footer identifying cached or incomplete source checks. Delivery
+items retain their confirmation identities while timing appears below the item group.
+Source fetching remains outside the extracted calendar and delivery rendering module.
+
+Browser CI exercises manual bin dates, adding a commitment, confirming a delivery and
+opening a generated preview at four viewport widths. The harness uses real Flask routes
+and templates in an isolated temporary project; external collection and hardware are
+replaced by fixtures. It communicates through standard input/output rather than exposing
+a fixture login endpoint on the production server. To run locally after installing
+Playwright and Chromium:
+
+```bash
+npm install --no-save playwright@1.56.1
+npx playwright install chromium
+node tools/browser_smoke.cjs
+```
+
+Anonymous integration examples are in `tests/fixtures/receipt_integrations.json`.
+Timezone regressions cover midnight and the autumn BST/GMT transition.

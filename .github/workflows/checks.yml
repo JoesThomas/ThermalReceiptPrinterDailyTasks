@@ -23,3 +23,18 @@ jobs:
       - run: python tools/format_templates.py --check
       - run: python -m unittest discover -s tests -v
       - run: python -m bandit -r . --exclude ./tests -lll
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: python -m pip install -r requirements-dev.txt
+      - run: npm install --no-save playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Check browser flows and responsive layouts
+        run: node tools/browser_smoke.cjs

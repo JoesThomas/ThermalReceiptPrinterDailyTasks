@@ -29,11 +29,13 @@ class PrivateStateError(ValueError):
 
 class PrivateStore:
     """Shared bounded reads and locked atomic updates; never replace damaged state."""
-    def __init__(self, path, *, default, validate=lambda value: None, max_bytes=4_000_000):
+    def __init__(self, path, *, default, validate=lambda value: None, max_bytes=4_000_000, schema_version=None, migrations=None):
         self.path = Path(path)
         self.default = default
         self.validate = validate
         self.max_bytes = max_bytes
+        self.schema_version = schema_version
+        self.migrations = migrations or {}
 
     def read(self):
         import copy
@@ -45,6 +47,21 @@ class PrivateStore:
             if len(content) > self.max_bytes:
                 raise ValueError('Size limit exceeded')
             value = json.loads(content)
+            if self.schema_version is not None:
+                if not isinstance(value, dict):
+                    raise ValueError('Versioned private state must be an object')
+                import copy
+                value = copy.deepcopy(value)
+                version = value.get('schema_version', 0)
+                if type(version) is not int or not 0 <= version <= self.schema_version:
+                    raise ValueError('Unsupported private schema version')
+                while version < self.schema_version:
+                    migrate = self.migrations.get(version)
+                    if migrate is None:
+                        raise ValueError('Missing private schema migration')
+                    value = migrate(value)
+                    version += 1
+                    value['schema_version'] = version
             self.validate(value)
             return value
         except (ValueError, TypeError, KeyError, RecursionError) as error:
@@ -59,6 +76,8 @@ class PrivateStore:
             try:
                 value = self.read()
                 change(value)
+                if self.schema_version is not None:
+                    value['schema_version'] = self.schema_version
                 self.validate(value)
                 if len(json.dumps(value,ensure_ascii=False,allow_nan=False).encode()) > self.max_bytes:
                     raise PrivateStateError("Private state exceeds its size limit.")

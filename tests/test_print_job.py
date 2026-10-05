@@ -1,3 +1,4 @@
+import os
 import json
 import tempfile
 import unittest
@@ -12,7 +13,7 @@ class PrintJobTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             lock = Path(tmp) / 'job.lock'
             status = Path(tmp) / 'status.json'
-            lock.write_text('123')
+            lock.write_text(str(os.getpid()))
             with patch.object(print_job, 'LOCK', lock), patch.object(print_job, 'STATUS', status), \
                     patch.object(print_job, 'run_bounded') as run, \
                     patch.object(print_job.sys, 'argv', ['print_job.py', '--only', 'finance']):

@@ -32,14 +32,16 @@ def compress_if_needed(document: ReceiptDocument) -> ReceiptDocument:
         section.lines = [x for x in section.lines if x != ""]
     if document.line_count <= limit:
         return document
-    document.sections.sort(key=lambda s: (s.optional, -s.priority))
-    kept = []
-    running = 0
-    for section in document.sections:
-        if running + section.line_count <= limit or not section.optional:
-            kept.append(section)
-            running += section.line_count
-    document.sections = kept
+    # Remove optional sections by priority while preserving the chosen page order.
+    remaining = document.line_count
+    remove = set()
+    for index, section in sorted(enumerate(document.sections), key=lambda row: row[1].priority):
+        if remaining <= limit:
+            break
+        if section.optional:
+            remove.add(index)
+            remaining -= section.line_count
+    document.sections = [section for index, section in enumerate(document.sections) if index not in remove]
     return document
 
 def write_preview(documents: list[ReceiptDocument], path: Path) -> Path:

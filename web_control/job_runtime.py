@@ -45,3 +45,13 @@ def run_bounded(command, *, cwd, env, timeout=MAX_SECONDS):
 
 def log_event(job_id, text):
     print(f'{datetime.now(timezone.utc).isoformat()} job={job_id} {text}', flush=True)
+
+
+def release_owned_lock(lock, pid=None):
+    """A finishing worker must not remove a lock belonging to a newer job."""
+    pid = os.getpid() if pid is None else pid
+    try:
+        if lock.read_text().strip() == str(pid):
+            lock.unlink(missing_ok=True)
+    except OSError:
+        pass

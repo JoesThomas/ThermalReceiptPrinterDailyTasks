@@ -68,7 +68,6 @@ def summary_lines(deliveries, carrier, expected):
     for (name, when), notices in groups.items():
         name, when = unescape(str(name)), unescape(str(when))
         lines.append(name + (f' / {len(notices)} items' if len(notices)>1 else ''))
-        lines.append(when)
         for index, delivery in enumerate(notices,1):
             title = item_title(delivery)
             # Do not repeat generic carrier-only headings as item descriptions.
@@ -80,5 +79,6 @@ def summary_lines(deliveries, carrier, expected):
                 detail = detail or ('Order ...' + ref[-6:])
             if detail:
                 lines.extend(wrap('[ ] ' + detail, 40, subsequent_indent='    '))
+        lines.extend(wrap(when, 40, subsequent_indent='    '))
         lines.append('')
     return lines

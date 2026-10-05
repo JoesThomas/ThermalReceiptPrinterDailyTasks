@@ -112,3 +112,32 @@ html[data-high-contrast="true"] :is(.helper,.flash,.job-panel) { background: #ff
 .login-page label { display: block; font-weight: 600; margin-top: 22px; }
 .login-page input { margin-top: 6px; }
 .login-page button { margin-top: 18px; }
+
+/* Consistent hierarchy and quieter supporting detail. */
+.finance-metrics strong, .flow-totals strong, .money, td:last-child { font-variant-numeric: tabular-nums; }
+.finance-metrics article { display: flex; flex-direction: column; gap: .35rem; }
+.finance-metrics strong { margin-top: auto; }
+.finance-page section { padding: clamp(18px, 3vw, 28px); }
+.finance-page .flow-totals > div { padding: 16px 20px; min-width: 0; }
+.finance-page :is(svg,.chart) { max-width: 100%; }
+.finance-page svg line { stroke-opacity: .35; }
+.finance-page .bar-label, .finance-page .chart-label { color: var(--sub); }
+.empty-state { border: 1px dashed var(--border); padding: 20px; border-radius: 12px; color: var(--sub); }
+.empty-state a { display: inline-block; margin-top: 8px; font-weight: 600; }
+.job-stage-history { list-style: none; margin: 12px 0; padding: 0; font-size: .85rem; }
+.job-stage-history li { padding: 4px 0; overflow-wrap: anywhere; }
+.job-stage-history .done { color: var(--sub); }
+.job-stage-history .active { font-weight: 650; }
+.job-timings { font-size: .8rem; margin-top: 12px; }
+.job-timings ul { padding-left: 18px; }
+.job-working { height: 3px; overflow: hidden; background: #dce5fa; margin: 10px 0; border-radius: 8px; }
+.job-working span { display: block; width: 30%; height: 100%; background: var(--green); animation: job-pulse 1.6s ease-in-out infinite alternate; }
+@keyframes job-pulse { from { transform: translateX(0); } to { transform: translateX(230%); } }
+@media (prefers-reduced-motion: reduce) { .job-working span { animation: none; } }
+html[data-reduced-motion="true"] .job-working span { animation: none; }
+
+:root { --income: #26735d; --outgoing: #b26d2b; --reserved: #3657b3; }
+.flow-fill.income, .legend-swatch.paid, .commitment-paid { background: var(--income); }
+.flow-fill.outgoing, .legend-swatch.due, .commitment-due { background: var(--outgoing); }
+.bar-fill, .weekly-fill { background: var(--reserved); }
+.flow-totals strong { font-variant-numeric: tabular-nums; }
