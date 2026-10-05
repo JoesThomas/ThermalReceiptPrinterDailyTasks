@@ -179,3 +179,6 @@ data/lifestyle.lock
 data/finance_explanations.json
 data/finance_explanations.lock
 data/recent_print_request.json
+
+data/rental_tax.json
+data/rental_tax.lock

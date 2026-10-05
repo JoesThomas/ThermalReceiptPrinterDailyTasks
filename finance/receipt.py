@@ -640,6 +640,24 @@ def print_integrated_finance(
     print_incoming_payments(printer, left, print_line, spending_summary,
                             total_outgoings, today)
 
+    try:
+        from finance.rental_tax import estimate as rental_estimate, load as load_rental_tax
+        rental_plan = rental_estimate(load_rental_tax(), today)
+        if rental_plan:
+            printer.text("\n")
+            left(printer, 'RENTAL TAX PLAN [E] / 2026-27')
+            print_line(printer)
+            for label, amount in [('ANNUAL TAXABLE PROFIT', rental_plan['profit']),
+                                  ('ESTIMATED RENTAL TAX', rental_plan['tax']),
+                                  ('TAX MONEY RESERVED', rental_plan['reserved']),
+                                  ('MONTHLY TAX TOP-UP', rental_plan['monthly'])]:
+                left(printer, _amount_line(label, amount))
+            left(printer, 'MANUAL ANNUAL INPUTS / NOT A TAX BILL')
+            if rental_plan['protect']:
+                left(printer, _amount_line('TAX CASH PROTECTED', rental_plan['protected']))
+    except (ValueError, OSError):
+        left(printer, 'RENTAL TAX PLAN UNAVAILABLE')
+
     if any(finance_settings.get(field) is not None for field in ('hsbc_emergency_reserve','physical_cash_target','salary_savings_target')):
         try:
             from finance.salary_plan import build as build_salary_plan

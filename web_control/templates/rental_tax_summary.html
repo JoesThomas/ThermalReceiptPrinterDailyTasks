@@ -1,0 +1,29 @@
+{% if rental_tax %}
+    <details class="section-disclosure" open>
+        <summary>Rental tax estimate · 2026/27</summary>
+        <section>
+            <h2>Rental income and tax reserve</h2>
+            <div class="finance-metrics">
+                <article><span>Annual rental profit for tax</span><strong>£{{ '%.2f'|format(rental_tax.profit) }}</strong></article>
+                <article><span>Estimated additional rental tax</span><strong>£{{ '%.2f'|format(rental_tax.tax) }}</strong></article>
+                <article><span>Already reserved</span><strong>£{{ '%.2f'|format(rental_tax.reserved) }}</strong></article>
+                <article><span>Suggested monthly tax top-up</span><strong>£{{ '%.2f'|format(rental_tax.monthly) }}</strong><small>{{ rental_tax.months }} tax-month slots remaining</small></article>
+            </div>
+            <p>
+                Reserve still to build: £{{ '%.2f'|format(rental_tax.gap) }}. Finance-cost tax reduction: £{{ '%.2f'|format(rental_tax.relief) }}.
+            </p>
+            <p>
+                Annual rental cash after entered expenses, current interest and estimated tax: £{{ '%.2f'|format(rental_tax.cash_after_tax_interest) }} (before mortgage capital repayments).
+            </p>
+            {% if rental_tax.unused_losses or rental_tax.unused_finance %}
+                <p class="helper">
+                    Potential unused losses: £{{ '%.2f'|format(rental_tax.unused_losses) }}; finance costs: £{{ '%.2f'|format(rental_tax.unused_finance) }}. Confirm carry-forward treatment before next year's return.
+                </p>
+            {% endif %}
+            <p class="muted">
+                {{ 'The annual tax reserve is protected in cash forecasts and savings suggestions.' if rental_tax.protect else 'This is an information-only estimate. Enable reserve protection in tax settings to exclude it from spending and savings suggestions.' }} Manual full-year assumptions; not a verified tax bill.
+            </p>
+            <a href="/finance/tax">Edit private tax settings and see assumptions</a>
+        </section>
+    </details>
+{% endif %}

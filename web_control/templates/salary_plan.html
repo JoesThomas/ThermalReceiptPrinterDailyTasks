@@ -25,6 +25,11 @@
                     .
                 </p>
             {% endif %}
+            {% if salary_plan.reserve.tax_reserve %}
+                <p>
+                    Protected rental-tax reserve: £{{ '%.2f'|format(salary_plan.reserve.tax_reserve) }}. This is excluded from money available to allocate, spend or save.
+                </p>
+            {% endif %}
             <h3>Extra money available before payday</h3>
             {% if salary_plan.surplus is not none %}
                 <p>

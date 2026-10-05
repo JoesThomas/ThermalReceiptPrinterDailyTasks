@@ -1524,5 +1524,8 @@ register_explanations(app, login_required)
 from web_control.undo import register as register_undo
 register_undo(app, login_required)
 
+from web_control.tax_tools import register as register_tax_tools
+register_tax_tools(app, login_required)
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)
