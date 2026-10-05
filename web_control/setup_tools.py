@@ -1,4 +1,5 @@
 """Local setup guidance and date-based reminders, without remote API calls."""
+from receipt.local_time import uk_now
 import json
 from datetime import date, datetime
 from pathlib import Path
@@ -17,7 +18,7 @@ def read(path):
 
 
 def reminders(data=None, today=None):
-    today = today or datetime.now(ZoneInfo('Europe/London')).date()
+    today = today or uk_now().date()
     data = data if data is not None else read(ROOT / 'data' / 'subscriptions.json')
     result = []
     for kind in ('monthly', 'yearly'):

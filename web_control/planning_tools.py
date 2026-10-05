@@ -1,4 +1,5 @@
 """Authenticated private planning changes; source figures are never accepted from forms."""
+from receipt.local_time import uk_now
 from datetime import date, datetime, timezone
 import json
 import uuid
@@ -18,7 +19,7 @@ def register(app,login_required):
         from flask import render_template
         from web_control import finance_insights
         from zoneinfo import ZoneInfo
-        today=datetime.now(ZoneInfo('Europe/London')).date()
+        today=uk_now().date()
         try:
             plans=planning.load()
             from services.subscriptions import load_subscriptions
@@ -58,7 +59,7 @@ def register(app,login_required):
         try:
             rows=json.loads(finance_insights.FILE.read_text());finance_insights.validate(rows)
             row=next(r for r in rows if r['month']==month)
-            if month>=datetime.now(ZoneInfo('Europe/London')).strftime('%Y-%m'):raise ValueError('Month has not ended')
+            if month>=uk_now().strftime('%Y-%m'):raise ValueError('Month has not ended')
             def change(value):
                 reviews=value.setdefault('reviews',{})
                 reviews[month]={'reviewed_at':datetime.now(timezone.utc).isoformat(),'snapshot':row}

@@ -60,7 +60,7 @@ def apply_plan(plan, planner, settings=None):
         if skip_meal(on, settings):
             excluded.append({'date': meal['date'], 'name': meal.get('recipe', {}).get('name') or meal.get('name', 'Planned meal')})
             result['meals'][index] = {'date': meal['date'], 'kind': 'away', 'name': 'Away - home meal paused', 'overview': 'Recipe ingredients excluded from shopping.'}
-    original = planner.build_shopping_list(plan)
+    original = planner.build_shopping_list(plan, include_away=True)
     result['away_excluded'] = excluded
     result['shopping'] = planner.build_shopping_list(result)
     needed = {item for group in result['shopping'].values() for item in group}

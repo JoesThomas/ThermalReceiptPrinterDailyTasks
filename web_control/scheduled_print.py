@@ -5,11 +5,10 @@ import logging
 from datetime import datetime, time, timedelta
 from pathlib import Path
 from threading import Event, Thread
-from zoneinfo import ZoneInfo
+from receipt.local_time import UK, uk_now, local_run
 
 ROOT = Path(__file__).resolve().parent.parent
 LAST_PRINT_DATE = ROOT / "data" / ".scheduled_print_date"
-UK = ZoneInfo("Europe/London")
 LOG = logging.getLogger(__name__)
 
 
@@ -26,14 +25,7 @@ def schedule_options(settings=None):
     return bool(config.get('enabled', True)), hour, minute
 
 
-def _local_run(day, hour, minute):
-    # Choose the first occurrence when clocks repeat; move to the first valid
-    # minute when the configured time falls in the spring clock-change gap.
-    from datetime import timezone
-    candidate = datetime.combine(day, time(hour, minute), tzinfo=UK)
-    while candidate.astimezone(timezone.utc).astimezone(UK).replace(tzinfo=None) != candidate.replace(tzinfo=None):
-        candidate += timedelta(minutes=1)
-    return candidate
+_local_run = local_run
 
 
 def next_print_time(now, settings=None):
@@ -67,7 +59,7 @@ def print_once(today, start_print, marker=LAST_PRINT_DATE):
 
 
 def schedule_loop(start_print, stop, now_fn=None, marker=LAST_PRINT_DATE):
-    now_fn = now_fn or (lambda: datetime.now(UK))
+    now_fn = now_fn or uk_now
     signature, due, retry_at = None, None, 0
     while not stop.is_set():
         now = now_fn()

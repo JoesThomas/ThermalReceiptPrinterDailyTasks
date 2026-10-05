@@ -1,5 +1,5 @@
 """Bounded RSS collection and parsing, separate from receipt formatting."""
-from datetime import datetime
+from receipt.local_time import uk_now
 from email.utils import parsedate_to_datetime
 from zoneinfo import ZoneInfo
 from services.public_sources import download
@@ -14,9 +14,7 @@ def stories(
     from services.safe_xml import parse_feed
     root = parse_feed(download('News feed', url, params=params))
 
-    now = datetime.now(
-        ZoneInfo("Europe/London")
-    )
+    now = uk_now()
 
     stories = []
 

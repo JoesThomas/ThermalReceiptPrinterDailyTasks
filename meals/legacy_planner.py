@@ -267,14 +267,17 @@ def _section(ingredient: str) -> str:
     return "TINNED / DRY"
 
 
-def build_shopping_list(plan: dict) -> dict[str, list[str]]:
+def build_shopping_list(plan: dict, include_away=False) -> dict[str, list[str]]:
     grouped: dict[str, list[str]] = defaultdict(list)
     seen = set()
+    from meals.remaining import needs_dinner
+    from receipt.local_time import uk_today
+    today = uk_today()
     for meal in plan.get("meals", []):
         if meal.get("kind") != "recipe":
             continue
         r = meal["recipe"]
-        for item in r.get("ingredients", []):
+        for item in r.get("ingredients", []) if needs_dinner(meal, today, away=(lambda day: False) if include_away else None) else []:
             key = _normalise_item(item)
             if key and key not in seen and not _pantry_has(item):
                 grouped[_section(item)].append(item)
@@ -283,7 +286,7 @@ def build_shopping_list(plan: dict) -> dict[str, list[str]]:
         next_day = meal_day + timedelta(days=1)
         lunch_override = _override_for(next_day, "lunch")
         from receipt.lifestyle import skip_meal
-        lunch = {} if skip_meal(next_day) or lunch_override and lunch_override.get("type") in {"buy_lunch", "eat_out"} else r.get("lunch", {})
+        lunch = {} if next_day < today or skip_meal(next_day) or lunch_override and lunch_override.get("type") in {"buy_lunch", "eat_out"} else r.get("lunch", {})
         for item in lunch.get("extra_ingredients", []):
             key = _normalise_item(item)
             if key and key not in seen and not _pantry_has(item):
@@ -296,8 +299,9 @@ def build_sunday_prep(plan: dict) -> list[dict]:
     components = _load(COMPONENTS_FILE, {}).get("components", [])
     by_id = {c.get("id"): c for c in components}
     needs: dict[str, list[str]] = defaultdict(list)
+    from meals.remaining import needs_dinner
     for meal in plan.get("meals", []):
-        if meal.get("kind") != "recipe":
+        if not needs_dinner(meal):
             continue
         r = meal["recipe"]
         for ref in r.get("prep_components", []):

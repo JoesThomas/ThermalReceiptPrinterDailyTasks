@@ -1,6 +1,7 @@
 """Live receipt pipeline migrated from the former legacy_main entrypoint.
 This module is invoked by app.py; it is no longer an application entrypoint.
 """
+from receipt.local_time import uk_today
 from services.vehicle_status import (
     get_vehicle_status,
     expiring_vehicle_items,
@@ -1105,7 +1106,7 @@ def _collect_upcoming_deliveries():
 
 def get_upcoming_deliveries():
     from services.source_cache import get
-    today = datetime.now(ZoneInfo('Europe/London')).date()
+    today = uk_today()
     def collect():
         rows = _collect_upcoming_deliveries()
         if globals().get('_gmail_fetch_failed'):
@@ -1561,94 +1562,13 @@ def print_weather_graphic(printer, code):
     centre(printer, '')
 
 def get_weather(latitude=DEFAULT_LOCATION["latitude"], longitude=DEFAULT_LOCATION["longitude"]):
-    url = "https://api.open-meteo.com/v1/forecast"
-
-    params = {
-        "latitude": latitude,
-        "longitude": longitude,
-        "current": (
-            "temperature_2m,"
-            "relative_humidity_2m,"
-            "apparent_temperature,"
-            "weather_code,"
-            "surface_pressure,"
-            "wind_speed_10m,"
-            "wind_direction_10m"
-        ),
-        "hourly": (
-            "temperature_2m,"
-            "relative_humidity_2m,"
-            "wind_speed_10m,"
-            "wind_gusts_10m,"
-            "precipitation_probability,"
-            "precipitation,"
-            "visibility,"
-            "weather_code"
-        ),
-        "daily": (
-            "temperature_2m_max,"
-            "temperature_2m_min,"
-            "sunrise,"
-            "sunset,"
-            "precipitation_probability_max"
-        ),
-        "forecast_days": 1,
-        "temperature_unit": "celsius",
-        "wind_speed_unit": "kmh",
-        "pressure_unit": "hPa",
-        "timezone": "Europe/London",
-    }
-
-    from services.public_sources import weather
-    return weather(url, params)
+    from services.weather_source import get_weather as collect
+    return collect(latitude, longitude)
 
 
-def get_hourly_weather(
-    weather,
-    interval_hours=4,
-):
-    hourly = weather["hourly"]
-    readings = []
-
-    for i, timestamp in enumerate(
-        hourly["time"]
-    ):
-        dt = datetime.fromisoformat(
-            timestamp
-        )
-
-        if dt.hour % interval_hours != 0:
-            continue
-
-        readings.append({
-            "time": dt.strftime("%H:%M"),
-            "temperature": (
-                hourly[
-                    "temperature_2m"
-                ][i]
-            ),
-            "humidity": (
-                hourly[
-                    "relative_humidity_2m"
-                ][i]
-            ),
-            "wind": (
-                hourly[
-                    "wind_speed_10m"
-                ][i]
-            ),
-            "gust": (hourly.get("wind_gusts_10m") or [0] * len(hourly["time"]))[i],
-            "precip_probability": (hourly.get("precipitation_probability") or [0] * len(hourly["time"]))[i],
-            "precipitation": (hourly.get("precipitation") or [0] * len(hourly["time"]))[i],
-            "visibility": (hourly.get("visibility") or [99999] * len(hourly["time"]))[i],
-            "code": (
-                hourly[
-                    "weather_code"
-                ][i]
-            ),
-        })
-
-    return readings
+def get_hourly_weather(weather, interval_hours=4):
+    from services.weather_source import get_hourly_weather as readings
+    return readings(weather, interval_hours)
 
 
 # ============================================================
@@ -1693,9 +1613,8 @@ def get_random_lines(number_of_lines):
            f"{extract_google_doc_id(GOOGLE_DOC_2_URL)}/export?format=txt")
 
     try:
-        response = requests.get(url, timeout=15)
-        response.raise_for_status()
-        full_text = response.text
+        from services.public_sources import document
+        full_text = document(url)
 
         # 2. Split text into lines and strip trailing whitespace/newlines
         raw_lines = full_text.splitlines()
@@ -1715,8 +1634,8 @@ def get_random_lines(number_of_lines):
         allfiles = "\n".join(random_lines)
         return allfiles
 
-    except requests.exceptions.RequestException as e:
-        return f"Error fetching document: {e}"
+    except (requests.exceptions.RequestException, ValueError, OSError):
+        return "Document unavailable; try again later."
 
 # ============================================================
 # GOOGLE CALENDAR
@@ -1725,7 +1644,7 @@ def get_random_lines(number_of_lines):
 def get_calendar_events(ical_url, days_ahead=0):
     from services.source_cache import get
     from services.calendar_source import collect
-    today = datetime.now(ZoneInfo('Europe/London')).date()
+    today = uk_today()
     if not isinstance(days_ahead, int) or not 0 <= days_ahead <= 31:
         raise ValueError('Calendar range must be 0–31 days')
     from services.calendar_locations import apply

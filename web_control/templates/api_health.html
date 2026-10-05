@@ -22,6 +22,19 @@
                 {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
             {% endwith %}
             <section>
+                <details>
+                    <summary>Local project checks</summary>
+                    <p class="muted">Read-only checks of configuration, files and recorded source results. No printer or bank requests.</p>
+                    <ul>
+                        {% for check in local_checks %}
+                            <li>
+                                <strong>{{ check.name }}</strong> · {{ 'OK' if check.ok else 'Needs attention' }} · {{ check.detail }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </details>
+            </section>
+            <section>
                 <h2>{{ 'Checking integrations…' if running else 'Latest checks' }}</h2>
                 {% if running %}
                     <p role="status">{{ current_service or 'Starting' }}</p>

@@ -593,6 +593,7 @@ def change_today_meal():
     plan["meals"] = [({"date": today.isoformat(), "kind": "recipe", "recipe": selected}
                      if item.get("date") == today.isoformat() else item)
                      for item in plan["meals"]]
+    clear_meal_confirmation(today)
     plan["shopping"] = meals.build_shopping_list(plan)
     plan["prep"] = meals.build_sunday_prep(plan)
     plan["estimated_cost"] = meals.estimate_week_cost(plan)

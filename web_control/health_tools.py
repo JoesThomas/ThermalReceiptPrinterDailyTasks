@@ -26,8 +26,10 @@ def register(app,login_required):
                              duration=row.get('duration_ms'),failures=row.get('failures',0),
                              mode='Periodic check' if name in active else 'Observed during normal use',
                              history=[dict(item,local=uk_receipt_time(item.get('checked_at'))) for item in reversed(history)]))
+        from health import run_health_checks
+        local_checks = run_health_checks()
         running=health.running()
-        return render_template('api_health.html',rows=rows,health_options=config,intervals=health.INTERVALS,
+        return render_template('api_health.html',rows=rows,local_checks=local_checks,health_options=config,intervals=health.INTERVALS,
                                running=running,current_service=state.get('current_service',''),last_cycle=uk_receipt_time(state.get('last_cycle')))
 
     @app.post('/api-health/settings')

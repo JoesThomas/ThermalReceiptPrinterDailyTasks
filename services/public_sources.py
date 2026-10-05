@@ -24,10 +24,9 @@ def download(name, url, params=None):
 
 
 def cached(name, url, count, collect):
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
+    from receipt.local_time import uk_today
     # Never carry yesterday's headlines forward into today's receipt.
-    today = datetime.now(ZoneInfo('Europe/London')).date().isoformat()
+    today = uk_today().isoformat()
     return get(name, json.dumps([url, count, today]), collect, ttl=300, max_age=3600)
 
 

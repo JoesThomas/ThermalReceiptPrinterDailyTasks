@@ -444,3 +444,13 @@ The private rental ledger links bank-observed rental credits to one recorded pro
 The expandable Needs updating panel brings together bank coverage, repayment/date warnings and stale property records. Monthly summaries can be explicitly frozen once per month, preserving the observation date, bank window/scope, totals and forecast/tax assumptions. A partial observation remains labelled partial; later data cannot replace the frozen record.
 
 Receipt asset/tax detail is expanded after an input change or in a new calendar month; otherwise a compact current-value reminder is printed. Only a successfully sent finance receipt commits the detail signature. Previews and failed sends do not suppress future detail. Private rental ledgers, plans and frozen summaries are backed up and excluded from Git.
+
+### Source resilience and local checks
+
+`python main.py --health` runs read-only configuration, meal-data, application-file and recorded-source checks. The same checks appear under **Integration health → Local project checks**. It does not contact your bank, mailbox or printer. Source timestamps describe the last successful fetch, rather than the time an old result was reused.
+
+Public downloads use connection/read timeouts, a download deadline and size limits; calendar recurrence parsing runs in a disposable worker with its own timeout. Task and optional random-line documents now share the bounded document collector. Calendar and delivery caches retain complete last-good results when a refresh fails or returns only partial mailbox data. Cached results expire; news and weather cache keys include the local date so yesterday's content is not silently reused. The overall receipt job watchdog remains the final deadline.
+
+Weather fetching and hourly transformation live in `services/weather_source.py`; receipt rendering and section order remain in the live pipeline. UK scheduling uses `receipt/local_time.py`, including spring clock gaps and repeated autumn times.
+
+Shopping and preparation are recalculated from remaining home meals, pantry contents, Away dates and meal confirmations. Past or confirmed dinners do not add dinner ingredients; next-day lunch extras remain where needed. Shared ingredients stay if another meal needs them. Replacing today's dinner clears its earlier confirmation. Manually entered shopping items remain separate.

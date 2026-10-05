@@ -71,7 +71,10 @@ def get(name, identity, collect, *, ttl=300, max_age=86400):
             if not isinstance(result, list): raise ValueError('Invalid source result')
             packed = encode(result)
             if len(json.dumps(packed).encode()) > 2_000_000: raise ValueError('Source result too large')
-            row = {'result': packed, 'saved_epoch': time.time(), 'source_checked_at': datetime.now(timezone.utc).isoformat()}
+            if status == 'partial' and has_cache:
+                result, status = cached_result, 'cached after partial result'
+            else:
+                row = {'result': packed, 'saved_epoch': time.time(), 'source_checked_at': datetime.now(timezone.utc).isoformat()}
         except Exception:
             if not has_cache:
                 record(identity, {**row, 'name': name, 'status': 'unavailable', 'duration_ms': round((time.monotonic()-start)*1000),
@@ -106,7 +109,7 @@ def refresh():
 def timings():
     rows = {}
     for row in load().values():
-        if isinstance(row, dict) and row.get('name') in {'Calendar', 'Deliveries'}:
+        if isinstance(row, dict) and isinstance(row.get('name'), str):
             old = rows.get(row['name'], {})
             if row.get('attempted_at', '') > old.get('attempted_at', ''):
                 rows[row['name']] = {key: row.get(key) for key in ('name','status','duration_ms','attempted_at','source_checked_at')}

@@ -17,7 +17,7 @@ class AwayPreferenceTests(unittest.TestCase):
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()
         self.root = Path(self.folder.name)
-        self.patches = [patch.object(lifestyle, 'FILE', self.root/'data'/'lifestyle.json'), patch.object(payment_explanations, 'FILE', self.root/'data'/'finance_explanations.json')]
+        self.patches = [patch('receipt.local_time.uk_today', return_value=date(2026,10,5)), patch.object(lifestyle, 'FILE', self.root/'data'/'lifestyle.json'), patch.object(payment_explanations, 'FILE', self.root/'data'/'finance_explanations.json')]
         for item in self.patches: item.start()
     def tearDown(self):
         for item in reversed(self.patches): item.stop()

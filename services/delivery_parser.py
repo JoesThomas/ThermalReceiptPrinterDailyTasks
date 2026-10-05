@@ -1,4 +1,5 @@
 """Pure email-to-delivery parsing, independent of mail and printer clients."""
+from receipt.local_time import uk_now
 import re
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -12,7 +13,7 @@ def parse(email_subject, email_body, reference_date=None, *, sanitize, parse_dat
     delivered_patterns = ('\\bhas been delivered\\b', '\\bwas delivered\\b', "\\bwe(?:'ve| have) delivered\\b", '\\bparcel delivered\\b', '\\bpackage delivered\\b', '\\bdelivered successfully\\b', '\\bdelivered to\\b', '\\bproof of delivery\\b')
     if any((re.search(pattern, lower_text) for pattern in delivered_patterns)):
         return None
-    today = reference_date or datetime.now(ZoneInfo('Europe/London')).date()
+    today = reference_date or uk_now().date()
     carrier = None
     carrier_patterns = (('EVRI', ('evri', 'myhermes', 'hermes parcel')), ('ROYAL MAIL', ('royal mail',)), ('AMAZON', ('amazon',)), ('DPD', ('dpd',)), ('DHL', ('dhl',)), ('YODEL', ('yodel',)), ('PARCELFORCE', ('parcelforce',)), ('UPS', ('ups', 'united parcel service')), ('FEDEX', ('fedex', 'federal express')))
     for carrier_name, identifiers in carrier_patterns:
