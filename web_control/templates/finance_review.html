@@ -33,6 +33,7 @@
             {% endwith %}
             {% include 'renewal_reminders.html' %}
             {% include 'rental_tax_summary.html' %}
+            {% include 'asset_summary.html' %}
             {% if has_uncertain_payments %}
                 <a class="button" href="{{ url_for('finance_reconciliation') }}">Review uncertain payments</a>
             {% endif %}
@@ -40,7 +41,7 @@
                 {% if not error %}
                     <a href="#finance-overview">Overview</a><a href="#finance-activity">Income & spending</a><a href="#finance-bills">Bills & repayments</a><a href="#finance-forecast">Cash runway</a>
                 {% endif %}
-                <a href="/finance/tax">Rental tax planning</a><a href="#finance-savings">Savings</a><a href="{{ url_for('finance_planning_page') }}">Private plans</a>
+                <a href="/finance/assets">Property assets</a><a href="/finance/tax">Rental tax planning</a><a href="#finance-savings">Savings</a><a href="{{ url_for('finance_planning_page') }}">Private plans</a>
             </nav>
             {% if error %}
                 <section id="finance-overview" class="helper" role="status">
@@ -73,9 +74,28 @@
                     </p>
                 </section>
                 {% include 'salary_plan.html' %}
+                <details class="section-disclosure">
+                    <summary>Explain cash available and the forecast</summary>
+                    <section>
+                        <p>
+                            Current selected bank cash £{{ '%.2f'|format(projection.cash) if projection.cash is not none else 'Unavailable' }} minus protected reserves £{{ '%.2f'|format(projection.buffer) }}, minus scheduled payments on their dates and estimated everyday spending £{{ '%.2f'|format(projection.daily) }} per day.
+                        </p>
+                        <p>
+                            Everyday spending uses the returned last 30 days after configured bill matches and Amazon shopping are excluded, unless you entered a daily spending override. The forecast includes no future salary or rental receipts. Use What if? for hypothetical income.
+                        </p>
+                        <p>
+                            Before-payday commitment total: £{{ '%.2f'|format(projection.before_payday_total) }}. The displayed safe-to-spend figure reserves commitments; the salary-plan surplus also reserves estimated everyday spending and planned savings.
+                        </p>
+                        <p class="muted">
+                            Bank data must be complete and repayment assumptions recorded. Property values never increase these cash figures.
+                        </p>
+                    </section>
+                </details>
+
                 {% include 'cash_reserve.html' %}
                 {% include 'finance_insights.html' %}
                 {% include 'finance_planning.html' %}
+                {% include 'cash_scenario.html' %}
                 <div class="finance-group" id="finance-activity">
                     <div class="finance-section-heading">
                         <div>

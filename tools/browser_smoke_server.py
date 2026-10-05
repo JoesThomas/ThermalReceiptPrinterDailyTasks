@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 folder = tempfile.TemporaryDirectory()
 copy = Path(folder.name) / 'project'
 shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns('.git', 'data', 'logs', '__pycache__', '*.json', 'secret_key.txt'))
+shutil.copy2(ROOT / 'finance' / 'tax_rules.json', copy / 'finance' / 'tax_rules.json')
 (copy / 'web_control' / 'secret_key.txt').write_text('browser-test-only-secret')
 sys.path[:0] = [str(copy / 'web_control'), str(copy)]
 print("Fixture files ready", file=sys.stderr, flush=True)

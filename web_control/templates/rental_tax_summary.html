@@ -1,6 +1,6 @@
 {% if rental_tax %}
     <details class="section-disclosure" open>
-        <summary>Rental tax estimate · 2026/27</summary>
+        <summary>Rental tax estimate · {{ rental_tax.year }}</summary>
         <section>
             <h2>Rental income and tax reserve</h2>
             <div class="finance-metrics">
@@ -23,6 +23,27 @@
             <p class="muted">
                 {{ 'The annual tax reserve is protected in cash forecasts and savings suggestions.' if rental_tax.protect else 'This is an information-only estimate. Enable reserve protection in tax settings to exclude it from spending and savings suggestions.' }} Manual full-year assumptions; not a verified tax bill.
             </p>
+            <details>
+                <summary>How this estimate was calculated</summary>
+                <p>
+                    Gross rent £{{ '%.2f'|format(rental_tax.rent) }} − chosen deduction £{{ '%.2f'|format(rental_tax.deduction) }} − losses used £{{ '%.2f'|format(rental_tax.losses_used) }} = taxable rental profit £{{ '%.2f'|format(rental_tax.profit) }} (minimum zero).
+                </p>
+                <p>
+                    Other taxable income £{{ '%.2f'|format(rental_tax.other_income) }} + rental profit = £{{ '%.2f'|format(rental_tax.taxable_total) }}. Personal Allowance after taper: £{{ '%.2f'|format(rental_tax.allowance) }}.
+                </p>
+                <p>
+                    Combined Income Tax £{{ '%.2f'|format(rental_tax.combined_tax) }} − tax without rent £{{ '%.2f'|format(rental_tax.base_tax) }} − eligible finance-cost relief £{{ '%.2f'|format(rental_tax.relief) }} = additional rental tax £{{ '%.2f'|format(rental_tax.tax) }} (minimum zero).
+                </p>
+                <p>Monthly reserve: remaining gap ÷ {{ rental_tax.months }} tax-month slots, rounded up to a penny.</p>
+                <p class="muted">
+                    Rules {{ rental_tax.rules.version }} · checked {{ rental_tax.rules.verified_on }}. Rule versions are separate from private annual figures.
+                </p>
+                {% for source in rental_tax.rules.sources %}
+                    <p>
+                        <a href="{{ source }}">HMRC rule source</a>
+                    </p>
+                {% endfor %}
+            </details>
             <a href="/finance/tax">Edit private tax settings and see assumptions</a>
         </section>
     </details>

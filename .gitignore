@@ -182,3 +182,6 @@ data/recent_print_request.json
 
 data/rental_tax.json
 data/rental_tax.lock
+
+data/assets.json
+data/assets.lock

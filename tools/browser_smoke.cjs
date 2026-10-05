@@ -5,6 +5,7 @@ const {spawn} = require('node:child_process');
 const readline = require('node:readline');
 const child = spawn(process.env.RECEIPT_TEST_PYTHON || 'python', ['tools/browser_smoke_server.py', '--stdio'], {stdio:['pipe','pipe','inherit']});
 const waiting = [];
+child.on('exit', code => {if(code) while(waiting.length) waiting.shift().reject(new Error('Browser fixture exited: '+code));});
 readline.createInterface({input:child.stdout}).on('line', line => { const item=waiting.shift(); if (item) item.resolve(JSON.parse(line)); });
 let queue=Promise.resolve();
 function request(value) {
@@ -58,6 +59,25 @@ process.on('exit', () => child.kill());
   await Promise.all([page.waitForURL('**/finance/tax'), tax.getByRole('button', {name:'Save and calculate'}).click()]);
   assert.match(await page.locator('main').innerText(), /Estimated additional rental tax/);
   assert.match(await page.locator('main').innerText(), /£0.00/);
+  await page.goto('http://receipt.test/finance/assets');
+  let mortgage = page.locator('form[action$="/finance/assets"]').filter({has:page.locator('input[name=kind][value=mortgages]')}).last();
+  await mortgage.locator('input[name=name]').fill('Test mortgage');
+  await mortgage.locator('input[name=balance]').fill('60000');
+  await Promise.all([page.waitForURL('**/finance/assets'),mortgage.getByRole('button',{name:'Add mortgage'}).click()]);
+  let property = page.locator('form[action$="/finance/assets"]').filter({has:page.locator('input[name=kind][value=properties]')}).first();
+  await property.locator('input[name=name]').fill('Test property');
+  await property.locator('textarea[name=address]').fill('Private fixture address');
+  await property.locator('input[name=value]').fill('200000');
+  await property.locator('select[name=mortgage]').selectOption({label:'Test mortgage'});
+  await Promise.all([page.waitForURL('**/finance/assets'),property.getByRole('button',{name:'Save property'}).click()]);
+  assert.match(await page.locator('main').innerText(), /£140000.00/);
+  await page.goto('http://receipt.test/finance/planning');
+  const scenario = page.locator('form[action$="/finance/scenario"]');
+  await scenario.evaluate(el => {for(let p=el.parentElement;p;p=p.parentElement) if(p.tagName==='DETAILS') p.open=true;});
+  await scenario.locator('input[name=salary]').fill('4500');
+  await scenario.locator('input[name=rent]').fill('800');
+  await Promise.all([page.waitForURL('**/finance/planning'),scenario.getByRole('button',{name:'Save private scenario'}).click()]);
+  assert.match(await page.locator('main').innerText(), /Hypothetical scenario saved privately/);
   await page.goto('http://receipt.test/preview?source=live');
   const preview = page.locator('form[action$="/preview/generate"]').last();
   await Promise.all([page.waitForURL('**/preview?source=live'), preview.locator('button').first().click()]);
@@ -65,7 +85,7 @@ process.on('exit', () => child.kill());
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
-    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax']) {
+    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning']) {
       await page.goto('http://receipt.test'+path);
       await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `${path} overflows at ${width}`);
@@ -77,7 +97,7 @@ process.on('exit', () => child.kill());
     await page.goto('http://receipt.test/bins');
     await page.screenshot({path:process.env.RECEIPT_BROWSER_SCREENSHOT, fullPage:true});
   }
-  console.log(`Browser checks passed: 6 form flows, ${checks} responsive layouts`);
+  console.log(`Browser checks passed: 9 form flows, ${checks} responsive layouts`);
   await browser.close();
   child.kill();
 })().catch(error => { console.error(error); process.exit(1); });

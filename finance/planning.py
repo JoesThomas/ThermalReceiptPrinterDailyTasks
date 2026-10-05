@@ -25,6 +25,9 @@ def validate(value):
             if money(row.get('amount')) is None or money(row['amount'])<0 or money(row['amount'])>10000000: raise ValueError('Enter a valid positive amount')
             if field=='purchases' and (not day(row.get('date')) or type(row.get('enabled')) is not bool): raise ValueError('Enter a purchase date')
             if field=='priorities' and (row.get('kind') not in {'cash','premium','isa','other'} or type(row.get('priority')) is not int or not 1<=row['priority']<=100): raise ValueError('Invalid savings priority')
+    if 'cashflow' in value:
+        from finance.cash_scenarios import validate as validate_scenario
+        validate_scenario(value['cashflow'])
     reviews=value.get('reviews',{})
     if not isinstance(reviews,dict) or len(reviews)>60: raise ValueError('Invalid monthly reviews')
     from web_control.finance_insights import validate as validate_snapshots

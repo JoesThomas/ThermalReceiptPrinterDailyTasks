@@ -66,3 +66,15 @@ def register(app,login_required):
             planning.update(change);flash('Dated monthly review saved privately. Coverage limitations remain recorded.')
         except (OSError,ValueError,StopIteration,TypeError):flash('Choose an ended month with a valid saved observation.')
         return redirect(url_for('finance_planning_page'))
+
+    @app.post('/finance/scenario')
+    @login_required
+    def save_cash_scenario():
+        from finance.cash_scenarios import DEFAULT,validate
+        value={key:request.form.get(key,'').strip() for key in DEFAULT}
+        try:
+            validate(value)
+            planning.update(lambda state:state.update(cashflow=value))
+            flash('Hypothetical scenario saved privately. Refresh Finance to compare; live balances and salary records are unchanged.')
+        except (ValueError,TypeError,OSError) as error:flash(str(error))
+        return redirect(url_for('finance_planning_page'))

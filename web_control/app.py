@@ -1293,10 +1293,19 @@ def finance_review():
                 'reminders':private_planning.reminders(projection,status['monthly'],status['yearly'],forecast_settings,today)}
         except (ValueError,TypeError,OSError,KeyError):
             planning_view={'error':'Private plans could not be read. Restore a valid backup.'}
+        from finance.assets import net_worth as build_net_worth
+        from finance.receipt import calculate_debt_and_payday
+        debt_view=calculate_debt_and_payday(projection['cash'] or 0, balances.get('AMEX',{}).get('current') or 0, finance_data[3], forecast_settings,today)
+        net_worth=build_net_worth(projection['cash'], savings_totals(savings_data)['total'], (wealth or {}).get('investments'), debt_view['debts'],forecast_settings,today)
+        if plans and plans.get('cashflow'):
+            from finance.cash_scenarios import build as build_cash_scenario
+            try: planning_view['cashflow_result']=build_cash_scenario(projection,plans['cashflow'],today)
+            except ValueError as error: planning_view['cashflow_result']={'valid':False,'reason':str(error)}
+        net_worth['complete']=net_worth['complete'] and bank_data_status=='complete' and balances.get('AMEX',{}).get('current') is not None
         from finance.credit_limits import summary as credit_summary
         from receipt.lifestyle import load as lifestyle_settings
         credit_cards=credit_summary(lifestyle_settings().get('credit_cards',[]), balances)
-        return render_template("finance_review.html", credit_cards=credit_cards, planning_view=planning_view, insights=insights, salary_plan=salary_plan, has_uncertain_payments=has_uncertain_payments, reviewable_payment_ids=reviewable_payment_ids, rows=rows, charts=charts,
+        return render_template("finance_review.html", net_worth=net_worth, credit_cards=credit_cards, planning_view=planning_view, insights=insights, salary_plan=salary_plan, has_uncertain_payments=has_uncertain_payments, reviewable_payment_ids=reviewable_payment_ids, rows=rows, charts=charts,
                                wealth=wealth, wealth_error=wealth_error, bonds_summary=bonds_summary,
                                month=month, income=income, cash_flow=cash_flow,
                                annual=annual,
@@ -1523,6 +1532,9 @@ register_explanations(app, login_required)
 
 from web_control.undo import register as register_undo
 register_undo(app, login_required)
+
+from web_control.asset_tools import register as register_asset_tools
+register_asset_tools(app, login_required)
 
 from web_control.tax_tools import register as register_tax_tools
 register_tax_tools(app, login_required)

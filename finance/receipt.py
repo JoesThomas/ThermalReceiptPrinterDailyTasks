@@ -148,11 +148,11 @@ def print_incoming_payments(printer, left, line, summary, total_outgoings, today
 
 def load_finance_settings(path=FINANCE_SETTINGS_FILE):
     path = Path(path)
-    if not path.exists():
-        return {}
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     if not isinstance(data, dict):
         raise ValueError("Finance settings must be an object")
+    from finance.assets import merged_debts
+    data["debts"] = merged_debts(data.get("debts", []))
     return data
 
 
@@ -681,6 +681,25 @@ def print_integrated_finance(
                 if allocation['reserve']['hsbc_gap']:
                     left(printer,_amount_line('HSBC BELOW RESERVE BY',allocation['reserve']['hsbc_gap']))
         except (ValueError,OSError,KeyError,TypeError): left(printer,'SALARY ALLOCATION UNAVAILABLE')
+
+    try:
+        from finance.assets import net_worth as asset_net_worth
+        asset_view=asset_net_worth(available_cash,st['total'],investment_totals(investment_data)['value'],debt_summary['debts'],finance_settings,today)
+        asset_view['complete']=asset_view['complete'] and spending_summary.get('bank_data_status','complete')=='complete' and all(balances.get(provider,{}).get('current') is not None or balances.get(provider,{}).get('available') is not None for provider in ('HSBC','MONZO','AMEX'))
+        recent_asset_change=any((p['latest'] and (today-date.fromisoformat(p['latest']['date'])).days<=7) or (p['mortgage_record'] and (today-date.fromisoformat(p['mortgage_record']['date'])).days<=7) for p in asset_view['properties'])
+        if asset_view['properties'] and (today.day<=7 or recent_asset_change):
+            printer.text("\n")
+            left(printer,'ASSETS & RECORDED NET WORTH [E]')
+            print_line(printer)
+            left(printer,_amount_line('OWNED PROPERTY VALUE',asset_view['owned_value']))
+            left(printer,_amount_line('PROPERTY EQUITY',asset_view['equity']))
+            left(printer,_amount_line('KNOWN DEBTS (ONCE)',asset_view['debt_total']))
+            left(printer,_amount_line('RECORDED NET WORTH',asset_view['known_total']))
+            if not asset_view['complete']:left(printer,'PARTIAL / CHECK MISSING VALUATIONS')
+            if asset_view['stale']:left(printer,'VALUATION OR MORTGAGE NEEDS UPDATE')
+            left(printer,'PROPERTY IS NOT SPENDABLE CASH')
+    except (ValueError,OSError,KeyError,TypeError):
+        left(printer,'ASSET SUMMARY UNAVAILABLE')
 
     # ==========================================
     # CATEGORY TRENDS

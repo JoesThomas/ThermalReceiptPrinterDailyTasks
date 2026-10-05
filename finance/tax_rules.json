@@ -1,0 +1,23 @@
+{
+  "2026/27": {
+    "version": "2026-27-ewni-v1",
+    "start": "2026-04-06",
+    "end": "2027-04-05",
+    "verified_on": "2026-10-05",
+    "region": "England/Wales/NI",
+    "personal_allowance": "12570",
+    "taper_start": "100000",
+    "basic_width": "37700",
+    "higher_width": "87440",
+    "basic_rate": "0.20",
+    "higher_rate": "0.40",
+    "additional_rate": "0.45",
+    "property_allowance": "1000",
+    "finance_relief_rate": "0.20",
+    "sources": [
+      "https://www.gov.uk/income-tax-rates",
+      "https://www.gov.uk/guidance/changes-to-tax-relief-for-residential-landlords-how-its-worked-out-including-case-studies",
+      "https://www.gov.uk/guidance/tax-free-allowances-on-property-and-trading-income"
+    ]
+  }
+}
