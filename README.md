@@ -454,3 +454,11 @@ Public downloads use connection/read timeouts, a download deadline and size limi
 Weather fetching and hourly transformation live in `services/weather_source.py`; receipt rendering and section order remain in the live pipeline. UK scheduling uses `receipt/local_time.py`, including spring clock gaps and repeated autumn times.
 
 Shopping and preparation are recalculated from remaining home meals, pantry contents, Away dates and meal confirmations. Past or confirmed dinners do not add dinner ingredients; next-day lunch extras remain where needed. Shared ingredients stay if another meal needs them. Replacing today's dinner clears its earlier confirmation. Manually entered shopping items remain separate.
+
+### Receipt exercise rotation
+
+The receipt cycles through only **bicep curls, shrugs, sit-ups, press-ups, rowing and jogging**. A four-day cycle (anchored on 6 October 2026) alternates strength, rowing, strength and jogging. Reprints on the same UK day keep the same selection. Starting targets are two sets of 10 curls, shrugs and sit-ups, two sets of 8 press-ups, 15 minutes steady rowing, or 20 minutes easy jogging with walking breaks if needed. These are adjustable starting targets, not a complete personalised training programme or the whole weekly activity recommendation. Warm up for five minutes and rest 60–90 seconds between strength sets; choose weights you can control comfortably.
+
+Targets and completion are stored privately in the exercise checklist and can be changed on **Exercises**. Configured equipment settings exclude curls/shrugs without dumbbells; a rowing day becomes a jogging day if a rowing machine is unavailable. With no equipment configuration, equipment requirements are printed. The receipt no longer fetches an exercise Google Doc. Additional workouts selected from the wider web library stay separate from the fixed receipt rotation.
+
+Starting strength targets follow the NHS guidance to begin gradually with at least two sets of 8–12 repetitions: https://www.nhs.uk/live-well/exercise/how-to-improve-strength-flexibility/ . Cardio durations are modest starting defaults chosen for this application, rather than prescribed NHS session lengths.

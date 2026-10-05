@@ -11,13 +11,16 @@ ROOT = Path(__file__).resolve().parents[1]
 def register(app, login_required):
     def display(kind):
         try:
+            if kind == 'exercises':
+                from actions.receipt_workout import plan
+                receipt_plan = plan()
             state = checklists.load()
             items = checklists.rows(kind)
         except ValueError as error:
             flash(str(error))
             items = []
             state = {'equipment': []}
-        chosen = {row['id'] for row in checklists.exercise_plan(5)} if kind == 'exercises' and items else set()
+        chosen = {row['id'] for row in receipt_plan} if kind == 'exercises' and items else set()
         items = [{**row, 'on_receipt': row['id'] in chosen} for row in items]
         query = request.args.get('q', '').strip().lower()
         for row in items:
@@ -32,6 +35,7 @@ def register(app, login_required):
         if query: items = [row for row in items if query in row['title'].lower()]
         return render_template('tasks.html', kind=kind, items=items,
                                done=sum(row['completed'] for row in items), selected=selected,
+                               additional_workout=checklists.exercise_plan(5) if kind == 'exercises' else [],
                                selected_done=sum(row['completed'] for row in selected),
                                equipment=checklists.EQUIPMENT, owned=state.get('equipment', []), query=query)
 
@@ -75,7 +79,7 @@ def register(app, login_required):
                 flash(f'Today’s workout now has {count} matching exercises.' if count else 'No confirmed exercises match. Add exercises or set equipment requirements in the library.')
             elif action == 'choose':
                 checklists.set_plan(request.form.getlist('exercise'))
-                flash('Today’s exercises saved for the receipt.')
+                flash('Additional web workout saved. The receipt keeps its six-exercise rotation.')
             else:
                 raise ValueError('Unknown workout action.')
         except ValueError as error:

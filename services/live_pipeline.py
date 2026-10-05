@@ -7064,14 +7064,22 @@ def print_random_document_lines(printer, text):
     printer.set(bold=False)
     print_line(printer, "-")
 
-    from actions.checklists import sync, exercise_plan
-    sync(text, 'exercises')
-    selected = exercise_plan(RANDOM_LINES)
+    from actions.receipt_workout import plan
+    selected = plan()
     pending = [row for row in selected if not row['completed']]
     for row in pending:
         print_wrapped(printer, f"[ ] {printer_safe_text(row['title'])}", width=40)
+    if pending:
+        left(printer, "Warm up 5 min; keep a comfortable pace.")
+        if any(row.get('sets') for row in pending):
+            left(printer, "Rest 60-90 sec between sets.")
+            left(printer, "Weights: controlled reps, no straining.")
+        required = {item for row in pending for item in row.get('required', [])}
+        if required:
+            from actions.checklists import EQUIPMENT
+            print_wrapped(printer, "Equipment: " + ", ".join(EQUIPMENT[key] for key in sorted(required)), width=40)
     if not pending:
-        left(printer, "TODAY'S EXERCISES COMPLETE" if selected else "NO EXERCISES LISTED")
+        left(printer, "TODAY'S EXERCISES COMPLETE" if selected else "NO EXERCISES SELECTED")
 
 BORING_WEATHER_CODES = {0, 1, 2, 3}
 
@@ -7992,17 +8000,8 @@ def run_live_pipeline(
         # ==========================================
 
         try:
-            preview_progress("Fetching exercises", 1, 5)
-            document_2 = (
-                get_google_doc_text(
-                    GOOGLE_DOC_2_URL
-                )
-            )
-
-            print_random_document_lines(
-                printer,
-                document_2,
-            )
+            preview_progress("Preparing exercise rotation", 1, 5)
+            print_random_document_lines(printer, "")
 
         except Exception as error:
             print(

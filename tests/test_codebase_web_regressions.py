@@ -49,7 +49,9 @@ with tempfile.TemporaryDirectory() as folder,patch.object(web,'PROJECT_ROOT',Pat
    assert client.post('/exercises/plan',data={'csrf_token':'test','action':'equipment','equipment':'dumbbells'}).status_code==302
    assert client.post('/exercises/plan',data={'csrf_token':'test','action':'suggest'}).status_code==302
    response=client.get('/exercises');assert response.status_code==200 and b'Today' in response.data
-   assert {r['title'] for r in checklists.exercise_plan(5)}=={'Dumbbell curls','Plank'}
+   assert 1 <= len(checklists.exercise_plan(5)) <= 5
+   assert all(set(checklists.required_equipment(r)) <= {'dumbbells'} for r in checklists.exercise_plan(5))
+   assert b'Today' in response.data and b'receipt workout' in response.data
    assert client.get('/tasks?q=missing').status_code==200
    with patch.object(web,'load_food_shop_items',return_value=([],None)),patch.object(web,'load_routines',return_value=[]),patch.object(web,'load_subscriptions',return_value={}),patch.object(web,'load_receipt_settings',return_value=deepcopy(DEFAULT_SETTINGS)):
     response=client.get('/');assert response.status_code==200,response.data

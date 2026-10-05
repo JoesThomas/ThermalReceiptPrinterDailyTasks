@@ -61,8 +61,10 @@ class DailyChecklistTests(unittest.TestCase):
                      'left': lambda *args: None, 'printer_safe_text': str,
                      'print_wrapped': lambda printer, value, width: printed.append(value)}
         exec(compile(ast.Module(body=[function], type_ignores=[]), '<exercises>', 'exec'), namespace)
-        namespace['print_random_document_lines'](SimpleNamespace(set=lambda **kw: None), 'Squats 3 sets of 10')
-        self.assertEqual(printed, ['[ ] Squats 3 sets of 10'])
+        with patch.object(lists, 'today', return_value='2026-10-06'):
+            namespace['print_random_document_lines'](SimpleNamespace(set=lambda **kw: None), 'Squats 3 sets of 10')
+        self.assertTrue(any('Bicep curls' in line for line in printed))
+        self.assertFalse(any('Squats' in line for line in printed))
 
     def test_equipment_suggestion_and_receipt_follow_saved_plan(self):
         lists.sync('Dumb bell curls\nRowing\nPlank\nUnknown exercise', 'exercises')

@@ -60,7 +60,8 @@ def dashboard():
     errors = []
     try:
         tasks = [r for r in checklists.rows('tasks') if not r['completed'] and (not r.get('due') or r['due'] <= checklists.today())]
-        exercises = checklists.exercise_plan(5)
+        from actions.receipt_workout import plan
+        exercises = plan()
     except ValueError:
         tasks, exercises = [], []
         errors.append('Saved task lists could not be read.')

@@ -15,7 +15,7 @@
                 <p class="eyebrow">{{ 'Daily movement' if kind == 'exercises' else 'Small steps for today' }}</p>
                 <h1>{{ 'Exercises' if kind == 'exercises' else 'To-do list' }}</h1>
                 <p class="muted">
-                    {{ 'Choose today’s exercises, tick them off, and keep your equipment up to date. Completion resets each UK day.' if kind == 'exercises' else 'Finish a task, undo a tick or add a local item. Completed tasks stay off newly generated receipts until you undo them.' }}
+                    {{ 'Tick off the receipt rotation, adjust targets in the library, and keep your equipment up to date. Completion resets each UK day.' if kind == 'exercises' else 'Finish a task, undo a tick or add a local item. Completed tasks stay off newly generated receipts until you undo them.' }}
                 </p>
             </header>
             <nav class="finance-jumps" aria-label="Task views">
@@ -28,7 +28,10 @@
             {% endwith %}
             {% if kind == 'exercises' %}
                 <section>
-                    <h2>Today’s workout</h2>
+                    <h2>Today’s receipt workout</h2>
+                    <p class="muted">
+                        Strength, rowing, strength, jogging: a four-day rotation using only curls, shrugs, sit-ups, press-ups, rowing and jogging. Start comfortably and adjust the targets in each exercise’s options.
+                    </p>
                     <p>{{ selected_done }} of {{ selected|length }} exercises complete</p>
                     <progress max="{{ selected|length or 1 }}"
                               value="{{ selected_done }}"
@@ -54,10 +57,10 @@
                     {% endfor %}
                     <form method="post" action="{{ url_for('exercise_workout') }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button class="primary" name="action" value="suggest">Suggest workout with my equipment</button>
+                        <button class="primary" name="action" value="suggest">Suggest an additional web workout</button>
                     </form>
                     <p class="muted">
-                        Chooses up to five exercises from your library. Set equipment requirements in each exercise’s options; unfamiliar exercises without confirmed requirements are left out. Review the instructions and suitability before starting. This is a selection tool, not a tailored training programme.
+                        Additional workouts are shown here only; the receipt keeps its fixed rotation. Chooses up to five exercises from your library. Set equipment requirements in each exercise’s options; unfamiliar exercises without confirmed requirements are left out. Review the instructions and suitability before starting. This is a selection tool, not a tailored training programme.
                     </p>
                     <details>
                         <summary>Equipment I have access to</summary>
@@ -76,7 +79,17 @@
                         </form>
                     </details>
                     <details>
-                        <summary>Choose today’s exercises myself</summary>
+                        <summary>Additional web workout</summary>
+                        <ul>
+                            {% for exercise in additional_workout %}
+                                <li>{{ exercise.title }}{{ ' · Complete' if exercise.completed else '' }}</li>
+                            {% else %}
+                                <li>No additional workout selected.</li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                    <details>
+                        <summary>Choose an additional web workout</summary>
                         <form method="post" action="{{ url_for('exercise_workout') }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             {% for item in items %}
@@ -84,12 +97,12 @@
                                     <input type="checkbox"
                                            name="exercise"
                                            value="{{ item.id }}"
-                                           {% if item.on_receipt %}checked{% endif %}>
+                                           {% if item.id in additional_workout|map(attribute="id")|list %}checked{% endif %}>
                                     {{ item.title }}
                                 </label>
                             {% endfor %}
                             <p class="muted">Choose up to five. Manual choices can include equipment you haven’t marked as available.</p>
-                            <button name="action" value="choose">Use these today</button>
+                            <button name="action" value="choose">Save additional workout</button>
                         </form>
                     </details>
                 </section>
