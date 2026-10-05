@@ -89,3 +89,25 @@ class BinCollectionTests(unittest.TestCase):
         parser=bins.CouncilHTML();parser.feed('<select name="uprn"><option value="">Choose</option><option value="100000000001">Example &amp; Road</option></select>')
         with patch.object(bins,'council_html',return_value=parser):
             self.assertEqual(bins.addresses('B1 1AA')[0],{'uprn':'100000000001','address':'Example & Road'})
+
+    def test_manual_web_save_needs_no_address_and_keeps_invalid_draft(self):
+        from flask import Flask
+        from web_control.bin_tools import register
+        app = Flask(__name__, template_folder=str(Path('web_control/templates').resolve()))
+        app.secret_key = 'test-only'
+        app.jinja_env.globals['csrf_token'] = lambda: 'test'
+        register(app, lambda view: view)
+        with app.test_client() as client, patch.object(bins, 'refresh') as refresh:
+            response = client.post('/bins/manual', data={'manual': '2026-10-05 | Recycling | 14', 'enabled': 'on'})
+            self.assertEqual(response.status_code, 302)
+            state = bins.load()
+            self.assertEqual(state['provider'], 'manual')
+            self.assertTrue(state['enabled'])
+            self.assertEqual(state['address'], '')
+            self.assertEqual(bins.due_on(state, date(2026,10,5)), ['Recycling'])
+            refresh.assert_not_called()
+            with patch('web_control.bin_tools.render_template', return_value='draft retained') as render:
+                response = client.post('/bins/manual', data={'manual': 'bad date'})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(render.call_args.kwargs['manual'], 'bad date')
+            self.assertEqual(bins.load()['manual'], state['manual'])

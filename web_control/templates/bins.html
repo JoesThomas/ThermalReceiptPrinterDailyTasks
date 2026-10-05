@@ -54,6 +54,30 @@
                     {% endif %}
                 {% endif %}
             </section>
+            <section id="manual-schedule">
+                <h2>Use your own collection dates</h2>
+                <p class="muted">
+                    Enter date | bin name | repeat days, one per line. Use 0 for a single collection, or 7, 14 or 28 for repeating dates. No council lookup or property reference is needed. Update bank-holiday changes yourself.
+                </p>
+                <form method="post" action="{{ url_for('bin_manual_save') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label for="manual-collections">Manual collections</label>
+                    <textarea id="manual-collections"
+                              name="manual"
+                              rows="7"
+                              maxlength="50000"
+                              placeholder="YYYY-MM-DD | bin name | 7"
+                              required>{{ manual }}</textarea>
+                    <label>
+                        <input type="checkbox"
+                               name="enabled"
+                               {% if bins.enabled or not bins.manual %}checked{% endif %}>
+                        Include day-before reminders
+                    </label>
+                    <p class="muted">Saving here switches the schedule source to Manual and keeps your saved address.</p>
+                    <button class="primary">Use manual schedule</button>
+                </form>
+            </section>
             <section>
                 <h2>Find a Birmingham address</h2>
                 <form method="post"
@@ -136,18 +160,10 @@
                                inputmode="numeric"
                                maxlength="12">
                     </label>
-                    <details>
-                        <summary>Manual schedule / other councils</summary>
-                        <p class="muted">
-                            Enter date | bin name | repeat days, one per line. Use 0 for a single collection, or 7, 14 or 28 for a repeating schedule. Use the bin labels from your council; dates are not inferred from colours. Switch the source to Manual to use these dates. Update bank-holiday changes yourself.
-                        </p>
-                        <label>
-                            Manual collections<textarea name="manual"
-          rows="7"
-          maxlength="50000"
-          placeholder="YYYY-MM-DD | bin name | 7">{{ manual }}</textarea>
-                        </label>
-                    </details>
+                    <input type="hidden" name="manual" value="{{ manual }}">
+                    <p class="muted">
+                        To edit your collection dates, use the <a href="#manual-schedule">manual schedule above</a>.
+                    </p>
                     <button class="primary">Save address & schedule</button>
                 </form>
             </section>

@@ -6,13 +6,13 @@ from receipt.local_time import uk_receipt_time
 
 
 def register(app, login_required):
-    def display(choices=None, code=''):
+    def display(choices=None, code='', manual_draft=None):
         try: state=bins.load()
         except ValueError as error:
             flash(str(error));state=dict(bins.DEFAULT)
         return render_template('bins.html',bins=state,choices=choices or [],lookup_postcode=code,
                                checked=uk_receipt_time(state.get('last_success')),
-                               manual=bins.manual_text(state['manual']),
+                               manual=manual_draft if manual_draft is not None else bins.manual_text(state['manual']),
                                tomorrow=bins.due_on(state,bins.today()+timedelta(days=1)))
 
     @app.get('/bins')
@@ -43,6 +43,23 @@ def register(app, login_required):
             state=bins.refresh(force=True)
             flash('Bin settings saved.' + (' Council check failed; see the status below.' if state.get('error') else ''))
         except (ValueError,TypeError) as error: flash(str(error))
+        return redirect(url_for('bin_settings'))
+
+    @app.post('/bins/manual')
+    @login_required
+    def bin_manual_save():
+        try:
+            rows = bins.parse_manual(request.form.get('manual', ''))
+            if not rows:
+                raise ValueError('Enter at least one manual collection date.')
+            with bins.transaction() as state:
+                state.update(provider='manual', manual=rows,
+                             enabled=request.form.get('enabled') == 'on',
+                             collections=[], last_success='', last_attempt='', error='')
+            flash('Manual schedule saved and selected.')
+        except (ValueError, TypeError) as error:
+            flash(str(error))
+            return display(manual_draft=request.form.get('manual', ''))
         return redirect(url_for('bin_settings'))
 
     @app.post('/bins/refresh')
