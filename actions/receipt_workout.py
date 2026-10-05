@@ -3,10 +3,10 @@ from datetime import date
 from actions import checklists
 
 PRESETS = (
-    ('bicep_curls', 'Bicep curls', ['dumbbells'], '2', '10', ''),
-    ('shrugs', 'Shrugs', ['dumbbells'], '2', '10', ''),
-    ('situps', 'Sit-ups', [], '2', '10', ''),
-    ('press_ups', 'Press-ups', [], '2', '8', ''),
+    ('bicep_curls', 'Bicep curls', ['dumbbells'], '4', '20', ''),
+    ('shrugs', 'Shrugs', ['dumbbells'], '4', '20', ''),
+    ('situps', 'Sit-ups', [], '4', '20', ''),
+    ('press_ups', 'Press-ups', [], '4', '20', ''),
     ('rowing', 'Rowing', ['rowing_machine'], '', '', '15 min, steady pace'),
     ('jogging', 'Jogging', [], '', '', '20 min, easy; walk breaks OK'),
 )
@@ -18,13 +18,16 @@ def ensure_presets():
     with checklists.transaction() as state:
         for key, title, equipment, sets, reps, duration in PRESETS:
             identifier = 'receipt-exercise-' + key
-            if any(row['id'] == identifier for row in state['items']):
+            existing = next((row for row in state['items'] if row['id'] == identifier), None)
+            if existing is not None:
+                if sets and existing.get('receipt_target_version', 1) < 2:
+                    existing.update(sets=sets, reps=reps, duration=duration, receipt_target_version=2)
                 continue
             if len(state['items']) >= 500:
                 raise ValueError('Exercise library is full; remove unused items to add the receipt routine.')
             state['items'].append(dict(id=identifier, title=title, equipment=equipment,
                                       sets=sets, reps=reps, duration=duration,
-                                      kind='exercises', source='local', done=False, done_on=None))
+                                      kind='exercises', source='local', done=False, done_on=None, receipt_target_version=2))
         checklists.validate_state(state)
 
 

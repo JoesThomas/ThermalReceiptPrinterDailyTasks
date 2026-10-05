@@ -42,3 +42,17 @@ class ReceiptWorkoutTests(unittest.TestCase):
         checklists.save_equipment(['rowing_machine'])
         self.assertEqual(plan('2026-10-07')[0]['id'],'receipt-exercise-rowing')
         self.assertFalse(any(row['completed'] for row in plan('2026-10-08')))
+
+    def test_existing_strength_targets_migrate_once_and_preserve_completion(self):
+        plan('2026-10-06')
+        with checklists.transaction() as state:
+            for row in state['items']:
+                row.pop('receipt_target_version', None)
+                if row['sets']:
+                    row.update(sets='2',reps='10',done=True,done_on='2026-10-06')
+        rows=plan('2026-10-06')
+        self.assertTrue(all(row['sets']=='4' and row['reps']=='20' and row['completed'] for row in rows))
+        with checklists.transaction() as state:
+            state['items'][0].update(sets='3',reps='12')
+        self.assertEqual(plan('2026-10-06')[0]['sets'],'3')
+        self.assertEqual(plan('2026-10-07')[0]['duration'],'15 min, steady pace')
