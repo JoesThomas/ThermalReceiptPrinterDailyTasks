@@ -51,8 +51,16 @@ def entries(on=None, query=None):
                 continue
             if query and query not in '\n'.join(item['pages'].values()).casefold():
                 continue
+            matches = []
+            if query:
+                for name, text in item['pages'].items():
+                    for line in text.splitlines():
+                        if query in line.casefold():
+                            matches.append({'page': name, 'snippet': line.strip()[:200]})
+                            if len(matches) >= 3: break
+                    if len(matches) >= 3: break
             result.append(dict(id=item['id'], source=item['source'], local=local,
-                               pages=list(item['pages'])))
+                               pages=list(item['pages']), matches=matches))
         except (ValueError, KeyError, TypeError):
             continue
     return result

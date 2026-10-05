@@ -46,6 +46,17 @@ def main():
                 raise ValueError('Invalid archive command')
             command = [sys.executable, str(ROOT / 'web_control' / 'archive_job.py'), *args[1:]]
         if scheduled:
+            from receipt.lifestyle import active
+            if active():
+                code = run_bounded([sys.executable, str(ROOT / 'main.py'), '--live-preview', *args],
+                                   cwd=ROOT, env={**os.environ, 'RECEIPT_JOB_ID': job_id, 'RECEIPT_FALLBACK_PREVIEW': '1'})
+                save_status('completed' if code == 0 else 'failed', page)
+                from storage import write_json
+                payload = json.loads(STATUS.read_text())
+                payload.update(stage='Away mode: receipt copy saved; physical printing paused' if code == 0 else 'Away mode: preview generation failed', preview_saved=code == 0)
+                write_json(STATUS, payload)
+                return code
+        if scheduled:
             from receipt.printer import readiness
             reachable, _ = readiness()
             if reachable is False:

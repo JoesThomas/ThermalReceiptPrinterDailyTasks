@@ -49,11 +49,15 @@ def register(app, login_required):
     @login_required
     def checklist_update(kind):
         try:
-            checklists.update(kind, request.form.get('action', ''), request.form.get('id', ''), request.form.get('title', ''),
+            key = request.form.get('id', '')
+            before, after = checklists.update(kind, request.form.get('action', ''), request.form.get('id', ''), request.form.get('title', ''),
                               due=request.form.get('due', ''), priority=request.form.get('priority', 'normal'),
                               repeat=request.form.get('repeat', 'none'), equipment=None if request.form.get('action') == 'add' else request.form.getlist('equipment'),
                               sets=request.form.get('sets', '').strip(), reps=request.form.get('reps', '').strip(),
                               duration=request.form.get('duration', '').strip())
+            if before and request.form.get('action') == 'toggle':
+                from web_control.undo import offer
+                offer(kind, key, before, after, 'exercise_list' if kind == 'exercises' else 'task_list')
         except ValueError as error:
             flash(str(error))
         return redirect(url_for('quick_actions') if request.form.get('return_quick') == '1' else url_for('index') if request.form.get('return_home') == '1' else url_for('exercise_list' if kind == 'exercises' else 'task_list'))

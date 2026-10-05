@@ -27,6 +27,28 @@
                     {{ error }}
                 </section>
             {% endif %}
+            {% if away_active %}
+                <p class="helper">
+                    Away mode adjusts home meals and shopping. <a href="{{ url_for('preferences_page') }}#away">Manage travel-meal exceptions</a>.
+                </p>
+            {% endif %}
+            {% if away_excluded %}
+                <details class="section-disclosure">
+                    <summary>Meals and ingredients excluded by Away mode</summary>
+                    <section>
+                        {% for meal in away_excluded %}<p>{{ meal.date }} · {{ meal.name }}</p>{% endfor %}
+                        <p class="muted">Ingredients needed only by excluded meals:</p>
+                        <ul>
+                            {% for item in away_excluded_ingredients %}
+                                <li>{{ item }}</li>
+                            {% else %}
+                                <li>None: shared ingredients may still be needed by another meal.</li>
+                            {% endfor %}
+                        </ul>
+                        <p class="muted">Manual shopping items remain in the list even when they have the same name.</p>
+                    </section>
+                </details>
+            {% endif %}
             <section>
                 <h2>Planned meal</h2>
                 {% if planned %}

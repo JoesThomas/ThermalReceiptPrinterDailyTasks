@@ -587,7 +587,7 @@ def change_today_meal():
     selected = next((item for item in recipes if item["name"] == request.form.get("recipe")), None)
     if selected is None:
         return ("Choose a recipe from the list", 400)
-    plan = meals.load_plan_for(today) or meals.generate_week(meals.current_week_sunday(today))
+    plan = meals.load_plan_for(today, raw=True) or meals.generate_week(meals.current_week_sunday(today), raw=True)
     if not any(item.get("date") == today.isoformat() for item in plan.get("meals", [])):
         return ("Today's meal is not in the plan", 400)
     plan["meals"] = [({"date": today.isoformat(), "kind": "recipe", "recipe": selected}
@@ -607,7 +607,10 @@ def meal_eaten():
     _, recipes = _recipe_items()
     name = request.form.get("recipe", "")
     try:
+        before = meal_confirmation(_local_today())
         confirm_meal(_local_today(), name, {recipe["name"] for recipe in recipes})
+        from web_control.undo import offer
+        offer('meal', _local_today().isoformat(), before, meal_confirmation(_local_today()), 'meals_page')
     except ValueError:
         return ("Choose a recipe from the list", 400)
     flash("Meal confirmed as eaten.")
@@ -907,6 +910,11 @@ def _job_active(path):
 
 
 def _start_print_command_locked(command_args):
+    from flask import has_request_context
+    from receipt.repeat_guard import recent, record
+    if '--scheduled' not in command_args and recent(PROJECT_ROOT, command_args):
+        if not has_request_context() or request.form.get('allow_repeat') != 'on':
+            return False, 'The same print request was started within the last three minutes. Tick Allow intentional reprint to continue; paper output is not confirmed.'
     if _job_active(PROJECT_ROOT / 'data' / '.live_preview.lock'):
         return False, 'A live preview is running. Wait before starting a print.'
     lock = (
@@ -958,6 +966,10 @@ def _start_print_command_locked(command_args):
             encoding="utf-8",
         )
         watch_job(process, lock)
+        try:
+            record(PROJECT_ROOT, command_args)
+        except OSError:
+            app.logger.warning("Could not save the recent print request marker")
 
     except Exception as error:
         lock.unlink(
@@ -1281,7 +1293,10 @@ def finance_review():
                 'reminders':private_planning.reminders(projection,status['monthly'],status['yearly'],forecast_settings,today)}
         except (ValueError,TypeError,OSError,KeyError):
             planning_view={'error':'Private plans could not be read. Restore a valid backup.'}
-        return render_template("finance_review.html", planning_view=planning_view, insights=insights, salary_plan=salary_plan, has_uncertain_payments=has_uncertain_payments, reviewable_payment_ids=reviewable_payment_ids, rows=rows, charts=charts,
+        from finance.credit_limits import summary as credit_summary
+        from receipt.lifestyle import load as lifestyle_settings
+        credit_cards=credit_summary(lifestyle_settings().get('credit_cards',[]), balances)
+        return render_template("finance_review.html", credit_cards=credit_cards, planning_view=planning_view, insights=insights, salary_plan=salary_plan, has_uncertain_payments=has_uncertain_payments, reviewable_payment_ids=reviewable_payment_ids, rows=rows, charts=charts,
                                wealth=wealth, wealth_error=wealth_error, bonds_summary=bonds_summary,
                                month=month, income=income, cash_flow=cash_flow,
                                annual=annual,
@@ -1498,6 +1513,16 @@ register_project_tools(app,login_required)
 
 from web_control.planning_tools import register as register_planning
 register_planning(app, login_required)
+
+
+from web_control.preferences import register as register_preferences
+register_preferences(app, login_required, PROJECT_ROOT)
+
+from web_control.payment_explanations import register as register_explanations
+register_explanations(app, login_required)
+
+from web_control.undo import register as register_undo
+register_undo(app, login_required)
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

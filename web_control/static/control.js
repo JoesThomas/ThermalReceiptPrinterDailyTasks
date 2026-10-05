@@ -194,3 +194,36 @@
         if (event.target.matches('input,select,textarea') && event.target.validity.valid) event.target.removeAttribute('aria-invalid');
     });
 })();
+
+// Browser-only presentation preferences; receipt output and data remain unchanged.
+(() => {
+  const privacy = document.getElementById('privacy-toggle');
+  const setPrivacy = enabled => {
+    document.documentElement.dataset.privacy = String(enabled);
+    if (privacy) { privacy.setAttribute('aria-pressed', String(enabled)); privacy.textContent = enabled ? 'Show private details' : 'Hide private details'; }
+    document.querySelectorAll('main section, main .paper-roll, main .review-row, main .today-item, main form').forEach(el => {
+      el.dataset.private = 'true';
+      if (enabled) { el.dataset.previousAria = el.getAttribute('aria-hidden') || ''; el.setAttribute('aria-hidden','true'); el.inert = true; }
+      else { if (el.dataset.previousAria) el.setAttribute('aria-hidden',el.dataset.previousAria); else el.removeAttribute('aria-hidden'); el.inert = false; }
+    });
+    try { sessionStorage.setItem('receipt-privacy', String(enabled)); } catch (_) {}
+  };
+  if (privacy) {
+    privacy.addEventListener('click', () => setPrivacy(privacy.getAttribute('aria-pressed') !== 'true'));
+    try { setPrivacy(sessionStorage.getItem('receipt-privacy') === 'true'); } catch (_) {}
+  }
+  const find = document.getElementById('settings-find');
+  if (find) find.addEventListener('input', () => {
+    let count=0;
+    document.querySelectorAll('.settings-directory a').forEach(link => { link.hidden = !link.textContent.toLowerCase().includes(find.value.toLowerCase().trim()); if (!link.hidden) count++; });
+    document.getElementById('settings-no-results').hidden = count > 0;
+  });
+  document.querySelectorAll('form[action$="/print-now"],form[action$="/print-page"],form[action$="/selected-print"],form[action^="/receipts/"][action$="/print"]').forEach(form => {
+    const label = document.createElement('label'); label.className='reprint-choice';
+    const input=document.createElement('input'); input.type='checkbox'; input.name='allow_repeat';
+    label.append(input,document.createTextNode(' Allow intentional reprint within three minutes'));
+    form.append(label);
+  });
+})();
+
+(() => { document.querySelectorAll('.undo-toast').forEach(el => { setTimeout(() => el.hidden=true, Math.max(0, Number(el.dataset.expires)*1000-Date.now())); }); })();

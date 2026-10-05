@@ -37,7 +37,7 @@
             </p>
             {% for source in insights.coverage %}
                 <div class="merchant-payment">
-                    <span>{{ source.provider }} · {{ source.source }}</span><span>{{ source.status|source_status_label }}
+                    <span>{{ source.provider }} · {{ source.source }}</span><span>{{ 'Checked successfully: no transactions returned' if source.status == 'Loaded' and source.count == 0 else source.status|source_status_label }}
                         {% if source.count is not none %}· {{ source.count }} transactions{% endif %}
                     </span>
                 </div>

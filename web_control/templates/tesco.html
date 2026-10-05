@@ -22,6 +22,28 @@
             {% if error %}
                 <p class="helper">Food-shop Google Doc unavailable: {{ error }}. Planned recipe items can still appear below.</p>
             {% endif %}
+            {% if away_active %}
+                <p class="helper">
+                    Recipe ingredients for paused Away-mode meals are excluded. Manual items and household essentials remain. Your Tesco basket is unchanged. <a href="{{ url_for('preferences_page') }}#away">Review Away dates</a>
+                </p>
+            {% endif %}
+            {% if away_excluded %}
+                <details class="section-disclosure">
+                    <summary>Meals and ingredients excluded by Away mode</summary>
+                    <section>
+                        {% for meal in away_excluded %}<p>{{ meal.date }} · {{ meal.name }}</p>{% endfor %}
+                        <p class="muted">Ingredients needed only by excluded meals:</p>
+                        <ul>
+                            {% for item in away_excluded_ingredients %}
+                                <li>{{ item }}</li>
+                            {% else %}
+                                <li>None: shared ingredients may still be needed by another meal.</li>
+                            {% endfor %}
+                        </ul>
+                        <p class="muted">Manual shopping items remain in the list even when they have the same name.</p>
+                    </section>
+                </details>
+            {% endif %}
             <section>
                 <h2>Items to find ({{ items|length }})</h2>
                 {% for item in items %}

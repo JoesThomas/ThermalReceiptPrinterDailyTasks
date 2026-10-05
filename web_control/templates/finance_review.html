@@ -16,6 +16,9 @@
                     <p class="eyebrow">Your money</p>
                     <h1>Finance review</h1>
                     <p class="muted">
+                        Bank-reported balances and payments · manual commitments and valuations · estimated forecasts. <a href="{{ url_for('payment_trail') }}">Why these categories and payment matches?</a>
+                    </p>
+                    <p class="muted">
                         {% if not error %}
                             Checked {{ checked_time }} · {{ bank_data_status|title }} bank data
                         {% else %}
@@ -127,6 +130,43 @@
                             </div>
                         </section>
                     </details>
+                    {% if credit_cards %}
+                        <details class="section-disclosure">
+                            <summary>Credit-card limits & utilisation</summary>
+                            <section>
+                                <p class="muted">Borrowing capacity only; excluded from available cash and runway.</p>
+                                {% for card in credit_cards %}
+                                    <article class="goal-card">
+                                        <h3>{{ card.name }}</h3>
+                                        <p>
+                                            Limit £{{ '%.2f'|format(card.limit) }}
+                                            {% if card.used is not none %}
+                                                · Used £{{ '%.2f'|format(card.used) }} · Remaining £{{ '%.2f'|format(card.available) }}
+                                            {% endif %}
+                                        </p>
+                                        {% if card.percent is not none %}
+                                            <progress max="100"
+                                                      value="{{ card.bar_percent }}"
+                                                      aria-label="{{ card.name }} credit utilisation"></progress>
+                                            <p>{{ '%.1f'|format(card.percent) }}% used</p>
+                                        {% endif %}
+                                        <p class="muted">
+                                            {{ card.basis }}
+                                            {% if card.basis == 'Manual balance' %}
+                                                · entered {{ card.as_of }}
+                                            {% else %}
+                                                · finance check {{ checked_time }}
+                                            {% endif %}
+                                        </p>
+                                        {% if card.over %}
+                                            <p class="helper">Recorded balance exceeds the limit by £{{ '%.2f'|format(card.over) }}.</p>
+                                        {% endif %}
+                                    </article>
+                                {% endfor %}
+                                <a href="{{ url_for('preferences_page') }}#credit-cards">Edit limits</a>
+                            </section>
+                        </details>
+                    {% endif %}
                     <details class="section-disclosure">
                         <summary>Outgoings · {{ month.label }}</summary>
                         <section id="month-payments" aria-labelledby="month-payments-title">

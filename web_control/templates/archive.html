@@ -135,6 +135,11 @@
                         <div class="review-row">
                             <a href="{{ url_for('archive_detail',identifier=item.id) }}">{{ item.local.strftime('%d %b %Y, %H:%M %Z') }} · {{ receipt_delivery_status(item.id,item.source) }}</a>
                             <p class="muted">{{ item.pages|join(', ') }}</p>
+                            {% for match in item.matches %}
+                                <p>
+                                    <a href="{{ url_for('archive_detail',identifier=item.id,page=match.page) }}">{{ match.page|title }}: {{ match.snippet }}</a>
+                                </p>
+                            {% endfor %}
                         </div>
                     {% else %}
                         <p>No archived receipts for this selection. Generate a preview or print a receipt to save one.</p>

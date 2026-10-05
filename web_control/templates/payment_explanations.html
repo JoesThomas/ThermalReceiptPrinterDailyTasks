@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Payment explanations</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <header>
+                <p class="eyebrow">Understand the numbers</p>
+                <h1>Payment explanations</h1>
+                <p class="muted">
+                    Saved when Finance is reviewed. {{ checked or 'No review recorded yet' }}. Category corrections do not verify a bill payment.
+                </p>
+                <a class="button" href="{{ url_for('finance_review') }}">Refresh finance review</a>
+            </header>
+            <section>
+                <h2>Possible subscription price changes</h2>
+                <p class="muted">
+                    Two matching merchant payments at least 20 days apart. Check for upgrades or unrelated purchases before changing a commitment.
+                </p>
+                {% for row in explanations.price_changes %}
+                    <p>
+                        <strong>{{ row.name }}</strong> · £{{ '%.2f'|format(row.previous) }} → £{{ '%.2f'|format(row.current) }} · {{ row.date }}
+                    </p>
+                {% else %}
+                    <p>No increases found in the available records. Short bank history can prevent comparisons.</p>
+                {% endfor %}
+            </section>
+            <details class="section-disclosure" open>
+                <summary>Why commitments are paid or unmatched</summary>
+                <section>
+                    {% for row in explanations.commitments %}
+                        <article class="review-row"><strong>{{ row.name }} · £{{ '%.2f'|format(row.amount) }}</strong>
+                            <p>
+                                {{ 'Paid bank match' if row.paid else 'Unmatched' }}
+                                {% if row.date %}· {{ row.date }}{% endif %}
+                            </p>
+                            <p class="muted">{{ row.basis }}</p>
+                        </article>
+                    {% else %}
+                        <p>Review Finance to record payment match explanations.</p>
+                    {% endfor %}
+                </section>
+            </details>
+            <details class="section-disclosure">
+                <summary>Spending category decisions</summary>
+                <section>
+                    {% for row in explanations.payments %}
+                        <article class="review-row"><strong>{{ row.merchant }}</strong>
+                            <p>{{ row.date }} · £{{ '%.2f'|format(row.amount) }} · {{ row.category }}</p>
+                            <p class="muted">{{ row.basis }}</p>
+                        </article>
+                    {% else %}
+                        <p>No saved category decisions yet.</p>
+                    {% endfor %}
+                </section>
+            </details>
+            <details class="section-disclosure">
+                <summary>Your correction history</summary>
+                <section>
+                    {% for row in explanations.audit|reverse %}
+                        <p>
+                            {{ row.at[:10] }} · {{ row.merchant }} · £{{ '%.2f'|format(row.amount) }} → {{ row.category }} · {{ 'Merchant-wide rule' if row.scope == 'merchant' else 'Date and amount rule' }}
+                        </p>
+                    {% else %}
+                        <p>No manual corrections recorded since this feature was enabled.</p>
+                    {% endfor %}
+                </section>
+            </details>
+        </main>
+    </body>
+</html>

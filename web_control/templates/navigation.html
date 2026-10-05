@@ -12,6 +12,13 @@
 <script src="{{ url_for('static',filename='control.js') }}" defer></script>
 <!-- djlint:on -->
 
+{% if away_active %}
+    <p class="away-banner">
+        Away mode is active · scheduled printing paused
+        {% if away_preferences.pause_meals %}, home meals paused{% endif %}
+        . <a href="{{ url_for('preferences_page') }}#away">Manage dates</a>
+    </p>
+{% endif %}
 <div class="utility-strip">
     <details class="accessibility-settings">
         <summary>Display & accessibility</summary>
@@ -34,14 +41,27 @@
         </label>
         <button type="button" id="accessibility-reset">Use defaults</button>
     </details>
+    <button type="button" id="privacy-toggle" aria-pressed="false">Hide private details</button>
     <details class="utility-menu">
         <summary>More tools</summary>
         <div class="private-tools-links">
+            <a href="{{ url_for('preferences_page') }}">Away & preferences</a><a href="{{ url_for('preferences_page') }}#settings-search">Find a setting</a><a href="{{ url_for('payment_trail') }}">Payment explanations</a>
             <a href="{{ url_for('quick_actions') }}">Quick actions</a><a href="{{ url_for('printer_diagnostics') }}">Printer diagnostics</a><a href="{{ url_for('setup_page') }}">Setup checklist</a><a href="{{ url_for('latest_receipt') }}">Latest receipt</a><a href="{{ url_for('archive_list') }}">Receipt archive</a><a href="{{ url_for('corrections') }}">Correct information</a><a href="{{ url_for('backup_page') }}">Private backup</a>
         </div>
     </details>
 </div>
 
+{% if recent_undo %}
+    <aside class="undo-toast"
+           data-expires="{{ recent_undo.expires }}"
+           role="status">
+        <span>Recent action saved.</span>
+        <form method="post" action="{{ url_for('undo_recent') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button>Undo</button>
+        </form>
+    </aside>
+{% endif %}
 <aside class="job-panel"
        id="global-job-panel"
        data-status-url="{{ url_for('jobs_status') }}"

@@ -69,9 +69,16 @@ def plan_path(start: date) -> Path:
     return PLANS_DIR / f"{start.isoformat()}.json"
 
 
-def load_plan_for(day: date) -> dict | None:
+def load_plan_for(day: date, raw=False) -> dict | None:
     plan = _load(plan_path(current_week_sunday(day)), None)
-    return plan if isinstance(plan, dict) else None
+    if not isinstance(plan, dict): return None
+    return plan if raw else away_plan(plan)
+
+
+def away_plan(plan):
+    from receipt.lifestyle import apply_plan
+    import sys
+    return apply_plan(plan, sys.modules[__name__])
 
 
 def _allergens(recipe: dict) -> set[str]:
@@ -172,12 +179,13 @@ def _special_meal(day: date, override: dict) -> dict:
     }
 
 
-def generate_week(start: date | None = None, force: bool = False) -> dict:
+def generate_week(start: date | None = None, force: bool = False, raw=False) -> dict:
     today = datetime.now(TZ).date()
     start = start or sunday_for(today)
     path = plan_path(start)
     if path.exists() and not force:
-        return _load(path, {})
+        plan = _load(path, {})
+        return plan if raw else away_plan(plan)
 
     prefs = preferences()
     library = recipes()
@@ -220,11 +228,14 @@ def generate_week(start: date | None = None, force: bool = False) -> dict:
     plan["shopping"] = build_shopping_list(plan)
     plan["estimated_cost"] = estimate_week_cost(plan)
     _save(path, plan)
-    return plan
+    return plan if raw else away_plan(plan)
 
 
 def get_meal(day: date | None = None) -> dict | None:
     day = day or datetime.now(TZ).date()
+    from receipt.lifestyle import skip_meal
+    if skip_meal(day):
+        return {"date": day.isoformat(), "kind": "away", "name": "Away - home meal paused", "overview": "Recipe ingredients excluded from shopping."}
     plan = load_plan_for(day)
     if not plan:
         plan = generate_week(current_week_sunday(day))
@@ -271,7 +282,8 @@ def build_shopping_list(plan: dict) -> dict[str, list[str]]:
         meal_day = date.fromisoformat(meal["date"])
         next_day = meal_day + timedelta(days=1)
         lunch_override = _override_for(next_day, "lunch")
-        lunch = {} if lunch_override and lunch_override.get("type") in {"buy_lunch", "eat_out"} else r.get("lunch", {})
+        from receipt.lifestyle import skip_meal
+        lunch = {} if skip_meal(next_day) or lunch_override and lunch_override.get("type") in {"buy_lunch", "eat_out"} else r.get("lunch", {})
         for item in lunch.get("extra_ingredients", []):
             key = _normalise_item(item)
             if key and key not in seen and not _pantry_has(item):

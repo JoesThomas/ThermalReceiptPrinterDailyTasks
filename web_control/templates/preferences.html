@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Preferences · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <header>
+                <p class="eyebrow">Make it yours</p>
+                <h1>Preferences</h1>
+                <p class="muted">Away dates, saved information and shortcuts to your settings.</p>
+            </header>
+            {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            <section id="away">
+                <h2>Away mode</h2>
+                <p>
+                    {{ 'Active now' if away_active else 'Not active today' }} · Home meals resume on the return date. Scheduled jobs still create a saved receipt; manual printing remains available.
+                </p>
+                <form method="post" action="{{ url_for('away_save') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label>
+                        <input type="checkbox"
+                               name="enabled"
+                               {% if preferences.away.enabled %}checked{% endif %}>
+                        Enable Away mode
+                    </label>
+                    <div class="grid">
+                        <label>
+                            Departure date
+                            <input type="date" name="departure" value="{{ preferences.away.departure }}">
+                        </label>
+                        <label>
+                            Return date (optional)
+                            <input type="date" name="return" value="{{ preferences.away.return }}">
+                        </label>
+                    </div>
+                    <label>
+                        <input type="checkbox"
+                               name="pause_meals"
+                               {% if preferences.away.pause_meals %}checked{% endif %}>
+                        Pause home meals and their recipe ingredients while away
+                    </label>
+                    <details>
+                        <summary>Travel meals: dates to keep cooking</summary>
+                        <label>
+                            One date per line<textarea name="travel_meals" rows="4" placeholder="YYYY-MM-DD">{{ preferences.away.travel_meals|join('\n') }}</textarea>
+                        </label>
+                        <p class="muted">
+                            These dates keep the planned meal and ingredients. Manual shopping items and household essentials are always kept. Tesco basket contents are not changed.
+                        </p>
+                    </details>
+                    <button class="primary">Save Away mode</button>
+                </form>
+            </section>
+            <section id="credit-cards">
+                <h2>Credit-card limits</h2>
+                <p class="muted">
+                    For reference only. Unused credit is borrowing capacity, not savings or available cash. Amex can use its bank balance when you refresh Finance; the cards below show your optional manual balance.
+                </p>
+                {% for card in credit_cards %}
+                    <article class="goal-card">
+                        <h3>{{ card.name }}</h3>
+                        <p>
+                            Limit £{{ '%.2f'|format(card.limit) }}
+                            {% if card.used is not none %}
+                                · Used £{{ '%.2f'|format(card.used) }} · Remaining £{{ '%.2f'|format(card.available) }}
+                            {% endif %}
+                        </p>
+                        {% if card.percent is not none %}
+                            <progress max="100"
+                                      value="{{ card.bar_percent }}"
+                                      aria-label="Credit utilisation for {{ card.name }}"></progress>
+                            <p>{{ '%.1f'|format(card.percent) }}% used</p>
+                        {% endif %}
+                        <p class="muted">
+                            {{ card.provider }} · {{ card.basis }}
+                            {% if card.as_of %}· entered {{ card.as_of }}{% endif %}
+                        </p>
+                        <form method="post" action="{{ url_for('credit_card_save') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="name" value="{{ card.name }}">
+                            <button name="action" value="delete">Remove limit record</button>
+                        </form>
+                    </article>
+                {% endfor %}
+                <form method="post" action="{{ url_for('credit_card_save') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label>
+                        Card name
+                        <input name="name" maxlength="90" required>
+                    </label>
+                    <label>
+                        Credit limit (£)
+                        <input name="limit" type="number" min="0.01" step="0.01" required>
+                    </label>
+                    <label>
+                        Used balance (£, optional)
+                        <input name="used" type="number" min="0" step="0.01">
+                    </label>
+                    <label>
+                        Balance source
+                        <select name="provider">
+                            <option value="OTHER">Manual balance</option>
+                            <option value="AMEX">Amex bank balance in finance review</option>
+                        </select>
+                    </label>
+                    <p class="muted">Use the same card name to update its limit or manual balance.</p>
+                    <button>Save card limit</button>
+                </form>
+            </section>
+            <section id="settings-search">
+                <h2>Find a setting</h2>
+                <label for="settings-find">
+                    Search settings
+                    <input id="settings-find"
+                           type="search"
+                           placeholder="Try print time, ISA, bins or location">
+                </label>
+                <div class="settings-directory">
+                    {% for label, endpoint, extra in [('Print time, location, news and weather','index','settings'),('Bank accounts, commitments and salary','index','accounts'),('Bin dates and address','bin_settings',''),('Savings goals and ISA contributions','savings_goals_page',''),('Premium Bonds winnings','premium_bonds_page',''),('Meals, recipes and shopping','meals_page',''),('Workout equipment','exercise_list',''),('Printer connection and health','printer_diagnostics',''),('Private backups and restore rehearsal','backup_page',''),('Receipt archive and search','archive_list',''),('Away mode and retention','preferences_page','')] %}
+                        <a href="{{ url_for(endpoint,view=extra) if extra else url_for(endpoint) }}">{{ label }}</a>
+                    {% endfor %}
+                </div>
+                <p id="settings-no-results" hidden>No matching settings. Try another term.</p>
+            </section>
+            <section id="retention">
+                <h2>Saved information</h2>
+                <p>
+                    Receipts can contain tasks, event locations and finance details. The review queue holds recent merchant names, dates and amounts. Savings history, prize ledgers, category rules, financial plans and backups are retained separately.
+                </p>
+                <form method="post" action="{{ url_for('retention_save') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% for key,label in [('receipts','Archived receipts'),('details','Detailed payment review queue')] %}
+                        <label>
+                            {{ label }}
+                            <select name="{{ key }}">
+                                {% for days in [0,30,90,180,365] %}
+                                    <option value="{{ days }}"
+                                            {% if preferences.retention[key] == days %}selected{% endif %}>
+                                        {{ 'Keep until manually removed' if days == 0 else 'Keep '+days|string+' days' }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    {% endfor %}
+                    <p class="muted">
+                        Shorter retention deletes older items during automatic maintenance. Backups may still contain them until those backups expire. The latest saved receipt is kept for recovery.
+                    </p>
+                    <button>Save retention</button>
+                </form>
+                <p>
+                    <a href="{{ url_for('backup_page') }}">Check backups and rehearse a restore</a> · {{ backup_count }} valid automatic snapshots · last drill: {{ backup_health.status or 'not checked' }}
+                </p>
+            </section>
+            <section>
+                <h2>Privacy view</h2>
+                <p>
+                    Use Hide private details in the navigation to conceal page sections, forms, receipt text and images while showing someone the app. This is a browser presentation setting, not access control; authenticated records and downloads remain available.
+                </p>
+            </section>
+            <section>
+                <h2>Understand your finance figures</h2>
+                <ul>
+                    <li>Bank records: balances and transactions returned by the selected connections.</li>
+                    <li>Manual records: commitments, savings valuations, emergency reserves and contributions entered by you.</li>
+                    <li>
+                        Estimates: runway, spending forecasts and suggested savings allocations. These depend on the coverage and payment dates shown.
+                    </li>
+                </ul>
+                <p>
+                    <a href="{{ url_for('finance_review') }}">Open finance review</a> · <a href="{{ url_for('payment_trail') }}">Explain categories and payment matches</a>
+                </p>
+            </section>
+        </main>
+    </body>
+</html>

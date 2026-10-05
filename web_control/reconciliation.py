@@ -51,6 +51,8 @@ def save_review(transactions, rows, today):
     unmatched = [dict(name=row['item']['name'],amount=row['item']['amount']) for row in rows if row['transaction'] is None]
     state={'checked_at':datetime.now(timezone.utc).isoformat(),'payments':payments[:300], 'unmatched':unmatched,'reviewable':reviewable[:1000]}
     write_json(QUEUE,state)
+    from web_control.payment_explanations import capture
+    capture(transactions, rows, today, rules, read(RULES))
     return state
 
 
@@ -94,6 +96,8 @@ def register(app, login_required):
                     entries = [entry for entry in entries if not all(entry.get(key) == rule[key] for key in ('date','merchant','amount'))]
                     rules['transactions'] = [rule,*entries]
                 write_json(RULES,rules)
+            from web_control.payment_explanations import correction
+            correction(row, category, scope)
             flash('Category rule saved privately. Refresh Finance to recalculate charts and future receipts.')
         except (ValueError,OSError) as problem: flash(str(problem) if isinstance(problem,ValueError) else 'Category rule could not be saved.')
         return redirect(url_for('finance_reconciliation'))

@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 MAX_BYTES = 900_000
-OBJECT_FILES = {'transaction_sources.json','finance_planning.json','bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
+OBJECT_FILES = {'finance_explanations.json','lifestyle.json','transaction_sources.json','finance_planning.json','bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
                 'investments.json', 'finance_settings.json', 'finance_categories.json',
                 'food_shop_override.json', 'tesco_progress.json', 'meals_eaten.json'}
 LIST_FILES = {'finance_monthly_snapshots.json','routines.json', 'future_tasks.json', 'wealth_history.json'}
@@ -84,6 +84,12 @@ def _validate_file(name, content):
     elif name == 'finance_monthly_snapshots.json':
         from web_control.finance_insights import validate as validate_snapshots
         validate_snapshots(content)
+    elif name == 'lifestyle.json':
+        from receipt.lifestyle import validate as validate_lifestyle
+        validate_lifestyle(content)
+    elif name == 'finance_explanations.json':
+        from web_control.payment_explanations import store
+        store().validate(content)
     elif name == 'savings_goals.json':
         from finance.savings_goals import validate as validate_goals
         validate_goals(content)

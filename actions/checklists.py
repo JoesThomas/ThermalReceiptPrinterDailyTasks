@@ -130,6 +130,8 @@ def update(kind, action, key='', title='', **metadata):
         raise ValueError('Unknown list action.')
     with transaction() as state:
         row = next((row for row in state['items'] if row['id'] == key and row['kind'] == kind), None)
+        from copy import deepcopy
+        before = deepcopy(row)
         if action == 'add':
             if len(state['items']) >= 500:
                 raise ValueError('The list is full. Remove an item first.')
@@ -174,6 +176,8 @@ def update(kind, action, key='', title='', **metadata):
                 raise ValueError('Remove Google Doc items in the source document, then refresh.')
             state['items'].remove(row)
         validate_state(state)
+        after = deepcopy(row)
+    return before, after
 
 
 def task_text(text):

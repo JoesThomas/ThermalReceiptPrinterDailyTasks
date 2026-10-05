@@ -408,3 +408,13 @@ node tools/browser_smoke.cjs
 
 Anonymous integration examples are in `tests/fixtures/receipt_integrations.json`.
 Timezone regressions cover midnight and the autumn BST/GMT transition.
+
+### Away mode, private preferences and credit limits
+
+Open **More tools → Away & preferences** to set departure and return dates. The return date is the first day back. While away, scheduled jobs save a live receipt copy instead of physically printing; manual printing remains available. Pausing home meals removes their recipe ingredients and prep from the displayed plan and shopping list without deleting the underlying plan. Shared ingredients, manual shopping items and household essentials remain. Travel-meal exceptions keep cooking on selected dates. Existing Tesco baskets are unchanged.
+
+Credit-card limits are private reference records. Add a card name, limit and optional used balance; reuse the same name to update it. Finance review can use the bank-reported Amex balance. Remaining credit and utilisation never increase available cash or runway.
+
+Preferences also provide settings search, a visual privacy toggle and optional retention periods. Retention defaults to keeping everything; opted-in maintenance removes older receipt archives or payment detail/history, preserving savings ledgers, settings and the latest receipt copy. Existing backups retain their contents until they expire. Privacy view hides on-screen details and is not an access-control mechanism.
+
+Payment explanations show the basis for category and commitment matches, correction history and possible subscription price increases. Recent checklist, meal and delivery confirmations offer a short-lived Undo, provided the record has not changed since. Repeated manual print requests show a warning and allow an intentional reprint.

@@ -22,7 +22,7 @@ def compare(item):
             continue
         # Ignore blank lines and decorative rules; preserve meaningful text order.
         def lines(value):
-            return [line.strip() for line in value.splitlines() if line.strip() and set(line.strip()) not in ({'-'}, {'='})]
+            return [line.strip() for line in value.splitlines() if line.strip() and not line.strip().startswith('Generated ') and set(line.strip()) not in ({'-'}, {'='})]
         before, after = lines(previous[name]), lines(text)
         added = []; removed = []
         for tag, a, b, c, d in SequenceMatcher(None, before, after, autojunk=False).get_opcodes():

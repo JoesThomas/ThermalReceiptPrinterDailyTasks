@@ -42,6 +42,13 @@ process.on('exit', () => child.kill());
   await Promise.all([page.waitForURL('**/deliveries'), delivery.getByRole('button', {name:'Save'}).click()]);
   await page.getByText('Received history', {exact:true}).click();
   assert.equal(await page.locator('input[type=checkbox]:checked').count(), 1);
+  await page.goto('http://receipt.test/preferences');
+  const cards = page.locator('form[action$="/preferences/cards"]');
+  await cards.locator('input[name=name]').fill('Test card');
+  await cards.locator('input[name=limit]').fill('2000');
+  await cards.locator('input[name=used]').fill('600');
+  await Promise.all([page.waitForURL('**/preferences#credit-cards'), cards.getByRole('button', {name:'Save card limit'}).click()]);
+  assert.match(await page.locator('#credit-cards').innerText(), /30.0% used/);
   await page.goto('http://receipt.test/preview?source=live');
   const preview = page.locator('form[action$="/preview/generate"]').last();
   await Promise.all([page.waitForURL('**/preview?source=live'), preview.locator('button').first().click()]);
@@ -49,7 +56,7 @@ process.on('exit', () => child.kill());
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
-    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live']) {
+    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations']) {
       await page.goto('http://receipt.test'+path);
       await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `${path} overflows at ${width}`);
@@ -61,7 +68,7 @@ process.on('exit', () => child.kill());
     await page.goto('http://receipt.test/bins');
     await page.screenshot({path:process.env.RECEIPT_BROWSER_SCREENSHOT, fullPage:true});
   }
-  console.log(`Browser checks passed: 4 form flows, ${checks} responsive layouts`);
+  console.log(`Browser checks passed: 5 form flows, ${checks} responsive layouts`);
   await browser.close();
   child.kill();
 })().catch(error => { console.error(error); process.exit(1); });

@@ -172,3 +172,10 @@ data/finance_planning.json
 data/finance_planning.lock
 
 data/transaction_sources.json
+
+# Private Away preferences, credit limits and payment explanations
+data/lifestyle.json
+data/lifestyle.lock
+data/finance_explanations.json
+data/finance_explanations.lock
+data/recent_print_request.json
