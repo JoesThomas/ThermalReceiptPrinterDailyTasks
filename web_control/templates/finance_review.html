@@ -32,6 +32,20 @@
                 {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
             {% endwith %}
             {% include 'renewal_reminders.html' %}
+            {% if update_items %}
+                <details class="section-disclosure">
+                    <summary>Needs updating ({{ update_items|length }})</summary>
+                    <section>
+                        <ul>
+                            {% for item in update_items %}
+                                <li>
+                                    <a href="{{ item.url }}">{{ item.message }}</a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                </details>
+            {% endif %}
             {% include 'rental_tax_summary.html' %}
             {% include 'asset_summary.html' %}
             {% if has_uncertain_payments %}
@@ -41,7 +55,7 @@
                 {% if not error %}
                     <a href="#finance-overview">Overview</a><a href="#finance-activity">Income & spending</a><a href="#finance-bills">Bills & repayments</a><a href="#finance-forecast">Cash runway</a>
                 {% endif %}
-                <a href="/finance/assets">Property assets</a><a href="/finance/tax">Rental tax planning</a><a href="#finance-savings">Savings</a><a href="{{ url_for('finance_planning_page') }}">Private plans</a>
+                <a href="/finance/results">Plans & actual results</a><a href="/finance/assets">Property assets</a><a href="/finance/tax">Rental tax planning</a><a href="#finance-savings">Savings</a><a href="{{ url_for('finance_planning_page') }}">Private plans</a>
             </nav>
             {% if error %}
                 <section id="finance-overview" class="helper" role="status">

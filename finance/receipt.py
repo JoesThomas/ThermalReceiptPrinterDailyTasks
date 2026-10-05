@@ -644,17 +644,19 @@ def print_integrated_finance(
         from finance.rental_tax import estimate as rental_estimate, load as load_rental_tax
         rental_plan = rental_estimate(load_rental_tax(), today)
         if rental_plan:
+            from receipt.finance_details import show as show_finance_detail
+            full_tax=show_finance_detail('tax',{key:rental_plan[key] for key in ('year','profit','tax','reserved','protected','monthly')} | {'rules':rental_plan['rules']['version']},today)
             printer.text("\n")
-            left(printer, 'RENTAL TAX PLAN [E] / 2026-27')
+            left(printer,'RENTAL TAX PLAN [E] / 2026-27' if full_tax else 'RENTAL TAX [E] / UNCHANGED')
             print_line(printer)
-            for label, amount in [('ANNUAL TAXABLE PROFIT', rental_plan['profit']),
-                                  ('ESTIMATED RENTAL TAX', rental_plan['tax']),
-                                  ('TAX MONEY RESERVED', rental_plan['reserved']),
-                                  ('MONTHLY TAX TOP-UP', rental_plan['monthly'])]:
-                left(printer, _amount_line(label, amount))
-            left(printer, 'MANUAL ANNUAL INPUTS / NOT A TAX BILL')
-            if rental_plan['protect']:
-                left(printer, _amount_line('TAX CASH PROTECTED', rental_plan['protected']))
+            amounts=[('ESTIMATED RENTAL TAX',rental_plan['tax']),('MONTHLY TAX TOP-UP',rental_plan['monthly'])]
+            if full_tax:
+                amounts=[('ANNUAL TAXABLE PROFIT',rental_plan['profit'])]+amounts+[('TAX MONEY RESERVED',rental_plan['reserved'])]
+            for label,amount in amounts:left(printer,_amount_line(label,amount))
+            if full_tax:
+                left(printer,'MANUAL ANNUAL INPUTS / NOT A TAX BILL')
+                if rental_plan['protect']:left(printer,_amount_line('TAX CASH PROTECTED',rental_plan['protected']))
+            else:left(printer,'DETAILS IN FINANCE / NOT A TAX BILL')
     except (ValueError, OSError):
         left(printer, 'RENTAL TAX PLAN UNAVAILABLE')
 
@@ -686,14 +688,16 @@ def print_integrated_finance(
         from finance.assets import net_worth as asset_net_worth
         asset_view=asset_net_worth(available_cash,st['total'],investment_totals(investment_data)['value'],debt_summary['debts'],finance_settings,today)
         asset_view['complete']=asset_view['complete'] and spending_summary.get('bank_data_status','complete')=='complete' and all(balances.get(provider,{}).get('current') is not None or balances.get(provider,{}).get('available') is not None for provider in ('HSBC','MONZO','AMEX'))
-        recent_asset_change=any((p['latest'] and (today-date.fromisoformat(p['latest']['date'])).days<=7) or (p['mortgage_record'] and (today-date.fromisoformat(p['mortgage_record']['date'])).days<=7) for p in asset_view['properties'])
-        if asset_view['properties'] and (today.day<=7 or recent_asset_change):
+        if asset_view['properties']:
+            from receipt.finance_details import show as show_finance_detail
+            fingerprint=[{'name':p['name'],'owned':p['owned'],'liability':p['liability'],'latest':p['latest'],'stale':p['stale'],'mortgage':p['mortgage_record']} for p in asset_view['properties']]
+            full_assets=show_finance_detail('assets',fingerprint,today)
             printer.text("\n")
-            left(printer,'ASSETS & RECORDED NET WORTH [E]')
+            left(printer,'ASSETS & RECORDED NET WORTH [E]' if full_assets else 'ASSETS [E] / DETAILS UNCHANGED')
             print_line(printer)
-            left(printer,_amount_line('OWNED PROPERTY VALUE',asset_view['owned_value']))
+            if full_assets:left(printer,_amount_line('OWNED PROPERTY VALUE',asset_view['owned_value']))
             left(printer,_amount_line('PROPERTY EQUITY',asset_view['equity']))
-            left(printer,_amount_line('KNOWN DEBTS (ONCE)',asset_view['debt_total']))
+            if full_assets:left(printer,_amount_line('KNOWN DEBTS (ONCE)',asset_view['debt_total']))
             left(printer,_amount_line('RECORDED NET WORTH',asset_view['known_total']))
             if not asset_view['complete']:left(printer,'PARTIAL / CHECK MISSING VALUATIONS')
             if asset_view['stale']:left(printer,'VALUATION OR MORTGAGE NEEDS UPDATE')

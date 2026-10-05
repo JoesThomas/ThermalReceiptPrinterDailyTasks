@@ -7,6 +7,8 @@ def build(pipeline, run, factory, *, finance_requested=False, only_page=None, se
         from receipt.selection import validate
         validate(selected_pages)
         if only_page is not None: raise ValueError("Use selected sections or one page, not both.")
+    from receipt.finance_details import reset as reset_finance_details
+    reset_finance_details()
     original = pipeline.Usb
     recorder = None
 

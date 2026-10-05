@@ -1302,10 +1302,19 @@ def finance_review():
             try: planning_view['cashflow_result']=build_cash_scenario(projection,plans['cashflow'],today)
             except ValueError as error: planning_view['cashflow_result']={'valid':False,'reason':str(error)}
         net_worth['complete']=net_worth['complete'] and bank_data_status=='complete' and balances.get('AMEX',{}).get('current') is not None
+        from finance import reviews as finance_reviews
+        from finance.rental_tax import estimate as rental_estimate,load as load_rental_plan
+        rental_plan=rental_estimate(load_rental_plan(),today)
+        update_items=finance_reviews.needs_update(projection,net_worth,bank_data_status,forecast_settings,rental_plan)
+        try:
+            finance_reviews.capture(salary_plan,transactions,rows,income,projection,finance_data[4],net_worth,rental_plan,today,month['total'])
+        except (ValueError,OSError):
+            app.logger.warning('Private finance results could not be updated.')
+            update_items.append({'message':'Private finance history could not be updated; check or restore your backup','url':'/backup'})
         from finance.credit_limits import summary as credit_summary
         from receipt.lifestyle import load as lifestyle_settings
         credit_cards=credit_summary(lifestyle_settings().get('credit_cards',[]), balances)
-        return render_template("finance_review.html", net_worth=net_worth, credit_cards=credit_cards, planning_view=planning_view, insights=insights, salary_plan=salary_plan, has_uncertain_payments=has_uncertain_payments, reviewable_payment_ids=reviewable_payment_ids, rows=rows, charts=charts,
+        return render_template("finance_review.html", update_items=update_items, net_worth=net_worth, credit_cards=credit_cards, planning_view=planning_view, insights=insights, salary_plan=salary_plan, has_uncertain_payments=has_uncertain_payments, reviewable_payment_ids=reviewable_payment_ids, rows=rows, charts=charts,
                                wealth=wealth, wealth_error=wealth_error, bonds_summary=bonds_summary,
                                month=month, income=income, cash_flow=cash_flow,
                                annual=annual,
@@ -1532,6 +1541,9 @@ register_explanations(app, login_required)
 
 from web_control.undo import register as register_undo
 register_undo(app, login_required)
+
+from web_control.review_tools import register as register_review_tools
+register_review_tools(app, login_required)
 
 from web_control.asset_tools import register as register_asset_tools
 register_asset_tools(app, login_required)

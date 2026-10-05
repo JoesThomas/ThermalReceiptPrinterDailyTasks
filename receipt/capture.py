@@ -121,6 +121,13 @@ class RecordingPrinter:
         from receipt.freshness import snapshot
         fresh = {name: pages[name] for name in order if name in pages and page_times.get(name) == captured_at}
         if fresh:
+            if path == CAPTURE_FILE and 'finance' in fresh:
+                try:
+                    from receipt.finance_details import commit as commit_finance_details
+                    commit_finance_details()
+                except (OSError,ValueError):
+                    import logging
+                    logging.getLogger(__name__).warning('Receipt sent, but finance detail state could not be saved.')
             try:
                 from web_control.today_summary import snapshot_changes
                 snapshot_changes(fresh)

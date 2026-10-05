@@ -185,3 +185,8 @@ data/rental_tax.lock
 
 data/assets.json
 data/assets.lock
+
+data/finance_reviews.json
+data/finance_reviews.lock
+data/finance_details.json
+data/finance_details.lock

@@ -78,6 +78,26 @@ process.on('exit', () => child.kill());
   await scenario.locator('input[name=rent]').fill('800');
   await Promise.all([page.waitForURL('**/finance/planning'),scenario.getByRole('button',{name:'Save private scenario'}).click()]);
   assert.match(await page.locator('main').innerText(), /Hypothetical scenario saved privately/);
+  await page.goto('http://receipt.test/__fixture_reviews');
+  const actualSavings=page.locator('form[action$="/finance/results/savings"]');
+  await actualSavings.locator('input[name=amount]').fill('125');
+  await Promise.all([page.waitForURL('**/finance/results'),actualSavings.getByRole('button',{name:'Confirm savings contribution'}).click()]);
+  assert.match(await page.locator('main').innerText(),/Savings contribution confirmed manually/);
+  const bankRent=page.locator('form[action$="/finance/results/rental"]').filter({has:page.locator('input[name=candidate]')});
+  await bankRent.evaluate(el=>{for(let p=el.parentElement;p;p=p.parentElement)if(p.tagName==='DETAILS')p.open=true;});
+  await bankRent.locator('select[name=property]').selectOption({label:'Test property'});
+  await Promise.all([page.waitForURL('**/finance/results'),bankRent.getByRole('button',{name:'Link rent receipt once'}).click()]);
+  assert.match(await page.locator('main').innerText(),/£800.00/);
+  const ledger=page.locator('form[action$="/finance/results/rental"]').filter({has:page.locator('select[name=kind]')});
+  await ledger.locator('select[name=property]').selectOption({label:'Test property'});
+  await ledger.locator('select[name=kind]').selectOption('repair');
+  await ledger.locator('input[name=amount]').fill('50');
+  await Promise.all([page.waitForURL('**/finance/results'),ledger.getByRole('button',{name:'Add manual ledger entry'}).click()]);
+  assert.match(await page.locator('main').innerText(),/£750.00/);
+  const frozen=page.locator('form[action$="/finance/results/freeze"]');
+  await frozen.locator('input[name=confirm]').check();
+  await Promise.all([page.waitForURL('**/finance/results'),frozen.getByRole('button',{name:'Save monthly summary once'}).click()]);
+  assert.match(await page.locator('main').innerText(),/Monthly summary frozen/);
   await page.goto('http://receipt.test/preview?source=live');
   const preview = page.locator('form[action$="/preview/generate"]').last();
   await Promise.all([page.waitForURL('**/preview?source=live'), preview.locator('button').first().click()]);
@@ -85,7 +105,7 @@ process.on('exit', () => child.kill());
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
-    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning']) {
+    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results']) {
       await page.goto('http://receipt.test'+path);
       await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `${path} overflows at ${width}`);
@@ -97,7 +117,7 @@ process.on('exit', () => child.kill());
     await page.goto('http://receipt.test/bins');
     await page.screenshot({path:process.env.RECEIPT_BROWSER_SCREENSHOT, fullPage:true});
   }
-  console.log(`Browser checks passed: 9 form flows, ${checks} responsive layouts`);
+  console.log(`Browser checks passed: 13 form flows, ${checks} responsive layouts`);
   await browser.close();
   child.kill();
 })().catch(error => { console.error(error); process.exit(1); });
