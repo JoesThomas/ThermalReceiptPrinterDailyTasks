@@ -46,6 +46,13 @@ def build(salary,transactions,balances,projection,settings,goals,today):
             buckets.append({'name':label,'amount':allocated,'required':wanted,'gap':wanted-allocated})
         buckets.append({'name':'Additional spending money','amount':left,'required':left,'gap':Decimal(0)})
         for bucket in buckets: bucket['percent']=float(bucket['amount']/available*100) if available else 0
+    planned_savings = buckets[2]['amount'] if valid else max(Decimal(0), money(target, Decimal(0)))
+    surplus_valid = bool(projection['valid'] and projection.get('payday') and hsbc is not None and reserve['hsbc_gap'] == 0 and not planning_error)
+    # Conservatively reserve every forecast cost against HSBC: another account's
+    # cash must not make a transfer from HSBC appear affordable.
+    headroom = min(hsbc - projection['buffer'], (projection.get('cash') or Decimal(0)) - projection['buffer']) if surplus_valid else None
+    surplus = max(Decimal(0), headroom - bills_cost - variable - planned_savings) if surplus_valid else None
+    savings_with_surplus = planned_savings + surplus if surplus is not None else None
     reasons=[]
     if not latest: reasons.append('No salary payment was identified in the available last 30 days. Check your salary payee setting.')
     if not projection['valid']: reasons.append('Complete bank balances, spending coverage and repayment assumptions are needed.')
@@ -55,4 +62,4 @@ def build(salary,transactions,balances,projection,settings,goals,today):
     if manual is None and not priorities and target is not None and not (goals or {}).get('shared',{}).get('complete',False): reasons.append('The ISA savings target is an estimate based on recorded contributions; confirm tax-year coverage before relying on it.')
     if reserve['target'] and reserve['held'] is None: reasons.append('Cash on hand is not recorded. The full physical cash target is reserved conservatively.')
     return {'reserve':reserve,'latest':latest,'received':received,'spent':spent,'end':end,'available':available,
-            'bills':bills,'bills_cost':bills_cost,'variable':variable,'target':target,'buckets':buckets,'reasons':reasons,'valid':valid}
+            'bills':bills,'bills_cost':bills_cost,'variable':variable,'target':target,'buckets':buckets,'reasons':reasons,'valid':valid,'surplus':surplus,'planned_savings':planned_savings,'savings_with_surplus':savings_with_surplus}

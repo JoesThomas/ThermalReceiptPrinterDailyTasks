@@ -47,3 +47,17 @@ class SalaryPlanTests(unittest.TestCase):
         result=build([{'date':date(2026,10,5),'amount':5000}],[],balances,projection,settings,None,today)
         self.assertFalse(result['valid']);self.assertEqual(result['received'],0)
         self.assertEqual(projection['cash'],1000)
+
+    def test_existing_hsbc_surplus_can_be_added_to_savings(self):
+        today=date(2026,10,1)
+        settings={'hsbc_emergency_reserve':1000,'physical_cash_target':200,'physical_cash_held':500,'next_payday':'2026-11-01','salary_savings_target':800,'runway_daily_spend':20,'commitments':[{'name':'Bills','amount':1300,'due_date':'2026-10-20'}]}
+        balances={'HSBC':{'available':5700},'MONZO':{'available':0}}
+        projection=build_projection(balances,[],[],[],settings,today)
+        result=build([{'date':today,'amount':4500}],[],balances,projection,settings,None,today)
+        self.assertEqual(result['surplus'],2000)
+        self.assertEqual(result['savings_with_surplus'],2800)
+        balances['MONZO']['available']=10000
+        projection=build_projection(balances,[],[],[],settings,today)
+        self.assertEqual(build([],[],balances,projection,settings,None,today)['surplus'],2000)
+        projection['valid']=False
+        self.assertIsNone(build([],[],balances,projection,settings,None,today)['surplus'])

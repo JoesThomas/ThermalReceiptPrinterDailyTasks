@@ -25,6 +25,22 @@
                     .
                 </p>
             {% endif %}
+            <h3>Extra money available before payday</h3>
+            {% if salary_plan.surplus is not none %}
+                <p>
+                    <strong>£{{ '%.2f'|format(salary_plan.surplus) }}</strong> available for extra spending or an additional savings contribution.
+                </p>
+                <p>
+                    Planned savings: £{{ '%.2f'|format(salary_plan.planned_savings) }}. If you move all this surplus into savings, the suggested contribution becomes <strong>£{{ '%.2f'|format(salary_plan.savings_with_surplus) }}</strong>.
+                </p>
+                <p class="muted">
+                    Includes existing HSBC money above your protected reserve, after reserving upcoming payments, estimated everyday spending, any cash top-up and planned savings. Every forecast cost is conservatively reserved against HSBC. The same surplus can be spent or saved, not both. Recheck before transferring; future spending and unlisted bills can change the estimate. No transfer is made automatically.
+                </p>
+            {% else %}
+                <p class="helper">
+                    Set your next payday and complete bank coverage to calculate this surplus. HSBC must cover its protected reserve.
+                </p>
+            {% endif %}
             {% if salary_plan.valid %}
                 <p>
                     External spending since the salary date: £{{ '%.2f'|format(salary_plan.spent) }}. Amount available to allocate: <strong>£{{ '%.2f'|format(salary_plan.available) }}</strong>.
