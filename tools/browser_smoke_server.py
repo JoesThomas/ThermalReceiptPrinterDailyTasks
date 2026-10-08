@@ -24,6 +24,7 @@ from receipt.live_preview import VirtualPrinter
 from web_control import preview_job
 
 # No external integration or hardware calls are allowed in this fixture process.
+web._start_print_command_locked = lambda args: (True, '')
 import requests
 patch.object(requests.sessions.Session, 'request', side_effect=RuntimeError('External requests disabled in browser fixtures')).start()
 write_json(copy / 'data' / 'subscriptions.json', {'monthly': [], 'yearly': [], 'instalments': []})

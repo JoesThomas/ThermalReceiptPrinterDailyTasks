@@ -47,8 +47,12 @@ def register(app,login_required):
     @app.post('/api-health/check')
     @login_required
     def api_health_check():
+        service = request.form.get('service') or None
+        if service is not None and service not in {spec[0] for spec in health.specifications()}:
+            from flask import abort
+            abort(400)
         def run():
-            try:health.check_once(force=True)
+            try:health.check_once(force=True, **({'service':service} if service else {}))
             except Exception:app.logger.warning('Requested integration check failed.')
         Thread(target=run,daemon=True,name='receipt-health-now').start()
         flash('Integration checks requested. Refresh this page to see the results.')

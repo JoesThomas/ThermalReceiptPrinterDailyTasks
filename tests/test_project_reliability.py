@@ -82,5 +82,5 @@ class ReliabilityTests(unittest.TestCase):
             module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
             with self.assertRaises(OSError):module.run_live(only_page='information')
             save.assert_called_once()
-            self.assertTrue(save.call_args.kwargs['replace'])
+            self.assertFalse(save.call_args.kwargs['replace'])
             target.close.assert_called_once()

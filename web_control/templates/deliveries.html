@@ -23,7 +23,7 @@
                         <details>
                             <summary>Received history</summary>
                         {% else %}
-                            <h2>Pending deliveries</h2>
+                            <h2>Delivery notices</h2>
                         {% endif %}
                         {% for item in items if item.confirmed == received %}
                             <form method="post"
@@ -47,6 +47,17 @@
                                     Received
                                 </label>
                                 <button>Save</button>
+                            </form>
+                            <form method="post" action="{{ url_for('delivery_disposition') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="id" value="{{ item.id }}">
+                                {% if item.dismissed or item.skipped_on == today_on %}
+                                    <span class="muted">{{ 'Removed from receipts' if item.dismissed else 'Skipped on ' ~ item.skipped_on }}</span>
+                                    <button name="action" value="restore">Restore</button>
+                                {% else %}
+                                    <button name="action" value="skip">Skip today</button>
+                                    <button name="action" value="dismiss">Remove notice</button>
+                                {% endif %}
                             </form>
                         {% else %}
                             <p>

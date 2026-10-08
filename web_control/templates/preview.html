@@ -24,6 +24,41 @@
                 {% for message in messages %}<p class="flash">{{ message }}</p>{% endfor %}
             {% endwith %}
             <section class="panel">
+                <details>
+                    <summary>Retry a source or print the saved copy</summary>
+                    <p>
+                        Retries refresh the affected page and preserve other saved pages. Other cached sources are reused within their freshness limits. A saved copy can be printed after reconnecting the printer.
+                    </p>
+                    {% for name,target_page in receipt_retries.items() %}
+                        <form action="{{ url_for('generate_live_preview') }}" method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="page" value="{{ target_page }}">
+                            <input type="hidden" name="retry_source" value="{{ name }}">
+                            <button>Retry {{ name|lower }}</button>
+                        </form>
+                    {% endfor %}
+                    {% if has_live and pages|rejectattr('sample')|list|length %}
+                        <form action="{{ url_for('print_saved_preview') }}" method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="page" value="{{ page }}">
+                            {% for receipt in pages if not receipt.sample %}
+                                <input type="hidden" name="pages" value="{{ receipt.name }}">
+                            {% endfor %}
+                            <label>
+                                <input type="checkbox" name="confirm_saved" required>
+                                Print the saved data shown here, without refreshing it
+                            </label>
+                            <label>
+                                <input type="checkbox" name="allow_repeat">
+                                Allow intentional reprint
+                            </label>
+                            <button>Print saved preview</button>
+                        </form>
+                    {% endif %}
+                </details>
+                <a class="button" href="{{ url_for('print_plan') }}">Prepare a print</a>
+            </section>
+            <section class="panel">
                 <form action="{{ url_for('generate_live_preview') }}" method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <label>

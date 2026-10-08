@@ -191,7 +191,7 @@ def probe(spec):
     record(name,'failed',code,(time.monotonic()-started)*1000,'active',reason)
 
 
-def check_once(force=False):
+def check_once(force=False, service=None):
     config=options()
     if receipt_busy():return False
     if not config['enabled'] and not force:return False
@@ -200,18 +200,22 @@ def check_once(force=False):
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:return False
         try:
-            if age(load().get('last_cycle'))<(30 if force else config['interval_minutes']*60):return False
+            if service is None and age(load().get('last_cycle'))<(30 if force else config['interval_minutes']*60):return False
             with transaction() as value:value.update(running=True,started_at=stamp())
             completed=True
             try:
-                for spec in specifications():
+                specs = specifications()
+                if service is not None:
+                    specs = [spec for spec in specs if spec[0] == service]
+                    if not specs: return False
+                for spec in specs:
                     if receipt_busy():completed=False;break
                     with transaction() as value:value['current_service']=spec[0]
                     probe(spec)
             finally:
                 with transaction() as value:
                     value['running']=False
-                    if completed:value['last_cycle']=stamp()
+                    if completed and service is None:value['last_cycle']=stamp()
             return True
         finally:fcntl.flock(lock,fcntl.LOCK_UN)
 

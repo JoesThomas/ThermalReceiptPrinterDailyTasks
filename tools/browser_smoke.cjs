@@ -102,10 +102,18 @@ process.on('exit', () => child.kill());
   const preview = page.locator('form[action$="/preview/generate"]').last();
   await Promise.all([page.waitForURL('**/preview?source=live'), preview.locator('button').first().click()]);
   assert.match(await page.locator('main').innerText(), /Fixture receipt generated/);
+  await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
+  const savedCopy=page.locator('form[action$="/preview/print-saved"]');
+  await savedCopy.locator('input[name=confirm_saved]').check();
+  await Promise.all([page.waitForURL('**/preview'),savedCopy.getByRole('button',{name:'Print saved preview'}).click()]);
+  assert.match(await page.locator('main').innerText(),/Saved copy queued/);
+  await page.goto('http://receipt.test/print-plan');
+  await Promise.all([page.waitForURL('**/preview'),page.getByRole('button',{name:'Generate and print selected pages'}).click()]);
+  assert.match(await page.locator('main').innerText(),/Selected receipt pages queued/);
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
-    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises']) {
+    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/tasks']) {
       await page.goto('http://receipt.test'+path);
       await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `${path} overflows at ${width}`);
@@ -117,7 +125,7 @@ process.on('exit', () => child.kill());
     await page.goto('http://receipt.test/bins');
     await page.screenshot({path:process.env.RECEIPT_BROWSER_SCREENSHOT, fullPage:true});
   }
-  console.log(`Browser checks passed: 13 form flows, ${checks} responsive layouts`);
+  console.log(`Browser checks passed: 15 form flows, ${checks} responsive layouts`);
   await browser.close();
   child.kill();
 })().catch(error => { console.error(error); process.exit(1); });

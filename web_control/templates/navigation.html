@@ -1,3 +1,8 @@
+{% if receipt_retries is defined %}
+    <nav aria-label="Print and settings">
+        <a class="button" href="{{ url_for('print_plan') }}">Prepare print</a><a class="button" href="{{ url_for('settings_hub') }}">Settings</a>
+    </nav>
+{% endif %}
 <a class="skip-link" href="#main-content">Skip to content</a>
 <div class="app-topbar">
     <a class="app-brand" href="{{ url_for('index') }}"><span aria-hidden="true" class="brand-mark">R</span><span>Receipt Control</span></a><span class="app-subtitle">Your daily workspace</span>

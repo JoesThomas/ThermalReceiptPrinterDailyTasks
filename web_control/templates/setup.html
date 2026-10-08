@@ -32,6 +32,20 @@
                 </form>
                 <a class="button" href="{{ url_for('printer_diagnostics') }}">Printer diagnostics & timings</a><a class="button" href="{{ url_for('api_health_page') }}">Review API health</a>
             </section>
+            <section>
+                <h2>Check each configured connection</h2>
+                <p>
+                    Missing private configuration is described below. Credentials are never shown here; edit passwords.json locally. Bank and mail connections are observed during their normal use.
+                </p>
+                {% for connection in connections %}
+                    <form method="post" action="{{ url_for('api_health_check') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="service" value="{{ connection.name }}">
+                        <strong>{{ connection.name }}</strong> · {{ connection.status }}
+                        <button>Check this connection</button>
+                    </form>
+                {% endfor %}
+            </section>
             <div class="setup-grid">
                 {% for item in checklist %}
                     <section>

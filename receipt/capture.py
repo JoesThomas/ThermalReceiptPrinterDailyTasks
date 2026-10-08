@@ -36,8 +36,11 @@ class RecordingPrinter:
         self._output('hw', args, kwargs)
 
     def text(self, value):
-        self._output('text', (value,), {})
         value = str(value)
+        # Closing/opening section rules can meet with no content between them.
+        if re.fullmatch(r"[-=]{42}\n", value) and self.lines and re.fullmatch(r"[-=]{42}\n", self.lines[-1]):
+            return
+        self._output('text', (value,), {})
         if self.align == "center":
             value = "".join(line.rstrip("\r\n").center(42) + ("\n" if line.endswith("\n") else "")
                             for line in value.splitlines(keepends=True))
@@ -114,8 +117,11 @@ class RecordingPrinter:
         path.parent.mkdir(parents=True, exist_ok=True)
         from receipt.freshness import snapshot
         from storage import write_json
-        order = self.capture_order or ((existing or {}).get("page_order") if only_page else None) or PAGE_NAMES
-        write_json(path, {"page_order": list(order), "freshness": snapshot(), "page_times": page_times, "pages": pages,
+        order = self.capture_order or PAGE_NAMES
+        if existing and not replace and (not self.capture_order or len(self.capture_order) < len(PAGE_NAMES)):
+            order = list(existing.get('page_order') or PAGE_NAMES)
+            order += [name for name in (self.capture_order or PAGE_NAMES) if name not in order]
+        write_json(path, {"page_order": list(order), "freshness": {**((existing or {}).get("freshness", {})), **snapshot()}, "page_times": page_times, "pages": pages,
                           "page_images": page_images})
         from receipt.archive import save as archive_save
         from receipt.freshness import snapshot

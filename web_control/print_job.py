@@ -75,6 +75,16 @@ def main():
         code = run_bounded(command, cwd=ROOT,
                            env={**os.environ, "RECEIPT_WEB_CAPTURE": "1", 'RECEIPT_JOB_ID': job_id})
         save_status("completed" if code == 0 else "failed", page)
+        if code != 0:
+            from receipt.capture import LIVE_PREVIEW_FILE, load_capture
+            from storage import write_json
+            payload=json.loads(STATUS.read_text())
+            capture=load_capture(LIVE_PREVIEW_FILE) or {}
+            times=capture.get('page_times', {}).values()
+            generated=any(stamp >= payload.get('started_at', '9999') for stamp in times)
+            if generated:
+                payload.update(preview_saved=True, stage='Print failed; generated preview saved. Reconnect and print the saved copy.')
+                write_json(STATUS,payload)
         log_event(job_id, f'print ended exit={code}')
         return code
     except subprocess.TimeoutExpired:

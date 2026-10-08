@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Settings · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <header>
+                <h1>Settings</h1>
+            </header>
+            {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            <section>
+                <p class="muted">
+                    Changes take effect after saving the corresponding form. Each page confirms saved changes. Current print time: {{ settings.print_schedule.time }} UK time; {{ 'enabled' if settings.print_schedule.enabled else 'disabled' }}.
+                </p>
+                <label for="settings-find">
+                    Find a setting
+                    <input type="search"
+                           id="settings-find"
+                           placeholder="Try location, recipes, equipment or print time">
+                </label>
+                <p id="settings-no-results" hidden>No matching settings.</p>
+            </section>
+            <div class="settings-directory">
+                {% for group,links in groups %}
+                    <section>
+                        <h2>{{ group }}</h2>
+                        {% for label,endpoint,view,anchor in links %}
+                            <a class="button"
+                               href="{{ url_for(endpoint,view=view) if view else url_for(endpoint) }}{% if anchor %}#{{ anchor }}{% endif %}">{{ label }}</a>
+                        {% endfor %}
+                    </section>
+                {% endfor %}
+            </div>
+        </main>
+    </body>
+</html>

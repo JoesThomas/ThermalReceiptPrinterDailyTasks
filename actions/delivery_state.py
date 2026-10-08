@@ -49,8 +49,9 @@ def record_deliveries(deliveries, carrier, expected):
             state['items'][key] = {'id': key, 'title': item_title(row) or carrier(row),
                                    'carrier': carrier(row), 'expected': expected(row),
                                    'date': str(row.get('delivery_date') or ''),
-                                   'confirmed': bool(old.get('confirmed'))}
-            if not state['items'][key]['confirmed']:
+                                   'confirmed': bool(old.get('confirmed')), 'dismissed':bool(old.get('dismissed')), 'skipped_on':old.get('skipped_on')}
+            from receipt.local_time import uk_today
+            if not state['items'][key]['confirmed'] and not old.get('dismissed') and old.get('skipped_on') != uk_today().isoformat():
                 pending.append(row)
         write_json(FILE, state)
     return pending
@@ -71,3 +72,19 @@ def confirm_delivery(key, confirmed):
         state['items'][key]['confirmed'] = confirmed
         write_json(FILE, state)
     return True
+
+
+def disposition(key, action):
+    from copy import deepcopy
+    from receipt.local_time import uk_today
+    if action not in {'skip','dismiss','restore'}: raise ValueError('Invalid delivery action')
+    with locked_state():
+        state=load_state()
+        row=state['items'].get(key)
+        if row is None: raise ValueError('Delivery not found')
+        before=deepcopy(row)
+        if action=='skip': row['skipped_on']=uk_today().isoformat()
+        elif action=='dismiss': row['dismissed']=True
+        else: row.update(dismissed=False,skipped_on=None)
+        write_json(FILE,state)
+        return before,deepcopy(row)

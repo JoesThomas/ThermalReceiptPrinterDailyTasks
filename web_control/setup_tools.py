@@ -81,7 +81,10 @@ def register(app, login_required, root):
     @app.get('/setup')
     @login_required
     def setup_page():
-        return render_template('setup.html', checklist=checklist(root))
+        from services.api_health import specifications, load
+        checks=load().get('services', {})
+        connections=[dict(name=spec[0],status=checks.get(spec[0],{}).get('status','Not checked')) for spec in specifications()] if 'api_health_check' in app.view_functions else []
+        return render_template('setup.html', checklist=checklist(root),connections=connections)
 
     @app.post('/setup/printer-check')
     @login_required

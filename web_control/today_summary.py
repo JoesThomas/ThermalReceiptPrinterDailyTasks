@@ -59,14 +59,14 @@ def snapshot_changes(pages):
 def dashboard():
     errors = []
     try:
-        tasks = [r for r in checklists.rows('tasks') if not r['completed'] and (not r.get('due') or r['due'] <= checklists.today())]
+        tasks = [r for r in checklists.rows('tasks') if not r['completed'] and r.get('skipped_on') != checklists.today() and (not r.get('due') or r['due'] <= checklists.today())]
         from actions.receipt_workout import plan
         exercises = plan()
     except ValueError:
         tasks, exercises = [], []
         errors.append('Saved task lists could not be read.')
     calendar = read(CALENDAR)
-    deliveries = [r for r in delivery_state.checklist() if not r.get('confirmed')]
+    deliveries = [r for r in delivery_state.checklist() if not r.get('confirmed') and not r.get('dismissed') and r.get('skipped_on') != checklists.today()]
     from receipt.capture import CAPTURE_FILE, LIVE_PREVIEW_FILE, load_capture
     checks = {}
     for path in (CAPTURE_FILE, LIVE_PREVIEW_FILE):

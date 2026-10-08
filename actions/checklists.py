@@ -169,20 +169,20 @@ def update(kind, action, key='', title='', **metadata):
                 if not done and today() in history: history.remove(today())
                 row['history'] = history[-90:]
                 row.pop('skipped_on', None)
-        elif action == 'skip' and kind == 'exercises':
+        elif action == 'skip':
             row['skipped_on'] = None if row.get('skipped_on') == today() else today()
         elif action == 'delete':
             if row['source'] != 'local':
                 raise ValueError('Remove Google Doc items in the source document, then refresh.')
             state['items'].remove(row)
         validate_state(state)
-        after = deepcopy(row)
+        after = None if action == 'delete' else deepcopy(row)
     return before, after
 
 
 def task_text(text):
     sync(text, 'tasks')
-    return '\n'.join(row['title'] + '.' for row in rows('tasks') if not row['completed'] and (not row.get('due') or row['due'] <= today()))
+    return '\n'.join(row['title'] + '.' for row in rows('tasks') if not row['completed'] and row.get('skipped_on') != today() and (not row.get('due') or row['due'] <= today()))
 
 
 def required_equipment(row):

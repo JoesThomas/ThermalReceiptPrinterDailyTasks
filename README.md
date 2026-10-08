@@ -462,3 +462,17 @@ The receipt cycles through only **bicep curls, shrugs, sit-ups, press-ups, rowin
 Targets and completion are stored privately in the exercise checklist and can be changed on **Exercises**. Configured equipment settings exclude curls/shrugs without dumbbells; a rowing day becomes a jogging day if a rowing machine is unavailable. With no equipment configuration, equipment requirements are printed. The receipt no longer fetches an exercise Google Doc. Additional workouts selected from the wider web library stay separate from the fixed receipt rotation.
 
 The selected four-set targets are a user preference, above the NHS starting guidance of at least two sets of 8–12 repetitions: https://www.nhs.uk/live-well/exercise/how-to-improve-strength-flexibility/ . Cardio durations are modest starting defaults chosen for this application, rather than prescribed NHS session lengths.
+
+### Printing, retries and setup
+
+**Prepare print** shows selected pages in configured order and local task, exercise and delivery counts. Live generation saves the preview before opening the physical printer. A failed send can therefore leave a usable generated copy. **Receipt → Retry a source or print the saved copy** lets you explicitly queue that saved text/graph snapshot without fetching live data again; confirmation is required and repeated requests are guarded. Saved-copy data keeps its original dates and is frozen before the print job starts.
+
+Source retry buttons force a refresh for weather, UK/local/sport news, calendar, deliveries or task documents, regenerate the affected information/actions page, and preserve other saved pages and their timestamps. Valid cached sibling sources are reused; unavailable/expired siblings are labelled unavailable rather than silently fetched or described as fresh. Some actions-page checks (such as therapy payments) remain normal live checks. It is a page refresh using one targeted cache refresh, not a replacement of a single text paragraph.
+
+**Settings** groups Location, Receipt, Connections, Meals, Exercise and Printing. Search filters the shortcuts. **Setup** provides separate checks for configured public/document/calendar connections; missing configuration has a plain-language setup description. Bank/email health stays observational during normal use. Credentials stay in private local files.
+
+Tasks support completion, skip today and removal of local items with Undo. Deliveries distinguish received, skip today and removal of a notice; removal does not mark a parcel received and persists across refreshed notices. Skipping a planned meal does not confirm it eaten and updates shopping/prep; Undo restores the prior plan if nothing else has changed. A direct meal replacement remains available after Undo expires.
+
+Actions, food, weather, news and finance rendering now live in separate `receipt/*_renderers.py` modules, with compatibility wrappers in the live orchestration module. Network collectors remain separate from rendering helpers. Adjacent horizontal section rules are coalesced in the recording buffer, so a closing rule followed by the delivery heading's opening rule produces one line in both preview and physical output.
+
+See [deployment/README.md](deployment/README.md) for the Raspberry Pi service template, installation checks, and physical reboot/network/printer acceptance checks. These checks cannot confirm hardware behaviour until run on your Pi.

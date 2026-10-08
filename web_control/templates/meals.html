@@ -75,6 +75,13 @@
             </section>
             <section>
                 <h2>Confirm a meal eaten</h2>
+
+                {% if not confirmed %}
+                    <form method="post" action="{{ url_for('meal_skip') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button>Skip planned meal today</button>
+                    </form>
+                {% endif %}
                 {% if confirmed %}
                     <p>
                         <span class="badge">Eaten</span> {{ confirmed.recipe }}

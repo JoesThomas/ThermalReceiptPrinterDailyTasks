@@ -234,6 +234,9 @@
                                             {% endif %}
                                             <button name="action" value="skip" formnovalidate>{{ 'Undo skip' if item.skipped else 'Skip today' }}</button>
                                         {% endif %}
+                                        {% if kind == 'tasks' %}
+                                            <button name="action" value="skip" formnovalidate>{{ 'Undo skip' if item.skipped else 'Skip today' }}</button>
+                                        {% endif %}
                                         <button name="action"
                                                 value="{{ 'save' if item.source == 'local' else 'details' }}">
                                             Save

@@ -34,6 +34,8 @@ def main():
         parser.add_argument('--finance', action='store_true')
         parser.add_argument('--only', choices=['information', 'actions', 'food', 'finance'])
         parser.add_argument('--pages', nargs='+', choices=['information','actions','food','finance'])
+        from web_control.receipt_controls import RETRIES
+        parser.add_argument('--refresh-source', choices=list(RETRIES))
         options = parser.parse_args()
         args = ['--finance'] if options.finance or options.only == 'finance' else []
         if options.pages:
@@ -46,7 +48,8 @@ def main():
         log_event(job_id, 'preview started')
         code = run_bounded([sys.executable, str(ROOT / "main.py"), "--live-preview", *args],
                                 cwd=ROOT,
-                                env={**os.environ, "RECEIPT_LIVE_PREVIEW": "1", "RECEIPT_JOB_ID": job_id})
+                                env={**os.environ, "RECEIPT_LIVE_PREVIEW": "1", "RECEIPT_JOB_ID": job_id,
+                                     "RECEIPT_REFRESH_SOURCE": options.refresh_source or ""})
         save_status("completed" if code == 0 else "failed")
         log_event(job_id, f'preview ended exit={code}')
         return code

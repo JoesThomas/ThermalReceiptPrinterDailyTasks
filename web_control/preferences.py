@@ -60,3 +60,20 @@ def register(app, login_required, root):
                 result.update(away_excluded=plan.get('away_excluded', []), away_excluded_ingredients=plan.get('away_excluded_ingredients', []))
             return result
         except ValueError: return {'away_preferences': {}, 'away_active': False}
+
+
+def register_settings_hub(app, login_required):
+    @app.get('/settings')
+    @login_required
+    def settings_hub():
+        from receipt_settings import load_receipt_settings
+        settings=load_receipt_settings()
+        groups=[
+            ('Location',[('Weather location and local news','index','settings','receipt-location'),('Bin collection address','bin_settings','','')]),
+            ('Receipt',[('Pages, appearance and features','index','settings',''),('Preview and source retries','preview','',''),('Saved receipts','archive_list','','')]),
+            ('Connections',[('Setup and individual connection checks','setup_page','',''),('Integration health','api_health_page','',''),('Private backups','backup_page','','')]),
+            ('Meals',[('Recipes and meal confirmation','meals_page','',''),('Shopping and Tesco checklist','tesco_list','',''),('Away dates','preferences_page','','away')]),
+            ('Exercise',[('Receipt targets and equipment','exercise_list','','')]),
+            ('Printing',[('Prepare a print','print_plan','',''),('Daily print time','index','settings',''),('Printer connection','printer_diagnostics','','')]),
+        ]
+        return render_template('settings_hub.html',groups=groups,settings=settings)

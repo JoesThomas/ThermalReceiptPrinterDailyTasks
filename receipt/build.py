@@ -24,7 +24,7 @@ def build(pipeline, run, factory, *, finance_requested=False, only_page=None, se
         run(**options)
         if recorder is not None:
             from receipt.capture import LIVE_PREVIEW_FILE
-            recorder.save(only_page, path=LIVE_PREVIEW_FILE, replace=True)
+            recorder.save(only_page, path=LIVE_PREVIEW_FILE, replace=only_page is None and selected_pages is None)
         return recorder
     except Exception:
         if recorder is not None:

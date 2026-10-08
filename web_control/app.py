@@ -1065,6 +1065,10 @@ def generate_live_preview():
 
 
 def _generate_live_preview_locked():
+    from web_control.receipt_controls import RETRIES
+    retry = request.form.get('retry_source', '')
+    if retry and (retry not in RETRIES or request.form.get('page') != RETRIES[retry] or request.form.get('selected_sections') == '1'):
+        abort(400)
     if request.form.get('selected_sections') == '1':
         from receipt.selection import validate as validate_sections
         try: validate_sections(request.form.getlist('sections'))
@@ -1097,6 +1101,8 @@ def _generate_live_preview_locked():
                 args += ['--pages', *sections]
             elif page != 'all':
                 args += ['--only', page]
+            if retry:
+                args += ['--refresh-source', retry]
             process = subprocess.Popen(
                 [sys.executable, str(PROJECT_ROOT / "web_control" / "preview_job.py"), *args],
                 cwd=PROJECT_ROOT, stdout=log_handle, stderr=subprocess.STDOUT,
@@ -1551,6 +1557,40 @@ register_asset_tools(app, login_required)
 
 from web_control.tax_tools import register as register_tax_tools
 register_tax_tools(app, login_required)
+
+
+from web_control.receipt_controls import register as register_receipt_controls
+register_receipt_controls(app, login_required, _start_print_command, PROJECT_ROOT)
+from web_control.preferences import register_settings_hub
+register_settings_hub(app, login_required)
+
+@app.post('/meals/skip')
+@login_required
+def meal_skip():
+    from copy import deepcopy
+    from meals import legacy_planner as meals
+    from web_control.undo import offer
+    today=_local_today()
+    if meal_confirmation(today):
+        flash('This meal is already confirmed eaten. Undo that confirmation before skipping the plan.')
+        return redirect(url_for('meals_page'))
+    plan=meals.load_plan_for(today,raw=True)
+    if not plan: abort(400)
+    before=deepcopy(plan)
+    for row in plan.get('meals',[]):
+        if row.get('date')==today.isoformat():
+            if row.get('kind') == 'skipped':
+                flash('This planned meal is already skipped today.')
+                return redirect(url_for('meals_page'))
+            row.clear(); row.update(date=today.isoformat(),kind='skipped',name='Meal skipped today')
+            break
+    else: abort(400)
+    plan['shopping']=meals.build_shopping_list(plan)
+    plan['prep']=meals.build_sunday_prep(plan)
+    meals._save(meals.plan_path(meals.current_week_sunday(today)),plan)
+    offer('meal_plan',today.isoformat(),before,plan,'meals_page')
+    flash('Meal skipped today. It was not marked as eaten; shopping and prep updated.')
+    return redirect(url_for('meals_page'))
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

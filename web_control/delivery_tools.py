@@ -6,7 +6,8 @@ def register(app, login_required):
     @app.get('/deliveries')
     @login_required
     def delivery_checklist():
-        return render_template('deliveries.html', items=checklist())
+        from receipt.local_time import uk_today
+        return render_template('deliveries.html', items=checklist(),today_on=uk_today().isoformat())
 
     @app.post('/deliveries/confirm')
     @login_required
@@ -22,3 +23,14 @@ def register(app, login_required):
         from web_control.undo import offer
         offer('delivery', key, before, '1' in values, 'delivery_checklist')
         return redirect(url_for('quick_actions') if request.form.get('return_quick') == '1' else url_for('index') if request.form.get('return_home') == '1' else url_for('delivery_checklist'))
+
+    @app.post('/deliveries/status')
+    @login_required
+    def delivery_disposition():
+        from actions.delivery_state import disposition
+        from web_control.undo import offer
+        key=request.form.get('id','')
+        try: before,after=disposition(key,request.form.get('action',''))
+        except ValueError: abort(400)
+        offer('delivery_status',key,before,after,'delivery_checklist')
+        return redirect(url_for('delivery_checklist'))

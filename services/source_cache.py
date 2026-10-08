@@ -1,5 +1,6 @@
 """Private bounded cache of parsed calendar/delivery results and timing metadata."""
 import fcntl
+import os
 import hashlib
 import json
 import time
@@ -59,7 +60,12 @@ def get(name, identity, collect, *, ttl=300, max_age=86400):
     has_cache = isinstance(row.get('result'), list) and 0 <= age <= max_age
     try: cached_result = decode(row['result']) if has_cache else None
     except (TypeError,ValueError): has_cache, cached_result = False, None
-    if has_cache and age < ttl and not row.get('refresh'):
+    retry = os.environ.get('RECEIPT_REFRESH_SOURCE', '')
+    if retry and name != retry and not has_cache:
+        from receipt.freshness import mark
+        mark(name, 'unavailable')
+        raise ValueError('No valid saved result for this source during a targeted retry')
+    if has_cache and ((retry and name != retry) or (not retry and age < ttl and not row.get('refresh'))):
         result, status = cached_result, 'cached'
     else:
         try:

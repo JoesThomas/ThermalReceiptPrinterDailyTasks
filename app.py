@@ -30,5 +30,11 @@ def run_live(*, finance_requested=False, only_page=None, live_preview=False, sel
             recorder.save(only_page)
             print('Receipt sent to printer; paper output not confirmed.')
             report('Receipt sent to printer', 5, 5)
+        except Exception as error:
+            from receipt.printer import PrinterConnectionError
+            if isinstance(error, PrinterConnectionError):
+                report('Printer unavailable; generated preview saved', 4, 5)
+                raise PrinterConnectionError(str(error) + ' The generated copy is saved in Receipt preview; reconnect and choose Print saved preview.') from None
+            raise
         finally:
             recorder.printer.close()
