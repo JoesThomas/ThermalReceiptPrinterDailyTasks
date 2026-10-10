@@ -203,8 +203,14 @@ def review(wealth=None,year=None,state=None,on=None,bond_balances=None):
             key=identity('Premium Bonds','savings')
             accounts[key]={'id':key,'name':'Premium Bonds','kind':'savings','type':'premium_bonds','target':None,
                            'balance':amount(last['amount']),'balance_date':last['date']}
-        elif len(existing)==1 and (existing[0].get('latest',{}).get('source') != 'manual' or last['date']>str(existing[0]['balance_date'])):
-            existing[0].update(balance=amount(last['amount']),balance_date=last['date'])
+        elif len(existing)==1:
+            current=existing[0]
+            current_date=str(current.get('balance_date') or '')
+            # The newest dated balance wins, including reductions after withdrawals.
+            # Manual account valuations win same-date ties with the separate ledger.
+            if last['date']>current_date or (last['date']==current_date and current.get('latest',{}).get('source')!='manual'):
+                current.update(balance=amount(last['amount']),balance_date=last['date'],
+                               latest={'date':last['date'],'source':'premium bonds ledger'})
     config=state['years'].get(str(year),{})
     allowance=amount(config['allowance']) if config.get('allowance') is not None else (Decimal(20000) if 2024<=year<=2027 and 'allowance' not in config else None)
     cash_limit=amount(config['cash_limit']) if config.get('cash_limit') is not None else (Decimal(20000) if 2024<=year<=2026 and 'cash_limit' not in config else None)
@@ -256,12 +262,8 @@ def receipt_lines(view, *, include_balances=False):
                         lines.append('TARGET REACHED')
             if row.get('balance_date'):
                 lines.append('BALANCE AS OF ' + str(row['balance_date']))
-    if view['premium']['balance'] is not None:
-        row=view['premium'];lines+=['PREMIUM BONDS HOLDING GOAL',f"GBP {row['balance']:.2f} / 50000.00",f"{row['percent']:.0f}% FULL / GBP {row['remaining']:.2f} SPACE"]
-        lines.append(progress_bar(row['percent']))
-        if row['over']: lines.append('RECORDED HOLDINGS EXCEED LIMIT')
     for row in view['accounts']:
-        if not include_balances and (row['type']!='premium_bonds' or row.get('target')) and row['balance_target'] and row['balance'] is not None:
+        if not include_balances and row['balance_target'] and row['balance'] is not None:
             lines += [row['name'].upper()+' BALANCE GOAL',f"GBP {row['balance']:.2f} / {row['balance_target']:.2f} ({row['balance_goal']['percent']:.0f}%)"]
             lines.append(progress_bar(row['balance_goal']['percent']))
     if view['has_isa']:
