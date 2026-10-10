@@ -44,6 +44,11 @@ shared total, and confirm subtype caps with the provider. Junior ISA contributio
 use a separate child allowance and are not tracked by this adult ledger.
 This is a record of inputs, not verification of regulatory eligibility.
 
+The savings summary and finance receipt show Premium Bonds through the named
+account goal only; there is no additional aggregate holdings card or holding-goal
+receipt block. An account without a custom target still uses the existing holding
+maximum as its default target.
+
 The finance receipt gets a compact holdings/target and current ISA contributions
 summary. Website-only progress bars do not widen the paper receipt. Account values,
 targets and entries stay in the gitignored, owner-only `data/savings_goals.json`;

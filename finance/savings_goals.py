@@ -256,12 +256,8 @@ def receipt_lines(view, *, include_balances=False):
                         lines.append('TARGET REACHED')
             if row.get('balance_date'):
                 lines.append('BALANCE AS OF ' + str(row['balance_date']))
-    if view['premium']['balance'] is not None:
-        row=view['premium'];lines+=['PREMIUM BONDS HOLDING GOAL',f"GBP {row['balance']:.2f} / 50000.00",f"{row['percent']:.0f}% FULL / GBP {row['remaining']:.2f} SPACE"]
-        lines.append(progress_bar(row['percent']))
-        if row['over']: lines.append('RECORDED HOLDINGS EXCEED LIMIT')
     for row in view['accounts']:
-        if not include_balances and (row['type']!='premium_bonds' or row.get('target')) and row['balance_target'] and row['balance'] is not None:
+        if not include_balances and row['balance_target'] and row['balance'] is not None:
             lines += [row['name'].upper()+' BALANCE GOAL',f"GBP {row['balance']:.2f} / {row['balance_target']:.2f} ({row['balance_goal']['percent']:.0f}%)"]
             lines.append(progress_bar(row['balance_goal']['percent']))
     if view['has_isa']:
