@@ -113,6 +113,8 @@ def receipt(result, today):
     amount('PAYMENTS TOTAL', result['bills_total'])
     section('PAY PERIOD ALLOCATION')
     amount('Estimated everyday spending', result['variable'])
+    amount('Per day (expected spending)', base.get('daily_cost', base['daily']))
+    text('Expected spending, not a maximum allowance.')
     amount('INCOME SURPLUS', result['surplus'])
     text('Surplus excludes existing bank cash.')
     if data['savings']:
@@ -157,9 +159,11 @@ def receipt(result, today):
         text(f'Reserves breached: {forecast["run_out"]:%d %b %Y}')
         text(format_runway((forecast['run_out']-today).days, today))
     else: text(f'No shortfall through {forecast["end"]:%d %b %Y}')
-    amount('Cash above reserves at forecast end', forecast['end_cash'])
+    amount('Bank cash above reserves at end', forecast['end_cash'])
+    amount('Test savings transfers over forecast', result['monthly_savings'] * data['months'])
+    text('Bank cash excludes transferred savings. Savings shown are new test contributions only; no opening savings or interest.')
     for months, cash in result['checkpoints']:
-        amount(f'After {months} month(s), above reserves', cash)
+        amount(f'{months} month(s): bank cash above reserves', cash)
     section('ASSUMPTIONS')
     text('Take-home salary; no salary tax deduction. Other income arrives on payday.')
     text('Monthly savings transfers are included in runway; savings remain assets outside spending cash.')

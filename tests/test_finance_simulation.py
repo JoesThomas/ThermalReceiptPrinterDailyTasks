@@ -35,7 +35,8 @@ class SimulationTests(TestCase):
         text = receipt(result, TODAY)
         self.assertIn('SIMULATION - POTENTIAL SALARY', text)
         self.assertIn('GBP 4,500.00', text)
-        self.assertNotIn('GBP 2,000.00', text)
+        self.assertNotIn('Existing salary (additional mode)', text)
+        self.assertEqual(result['forecast']['payments'][0]['salary'], D('4500'))
         self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
 
     def test_repayment_options_and_monthly_savings_are_explicit(self):
@@ -46,6 +47,9 @@ class SimulationTests(TestCase):
         result = build(source, values, TODAY)
         text = receipt(result, TODAY)
         self.assertIn('Potential full payoff', text)
+        self.assertIn('Per day (expected spending)', text)
+        self.assertIn('Test savings transfers over forecast', text)
+        self.assertIn('Bank cash excludes transferred savings.', text)
         self.assertIn('Confirm balance/rate', text)
         self.assertIn('Final payment: 01 Jun 2027', text)
         without = dict(values, savings_target='0')
