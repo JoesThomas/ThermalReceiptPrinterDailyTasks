@@ -75,6 +75,20 @@ class SimulationTests(TestCase):
         values['lump_sum'] = '-1'
         with self.assertRaises(ValueError): validate(values, TODAY)
 
+    def test_combined_lump_and_monthly_income_and_shortfall_labels(self):
+        values = inputs(); values.update(mode='lump_income', lump_sum='10000')
+        result = build(projection(), values, TODAY)
+        self.assertEqual(result['payday_cash'], D('16500'))
+        baseline = build(projection(), dict(values, lump_sum='0'), TODAY)
+        self.assertEqual(result['forecast']['end_cash'] - baseline['forecast']['end_cash'], D('10000'))
+        self.assertEqual(result['inputs']['existing'], D(0))
+        values.update(mode='lump', lump_sum='0', months='12')
+        text = receipt(build(projection(), values, TODAY), TODAY)
+        self.assertIn('Funding shortfall at forecast end', text)
+        self.assertIn('6 month(s): funding shortfall', text)
+        self.assertNotIn('GBP -', text)
+        self.assertIn('No savings transfers assumed', text)
+
     def test_additional_income_uses_explicit_existing_salary_once(self):
         values = inputs(); values['mode'] = 'additional'
         result = build(projection(), values, TODAY)

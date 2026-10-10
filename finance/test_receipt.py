@@ -10,14 +10,14 @@ from finance.projection import day, money, occurs, format_runway
 def validate(values, today):
     mode = values.get('mode', 'replace')
     lump_mode = mode == 'lump'
-    lump = money(values.get('lump_sum', '0') or '0') if lump_mode else Decimal(0)
+    lump = money(values.get('lump_sum', '0') or '0') if mode in {'lump', 'lump_income'} else Decimal(0)
     salary = Decimal(0) if lump_mode else money(values.get('salary'))
     existing = Decimal(0) if lump_mode else money(values.get('existing_salary', '0') or '0')
     other = Decimal(0) if lump_mode else money(values.get('other_income', '0') or '0')
     savings = Decimal(0) if lump_mode else money(values.get('savings_target', '0') or '0')
     if any(v is None or v < 0 or v > 10000000 for v in (salary, existing, other, savings, lump)):
         raise ValueError('Enter valid non-negative monthly amounts.')
-    if mode not in {'replace', 'additional', 'lump'}:
+    if mode not in {'replace', 'additional', 'lump', 'lump_income'}:
         raise ValueError('Choose how the potential salary should be used.')
     start = day(values.get('start'))
     if not start or not today <= start <= today + timedelta(days=365):
@@ -91,9 +91,10 @@ def receipt(result, today):
     text('SIMULATION - POTENTIAL SALARY' if data['mode'] != 'lump' else 'SIMULATION - LUMP SUM ONLY')
     text(f'Generated {today:%d %b %Y}')
     section('INCOME')
-    if data['mode'] == 'lump':
+    if data['mode'] in {'lump', 'lump_income'}:
         amount('One-off lump sum', data['lump'])
-        text('No salary or other recurring income.')
+        if data['mode'] == 'lump': text('No salary or other recurring income.')
+        else: text('Lump sum once; salary and other income repeat monthly from the same date.')
     amount('Monthly take-home salary', data['salary'])
     if data['existing']: amount('Existing salary (additional mode)', data['existing'])
     amount('Other monthly income', data['other'])
@@ -120,7 +121,7 @@ def receipt(result, today):
     amount('Estimated everyday spending', result['variable'])
     amount('Per day (expected spending)', base.get('daily_cost', base['daily']))
     text('Expected spending, not a maximum allowance.')
-    amount('INCOME SURPLUS', result['surplus'])
+    amount('INCOME SURPLUS' if result['surplus'] >= 0 else 'INCOME FUNDING GAP', abs(result['surplus']))
     text('Surplus excludes existing bank cash.')
     if data['savings']:
         amount('Monthly savings allocation', result['monthly_savings'])
@@ -164,14 +165,21 @@ def receipt(result, today):
         text(f'Reserves breached: {forecast["run_out"]:%d %b %Y}')
         text(format_runway((forecast['run_out']-today).days, today))
     else: text(f'No shortfall through {forecast["end"]:%d %b %Y}')
-    amount('Bank cash above reserves at end', forecast['end_cash'])
-    amount('Test savings transfers over forecast', result['monthly_savings'] * data['months'])
-    text('Bank cash excludes transferred savings. Savings shown are new test contributions only; no opening savings or interest.')
+    amount('Bank cash above reserves at end', max(Decimal(0),forecast['end_cash']))
+    if forecast['end_cash'] < 0:
+        amount('Funding shortfall at forecast end', -forecast['end_cash'])
+        text('Shortfall is additional funding needed to cover costs and preserve reserves, not an actual negative bank balance.')
+    if result['monthly_savings']:
+        amount('Test savings transfers over forecast', result['monthly_savings'] * data['months'])
+        text('Bank cash excludes transferred savings. Savings shown are new test contributions only; no opening savings or interest.')
+    else: text('No savings transfers assumed in this test.')
     for months, cash in result['checkpoints']:
-        amount(f'{months} month(s): bank cash above reserves', cash)
+        label = 'cash above reserves' if cash >= 0 else 'funding shortfall'
+        amount(f'{months} month(s): {label}', abs(cash))
     section('ASSUMPTIONS')
+    if data['mode']=='lump_income': text('Lump sum is received once on the first payday. Monthly income is only the salary and other income entered in this test.')
     text('Lump sum arrives once on the selected date. No future recurring income; no automatic savings transfers. Any payoff reduces cash runway.' if data['mode']=='lump' else 'Take-home salary; no salary tax deduction. Other income arrives on payday.')
-    text('Monthly savings transfers are included in runway; savings remain assets outside spending cash.')
+    if result['monthly_savings']: text('Monthly savings transfers are included in runway; savings remain assets outside spending cash.')
     text('Early repayment options are not included. Forecast is bounded, not unlimited.')
     for warning in base.get('warnings', []): text(warning)
     rule(); text('SIMULATION ONLY - LIVE RECORDS UNCHANGED'); rule()

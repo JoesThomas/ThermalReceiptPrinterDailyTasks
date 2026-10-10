@@ -55,10 +55,14 @@
                                 <option value="lump" {% if values.get('mode') == 'lump' %}selected{% endif %}>
                                     Lump sum only (no recurring income)
                                 </option>
+                                <option value="lump_income"
+                                        {% if values.get('mode') == 'lump_income' %}selected{% endif %}>
+                                    Lump sum + monthly income
+                                </option>
                             </select>
                         </label>
                         <label>
-                            One-off lump sum (£, lump sum mode only)
+                            One-off lump sum (£)
                             <input type="number"
                                    name="lump_sum"
                                    min="0"
