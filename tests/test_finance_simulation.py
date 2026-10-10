@@ -46,7 +46,7 @@ class SimulationTests(TestCase):
         values = inputs()
         result = build(source, values, TODAY)
         text = receipt(result, TODAY)
-        self.assertIn('Potential full payoff', text)
+        self.assertIn('Remaining balance', text)
         self.assertIn('Per day (expected spending)', text)
         self.assertIn('Test savings transfers over forecast', text)
         self.assertIn('Bank cash excludes transferred savings.', text)
@@ -97,7 +97,7 @@ class SimulationTests(TestCase):
         self.assertEqual(result['spend'], D('200'))
         self.assertIn('Saving all remaining income surplus.', receipt(result, TODAY))
         ordinary = build(source, dict(values, save_all=''), TODAY)
-        self.assertEqual(ordinary['forecast']['end_cash']-result['forecast']['end_cash'], D('6480'))
+        self.assertEqual(ordinary['forecast']['end_cash']-result['forecast']['end_cash'], D('7240'))
         values.update(mode='lump', lump_sum='10000')
         self.assertEqual(build(source, values, TODAY)['monthly_savings'], D(0))
 
@@ -130,7 +130,7 @@ class SimulationTests(TestCase):
     def test_amex_suggestion_redirects_savings_without_using_existing_cash(self):
         source=projection(); source['amex']={'balance':D('5000'), 'full_reserved':False, 'scheduled':True}
         source['events'].append({'date':date(2026,10,25),'name':'Amex payment','amount':D('50')})
-        result=build(source, dict(inputs(),save_all='on'), TODAY)
+        result=build(source, dict(inputs(),save_all='on',strategy='amex_first'), TODAY)
         text=receipt(result,TODAY)
         self.assertIn('SUGGESTED EXTRA AMEX PAYMENT', text)
         self.assertIn('GBP 4,190.00', text)
@@ -222,7 +222,7 @@ class SimulationTests(TestCase):
             self.assertEqual(sum(e['amount'] for e in base['events']), D('1500'))
             self.assertTrue(base['amex']['full_reserved'])
             text=receipt(build(base, inputs(), TODAY), TODAY)
-            self.assertIn('AMEX OWED & REPAYMENTS', text)
+            self.assertIn('AMEX PLAN', text)
             self.assertIn('already deducted in the forecast', ' '.join(text.split()))
             self.assertNotIn('commitments', settings)
         subscriptions={'monthly':[{'name':'Amex payment','amount':50,'due_day':25}], 'yearly':[], 'instalments':[]}

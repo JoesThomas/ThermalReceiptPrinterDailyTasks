@@ -85,7 +85,9 @@ def collect(values, today):
     if card is not None:
         projection['repayment_options'] = [item for item in projection['repayment_options'] if not amex(item)]
         projection['repayment_options'].append({'name': 'Amex', 'balance': card, 'type': 'credit_card'})
-    projection['amex'] = {'balance': card, 'full_reserved': full_reserved, 'scheduled': scheduled}
+    saved_apr = next((money(item.get('apr', item.get('interest_rate'))) for item in settings.get('debts', []) if amex(item)), None)
+    if saved_apr is not None and not 0 <= saved_apr <= 100: saved_apr = None
+    projection['amex'] = {'balance': card, 'full_reserved': full_reserved, 'scheduled': scheduled, 'apr': saved_apr}
     if full_reserved:
         projection['warnings'].append('No Amex repayment schedule: full outstanding balance reserved once today. This is a conservative cash assumption, not a payment instruction.')
     if manual_card: projection['warnings'].append('Amex balance is a manual scenario assumption; live debt records are unchanged.')
@@ -107,7 +109,8 @@ def register(app, login_required, start_print):
             except ValueError: pass
         from finance.receipt import load_finance_settings
         defaults = {'savings_target': str(load_finance_settings().get('salary_savings_target') or 0),
-                    'save_all': 'on' if session.get('test_finance_save_all', True) else ''}
+                    'save_all': 'on' if session.get('test_finance_save_all', True) else '',
+                    'strategy': session.get('test_finance_strategy', 'amex_first')}
         return render_template('test_finance.html', today=uk_today(), result_text=text, values=defaults)
 
     @app.post('/finance/test/generate')
@@ -124,6 +127,7 @@ def register(app, login_required, start_print):
             from receipt.archive import save
             identifier = save({'finance': text}, {}, datetime.now(timezone.utc).isoformat(), 'preview', {})
             session['test_finance_receipt'] = identifier
+            session['test_finance_strategy'] = values.get('strategy', 'savings_first')
             if values.get('mode', 'replace') != 'lump':
                 session['test_finance_save_all'] = values['save_all'] == 'on'
             flash('Test receipt generated privately. Nothing has been sent to the printer.')

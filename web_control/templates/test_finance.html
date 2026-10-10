@@ -101,9 +101,45 @@
                             <input type="number"
                                    name="months"
                                    min="1"
-                                   max="24"
+                                   max="60"
                                    value="{{ values.get('months', '12') }}"
                                    required>
+                        </label>
+                        <label>
+                            Surplus allocation strategy
+                            <select name="strategy">
+                                <option value="amex_first"
+                                        {% if values.get('strategy', 'amex_first') == 'amex_first' %}selected{% endif %}>
+                                    Amex first
+                                </option>
+                                <option value="savings_first"
+                                        {% if values.get('strategy') == 'savings_first' %}selected{% endif %}>
+                                    Savings first
+                                </option>
+                                <option value="split"
+                                        {% if values.get('strategy') == 'split' %}selected{% endif %}>
+                                    Split surplus
+                                </option>
+                            </select>
+                        </label>
+                        <label>
+                            Percentage to Amex when splitting
+                            <input type="number"
+                                   name="amex_split"
+                                   min="0"
+                                   max="100"
+                                   step="1"
+                                   value="{{ values.get('amex_split', '50') }}">
+                        </label>
+                        <label>
+                            Amex APR (%, optional)
+                            <input type="number"
+                                   name="amex_apr"
+                                   min="0"
+                                   max="100"
+                                   step="0.01"
+                                   value="{{ values.get('amex_apr', '') }}">
+                            <small>Leave blank to use a saved rate, if known. Otherwise interest is excluded explicitly.</small>
                         </label>
                         <label>
                             Desired monthly savings (£)
@@ -176,7 +212,7 @@
                         </label>
                     </details>
                     <p class="muted">
-                        Existing salary is not automatically added to replacement scenarios. Other income is assumed to arrive on payday. Savings are capped at the first period income surplus and assumed transferred each payday in the forecast. Repayment options are suggestions only.
+                        Existing salary is not automatically added to replacement scenarios. Other income is assumed to arrive on payday. Savings and extra Amex repayments recalculate each pay period and are applied to the forecast. Finishing repayments frees income for later savings. Forecasts can extend to five years.
                     </p>
                     <button class="primary" type="submit">Generate test receipt</button>
                     <p id="test-finance-loading" class="helper" role="status" hidden>

@@ -24,6 +24,9 @@ function updateScenarioFields() {
         form.elements[name].disabled = lump;
         form.elements[name].closest('label').hidden = lump;
     }
+    if (form.elements.strategy) {
+        form.elements.amex_split.closest('label').hidden = form.elements.strategy.value !== 'split';
+    }
     form.elements.lump_sum.disabled = !hasLump;
     form.elements.lump_sum.required = hasLump;
     form.elements.lump_sum.closest('label').hidden = !hasLump;
@@ -31,3 +34,5 @@ function updateScenarioFields() {
 document.querySelector('#test-finance-form select[name="mode"]')?.addEventListener('change', updateScenarioFields);
 window.addEventListener('pageshow', updateScenarioFields);
 updateScenarioFields();
+
+document.querySelector('#test-finance-form select[name="strategy"]')?.addEventListener('change', updateScenarioFields);
