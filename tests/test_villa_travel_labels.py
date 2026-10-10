@@ -47,3 +47,27 @@ class VillaTravelTests(TestCase):
         self.assertEqual(trains[0]['arrival'].strftime('%H:%M'), '13:25')
         self.assertIsNone(trains[0]['expected_departure'])
         self.assertNotIn('app_key', get.call_args.args[0])
+
+    def test_http_reference_is_upgraded_and_credentials_replaced(self):
+        departures, timetable = Mock(), Mock()
+        departures.json.return_value = {'departures': {'all': [{
+            'aimed_departure_time': '13:00', 'service_timetable': {
+                'id': 'http://transportapi.com/v3/uk/train/service/train_uid:X/2026-10-10/timetable.json?app_key=old'}}]}}
+        timetable.json.return_value = {'stops': [{'station_name': 'Aston', 'aimed_arrival_time': '13:25'}]}
+        with patch.object(villa, 'get', side_effect=[departures, timetable]) as get:
+            trains = villa.get_villa_matchday_trains(datetime(2026, 10, 10, 15, tzinfo=ZoneInfo('Europe/London')), 'id', 'key')
+        self.assertEqual(trains[0]['arrival'].strftime('%H:%M'), '13:25')
+        self.assertTrue(get.call_args.args[0].startswith('https://'))
+        self.assertEqual(get.call_args.kwargs['params'], {'app_id': 'id', 'app_key': 'key'})
+
+    def test_permission_error_diagnostic_does_not_expose_credentials(self):
+        departures, timetable = Mock(), Mock()
+        departures.json.return_value = {'departures': {'all': [{
+            'aimed_departure_time': '13:00', 'train_uid': 'X'}]}}
+        timetable.status_code = 403
+        timetable.raise_for_status.side_effect = RuntimeError('secret API URL')
+        with patch.object(villa, 'get', side_effect=[departures, timetable]), patch('builtins.print') as log:
+            trains = villa.get_villa_matchday_trains(datetime(2026, 10, 10, 15, tzinfo=ZoneInfo('Europe/London')), 'id', 'key')
+        self.assertIsNone(trains[0]['arrival'])
+        self.assertEqual(trains[0]['arrival_reason'], 'HTTP 403')
+        self.assertNotIn('secret', str(log.call_args))

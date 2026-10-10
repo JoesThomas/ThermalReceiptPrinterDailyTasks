@@ -272,6 +272,7 @@ def get_villa_matchday_trains(
                 or "",
             "arrival": None,
             "timetable_url": (service.get("service_timetable") or {}).get("id"),
+            "train_uid": service.get("train_uid"),
         })
 
     trains.sort(
@@ -284,19 +285,40 @@ def get_villa_matchday_trains(
     from urllib.parse import urlsplit, urlunsplit
 
     def arrival(train):
+        reason = "no timetable reference"
         try:
             url = urlsplit(train.get("timetable_url") or "")
-            if url.scheme != "https" or url.netloc != "transportapi.com" or not url.path.startswith("/v3/uk/train/service/"):
+            if not url.path and train.get("train_uid"):
+                from urllib.parse import quote
+                uid = quote(str(train["train_uid"]), safe="")
+                url = urlsplit(f"https://transportapi.com/v3/uk/train/service/train_uid:{uid}/{kickoff:%Y-%m-%d}/timetable.json")
+            if url.scheme not in {"http", "https"} or url.netloc != "transportapi.com" or not url.path.startswith("/v3/uk/train/service/"):
+                train["arrival_reason"] = reason
                 return
-            response = get(urlunsplit((url.scheme, url.netloc, url.path, "", "")),
-                           headers={"X-App-Id": transport_app_id, "X-App-Key": transport_app_key}, timeout=5)
+            # Some timetable references use HTTP; always upgrade to HTTPS.
+            response = get(urlunsplit(("https", url.netloc, url.path, "", "")),
+                           params={"app_id": transport_app_id, "app_key": transport_app_key}, timeout=5)
+            code = response.status_code
+            if isinstance(code, int) and code >= 400:
+                reason = f"HTTP {code}"
             response.raise_for_status()
-            for stop in response.json().get("stops", []):
-                if stop.get("station_code") == ASTON_CRS:
+            stops = response.json().get("stops", [])
+            reason = "Aston stop not returned"
+            for stop in stops:
+                code = str(stop.get("station_code") or "").upper()
+                name = str(stop.get("station_name") or "").strip().casefold()
+                if code == ASTON_CRS or name == "aston":
                     train["arrival"] = _rail_time(kickoff.date(), stop.get("aimed_arrival_time"))
+                    reason = "arrival time missing" if train["arrival"] is None else "loaded"
                     break
-        except Exception:
-            pass
+        except Exception as error:
+            if not reason.startswith("HTTP"):
+                reason = type(error).__name__
+        finally:
+            train["arrival_reason"] = reason
+            if train.get("arrival") is None:
+                # Never print exception messages or API URLs containing keys.
+                print(f"Villa arrival debug: departure={train['departure']:%H:%M} reason={reason}")
 
     with ThreadPoolExecutor(max_workers=4) as executor:
         list(executor.map(arrival, trains))
