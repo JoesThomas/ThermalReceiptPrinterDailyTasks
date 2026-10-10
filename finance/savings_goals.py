@@ -232,16 +232,36 @@ def review(wealth=None,year=None,state=None,on=None,bond_balances=None):
             'years':years,'has_isa':bool(entries) or any(row['type'] in ISA for row in accounts.values()),'has_cash':cash_used>0 or any(row['type']=='cash_isa' for row in accounts.values()),'today':on}
 
 
-def receipt_lines(view):
+def receipt_lines(view, *, include_balances=False):
     from textwrap import wrap
     from receipt.layout import progress_bar
     lines=[]
+    if include_balances and view['accounts']:
+        from receipt.layout import amount_rows
+        lines += ['', 'SAVINGS & TARGETS [F]', '-' * 40]
+        for row in view['accounts']:
+            lines += [row['name'].upper()]
+            if row['balance'] is None:
+                lines.append('BALANCE UNAVAILABLE')
+            else:
+                lines.extend(amount_rows('BALANCE', row['balance']))
+            if row['balance_target'] is None:
+                lines.append('TARGET NOT SET')
+            else:
+                lines.extend(amount_rows('TARGET', row['balance_target']))
+                if row['balance'] is not None:
+                    lines.extend(amount_rows('STILL TO SAVE', row['balance_goal']['remaining']))
+                    lines.append(progress_bar(row['balance_goal']['percent']))
+                    if row['balance_goal']['remaining'] == 0:
+                        lines.append('TARGET REACHED')
+            if row.get('balance_date'):
+                lines.append('BALANCE AS OF ' + str(row['balance_date']))
     if view['premium']['balance'] is not None:
         row=view['premium'];lines+=['PREMIUM BONDS HOLDING GOAL',f"GBP {row['balance']:.2f} / 50000.00",f"{row['percent']:.0f}% FULL / GBP {row['remaining']:.2f} SPACE"]
         lines.append(progress_bar(row['percent']))
         if row['over']: lines.append('RECORDED HOLDINGS EXCEED LIMIT')
     for row in view['accounts']:
-        if (row['type']!='premium_bonds' or row.get('target')) and row['balance_target'] and row['balance'] is not None:
+        if not include_balances and (row['type']!='premium_bonds' or row.get('target')) and row['balance_target'] and row['balance'] is not None:
             lines += [row['name'].upper()+' BALANCE GOAL',f"GBP {row['balance']:.2f} / {row['balance_target']:.2f} ({row['balance_goal']['percent']:.0f}%)"]
             lines.append(progress_bar(row['balance_goal']['percent']))
     if view['has_isa']:
@@ -252,7 +272,7 @@ def receipt_lines(view):
         for account in view['accounts']:
             if account['type'] in ISA:
                 lines.append(f"{account['name']}: GBP {account['contributions']:.2f}")
-                if account.get('balance') is not None: lines.append(f"BALANCE GBP {account['balance']:.2f}")
+                if not include_balances and account.get('balance') is not None: lines.append(f"BALANCE GBP {account['balance']:.2f}")
                 if account['interest']: lines.append(f"RECORDED INTEREST GBP {account['interest']:.2f}")
         if row['complete'] and row['remaining'] is not None: lines.append(f"RECORDED SPACE GBP {row['remaining']:.2f}")
         else: lines.append('RECORDS MAY BE INCOMPLETE')

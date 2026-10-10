@@ -210,25 +210,19 @@ def _forecast_events(events, today, end):
 
 
 def calculate_debt_and_payday(cash, amex, instalments, settings, today):
+    from finance.repayment_identity import unique_repayments, names
     debts = [{"name": "AMEX", "type": "credit_card", "balance": _decimal(amex),
               "source": "B"}]
-    existing_names = {"amex"}
-    for item in instalments:
-        balance = item.get("remaining_balance")
+    for item in unique_repayments(instalments, settings.get("debts", [])):
+        balance = item.get("remaining_balance", item.get("balance"))
         if balance is None:
             continue
         name = str(item.get("name", "INSTALMENT"))
-        if name.casefold() in existing_names:
+        if names(item) & {"amex", "americanexpress"}:
             continue
-        existing_names.add(name.casefold())
-        debts.append({"name": name, "type": "payment_plan", "balance": _decimal(balance),
-                      "monthly_payment": item.get("amount"), "source": "F"})
-    for item in settings.get("debts", []):
-        name = str(item["name"])
-        if name.casefold() in existing_names:
-            continue
-        existing_names.add(name.casefold())
-        debts.append({**item, "balance": _decimal(item["balance"]), "source": "F"})
+        debts.append({**item, "name": name, "type": item.get("type", "payment_plan"),
+                      "balance": _decimal(balance),
+                      "monthly_payment": item.get("monthly_payment", item.get("amount")), "source": "F"})
     if any(debt["balance"] < 0 for debt in debts):
         raise ValueError("Debt balance cannot be negative")
     short = sum((d["balance"] for d in debts if d.get("type") != "mortgage"), Decimal(0))
@@ -503,21 +497,23 @@ def print_integrated_finance(
     else:
         left(printer, "SET NEXT_PAYDAY FOR FORECAST")
 
-    if st["accounts"]:
-        printer.text("\n")
-        left(printer, "SAVINGS [F]")
-        print_line(printer)
-        for account in st["accounts"]:
-            for row in _amount_rows(f"{account['name']} [F]", account["balance"]):
-                left(printer, row)
-        left(printer, _amount_line("NET CASH + SAVINGS [C]", net_cash))
-
     try:
         from finance.savings_goals import review as goal_review, receipt_lines as goal_lines
-        for text in goal_lines(goal_review(wealth,on=today)):
+        goal_wealth = wealth or {'accounts': [
+            {**row, 'kind': kind, 'latest': {'date': ''}}
+            for kind, data in (('savings', savings_data), ('investment', investment_data))
+            for row in data.get('accounts', []) if isinstance(row, dict) and row.get('name')
+        ]}
+        for text in goal_lines(goal_review(goal_wealth,on=today), include_balances=True):
             left(printer,text)
     except (ValueError,OSError,KeyError,TypeError):
         left(printer,'SAVINGS GOALS UNAVAILABLE')
+        for account in st['accounts']:
+            for row in _amount_rows(account['name'], account['balance']):
+                left(printer, row)
+    if st['accounts']:
+        left(printer, _amount_line('TOTAL SAVINGS [C]', st['total']))
+        left(printer, _amount_line('NET CASH + SAVINGS [C]', net_cash))
     if wealth:
         for text in wealth_lines(wealth):
             left(printer, text)
@@ -890,5 +886,6 @@ def print_integrated_finance(
             for row in _amount_rows(str(goal["name"]), goal["saved"]):
                 left(printer, row)
             left(printer, _amount_line("  TARGET", goal["target"]))
+            left(printer, _amount_line("  STILL TO SAVE", max(Decimal(0), _decimal(goal['target']) - _decimal(goal['saved']))))
 
     line(printer, "=")
