@@ -106,7 +106,8 @@ def register(app, login_required, start_print):
                 if candidate.startswith('-'*42) and ('SIMULATION - POTENTIAL SALARY' in candidate or 'SIMULATION - LUMP SUM ONLY' in candidate): text = candidate
             except ValueError: pass
         from finance.receipt import load_finance_settings
-        defaults = {'savings_target': str(load_finance_settings().get('salary_savings_target') or 0)}
+        defaults = {'savings_target': str(load_finance_settings().get('salary_savings_target') or 0),
+                    'save_all': 'on' if session.get('test_finance_save_all', True) else ''}
         return render_template('test_finance.html', today=uk_today(), result_text=text, values=defaults)
 
     @app.post('/finance/test/generate')
@@ -114,6 +115,7 @@ def register(app, login_required, start_print):
     def generate_test_finance():
         today = uk_today()
         values = request.form.to_dict()
+        values.setdefault('save_all', '')
         try:
             validate(values, today)
             projection = collect(values, today)
@@ -122,6 +124,8 @@ def register(app, login_required, start_print):
             from receipt.archive import save
             identifier = save({'finance': text}, {}, datetime.now(timezone.utc).isoformat(), 'preview', {})
             session['test_finance_receipt'] = identifier
+            if values.get('mode', 'replace') != 'lump':
+                session['test_finance_save_all'] = values['save_all'] == 'on'
             flash('Test receipt generated privately. Nothing has been sent to the printer.')
             return redirect(url_for('test_finance_page'))
         except (ValueError, OSError, TypeError) as error:

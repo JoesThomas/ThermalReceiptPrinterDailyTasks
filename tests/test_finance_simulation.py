@@ -112,6 +112,21 @@ class SimulationTests(TestCase):
         values.update(savings_goal='5000', savings_target='0')
         self.assertIn('No savings contribution selected', receipt(build(projection(),values,TODAY),TODAY))
 
+    def test_save_all_preference_survives_page_reload(self):
+        app=Flask(__name__); app.secret_key='test'
+        register(app,lambda f:f,Mock())
+        client=app.test_client()
+        with patch('finance.receipt.load_finance_settings', return_value={}), patch(
+            'web_control.test_finance_tools.render_template', return_value='ok') as render:
+            client.get('/finance/test')
+            self.assertEqual(render.call_args.kwargs['values']['save_all'], 'on')
+            with client.session_transaction() as saved: saved['test_finance_save_all']=False
+            client.get('/finance/test')
+            self.assertEqual(render.call_args.kwargs['values']['save_all'], '')
+            with client.session_transaction() as saved: saved['test_finance_save_all']=True
+            client.get('/finance/test')
+            self.assertEqual(render.call_args.kwargs['values']['save_all'], 'on')
+
     def test_additional_income_uses_explicit_existing_salary_once(self):
         values = inputs(); values['mode'] = 'additional'
         result = build(projection(), values, TODAY)
