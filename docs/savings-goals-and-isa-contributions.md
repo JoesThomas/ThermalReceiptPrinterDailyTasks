@@ -8,9 +8,12 @@ Savings balance form or Premium Bonds holdings ledger. Existing valuations are
 reused; the app does not assume a personal starting balance from the public repo.
 
 Premium Bonds is measured against the £50,000 holding maximum. Multiple accounts
-classified as your Premium Bonds are combined for that maximum. A dated Premium
-Bonds holding takes precedence over an undated local observation, or over an older
-manual valuation. It does not duplicate a holding already represented in Savings.
+classified as your Premium Bonds are combined for that maximum. The separate
+Premium Bonds ledger and the named account valuation are compared by date. The
+latest balance wins even when withdrawals reduce it; an older ledger entry cannot
+replace a newer local observation. Manual account valuations win same-date ties,
+and future ledger values are excluded. A ledger holding does not duplicate an
+account already represented in Savings.
 The progress bar is clamped to 100%, but any recorded excess remains visible.
 Ordinary savings use a user-entered target and latest recorded balance.
 

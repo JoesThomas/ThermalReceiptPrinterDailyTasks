@@ -45,6 +45,33 @@ class SavingsGoalTests(unittest.TestCase):
                 self.assertEqual(sum(name.upper() in line for line in lines),1)
                 self.assertTrue(all(len(line)<=40 for line in lines))
 
+    def test_premium_bonds_uses_latest_dated_balance_after_withdrawal(self):
+        name='Example premium bonds'
+        state={'accounts':{goals.identity(name,'savings'):{'name':name,'kind':'savings','type':'premium_bonds','target':'50000'}},'entries':[],'years':{}}
+        for source in ('manual','local observation'):
+            for account_date,ledger_date,account_balance,ledger_balance in (
+                ('2026-10-04','2026-01-01',30000,35000),
+                ('2026-01-01','2026-10-04',35000,30000),
+                ('2026-01-01','2026-10-04',35000,0),
+            ):
+                wealth={'accounts':[{'name':name,'kind':'savings','balance':Decimal(account_balance),'latest':{'date':account_date,'source':source}}]}
+                bonds=[{'date':ledger_date,'amount':str(ledger_balance)}]
+                view=goals.review(wealth,state=state,on=date(2026,10,4),bond_balances=bonds)
+                expected=Decimal(account_balance if account_date>ledger_date else ledger_balance)
+                row=view['accounts'][0]
+                self.assertEqual(row['balance'],expected)
+                self.assertEqual(row['balance_date'],max(account_date,ledger_date))
+                self.assertEqual(view['premium']['balance'],expected)
+                self.assertEqual(row['balance_goal']['remaining'],50000-expected)
+
+    def test_manual_premium_bonds_balance_wins_equal_date_and_future_is_excluded(self):
+        wealth={'accounts':[{'name':'Example premium bonds','kind':'savings','balance':Decimal(30000),
+                            'latest':{'date':'2026-10-04','source':'manual'}}]}
+        state={'accounts':{},'entries':[],'years':{}}
+        view=goals.review(wealth,state=state,on=date(2026,10,4),bond_balances=[
+            {'date':'2026-10-04','amount':'35000'},{'date':'2026-10-05','amount':'40000'}])
+        self.assertEqual(view['accounts'][0]['balance'],30000)
+
     def test_isa_combined_contributions_reset_growth_and_transfers_excluded(self):
         with tempfile.TemporaryDirectory() as folder,patch.object(goals,'FILE',Path(folder)/'goals.json'),patch.object(goals,'today',return_value=date(2026,10,4)):
             goals.account_settings('Example cash ISA','savings','cash_isa')
