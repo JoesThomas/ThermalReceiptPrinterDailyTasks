@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include "favicon.html" %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Test finance · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static', filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+    </head>
+    <body>
+        {% include "navigation.html" %}
+        <main id="main-content" class="finance-page">
+            <header>
+                <p class="eyebrow">Manual scenario</p>
+                <h1>Test finance</h1>
+                <p>
+                    Try a potential monthly take-home salary. This never runs with scheduled prints and never records the salary as money received.
+                </p>
+                <a href="{{ url_for('finance_review') }}">Back to Finance review</a>
+            </header>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            {% if error %}<p class="flash" role="alert">{{ error }}</p>{% endif %}
+            <section>
+                <h2>Potential salary</h2>
+                <form method="post"
+                      action="{{ url_for('generate_test_finance') }}"
+                      id="test-finance-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="grid">
+                        <label>
+                            Potential monthly take-home salary (£)
+                            <input type="number"
+                                   name="salary"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   required
+                                   value="{{ values.get('salary', '') }}">
+                        </label>
+                        <label>
+                            Use this salary as
+                            <select name="mode">
+                                <option value="replace"
+                                        {% if values.get('mode', 'replace') == 'replace' %}selected{% endif %}>
+                                    Replacement monthly salary
+                                </option>
+                                <option value="additional"
+                                        {% if values.get('mode') == 'additional' %}selected{% endif %}>
+                                    Additional monthly income
+                                </option>
+                            </select>
+                        </label>
+                        <label>
+                            Existing monthly salary (£, used only for additional income)
+                            <input type="number"
+                                   name="existing_salary"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('existing_salary', '0') }}">
+                        </label>
+                        <label>
+                            Other monthly income (£, e.g. rent)
+                            <input type="number"
+                                   name="other_income"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('other_income', '0') }}">
+                        </label>
+                        <label>
+                            First hypothetical payday
+                            <input type="date"
+                                   name="start"
+                                   min="{{ today }}"
+                                   value="{{ values.get('start', today.isoformat()) }}"
+                                   required>
+                        </label>
+                        <label>
+                            Forecast months
+                            <input type="number"
+                                   name="months"
+                                   min="1"
+                                   max="24"
+                                   value="{{ values.get('months', '12') }}"
+                                   required>
+                        </label>
+                        <label>
+                            Desired savings for the first pay period (£)
+                            <input type="number"
+                                   name="savings_target"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('savings_target', '0') }}">
+                        </label>
+                    </div>
+                    <details>
+                        <summary>Optional scenario assumptions</summary>
+                        <p>
+                            Leave these blank to use bank balances and your existing spending forecast. With incomplete bank data, supplying both makes this an explicitly manual estimate.
+                        </p>
+                        <label>
+                            Starting bank cash (£, optional)
+                            <input type="number"
+                                   name="opening_cash"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('opening_cash', '') }}">
+                        </label>
+                        <label>
+                            Everyday spending per day (£, optional)
+                            <input type="number"
+                                   name="daily_spend"
+                                   min="0"
+                                   max="100000"
+                                   step="0.01"
+                                   value="{{ values.get('daily_spend', '') }}">
+                        </label>
+                    </details>
+                    <p class="muted">
+                        Existing salary is not automatically added to replacement scenarios. Other income is assumed to arrive on payday. First-period savings are a suggestion, not a transfer assumed in the runway.
+                    </p>
+                    <button class="primary" type="submit">Generate test receipt</button>
+                    <p id="test-finance-loading" class="helper" role="status" hidden>
+                        Checking bank balances and payments, then building your salary simulation…
+                    </p>
+                </form>
+            </section>
+            {% if result_text %}
+                <section data-private>
+                    <h2>Simulation receipt</h2>
+                    <p class="muted">This is your saved test, not the scheduled or live receipt.</p>
+                    <pre class="test-finance-paper">{{ result_text }}</pre>
+                    <form method="post" action="{{ url_for('print_test_finance') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit">Print test receipt</button>
+                    </form>
+                </section>
+            {% endif %}
+        </main>
+        <script src="{{ url_for('static', filename='test-finance.js') }}" defer></script>
+    </body>
+</html>

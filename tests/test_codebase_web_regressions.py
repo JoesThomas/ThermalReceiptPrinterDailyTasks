@@ -141,7 +141,7 @@ with tempfile.TemporaryDirectory() as folder,patch.object(web,'PROJECT_ROOT',Pat
    assert all(e['event']=='interest' for e in goals.load()['entries'])
    assert b'1,300.00' in client.get('/savings/goals').data
   assert client.get('/jobs/status').status_code==200
-  for endpoint in ['/print-plan','/preview/print-saved','/deliveries/status','/meals/skip']:
+  for endpoint in ['/print-plan','/preview/print-saved','/deliveries/status','/meals/skip','/finance/test/generate','/finance/test/print']:
    assert client.post(endpoint).status_code==403
   assert client.post('/jobs/cancel',data={'kind':'print'}).status_code==403
   assert client.get('/deliveries').status_code==200

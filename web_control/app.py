@@ -1592,5 +1592,8 @@ def meal_skip():
     flash('Meal skipped today. It was not marked as eaten; shopping and prep updated.')
     return redirect(url_for('meals_page'))
 
+from web_control.test_finance_tools import register as register_test_finance
+register_test_finance(app, login_required, _start_print_command)
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

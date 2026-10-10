@@ -31,7 +31,7 @@ class FinanceDependencies:
     FINANCE_TRANSACTION_LOOKBACK_DAYS: int
 
 
-def collect(dependencies: FinanceDependencies):
+def collect(dependencies: FinanceDependencies, *, persist=True):
     """
     Retrieve live regular-payment and transaction information from
     TrueLayer for HSBC, Monzo and Amex.
@@ -140,11 +140,12 @@ def collect(dependencies: FinanceDependencies):
     essential_monthly_burn = dependencies._monthlyised_spend(all_transactions, average_days, essential_only=True)
     last_30_days = dependencies._last_n_day_spend(all_transactions, 30)
     salary_incomings, other_incomings = dependencies.analyse_incoming_payments(all_transactions, salary_payee=dependencies.load_receipt_settings().get('finance', {}).get('salary_payee', ''))
-    from finance.premium_bonds import capture as capture_bond_prizes
-    try:
-        capture_bond_prizes(all_transactions, dependencies._other_incoming_category, dependencies._is_incoming_transaction, dependencies._looks_like_internal_transfer, dependencies._transaction_date)
-    except (ValueError, OSError):
-        print('Premium Bonds history could not be saved; check the private ledger file.')
+    if persist:
+        from finance.premium_bonds import capture as capture_bond_prizes
+        try:
+            capture_bond_prizes(all_transactions, dependencies._other_incoming_category, dependencies._is_incoming_transaction, dependencies._looks_like_internal_transfer, dependencies._transaction_date)
+        except (ValueError, OSError):
+            print('Premium Bonds history could not be saved; check the private ledger file.')
     salary_30 = dependencies._incoming_total(salary_incomings, days=30)
     other_30 = dependencies._incoming_total(other_incomings, days=30)
     total_incoming_30 = salary_30 + other_30

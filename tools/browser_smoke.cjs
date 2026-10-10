@@ -59,6 +59,18 @@ process.on('exit', () => child.kill());
   await Promise.all([page.waitForURL('**/finance/tax'), tax.getByRole('button', {name:'Save and calculate'}).click()]);
   assert.match(await page.locator('main').innerText(), /Estimated additional rental tax/);
   assert.match(await page.locator('main').innerText(), /£0.00/);
+  await page.goto('http://receipt.test/finance/test');
+  const testFinance = page.locator('#test-finance-form');
+  await testFinance.locator('input[name=salary]').fill('4500');
+  await testFinance.locator('input[name=other_income]').fill('800');
+  await testFinance.locator('details').evaluate(el => el.open=true);
+  await testFinance.locator('input[name=opening_cash]').fill('1200');
+  await testFinance.locator('input[name=daily_spend]').fill('10');
+  await Promise.all([page.waitForResponse(r => r.url().endsWith('/finance/test/generate') && r.request().method()==='POST'), testFinance.getByRole('button',{name:'Generate test receipt'}).click()]);
+  assert.match(await page.locator('.test-finance-paper').innerText(), /SIMULATION - POTENTIAL SALARY/);
+  assert.match(await page.locator('.test-finance-paper').innerText(), /GBP 4,500.00/);
+  await Promise.all([page.waitForResponse(r => r.url().endsWith('/finance/test/print') && r.request().method()==='POST'), page.getByRole('button',{name:'Print test receipt'}).click()]);
+  assert.match(await page.locator('main').innerText(), /Test finance receipt queued/);
   await page.goto('http://receipt.test/finance/assets');
   let mortgage = page.locator('form[action$="/finance/assets"]').filter({has:page.locator('input[name=kind][value=mortgages]')}).last();
   await mortgage.locator('input[name=name]').fill('Test mortgage');
@@ -113,7 +125,7 @@ process.on('exit', () => child.kill());
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
-    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/tasks']) {
+    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/tasks','/finance/test']) {
       await page.goto('http://receipt.test'+path);
       await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `${path} overflows at ${width}`);
@@ -125,7 +137,7 @@ process.on('exit', () => child.kill());
     await page.goto('http://receipt.test/bins');
     await page.screenshot({path:process.env.RECEIPT_BROWSER_SCREENSHOT, fullPage:true});
   }
-  console.log(`Browser checks passed: 15 form flows, ${checks} responsive layouts`);
+  console.log(`Browser checks passed: 17 form flows, ${checks} responsive layouts`);
   await browser.close();
   child.kill();
 })().catch(error => { console.error(error); process.exit(1); });

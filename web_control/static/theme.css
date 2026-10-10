@@ -175,3 +175,5 @@ html[data-high-contrast=true] .away-banner, html[data-high-contrast=true] .setti
 input[type=checkbox], input[type=radio] { accent-color: var(--accent); }
 .goal-card progress, #savings-goals progress { accent-color: var(--accent); }
 .finance-jumps a[aria-current=page] { border-color: var(--accent); }
+
+.test-finance-paper { width: fit-content; max-width: 100%; padding: 20px; margin: 20px auto; background: #fffdf8; border: 1px solid var(--border); color: #17243b; font: 13px/1.5 ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
