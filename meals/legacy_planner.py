@@ -533,7 +533,7 @@ def print_weekly_overview(printer, left, line) -> None:
         if meal.get("kind") == "recipe":
             r = meal["recipe"]
             left(printer, f"{d.strftime('%a').upper()} {r['name'].upper()}"[:RECEIPT_WIDTH])
-            for x in wrap(r.get("overview", ""), RECEIPT_WIDTH): left(printer, "  " + x[:RECEIPT_WIDTH-2])
+            for x in wrap(r.get("overview", ""), RECEIPT_WIDTH - 2): left(printer, "  " + x)
             n = r.get("nutrition_per_serving", {})
             left(printer, f"  {r.get('total_minutes',0)}M / ~{n.get('calories','?')} KCAL / {n.get('protein_g','?')}G P")
         else:
@@ -688,7 +688,10 @@ def print_today_recipe(printer, left, line) -> None:
 
 def print_shopping_list(printer, left, line, plan: dict | None = None) -> None:
     today = datetime.now(TZ).date()
-    plan = plan or load_plan_for(today) or generate_week(sunday_for(today))
+    if plan is None:
+        # Saturday prints the coming Sunday-start week, just like the overview.
+        plan = (generate_week(sunday_for(today)) if today.weekday() == 5
+                else load_plan_for(today) or generate_week(sunday_for(today)))
     line(printer, "="); left(printer, "MEAL SHOPPING LIST"); line(printer, "=")
     for section, items in plan.get("shopping", {}).items():
         left(printer, section)
