@@ -58,6 +58,37 @@ class DailyFinanceTests(TestCase):
         self.assertEqual(result['forecast']['extended_goal_date'],date(2028,5,10))
         self.assertIn('Extended projected goal date:',receipt(result,TODAY))
         self.assertEqual(result['forecast']['savings_end'],3000)
+        text=receipt(result,TODAY)
+        self.assertIn('Goal progress now: 0.0%', text)
+        self.assertIn('Projected progress at forecast end: 15.0%', ' '.join(text.split()))
+        self.assertIn('Estimated time to target:\n1 year and 7 months (578 days)', text)
+        self.assertIn('Time beyond selected forecast:', text)
+
+    def test_extended_pathway_starts_saving_after_initial_debt_only_periods(self):
+        result=build(source(),values(strategy='amex_first',savings_goal='1000'),TODAY)
+        self.assertEqual(result['forecast']['savings_total'],0)
+        self.assertIsNotNone(result['forecast']['extended_goal_date'])
+        text=receipt(result,TODAY)
+        self.assertIn('no savings added in the selected forecast.', ' '.join(text.split()))
+        self.assertIn('Extended projected goal date:', text)
+        self.assertIn('Estimated time to target:', text)
+        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+
+    def test_progress_uses_starting_balance_and_handles_already_met_or_unfunded(self):
+        settings=values(strategy='savings_first',starting_savings='30000',savings_goal='50000')
+        result=build(source('0'),settings,TODAY)
+        text=receipt(result,TODAY)
+        self.assertIn('Goal progress now: 60.0%',text)
+        self.assertIn('Projected progress at forecast end: 66.0%', ' '.join(text.split()))
+        settings['savings_goal']='20000'
+        text=receipt(build(source('0'),settings,TODAY),TODAY)
+        self.assertIn('target already reached.',text)
+        self.assertNotIn('Estimated time to target:',text)
+        settings.update(savings_goal='50000',salary='0')
+        base=source('0');base['daily']=D(10)
+        text=receipt(build(base,settings,TODAY),TODAY)
+        self.assertIn('pathway has a funding shortfall.', ' '.join(text.split()))
+        self.assertNotIn('Estimated time to target:',text)
 
     def test_invalid_rate_strategy_and_split(self):
         for field,value in [('amex_apr','NaN'),('amex_apr','-1'),('strategy','bad'),('amex_split','101')]:

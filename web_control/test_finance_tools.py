@@ -81,7 +81,9 @@ def collect(values, today):
     if cash and daily: projection['warnings'].append('No bank lookup or payment matching was performed; local commitments are assumed outstanding.')
     from finance.salary_plan import reserves
     projection['reserve_details'] = reserves(settings)
-    projection['repayment_options'] = [dict(item) for item in subscriptions.get('instalments', []) + settings.get('debts', [])]
+    from finance.repayment_identity import unique_repayments
+    projection['repayment_options'] = [dict(item) for item in unique_repayments(
+        subscriptions.get('instalments', []), settings.get('debts', []))]
     if card is not None:
         projection['repayment_options'] = [item for item in projection['repayment_options'] if not amex(item)]
         projection['repayment_options'].append({'name': 'Amex', 'balance': card, 'type': 'credit_card'})

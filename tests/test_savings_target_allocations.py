@@ -51,7 +51,34 @@ class AccountGoalTests(TestCase):
         text=receipt(result,TODAY)
         self.assertIn('RECORDED SAVINGS & INVESTMENTS',text)
         self.assertIn('Projected target date: 10 Oct 2026',text)
+        self.assertIn('Estimated time to target:\n0 days (0 days)', text)
         self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+
+    def test_account_target_duration_extends_and_disabled_allocation_is_explicit(self):
+        source={'valid':True,'cash':D(100),'buffer':D(100),'daily':D(0),'events':[],'warnings':[],
+                'savings_accounts':[account('Goal','0','300')]}
+        values={'salary':'100','start':str(TODAY),'months':'1','save_all':'on','use_saved_accounts':'on'}
+        result=build(source,values,TODAY)
+        text=receipt(result,TODAY)
+        self.assertIn('Projected target date: 10 Dec 2026', text)
+        self.assertIn('Estimated time to target:', text)
+        self.assertIn('2 months (61 days)', ' '.join(text.split()))
+        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        values['use_saved_accounts']=''
+        text=receipt(build(source,values,TODAY),TODAY)
+        self.assertIn('Enable saved account allocation', text)
+        self.assertNotIn('Projected target date:', text)
+
+    def test_receipt_balances_targets_and_remaining_fit_paper(self):
+        state={'accounts':{goals.identity('Rainy day','savings'):{'name':'Rainy day','kind':'savings','type':'savings','target':'400'}},'entries':[],'years':{}}
+        wealth={'accounts':[{'name':'Rainy day','kind':'savings','balance':D(200),'latest':{'date':str(TODAY)}},
+                            {'name':'No target','kind':'savings','balance':D(25),'latest':{'date':str(TODAY)}}]}
+        view=goals.review(wealth,state=state,on=TODAY,bond_balances=[])
+        lines=goals.receipt_lines(view,include_balances=True)
+        self.assertEqual(lines.count('RAINY DAY'),1)
+        self.assertTrue(any('STILL TO SAVE' in line and '£200.00' in line for line in lines))
+        self.assertIn('TARGET NOT SET',lines)
+        self.assertTrue(all(len(line)<=40 for line in lines))
 
     def test_target_shares_save_privately_and_excess_is_rejected(self):
         with TemporaryDirectory() as folder,patch.object(goals,'FILE',Path(folder)/'goals.json'):
