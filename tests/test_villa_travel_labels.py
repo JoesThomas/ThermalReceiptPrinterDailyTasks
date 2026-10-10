@@ -71,3 +71,26 @@ class VillaTravelTests(TestCase):
         self.assertIsNone(trains[0]['arrival'])
         self.assertEqual(trains[0]['arrival_reason'], 'HTTP 403')
         self.assertNotIn('secret', str(log.call_args))
+
+    def test_calling_station_detail_supplies_arrival_without_service_reference(self):
+        board = Mock()
+        board.json.return_value = {'departures': {'all': [{
+            'aimed_departure_time': '13:00', 'station_detail': {'calling_at': [
+                {'station_code': 'crs:AST', 'aimed_arrival_time': '13:25'}]}}]}}
+        with patch.object(villa, 'get', return_value=board) as get:
+            trains = villa.get_villa_matchday_trains(datetime(2026, 10, 10, 15, tzinfo=ZoneInfo('Europe/London')), 'id', 'key')
+        self.assertEqual(trains[0]['arrival'].strftime('%H:%M'), '13:25')
+        self.assertEqual(get.call_count, 1)
+        self.assertEqual(get.call_args.kwargs['params']['station_detail'], 'calling_at')
+        self.assertIn('station_timetables/BRV.json', get.call_args.args[0])
+
+    def test_new_endpoint_permission_failure_preserves_legacy_board(self):
+        denied, legacy = Mock(), Mock()
+        denied.status_code = 403
+        legacy.json.return_value = {'departures': {'all': []}}
+        with patch.object(villa, 'get', side_effect=[denied, legacy]) as get:
+            trains = villa.get_villa_matchday_trains(datetime(2026, 10, 10, 15, tzinfo=ZoneInfo('Europe/London')), 'id', 'key')
+        self.assertEqual(trains, [])
+        self.assertEqual(get.call_count, 2)
+        self.assertIn('/station/BRV/', get.call_args.args[0])
+        self.assertEqual(get.call_args.kwargs['params']['station_detail'], 'calling_at')
