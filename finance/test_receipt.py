@@ -8,14 +8,16 @@ from finance.projection import day, money, occurs, format_runway
 
 
 def validate(values, today):
-    salary = money(values.get('salary'))
-    existing = money(values.get('existing_salary', '0') or '0')
-    other = money(values.get('other_income', '0') or '0')
-    savings = money(values.get('savings_target', '0') or '0')
-    if any(v is None or v < 0 or v > 10000000 for v in (salary, existing, other, savings)):
-        raise ValueError('Enter valid non-negative monthly amounts.')
     mode = values.get('mode', 'replace')
-    if mode not in {'replace', 'additional'}:
+    lump_mode = mode == 'lump'
+    lump = money(values.get('lump_sum', '0') or '0') if lump_mode else Decimal(0)
+    salary = Decimal(0) if lump_mode else money(values.get('salary'))
+    existing = Decimal(0) if lump_mode else money(values.get('existing_salary', '0') or '0')
+    other = Decimal(0) if lump_mode else money(values.get('other_income', '0') or '0')
+    savings = Decimal(0) if lump_mode else money(values.get('savings_target', '0') or '0')
+    if any(v is None or v < 0 or v > 10000000 for v in (salary, existing, other, savings, lump)):
+        raise ValueError('Enter valid non-negative monthly amounts.')
+    if mode not in {'replace', 'additional', 'lump'}:
         raise ValueError('Choose how the potential salary should be used.')
     start = day(values.get('start'))
     if not start or not today <= start <= today + timedelta(days=365):
@@ -27,7 +29,7 @@ def validate(values, today):
     if not 1 <= months <= 24 or (occurs(start, months) - today).days > 760:
         raise ValueError('Choose a forecast ending within two years of today.')
     return dict(salary=salary, existing=existing if mode == 'additional' else Decimal(0),
-                other=other, savings=savings, mode=mode, start=start, months=months)
+                other=other, lump=lump, savings=savings, mode=mode, start=start, months=months)
 
 
 def build(projection, values, today):
@@ -37,7 +39,7 @@ def build(projection, values, today):
     base = deepcopy(projection)
     salary = inputs['salary'] + inputs['existing']
     scenario = cash_scenario(base, dict(salary=str(salary), rent=str(inputs['other']),
-        repair='0', vacancy='0', start=inputs['start'].isoformat(), months=str(inputs['months'])), today)
+        repair='0', vacancy='0', lump_sum=str(inputs['lump']), start=inputs['start'].isoformat(), months=str(inputs['months'])), today)
     end = occurs(inputs['start'], 1)
     bills = [event for event in base['events'] if inputs['start'] <= event['date'] < end]
     bills_total = sum((event['amount'] for event in bills), Decimal(0))
@@ -46,7 +48,7 @@ def build(projection, values, today):
     # Roll actual opening cash forward to the first hypothetical payday once.
     prior_bills = sum((e['amount'] for e in base['events'] if today <= e['date'] < inputs['start']), Decimal(0))
     prior_days = max(0, (inputs['start']-today).days-1)
-    payday_cash = base['cash'] - prior_bills - daily * prior_days + salary + inputs['other']
+    payday_cash = base['cash'] - prior_bills - daily * prior_days + salary + inputs['other'] + inputs['lump']
     available = payday_cash - base['buffer'] - bills_total - variable
     savings = min(max(Decimal(0), available), inputs['savings'])
     spend = max(Decimal(0), available - savings)
@@ -59,12 +61,12 @@ def build(projection, values, today):
         savings_base['events'].extend({'date': occurs(inputs['start'], month), 'amount': monthly_savings,
             'name': 'Test savings transfer'} for month in range(inputs['months']))
         scenario = cash_scenario(savings_base, dict(salary=str(salary), rent=str(inputs['other']),
-            repair='0', vacancy='0', start=inputs['start'].isoformat(), months=str(inputs['months'])), today)
+            repair='0', vacancy='0', lump_sum=str(inputs['lump']), start=inputs['start'].isoformat(), months=str(inputs['months'])), today)
     checkpoints = []
     for months in (1, 3, 6, 12):
         if months <= inputs['months']:
             point = cash_scenario(savings_base, dict(salary=str(salary), rent=str(inputs['other']),
-                repair='0', vacancy='0', start=inputs['start'].isoformat(), months=str(months)), today)
+                repair='0', vacancy='0', lump_sum=str(inputs['lump']), start=inputs['start'].isoformat(), months=str(months)), today)
             checkpoints.append((months, point['end_cash']))
     return dict(checkpoints=checkpoints, surplus=surplus, monthly_savings=monthly_savings, inputs=inputs, projection=base, forecast=scenario, bills=bills,
                 bills_total=bills_total, variable=variable, payday_cash=payday_cash,
@@ -86,14 +88,17 @@ def receipt(result, today):
             text(label); lines.append(right.rjust(42))
     data, base, forecast = result['inputs'], result['projection'], result['forecast']
     section('TEST FINANCE')
-    text('SIMULATION - POTENTIAL SALARY')
+    text('SIMULATION - POTENTIAL SALARY' if data['mode'] != 'lump' else 'SIMULATION - LUMP SUM ONLY')
     text(f'Generated {today:%d %b %Y}')
     section('INCOME')
+    if data['mode'] == 'lump':
+        amount('One-off lump sum', data['lump'])
+        text('No salary or other recurring income.')
     amount('Monthly take-home salary', data['salary'])
     if data['existing']: amount('Existing salary (additional mode)', data['existing'])
     amount('Other monthly income', data['other'])
     amount('TOTAL MONTHLY INCOME', data['salary']+data['existing']+data['other'])
-    text(f'First payday: {data["start"]:%d %b %Y}')
+    text(f'Income receipt date: {data["start"]:%d %b %Y}')
     section('CASH & RESERVES')
     amount('Current bank cash', base['cash'])
     reserve = base.get('reserve_details')
@@ -127,7 +132,7 @@ def receipt(result, today):
     text('Total includes existing cash; not a recurring monthly spending allowance.')
     if result['shortfall']: amount('SHORTFALL after reserves', result['shortfall'])
     section('REPAYMENT OPTIONS')
-    budget = max(Decimal(0), min(result['surplus']-result['monthly_savings'], result['spend']))
+    budget = result['spend'] if data['mode'] == 'lump' else max(Decimal(0), min(result['surplus']-result['monthly_savings'], result['spend']))
     options = base.get('repayment_options', [])
     if not options: text('No confirmed repayment balances available.')
     for item in options:
@@ -152,7 +157,7 @@ def receipt(result, today):
             if budget >= balance:
                 amount('Potential full payoff', balance)
                 amount('Surplus left after payoff', budget-balance)
-            else: text('Full payoff exceeds this period surplus.')
+            else: text('Full payoff exceeds this period budget.')
             text('Option only; confirm settlement terms. Not deducted from this forecast. Budget is shared across all debts.')
     section('RUNWAY WITH TEST INCOME')
     if forecast['run_out']:
@@ -165,7 +170,7 @@ def receipt(result, today):
     for months, cash in result['checkpoints']:
         amount(f'{months} month(s): bank cash above reserves', cash)
     section('ASSUMPTIONS')
-    text('Take-home salary; no salary tax deduction. Other income arrives on payday.')
+    text('Lump sum arrives once on the selected date. No future recurring income; no automatic savings transfers. Any payoff reduces cash runway.' if data['mode']=='lump' else 'Take-home salary; no salary tax deduction. Other income arrives on payday.')
     text('Monthly savings transfers are included in runway; savings remain assets outside spending cash.')
     text('Early repayment options are not included. Forecast is bounded, not unlimited.')
     for warning in base.get('warnings', []): text(warning)

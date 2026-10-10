@@ -14,3 +14,19 @@ window.addEventListener('pageshow', () => {
     button.disabled = false;
     button.textContent = 'Generate test receipt';
 });
+
+function updateScenarioFields() {
+    const form = document.getElementById('test-finance-form');
+    if (!form) return;
+    const lump = form.elements.mode.value === 'lump';
+    for (const name of ['salary', 'existing_salary', 'other_income', 'savings_target']) {
+        form.elements[name].disabled = lump;
+        form.elements[name].closest('label').hidden = lump;
+    }
+    form.elements.lump_sum.disabled = !lump;
+    form.elements.lump_sum.required = lump;
+    form.elements.lump_sum.closest('label').hidden = !lump;
+}
+document.querySelector('#test-finance-form select[name="mode"]')?.addEventListener('change', updateScenarioFields);
+window.addEventListener('pageshow', updateScenarioFields);
+updateScenarioFields();

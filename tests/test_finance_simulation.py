@@ -57,6 +57,24 @@ class SimulationTests(TestCase):
         self.assertIn('Savings target not set', receipt(build(source, without, TODAY), TODAY))
         self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
 
+    def test_lump_sum_arrives_once_and_ignores_all_recurring_income(self):
+        values = inputs(); values.update(mode='lump', lump_sum='10000')
+        result = build(projection(), values, TODAY)
+        self.assertEqual(result['payday_cash'], D('11200'))
+        self.assertEqual(result['inputs']['salary'], D(0))
+        self.assertEqual(result['inputs']['other'], D(0))
+        self.assertEqual(result['monthly_savings'], D(0))
+        zero = dict(values, lump_sum='0')
+        self.assertEqual(result['forecast']['end_cash'] - build(projection(), zero, TODAY)['forecast']['end_cash'], D('10000'))
+        text = receipt(result, TODAY)
+        self.assertIn('SIMULATION - LUMP SUM ONLY', text)
+        self.assertNotIn('GBP 4,500.00', text)
+        self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
+        values['start'] = '2026-11-10'
+        self.assertLess(build(projection(), values, TODAY)['forecast']['run_out'], date(2026, 11, 10))
+        values['lump_sum'] = '-1'
+        with self.assertRaises(ValueError): validate(values, TODAY)
+
     def test_additional_income_uses_explicit_existing_salary_once(self):
         values = inputs(); values['mode'] = 'additional'
         result = build(projection(), values, TODAY)

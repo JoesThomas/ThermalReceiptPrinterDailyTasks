@@ -42,7 +42,7 @@
                                    value="{{ values.get('salary', '') }}">
                         </label>
                         <label>
-                            Use this salary as
+                            Scenario type
                             <select name="mode">
                                 <option value="replace"
                                         {% if values.get('mode', 'replace') == 'replace' %}selected{% endif %}>
@@ -52,7 +52,19 @@
                                         {% if values.get('mode') == 'additional' %}selected{% endif %}>
                                     Additional monthly income
                                 </option>
+                                <option value="lump" {% if values.get('mode') == 'lump' %}selected{% endif %}>
+                                    Lump sum only (no recurring income)
+                                </option>
                             </select>
+                        </label>
+                        <label>
+                            One-off lump sum (£, lump sum mode only)
+                            <input type="number"
+                                   name="lump_sum"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('lump_sum', '0') }}">
                         </label>
                         <label>
                             Existing monthly salary (£, used only for additional income)
@@ -73,7 +85,7 @@
                                    value="{{ values.get('other_income', '0') }}">
                         </label>
                         <label>
-                            First hypothetical payday
+                            First payday / lump sum receipt date
                             <input type="date"
                                    name="start"
                                    min="{{ today }}"

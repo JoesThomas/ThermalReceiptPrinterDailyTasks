@@ -75,7 +75,7 @@ def register(app, login_required, start_print):
             try:
                 item = load(identifier)
                 candidate = item['pages'].get('finance', '')
-                if 'SIMULATION - POTENTIAL SALARY' in candidate: text = candidate
+                if candidate.startswith('-'*42) and ('SIMULATION - POTENTIAL SALARY' in candidate or 'SIMULATION - LUMP SUM ONLY' in candidate): text = candidate
             except ValueError: pass
         from finance.receipt import load_finance_settings
         defaults = {'savings_target': str(load_finance_settings().get('salary_savings_target') or 0)}
@@ -108,7 +108,7 @@ def register(app, login_required, start_print):
         if not identifier: abort(400)
         try: item = load(identifier)
         except ValueError: abort(404)
-        if 'SIMULATION - POTENTIAL SALARY' not in item['pages'].get('finance', ''): abort(400)
+        if not any(label in item['pages'].get('finance', '') for label in ('SIMULATION - POTENTIAL SALARY', 'SIMULATION - LUMP SUM ONLY')): abort(400)
         started, error = start_print(['--archive', identifier, 'finance'])
         flash('Test finance receipt queued.' if started else error)
         return redirect(url_for('test_finance_page'))
