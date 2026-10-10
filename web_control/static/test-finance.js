@@ -24,6 +24,7 @@ function updateScenarioFields() {
         form.elements[name].disabled = lump;
         form.elements[name].closest('label').hidden = lump;
     }
+    if (form.elements.use_saved_accounts) form.elements.starting_savings.disabled = form.elements.use_saved_accounts.checked;
     if (form.elements.strategy) {
         form.elements.amex_split.closest('label').hidden = form.elements.strategy.value !== 'split';
     }
@@ -36,3 +37,5 @@ window.addEventListener('pageshow', updateScenarioFields);
 updateScenarioFields();
 
 document.querySelector('#test-finance-form select[name="strategy"]')?.addEventListener('change', updateScenarioFields);
+
+document.querySelector('#test-finance-form input[name="use_saved_accounts"]')?.addEventListener('change', updateScenarioFields);

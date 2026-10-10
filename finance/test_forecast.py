@@ -62,7 +62,7 @@ def simulate(base, inputs, today):
                 payoff = on; balance = ZERO
             if inputs['goal'] and goal_date is None and inputs['starting_savings']+transfers >= inputs['goal'] and run_out is None:
                 goal_date = on
-            periods.append(dict(date=on, end=next_pay-timedelta(days=1), salary=inputs['salary']+inputs['existing'],
+            periods.append(dict(funded=run_out is None, date=on, end=next_pay-timedelta(days=1), salary=inputs['salary']+inputs['existing'],
                 rent=inputs['other'], opening=opening, costs=costs, variable=variable, surplus=surplus,
                 budget=budget, savings=saving, extra=extra, planned_card=scheduled,
                 balance_after_extra=balance, savings_total=transfers, cash_after_allocation=cash-costs-variable))

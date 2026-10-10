@@ -37,7 +37,7 @@ def validate(values, today):
         raise ValueError('Choose 1 to 60 forecast months.') from None
     if not 1 <= months <= 60 or (occurs(start, months) - today).days > 1826:
         raise ValueError('Choose a forecast ending within five years of today.')
-    return dict(strategy=strategy, split=split, apr=apr, goal=goal, starting_savings=starting_savings, salary=salary, existing=existing if mode == 'additional' else Decimal(0),
+    return dict(use_accounts=values.get('use_saved_accounts') == 'on', strategy=strategy, split=split, apr=apr, goal=goal, starting_savings=starting_savings, salary=salary, existing=existing if mode == 'additional' else Decimal(0),
                 other=other, lump=lump, savings=savings, save_all=not lump_mode and values.get('save_all') == 'on', mode=mode, start=start, months=months)
 
 
@@ -46,17 +46,27 @@ def build(projection, values, today):
     if not projection.get('valid'):
         raise ValueError('The finance forecast is incomplete. Refresh Finance review and confirm balances, repayment dates and a daily spending estimate first.')
     base = deepcopy(projection)
+    accounts=base.get('savings_accounts',[])
+    from finance.savings_targets import allocate
+    if inputs['use_accounts']:
+        inputs['starting_savings']=sum((row['balance'] for row in accounts if row['balance'] is not None),Decimal(0))
     forecast = simulate(base, inputs, today)
-    if inputs['goal'] and forecast['goal_date'] is None and inputs['mode'] != 'lump':
+    account_plan=allocate(accounts,forecast['payments'] if inputs['use_accounts'] else [])
+    if (inputs['goal'] and forecast['goal_date'] is None or inputs['use_accounts'] and any(row['target'] and row['goal_date'] is None for row in account_plan['accounts'])) and inputs['mode'] != 'lump':
         extended_inputs = dict(inputs, months=60)
         while (occurs(inputs['start'], extended_inputs['months'])-today).days > 1826:
             extended_inputs['months'] -= 1
         extended = simulate(base, extended_inputs, today)
         forecast['extended_goal_date'] = extended['goal_date']
         forecast['extended_goal_months'] = extended_inputs['months']
+        extended_accounts=allocate(accounts,extended['payments'])
+        for row,full in zip(account_plan['accounts'],extended_accounts['accounts']):
+            row['extended_goal_date']=full['goal_date']
     first = forecast['payments'][0]
     bills = [event for event in forecast['events'] if inputs['start'] <= event['date'] <= first['end']]
-    return dict(checkpoints=forecast['checkpoints'], surplus=first['surplus'], monthly_savings=first['savings'],
+    if inputs['use_accounts']: forecast['unallocated_savings']=account_plan['unallocated']
+    else: forecast['unallocated_savings']=forecast['savings_total']
+    return dict(account_plan=account_plan, checkpoints=forecast['checkpoints'], surplus=first['surplus'], monthly_savings=first['savings'],
         inputs=inputs, projection=base, forecast=forecast, bills=bills, bills_total=sum((e['amount'] for e in bills),Decimal(0)),
         variable=first['variable'], payday_cash=first['opening'], savings=first['savings'],
         spend=max(Decimal(0),first['cash_after_allocation']), shortfall=max(Decimal(0),-first['cash_after_allocation']),
@@ -165,6 +175,37 @@ def receipt(result, today):
         if balance is None or rate is None: text('Confirm balance/rate and early repayment terms before deciding.')
         elif balance>0 and budget>=balance: amount('Potential full payoff',balance)
     text('Finite listed schedules end automatically. Other early payoff options are not applied.')
+    if result['account_plan']['accounts']:
+        section('RECORDED SAVINGS & INVESTMENTS')
+        for account in result['account_plan']['accounts']:
+            text(account['name'].upper())
+            if account['balance'] is None:
+                text('Balance unavailable; excluded from totals and contribution allocation.'); continue
+            amount('Current balance',account['balance'])
+            if account.get('date'): text(f'Recorded {account["date"]}')
+            else: text('Balance date not recorded.')
+            if account['target']:
+                amount('Target balance',account['target'])
+                remaining=max(Decimal(0),account['target']-account['balance'])
+                amount('Remaining to target',remaining)
+                text(f'{min(Decimal(100),account["balance"]/account["target"]*100):.0f}% of balance goal')
+                amount('First-period contribution',account['first'])
+                amount('Contributions in selected forecast',account['added'])
+                amount('Projected account balance',account['projected'])
+                reached=account['goal_date'] or account.get('extended_goal_date')
+                if reached=='already': text('Target already reached.')
+                elif reached: text(f'Projected target date: {reached:%d %b %Y}' + (' (extended)' if not account['goal_date'] else ''))
+                else: text('No funded target date in this plan.')
+            else: text('No account balance target set.')
+            if account['isa_contributions'] is not None:
+                amount('Recorded ISA contributions this FY',account['isa_contributions'])
+                text('ISA allowance progress is separate from the balance target.')
+        amount('TOTAL RECORDED ACCOUNT BALANCES',result['account_plan']['current_total'])
+        amount('New savings not assigned to accounts',forecast['unallocated_savings'])
+        text('Account contributions share one savings budget. Finished goals redistribute their share to other selected goals; no growth or interest assumed.')
+        if not data['use_accounts']: text('Account allocation disabled; overall goal uses the manual starting savings input.')
+        if not result['account_plan']['complete']: text('Totals include known balances only.')
+        text('These are hypothetical allocations, not recorded ISA subscriptions. Check shared contribution allowance before making deposits.')
     section('SAVINGS PROJECTION')
     amount('Starting savings (separate to cash)',data['starting_savings'])
     amount('Test savings transfers over forecast',forecast['savings_total'])

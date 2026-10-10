@@ -62,7 +62,7 @@ def register(app,login_required,wealth_fn):
     @login_required
     def savings_goal_account():
         try:
-            goals.account_settings(request.form.get('name',''),request.form.get('kind',''),request.form.get('type',''),request.form.get('target',''))
+            goals.account_settings(request.form.get('name',''),request.form.get('kind',''),request.form.get('type',''),request.form.get('target',''),request.form.get('monthly_share',''))
             flash('Account type and goal saved privately.')
         except (ValueError,OSError) as error: flash(str(error) if isinstance(error,ValueError) else 'Account settings could not be saved.')
         return redirect(url_for('savings_goals_page'))

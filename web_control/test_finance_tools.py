@@ -91,6 +91,12 @@ def collect(values, today):
     if full_reserved:
         projection['warnings'].append('No Amex repayment schedule: full outstanding balance reserved once today. This is a conservative cash assumption, not a payment instruction.')
     if manual_card: projection['warnings'].append('Amex balance is a manual scenario assumption; live debt records are unchanged.')
+    from finance.savings_targets import load_view
+    try: projection['savings_accounts'] = load_view(today)
+    except (ValueError,OSError,TypeError,KeyError):
+        if values.get('use_saved_accounts') == 'on': raise ValueError('Recorded savings could not be loaded. Check Savings goals or use a manual starting savings balance.') from None
+        projection['savings_accounts'] = []
+        projection['warnings'].append('Recorded savings accounts could not be loaded; excluded from account projections.')
     return projection
 
 
@@ -108,10 +114,14 @@ def register(app, login_required, start_print):
                 if candidate.startswith('-'*42) and ('SIMULATION - POTENTIAL SALARY' in candidate or 'SIMULATION - LUMP SUM ONLY' in candidate): text = candidate
             except ValueError: pass
         from finance.receipt import load_finance_settings
-        defaults = {'savings_target': str(load_finance_settings().get('salary_savings_target') or 0),
+        from finance.savings_targets import load_view
+        try: saved_savings = load_view(uk_today())
+        except (ValueError,OSError,TypeError,KeyError): saved_savings = []
+        defaults = {'use_saved_accounts': 'on' if session.get('test_finance_use_accounts',bool(saved_savings)) else '',
+                    'savings_target': str(load_finance_settings().get('salary_savings_target') or 0),
                     'save_all': 'on' if session.get('test_finance_save_all', True) else '',
                     'strategy': session.get('test_finance_strategy', 'amex_first')}
-        return render_template('test_finance.html', today=uk_today(), result_text=text, values=defaults)
+        return render_template('test_finance.html', today=uk_today(), result_text=text, values=defaults, saved_savings=saved_savings)
 
     @app.post('/finance/test/generate')
     @login_required
@@ -119,6 +129,7 @@ def register(app, login_required, start_print):
         today = uk_today()
         values = request.form.to_dict()
         values.setdefault('save_all', '')
+        values.setdefault('use_saved_accounts', '')
         try:
             validate(values, today)
             projection = collect(values, today)
@@ -127,6 +138,7 @@ def register(app, login_required, start_print):
             from receipt.archive import save
             identifier = save({'finance': text}, {}, datetime.now(timezone.utc).isoformat(), 'preview', {})
             session['test_finance_receipt'] = identifier
+            session['test_finance_use_accounts'] = values['use_saved_accounts'] == 'on'
             session['test_finance_strategy'] = values.get('strategy', 'savings_first')
             if values.get('mode', 'replace') != 'lump':
                 session['test_finance_save_all'] = values['save_all'] == 'on'

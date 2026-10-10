@@ -100,15 +100,35 @@
                                 </select>
                             </label>
                             <label>
-                                Custom balance goal (ordinary savings only)
+                                Target balance (separate from ISA allowance)
                                 <input name="target"
                                        type="number"
                                        min="0.01"
                                        step="0.01"
                                        value="{{ account.target or '' }}">
                             </label>
+                            <label>
+                                Share of new savings (%)
+                                <input name="monthly_share"
+                                       type="number"
+                                       min="0"
+                                       max="100"
+                                       step="0.01"
+                                       value="{{ account.monthly_share or '0' }}">
+                                <small>Total shares must be at most 100%. Leave all at zero for equal automatic allocation between unfinished goals.</small>
+                            </label>
                             <button>Save account settings</button>
                         </form>
+                        {% if account.balance_target and account.balance is not none %}
+                            <p>
+                                Balance goal: £{{ '{:,.2f}'.format(account.balance) }} / £{{ '{:,.2f}'.format(account.balance_target) }} · {{ '%.0f'|format(account.balance_goal.percent) }}% complete · £{{ '{:,.2f}'.format(account.balance_goal.remaining) }} remaining.
+                            </p>
+                            <div class="bar-track"
+                                 role="img"
+                                 aria-label="Balance goal {{ '%.0f'|format(account.balance_goal.percent) }} percent complete">
+                                <div class="bar-fill" style="width:{{ account.balance_goal.percent }}%"></div>
+                            </div>
+                        {% endif %}
                         {% if account.type in ['cash_isa','stocks_isa','other_isa'] %}
                             <h3>Current amount & interest</h3>
                             {% if account.type == 'cash_isa' %}

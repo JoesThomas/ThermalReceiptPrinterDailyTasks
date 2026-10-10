@@ -167,6 +167,14 @@
                                    value="{{ values.get('savings_goal', '0') }}">
                         </label>
                         <label>
+                            <input type="checkbox"
+                                   name="use_saved_accounts"
+                                   {% if values.get('use_saved_accounts') == 'on' %}checked{% endif %}>
+                            Use recorded savings accounts and their targets
+                            <small>Uses the combined known account balances instead of the manual starting savings below. Set targets and contribution shares on Savings goals.</small>
+                            <a href="{{ url_for('savings_goals_page') }}">Edit account targets and shares</a>
+                        </label>
+                        <label>
                             Existing savings towards goal (£)
                             <input type="number"
                                    name="starting_savings"
