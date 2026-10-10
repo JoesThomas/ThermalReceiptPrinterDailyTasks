@@ -127,6 +127,21 @@ class SimulationTests(TestCase):
             client.get('/finance/test')
             self.assertEqual(render.call_args.kwargs['values']['save_all'], 'on')
 
+    def test_amex_suggestion_redirects_savings_without_using_existing_cash(self):
+        source=projection(); source['amex']={'balance':D('5000'), 'full_reserved':False, 'scheduled':True}
+        source['events'].append({'date':date(2026,10,25),'name':'Amex payment','amount':D('50')})
+        result=build(source, dict(inputs(),save_all='on'), TODAY)
+        text=receipt(result,TODAY)
+        self.assertIn('SUGGESTED EXTRA AMEX PAYMENT', text)
+        self.assertIn('GBP 4,190.00', text)
+        self.assertIn('GBP 760.00', text)
+        self.assertIn('Savings redirected to repayment', text)
+        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        source['amex']['full_reserved']=True
+        text=receipt(build(source,inputs(),TODAY),TODAY)
+        self.assertIn('Additional suggested repayment:', ' '.join(text.split()))
+        self.assertNotIn('SUGGESTED EXTRA AMEX PAYMENT',text)
+
     def test_additional_income_uses_explicit_existing_salary_once(self):
         values = inputs(); values['mode'] = 'additional'
         result = build(projection(), values, TODAY)

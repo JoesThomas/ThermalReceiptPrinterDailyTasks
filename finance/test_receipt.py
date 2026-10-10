@@ -122,6 +122,33 @@ def receipt(result, today):
         elif card['scheduled']:
             text('Listed Amex repayments are included in cash flow. Full balance is not deducted again. Interest/new purchases need updated payments.')
         elif card['balance'] == 0: text('No outstanding balance reported.')
+    if card and card['balance'] is not None and card['balance'] > 0:
+        section('AMEX REPAYMENT SUGGESTION')
+        def is_amex(name):
+            key = ''.join(c for c in str(name).lower() if c.isalnum())
+            return 'amex' in key or 'americanexpress' in key
+        planned = sum((bill['amount'] for bill in result['bills'] if is_amex(bill['name'])), Decimal(0))
+        amount('Balance owed now', card['balance'])
+        if card['full_reserved']:
+            amount('Full balance reserved in forecast', card['balance'])
+            text('Clearing this balance is already assumed. Additional suggested repayment: GBP 0.00. Confirm your statement due date.')
+        else:
+            amount('Repayments already in this period', planned)
+            outstanding = max(Decimal(0), card['balance']-planned)
+            affordable = max(Decimal(0), min(result['surplus'], result['spend']+result['monthly_savings']))
+            extra = min(outstanding, affordable)
+            amount('Income after bills & everyday costs', max(Decimal(0), result['surplus']))
+            amount('Cash available before saving', result['spend']+result['monthly_savings'])
+            amount('Affordable extra (smaller amount)', affordable)
+            amount('SUGGESTED EXTRA AMEX PAYMENT', extra)
+            amount('Total planned + suggested payment', min(card['balance'], planned+extra))
+            amount('Estimated balance after payments', max(Decimal(0), outstanding-extra))
+            savings_used = min(result['monthly_savings'], max(Decimal(0), extra-max(Decimal(0),result['surplus']-result['monthly_savings'])))
+            amount('Savings redirected to repayment', savings_used)
+            amount('Savings retained this period', result['monthly_savings']-savings_used)
+            text('Extra = smaller of balance after listed payments and affordable income surplus. Preserves bank/tax/cash reserves and everyday spending; excludes existing cash surplus.')
+            text('Consider paying this amount towards Amex, especially if interest is being charged. Check interest, minimum payment and settlement terms. Interest/new purchases are not included in the remaining balance estimate.')
+            text('Alternative to saving the same money. Suggestion is not deducted from the forecast or savings goal until you change the scenario; no real payment is made.')
     section('UPCOMING PAYMENTS')
     text(f'{data["start"]:%d %b} to {result["cycle_end"]:%d %b %Y}')
     for bill in result['bills']:
