@@ -8,6 +8,8 @@ from finance.projection import day, money, occurs, format_runway
 
 
 def validate(values, today):
+    goal = money(values.get('savings_goal', '0') or '0')
+    starting_savings = money(values.get('starting_savings', '0') or '0')
     mode = values.get('mode', 'replace')
     lump_mode = mode == 'lump'
     lump = money(values.get('lump_sum', '0') or '0') if mode in {'lump', 'lump_income'} else Decimal(0)
@@ -15,7 +17,7 @@ def validate(values, today):
     existing = Decimal(0) if lump_mode else money(values.get('existing_salary', '0') or '0')
     other = Decimal(0) if lump_mode else money(values.get('other_income', '0') or '0')
     savings = Decimal(0) if lump_mode else money(values.get('savings_target', '0') or '0')
-    if any(v is None or v < 0 or v > 10000000 for v in (salary, existing, other, savings, lump)):
+    if any(v is None or v < 0 or v > 10000000 for v in (salary, existing, other, savings, lump, goal, starting_savings)):
         raise ValueError('Enter valid non-negative monthly amounts.')
     if mode not in {'replace', 'additional', 'lump', 'lump_income'}:
         raise ValueError('Choose how the potential salary should be used.')
@@ -28,7 +30,7 @@ def validate(values, today):
         raise ValueError('Choose 1 to 24 forecast months.') from None
     if not 1 <= months <= 24 or (occurs(start, months) - today).days > 760:
         raise ValueError('Choose a forecast ending within two years of today.')
-    return dict(salary=salary, existing=existing if mode == 'additional' else Decimal(0),
+    return dict(goal=goal, starting_savings=starting_savings, salary=salary, existing=existing if mode == 'additional' else Decimal(0),
                 other=other, lump=lump, savings=savings, save_all=not lump_mode and values.get('save_all') == 'on', mode=mode, start=start, months=months)
 
 
@@ -109,6 +111,17 @@ def receipt(result, today):
         amount('Tax reserve', reserve['tax_reserve'])
     amount('TOTAL PROTECTED', base['buffer'])
     amount('Existing cash above reserves', max(Decimal(0),base['cash']-base['buffer']))
+    card = base.get('amex')
+    if card:
+        section('AMEX OWED & REPAYMENTS')
+        if card['balance'] is None:
+            text('Balance unavailable: enter Amex owed in scenario assumptions. Listed repayments are still included.')
+        else: amount('Outstanding balance', card['balance'])
+        if card['full_reserved']:
+            text('Full balance reserved once today; already deducted in the forecast. No additional payoff deduction.')
+        elif card['scheduled']:
+            text('Listed Amex repayments are included in cash flow. Full balance is not deducted again. Interest/new purchases need updated payments.')
+        elif card['balance'] == 0: text('No outstanding balance reported.')
     section('UPCOMING PAYMENTS')
     text(f'{data["start"]:%d %b} to {result["cycle_end"]:%d %b %Y}')
     for bill in result['bills']:
@@ -177,6 +190,28 @@ def receipt(result, today):
     for months, cash in result['checkpoints']:
         label = 'cash above reserves' if cash >= 0 else 'funding shortfall'
         amount(f'{months} month(s): {label}', abs(cash))
+    if data['goal']:
+        section('SAVINGS GOAL')
+        amount('Target savings balance', data['goal'])
+        amount('Starting savings (separate to cash)', data['starting_savings'])
+        remaining = max(Decimal(0), data['goal']-data['starting_savings'])
+        amount('Still to save', remaining)
+        if not remaining: text('Goal already met at the starting balance.')
+        elif result['monthly_savings']:
+            from decimal import ROUND_CEILING
+            payments = int((remaining/result['monthly_savings']).to_integral_value(rounding=ROUND_CEILING))
+            if payments <= data['months']:
+                reached = occurs(data['start'], payments-1)
+                if forecast['run_out'] and forecast['run_out'] <= reached:
+                    text('Goal not safely funded: reserves are breached before or on the projected goal date.')
+                else:
+                    text(f'Projected goal date: {reached:%d %b %Y}')
+                    text(f'{payments} monthly savings contribution(s).')
+            else:
+                text(f'Goal not reached within the {data["months"]}-month forecast.')
+                amount('Projected savings at forecast end', data['starting_savings']+result['monthly_savings']*data['months'])
+        else: text('No savings contribution selected; no projected goal date.')
+        text('Assumes savings are retained; excludes interest. Starting savings are not spending cash. Goal dates are estimates, not guarantees.')
     section('ASSUMPTIONS')
     if data['mode']=='lump_income': text('Lump sum is received once on the first payday. Monthly income is only the salary and other income entered in this test.')
     text('Lump sum arrives once on the selected date. No future recurring income; no automatic savings transfers. Any payoff reduces cash runway.' if data['mode']=='lump' else 'Take-home salary; no salary tax deduction. Other income arrives on payday.')

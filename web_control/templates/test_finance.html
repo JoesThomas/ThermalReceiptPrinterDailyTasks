@@ -121,9 +121,38 @@
                             Save all remaining income surplus
                             <small>Overrides the savings target. Existing bank cash is excluded; test transfers occur each payday.</small>
                         </label>
+                        <label>
+                            Savings goal (£, optional)
+                            <input type="number"
+                                   name="savings_goal"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('savings_goal', '0') }}">
+                        </label>
+                        <label>
+                            Existing savings towards goal (£)
+                            <input type="number"
+                                   name="starting_savings"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('starting_savings', '0') }}">
+                            <small>Separate savings only; do not also include this money in starting bank cash.</small>
+                        </label>
                     </div>
                     <details>
                         <summary>Optional scenario assumptions</summary>
+                        <label>
+                            Amex balance owed (£, optional scenario override)
+                            <input type="number"
+                                   name="amex_owed"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('amex_owed', '') }}">
+                            <small>Without a listed repayment schedule, the full known balance is reserved once today.</small>
+                        </label>
                         <p>
                             Leave these blank to use bank balances and your existing spending forecast. With incomplete bank data, supplying both makes this an explicitly manual estimate.
                         </p>

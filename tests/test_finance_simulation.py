@@ -101,6 +101,17 @@ class SimulationTests(TestCase):
         values.update(mode='lump', lump_sum='10000')
         self.assertEqual(build(source, values, TODAY)['monthly_savings'], D(0))
 
+    def test_savings_goal_date_uses_existing_savings_and_payday_transfers(self):
+        values=inputs(); values.update(savings_goal='2500', starting_savings='500')
+        result=build(projection(), values, TODAY)
+        self.assertIn('Projected goal date: 10 Nov 2026', receipt(result,TODAY))
+        values['savings_goal']='5000'
+        self.assertIn('Goal not reached within the 2-month', receipt(build(projection(),values,TODAY),TODAY))
+        values.update(savings_goal='400', starting_savings='500')
+        self.assertIn('Goal already met', receipt(build(projection(),values,TODAY),TODAY))
+        values.update(savings_goal='5000', savings_target='0')
+        self.assertIn('No savings contribution selected', receipt(build(projection(),values,TODAY),TODAY))
+
     def test_additional_income_uses_explicit_existing_salary_once(self):
         values = inputs(); values['mode'] = 'additional'
         result = build(projection(), values, TODAY)
@@ -169,3 +180,26 @@ class SimulationTests(TestCase):
         self.assertEqual(base['buffer'],D('1000'))
         self.assertEqual(settings,original)
         network.assert_not_called()
+
+    def test_amex_without_schedule_is_reserved_once_and_not_double_counted(self):
+        from web_control.test_finance_tools import collect
+        settings={'hsbc_emergency_reserve':1000}
+        with patch('finance.receipt.load_finance_settings', return_value=settings), patch(
+            'services.subscriptions.load_subscriptions', return_value={'monthly':[], 'yearly':[], 'instalments':[]}), patch(
+            'finance.rental_tax.protected_reserve',return_value=D(0)):
+            base=collect({'opening_cash':'5000','daily_spend':'10','amex_owed':'1500'},TODAY)
+            self.assertTrue(base['valid'])
+            self.assertEqual(sum(e['amount'] for e in base['events']), D('1500'))
+            self.assertTrue(base['amex']['full_reserved'])
+            text=receipt(build(base, inputs(), TODAY), TODAY)
+            self.assertIn('AMEX OWED & REPAYMENTS', text)
+            self.assertIn('already deducted in the forecast', ' '.join(text.split()))
+            self.assertNotIn('commitments', settings)
+        subscriptions={'monthly':[{'name':'Amex payment','amount':50,'due_day':25}], 'yearly':[], 'instalments':[]}
+        with patch('finance.receipt.load_finance_settings', return_value=settings), patch(
+            'services.subscriptions.load_subscriptions', return_value=subscriptions), patch(
+            'finance.rental_tax.protected_reserve',return_value=D(0)):
+            base=collect({'opening_cash':'5000','daily_spend':'10','amex_owed':'1500'},TODAY)
+            self.assertTrue(base['valid'])
+            self.assertFalse(base['amex']['full_reserved'])
+            self.assertTrue(all(e['amount']==50 for e in base['events']))

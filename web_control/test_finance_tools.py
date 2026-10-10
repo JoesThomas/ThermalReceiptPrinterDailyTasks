@@ -51,6 +51,30 @@ def collect(values, today):
         coverage = data[4].get('bank_data_status', 'unavailable')
         if cash:
             balances = dict(balances, HSBC={'available': cash_value}, MONZO={'available': Decimal(0)})
+    # A known card debt must have a cash cost in the scenario. With no
+    # configured repayment, reserve the full balance once, conservatively today.
+    def amex(item):
+        name = ''.join(c for c in str(item.get('name', '')).lower() if c.isalnum())
+        return 'amex' in name or 'americanexpress' in name
+    card = money(balances.get('AMEX', {}).get('current'))
+    manual_card = values.get('amex_owed', '').strip()
+    if manual_card:
+        card = money(manual_card)
+        if card is None or not 0 <= card <= 10000000:
+            raise ValueError('Enter a valid non-negative Amex balance owed.')
+    if card is None:
+        card = next((money(item.get('balance')) for item in settings.get('debts', []) if amex(item)), None)
+    if card is not None: card = abs(card)
+    scheduled = any(amex(item) and money(item.get('amount'), Decimal(0)) > 0
+                    for item in status['monthly'] + settings.get('commitments', [])) or any(
+                        amex(item) and money(item.get('amount'), Decimal(0)) < 0 for item in settings.get('forecast_events', []))
+    full_reserved = bool(card and not scheduled)
+    if full_reserved:
+        reserve_name = next((item.get('monthly_commitment_name') or item.get('name') for item in settings.get('debts', []) if amex(item)), 'Amex balance reserve')
+        settings['commitments'] = list(settings.get('commitments', [])) + [
+            {'name': reserve_name, 'amount': str(card), 'due_date': today.isoformat(), 'repeat': 'once'}]
+    if card is not None:
+        balances = dict(balances, AMEX=dict(balances.get('AMEX', {}), current=card))
     projection = build_projection(balances, transactions, status['monthly'], status['yearly'], settings, today, bank_status=coverage)
     if cash: projection['warnings'].append('Starting cash is a manual scenario input, not a bank balance update.')
     if daily: projection['warnings'].append('Everyday spending uses the manual daily estimate.')
@@ -58,9 +82,13 @@ def collect(values, today):
     from finance.salary_plan import reserves
     projection['reserve_details'] = reserves(settings)
     projection['repayment_options'] = [dict(item) for item in subscriptions.get('instalments', []) + settings.get('debts', [])]
-    card = balances.get('AMEX', {}).get('current')
-    if card is not None and not any('amex' in str(item.get('name', '')).lower() for item in projection['repayment_options']):
-        projection['repayment_options'].append({'name': 'Amex', 'balance': abs(Decimal(str(card))), 'type': 'credit_card'})
+    if card is not None:
+        projection['repayment_options'] = [item for item in projection['repayment_options'] if not amex(item)]
+        projection['repayment_options'].append({'name': 'Amex', 'balance': card, 'type': 'credit_card'})
+    projection['amex'] = {'balance': card, 'full_reserved': full_reserved, 'scheduled': scheduled}
+    if full_reserved:
+        projection['warnings'].append('No Amex repayment schedule: full outstanding balance reserved once today. This is a conservative cash assumption, not a payment instruction.')
+    if manual_card: projection['warnings'].append('Amex balance is a manual scenario assumption; live debt records are unchanged.')
     return projection
 
 
