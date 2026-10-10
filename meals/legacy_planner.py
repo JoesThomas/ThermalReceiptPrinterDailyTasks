@@ -260,6 +260,7 @@ def _pantry_has(ingredient: str) -> bool:
 
 def _section(ingredient: str) -> str:
     s = ingredient.lower()
+    if any(x in s for x in ["tin ", "tins ", "tinned ", "canned ", "puree", "purée", "frozen "]): return "TINNED / DRY"
     if any(x in s for x in ["chicken", "beef", "pork", "lamb", "turkey", "salmon", "fish", "prawn", "tuna", "sausage"]): return "MEAT / FISH"
     if any(x in s for x in ["yoghurt", "milk", "cheddar", "parmesan", "feta", "halloumi", "mozzarella", "ricotta", "paneer", "egg"]): return "DAIRY / EGGS"
     if any(x in s for x in ["bread", "roll", "pitta", "flatbread", "tortilla"]): return "BAKERY"
@@ -269,7 +270,7 @@ def _section(ingredient: str) -> str:
 
 def build_shopping_list(plan: dict, include_away=False) -> dict[str, list[str]]:
     grouped: dict[str, list[str]] = defaultdict(list)
-    seen = set()
+    from meals.ingredients import aggregate
     from meals.remaining import needs_dinner
     from receipt.local_time import uk_today
     today = uk_today()
@@ -278,21 +279,17 @@ def build_shopping_list(plan: dict, include_away=False) -> dict[str, list[str]]:
             continue
         r = meal["recipe"]
         for item in r.get("ingredients", []) if needs_dinner(meal, today, away=(lambda day: False) if include_away else None) else []:
-            key = _normalise_item(item)
-            if key and key not in seen and not _pantry_has(item):
+            if str(item).strip() and not _pantry_has(item):
                 grouped[_section(item)].append(item)
-                seen.add(key)
         meal_day = date.fromisoformat(meal["date"])
         next_day = meal_day + timedelta(days=1)
         lunch_override = _override_for(next_day, "lunch")
         from receipt.lifestyle import skip_meal
         lunch = {} if next_day < today or skip_meal(next_day) or lunch_override and lunch_override.get("type") in {"buy_lunch", "eat_out"} else r.get("lunch", {})
         for item in lunch.get("extra_ingredients", []):
-            key = _normalise_item(item)
-            if key and key not in seen and not _pantry_has(item):
+            if str(item).strip() and not _pantry_has(item):
                 grouped[_section(item)].append(item)
-                seen.add(key)
-    return dict(grouped)
+    return {section: aggregate(items, for_shopping=True) for section, items in grouped.items()}
 
 
 def build_sunday_prep(plan: dict) -> list[dict]:
@@ -695,4 +692,6 @@ def print_shopping_list(printer, left, line, plan: dict | None = None) -> None:
     line(printer, "="); left(printer, "MEAL SHOPPING LIST"); line(printer, "=")
     for section, items in plan.get("shopping", {}).items():
         left(printer, section)
-        for item in items: left(printer, "[ ] " + item)
+        for item in items:
+            for index, piece in enumerate(wrap(item, RECEIPT_WIDTH - 4)):
+                left(printer, ("[ ] " if index == 0 else "    ") + piece)
