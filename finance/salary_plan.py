@@ -7,6 +7,7 @@ from web_control.payments import external_payments
 
 
 def reserves(settings):
+    from receipt.local_time import uk_today
     bank=max(Decimal(0),money(settings.get('hsbc_emergency_reserve'),Decimal(0)))
     target=max(Decimal(0),money(settings.get('physical_cash_target'),Decimal(0)))
     held=money(settings.get('physical_cash_held'))
@@ -14,7 +15,7 @@ def reserves(settings):
     from finance.rental_tax import protected_reserve
     tax_reserve = protected_reserve()
     general=max(Decimal(0),money(settings.get('emergency_buffer'),Decimal(0)))
-    return {'bank':bank,'target':target,'held':held,'gap':gap,'date':day(settings.get('physical_cash_date')),
+    return {'count_default_date': uk_today().isoformat(), 'bank':bank,'target':target,'held':held,'gap':gap,'date':day(settings.get('physical_cash_date')),
             'tax_reserve':tax_reserve,'buffer':max(bank,general)+gap+tax_reserve,'percent':min(Decimal(100),(held or Decimal(0))/target*100) if target else None}
 
 
