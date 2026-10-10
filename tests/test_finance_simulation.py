@@ -89,6 +89,18 @@ class SimulationTests(TestCase):
         self.assertNotIn('GBP -', text)
         self.assertIn('No savings transfers assumed', text)
 
+    def test_save_all_allocates_only_recurring_surplus_and_updates_forecast(self):
+        values = inputs(); values['save_all'] = 'on'
+        source = projection()
+        result = build(source, values, TODAY)
+        self.assertEqual(result['monthly_savings'], D('4240'))
+        self.assertEqual(result['spend'], D('200'))
+        self.assertIn('Saving all remaining income surplus.', receipt(result, TODAY))
+        ordinary = build(source, dict(values, save_all=''), TODAY)
+        self.assertEqual(ordinary['forecast']['end_cash']-result['forecast']['end_cash'], D('6480'))
+        values.update(mode='lump', lump_sum='10000')
+        self.assertEqual(build(source, values, TODAY)['monthly_savings'], D(0))
+
     def test_additional_income_uses_explicit_existing_salary_once(self):
         values = inputs(); values['mode'] = 'additional'
         result = build(projection(), values, TODAY)

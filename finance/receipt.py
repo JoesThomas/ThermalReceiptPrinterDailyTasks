@@ -673,6 +673,12 @@ def print_integrated_finance(
             if allocation['reserve']['held'] is not None:
                 left(printer,_amount_line('PHYSICAL CASH RECORDED',allocation['reserve']['held']))
             left(printer,_amount_line('CASH TOP-UP RESERVED',allocation['reserve']['gap']))
+            if allocation['suggested_savings'] is not None:
+                left(printer,_amount_line('SUGGESTED SAVINGS [E]',allocation['suggested_savings']))
+                left(printer,'AFTER BILLS / SPENDING / RESERVES')
+                left(printer,'AVAILABLE NOW / NOT MONTHLY INCOME')
+            else:
+                left(printer,'SUGGESTED SAVINGS: COMPLETE DATA NEEDED')
             if allocation['valid']:
                 left(printer,_amount_line('SALARY AVAILABLE TO PLAN',allocation['available']))
                 for bucket in allocation['buckets']:

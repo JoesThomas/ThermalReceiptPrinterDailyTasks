@@ -20,7 +20,7 @@ function updateScenarioFields() {
     if (!form) return;
     const lump = form.elements.mode.value === 'lump';
     const hasLump = lump || form.elements.mode.value === 'lump_income';
-    for (const name of ['salary', 'existing_salary', 'other_income', 'savings_target']) {
+    for (const name of ['salary', 'existing_salary', 'other_income', 'savings_target', 'save_all']) {
         form.elements[name].disabled = lump;
         form.elements[name].closest('label').hidden = lump;
     }

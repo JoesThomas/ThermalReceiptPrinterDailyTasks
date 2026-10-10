@@ -29,7 +29,7 @@ def validate(values, today):
     if not 1 <= months <= 24 or (occurs(start, months) - today).days > 760:
         raise ValueError('Choose a forecast ending within two years of today.')
     return dict(salary=salary, existing=existing if mode == 'additional' else Decimal(0),
-                other=other, lump=lump, savings=savings, mode=mode, start=start, months=months)
+                other=other, lump=lump, savings=savings, save_all=not lump_mode and values.get('save_all') == 'on', mode=mode, start=start, months=months)
 
 
 def build(projection, values, today):
@@ -53,7 +53,7 @@ def build(projection, values, today):
     savings = min(max(Decimal(0), available), inputs['savings'])
     spend = max(Decimal(0), available - savings)
     surplus = salary + inputs['other'] - bills_total - variable
-    monthly_savings = min(max(Decimal(0), surplus), inputs['savings'])
+    monthly_savings = max(Decimal(0), surplus) if inputs['save_all'] else min(max(Decimal(0), surplus), inputs['savings'])
     savings = monthly_savings
     spend = max(Decimal(0), available - savings)
     savings_base = deepcopy(base)
@@ -123,7 +123,8 @@ def receipt(result, today):
     text('Expected spending, not a maximum allowance.')
     amount('INCOME SURPLUS' if result['surplus'] >= 0 else 'INCOME FUNDING GAP', abs(result['surplus']))
     text('Surplus excludes existing bank cash.')
-    if data['savings']:
+    if data['savings'] or data['save_all']:
+        if data['save_all']: text('Saving all remaining income surplus.')
         amount('Monthly savings allocation', result['monthly_savings'])
         amount('Income left after saving', max(Decimal(0), result['surplus']-result['monthly_savings']))
     else:

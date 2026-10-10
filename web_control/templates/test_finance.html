@@ -114,6 +114,13 @@
                                    step="0.01"
                                    value="{{ values.get('savings_target', '0') }}">
                         </label>
+                        <label>
+                            <input type="checkbox"
+                                   name="save_all"
+                                   {% if values.get('save_all') == 'on' %}checked{% endif %}>
+                            Save all remaining income surplus
+                            <small>Overrides the savings target. Existing bank cash is excluded; test transfers occur each payday.</small>
+                        </label>
                     </div>
                     <details>
                         <summary>Optional scenario assumptions</summary>
