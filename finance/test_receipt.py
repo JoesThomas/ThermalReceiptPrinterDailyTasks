@@ -50,7 +50,23 @@ def build(projection, values, today):
     available = payday_cash - base['buffer'] - bills_total - variable
     savings = min(max(Decimal(0), available), inputs['savings'])
     spend = max(Decimal(0), available - savings)
-    return dict(inputs=inputs, projection=base, forecast=scenario, bills=bills,
+    surplus = salary + inputs['other'] - bills_total - variable
+    monthly_savings = min(max(Decimal(0), surplus), inputs['savings'])
+    savings = monthly_savings
+    spend = max(Decimal(0), available - savings)
+    savings_base = deepcopy(base)
+    if monthly_savings:
+        savings_base['events'].extend({'date': occurs(inputs['start'], month), 'amount': monthly_savings,
+            'name': 'Test savings transfer'} for month in range(inputs['months']))
+        scenario = cash_scenario(savings_base, dict(salary=str(salary), rent=str(inputs['other']),
+            repair='0', vacancy='0', start=inputs['start'].isoformat(), months=str(inputs['months'])), today)
+    checkpoints = []
+    for months in (1, 3, 6, 12):
+        if months <= inputs['months']:
+            point = cash_scenario(savings_base, dict(salary=str(salary), rent=str(inputs['other']),
+                repair='0', vacancy='0', start=inputs['start'].isoformat(), months=str(months)), today)
+            checkpoints.append((months, point['end_cash']))
+    return dict(checkpoints=checkpoints, surplus=surplus, monthly_savings=monthly_savings, inputs=inputs, projection=base, forecast=scenario, bills=bills,
                 bills_total=bills_total, variable=variable, payday_cash=payday_cash,
                 savings=savings, spend=spend, shortfall=max(Decimal(0), -available), cycle_end=end-timedelta(days=1))
 
@@ -60,46 +76,94 @@ def receipt(result, today):
     def text(value=''):
         lines.extend(wrap(str(value), 42) or [''])
     def rule(): lines.append('-'*42)
+    def section(title):
+        rule(); text(title.center(42)); rule()
     def amount(label, value):
-        text(label)
-        lines.append(f"GBP {value:,.2f}".rjust(42))
+        right = f"GBP {value:,.2f}"
+        if len(label) + len(right) + 1 <= 42:
+            lines.append(label + right.rjust(42-len(label)))
+        else:
+            text(label); lines.append(right.rjust(42))
     data, base, forecast = result['inputs'], result['projection'], result['forecast']
-    rule(); text('SIMULATION - POTENTIAL SALARY'); rule()
-    text('MANUAL TEST - NOT ACTUAL MONEY RECEIVED')
+    section('TEST FINANCE')
+    text('SIMULATION - POTENTIAL SALARY')
     text(f'Generated {today:%d %b %Y}')
-    text('Take-home salary; no salary tax deduction.')
-    text('Mode: ' + ('Replace future salary' if data['mode']=='replace' else 'Additional monthly income'))
-    amount('Potential monthly salary', data['salary'])
-    if data['existing']: amount('Existing monthly salary assumed', data['existing'])
-    amount('Other monthly income assumed', data['other'])
-    text('Other income paid on the same day as salary.')
+    section('INCOME')
+    amount('Monthly take-home salary', data['salary'])
+    if data['existing']: amount('Existing salary (additional mode)', data['existing'])
+    amount('Other monthly income', data['other'])
+    amount('TOTAL MONTHLY INCOME', data['salary']+data['existing']+data['other'])
     text(f'First payday: {data["start"]:%d %b %Y}')
-    text(f'Forecast: {data["months"]} monthly payments')
-    rule(); text('OPENING CASH & PROTECTED RESERVES'); rule()
+    section('CASH & RESERVES')
     amount('Current bank cash', base['cash'])
-    amount('Protected buffer / cash top-up / tax', base['buffer'])
-    amount('Estimated cash on first payday', result['payday_cash'])
-    rule(); text('NEXT PAY PERIOD'); rule()
+    reserve = base.get('reserve_details')
+    if reserve:
+        amount('Bank / emergency reserve', base['buffer']-reserve['gap']-reserve['tax_reserve'])
+        amount('Physical cash top-up', reserve['gap'])
+        amount('Tax reserve', reserve['tax_reserve'])
+    amount('TOTAL PROTECTED', base['buffer'])
+    amount('Existing cash above reserves', max(Decimal(0),base['cash']-base['buffer']))
+    section('UPCOMING PAYMENTS')
     text(f'{data["start"]:%d %b} to {result["cycle_end"]:%d %b %Y}')
     for bill in result['bills']:
-        text(f'{bill["date"]:%d %b} {bill["name"]}')
-        lines.append(f"GBP {bill['amount']:,.2f}".rjust(42))
+        estimated = bill.get('undated') or bill.get('basis') not in (None, 'Configured date', 'Repayment schedule', 'Annual renewal', 'Listed cash payment')
+        amount(f'{bill["date"]:%d %b} {bill["name"]}' + (' *' if estimated else ''), bill['amount'])
     if not result['bills']: text('No scheduled payments in this period')
-    amount('Bills / subscriptions / repayments', result['bills_total'])
+    text('* Estimated / reserved date: confirm day.')
+    amount('PAYMENTS TOTAL', result['bills_total'])
+    section('PAY PERIOD ALLOCATION')
     amount('Estimated everyday spending', result['variable'])
-    amount('Savings contribution', result['savings'])
-    amount('Additional spending allowance', result['spend'])
-    if result['shortfall']: amount('SHORTFALL after protected reserves', result['shortfall'])
-    rule(); text('PROJECTED RUNWAY WITH TEST INCOME'); rule()
-    if forecast['run_out']:
-        text('Protected cash falls below zero on:')
-        text(forecast['run_out'].strftime('%d %b %Y'))
-        text(format_runway((forecast['run_out']-today).days, today))
+    amount('INCOME SURPLUS', result['surplus'])
+    text('Surplus excludes existing bank cash.')
+    if data['savings']:
+        amount('Monthly savings allocation', result['monthly_savings'])
+        amount('Income left after saving', max(Decimal(0), result['surplus']-result['monthly_savings']))
     else:
-        text(f'No shortfall through {forecast["end"]:%d %b %Y}')
-        text('This does not mean unlimited runway.')
+        text('Savings target not set')
+        amount('Available from income to save', max(Decimal(0),result['surplus']))
+    amount('First-period total available', result['spend'])
+    text('Total includes existing cash; not a recurring monthly spending allowance.')
+    if result['shortfall']: amount('SHORTFALL after reserves', result['shortfall'])
+    section('REPAYMENT OPTIONS')
+    budget = max(Decimal(0), min(result['surplus']-result['monthly_savings'], result['spend']))
+    options = base.get('repayment_options', [])
+    if not options: text('No confirmed repayment balances available.')
+    for item in options:
+        name = str(item.get('name') or 'Repayment')
+        text(name.upper())
+        balance = money(item.get('remaining_balance', item.get('balance')))
+        payment = money(item.get('monthly_payment', item.get('amount')))
+        rate = money(item.get('apr', item.get('interest_rate')))
+        final = day(item.get('end_date'))
+        if balance is not None: amount('Remaining balance', balance)
+        if payment: amount('Monthly amount freed on completion', payment)
+        if final: text(f'Final payment: {final:%d %b %Y}')
+        if item.get('payments_remaining') is not None: text(f'Payments remaining: {item["payments_remaining"]}')
+        if balance is None or rate is None:
+            text('Confirm balance/rate and early repayment terms before deciding.')
+        elif balance > 0:
+            if rate > 0:
+                text(f'Interest rate: {rate}% - consider prioritising interest-bearing debt.')
+            else:
+                text('Interest-free: early payoff frees monthly cash but saves no interest.')
+            amount('Extra repayment budget (shared)', budget)
+            if budget >= balance:
+                amount('Potential full payoff', balance)
+                amount('Surplus left after payoff', budget-balance)
+            else: text('Full payoff exceeds this period surplus.')
+            text('Option only; confirm settlement terms. Not deducted from this forecast. Budget is shared across all debts.')
+    section('RUNWAY WITH TEST INCOME')
+    if forecast['run_out']:
+        text(f'Reserves breached: {forecast["run_out"]:%d %b %Y}')
+        text(format_runway((forecast['run_out']-today).days, today))
+    else: text(f'No shortfall through {forecast["end"]:%d %b %Y}')
     amount('Cash above reserves at forecast end', forecast['end_cash'])
-    text('Savings allocation above is a first-period suggestion; no savings transfers are assumed in the runway.')
-    for warning in base.get('warnings', []): text('ASSUMPTION: '+warning)
+    for months, cash in result['checkpoints']:
+        amount(f'After {months} month(s), above reserves', cash)
+    section('ASSUMPTIONS')
+    text('Take-home salary; no salary tax deduction. Other income arrives on payday.')
+    text('Monthly savings transfers are included in runway; savings remain assets outside spending cash.')
+    text('Early repayment options are not included. Forecast is bounded, not unlimited.')
+    for warning in base.get('warnings', []): text(warning)
     rule(); text('SIMULATION ONLY - LIVE RECORDS UNCHANGED'); rule()
     return '\n'.join(lines)+'\n'

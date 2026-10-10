@@ -38,6 +38,21 @@ class SimulationTests(TestCase):
         self.assertNotIn('GBP 2,000.00', text)
         self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
 
+    def test_repayment_options_and_monthly_savings_are_explicit(self):
+        source = projection()
+        source['repayment_options'] = [{'name': 'Amex', 'balance': '500', 'apr': '24'},
+            {'name': 'Roland', 'remaining_balance': '1000', 'amount': '124.92', 'end_date': '2027-06-01'}]
+        values = inputs()
+        result = build(source, values, TODAY)
+        text = receipt(result, TODAY)
+        self.assertIn('Potential full payoff', text)
+        self.assertIn('Confirm balance/rate', text)
+        self.assertIn('Final payment: 01 Jun 2027', text)
+        without = dict(values, savings_target='0')
+        self.assertEqual(build(source, without, TODAY)['forecast']['end_cash'] - result['forecast']['end_cash'], D('2000'))
+        self.assertIn('Savings target not set', receipt(build(source, without, TODAY), TODAY))
+        self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
+
     def test_additional_income_uses_explicit_existing_salary_once(self):
         values = inputs(); values['mode'] = 'additional'
         result = build(projection(), values, TODAY)

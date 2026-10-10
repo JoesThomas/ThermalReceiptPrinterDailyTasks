@@ -55,6 +55,12 @@ def collect(values, today):
     if cash: projection['warnings'].append('Starting cash is a manual scenario input, not a bank balance update.')
     if daily: projection['warnings'].append('Everyday spending uses the manual daily estimate.')
     if cash and daily: projection['warnings'].append('No bank lookup or payment matching was performed; local commitments are assumed outstanding.')
+    from finance.salary_plan import reserves
+    projection['reserve_details'] = reserves(settings)
+    projection['repayment_options'] = [dict(item) for item in subscriptions.get('instalments', []) + settings.get('debts', [])]
+    card = balances.get('AMEX', {}).get('current')
+    if card is not None and not any('amex' in str(item.get('name', '')).lower() for item in projection['repayment_options']):
+        projection['repayment_options'].append({'name': 'Amex', 'balance': abs(Decimal(str(card))), 'type': 'credit_card'})
     return projection
 
 
