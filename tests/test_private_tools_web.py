@@ -1,0 +1,95 @@
+import importlib.util
+import os
+import subprocess
+import sys
+import unittest
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[1]
+
+class PrivateToolsWebTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec('flask'), 'Flask required')
+    def test_archive_restore_authentication_csrf_and_confirmation(self):
+        secret=ROOT/'web_control/secret_key.txt'; created=not secret.exists()
+        if created: secret.write_text('private-tools-test-secret')
+        try:
+            script='''
+import sys,tempfile,json
+from io import BytesIO
+from pathlib import Path
+from unittest.mock import patch
+from flask import Flask
+from threading import Lock
+sys.path.insert(0,str(Path('web_control').resolve()))
+import app as web
+from receipt import archive
+from web_control.private_tools import register
+with tempfile.TemporaryDirectory() as directory:
+ root=Path(directory)
+ # Separate app avoids touching any real private files.
+ app=Flask(__name__,template_folder=str(Path('web_control/templates').resolve()))
+ app.secret_key='test'
+ app.before_request(web.require_csrf)
+ app.jinja_env.globals['csrf_token']=web.csrf_token
+ for name in ['index','finance_review','meals_page','calendar_map','generate_live_preview','delivery_checklist','jobs_status','cancel_receipt_job','preview','task_list','exercise_list','api_health_page','bin_settings','quick_actions','printer_diagnostics','savings_review','savings_goals_page','preferences_page','payment_trail','undo_recent']:
+  app.add_url_rule('/test/'+name,endpoint=name,view_func=lambda:'test')
+ app.add_url_rule('/login',endpoint='login',view_func=lambda:'login')
+ register(app,web.login_required,lambda args:(True,None),root,Lock())
+ from web_control.setup_tools import register as register_setup
+ register_setup(app,web.login_required,root)
+ from web_control.project_tools import register as register_project
+ register_project(app,web.login_required)
+ with patch.object(archive,'DIRECTORY',root/'data'/'receipt_archive'),app.test_client() as client:
+  assert client.get('/backup').status_code==302
+  assert client.get('/finance/accounts').status_code==302
+  assert client.get('/diagnostics/download').status_code==302
+  with client.session_transaction() as session:
+   session['authenticated']=True;session['csrf_token']='test'
+  assert client.post('/backup/restore').status_code==403
+  raw=json.dumps({'version':1,'files':{'to_buy.json':{'items':['Example']}}}).encode()
+  response=client.post('/backup/restore',data={'csrf_token':'test','backup':(BytesIO(raw),'backup.json')})
+  assert response.status_code==200,response.data
+  assert not (root/'data'/'to_buy.json').exists()
+  with client.session_transaction() as session: token=session['restore_token']
+  assert client.post('/backup/restore/confirm',data={'csrf_token':'test','token':'wrong'}).status_code==400
+  assert client.post('/backup/restore/confirm',data={'csrf_token':'test','token':token}).status_code==302
+  assert (root/'data'/'to_buy.json').exists()
+  assert client.get('/backup/download').headers['Cache-Control']=='no-store'
+  assert client.get('/setup').status_code==200
+  assert client.post('/setup/printer-check').status_code==403
+  with patch('receipt.printer.readiness',return_value=(False,'Printer unreachable')):
+   assert client.post('/setup/printer-check',data={'csrf_token':'test'}).status_code==302
+   assert b'Printer unreachable' in client.get('/setup').data
+  for endpoint in ['/backup/create','/backup/settings','/backup/check','/finance/accounts','/calendar/location']:
+   assert client.post(endpoint).status_code==403
+  assert client.post('/backup/create',data={'csrf_token':'test'}).status_code==302
+  response=client.get('/backup');assert response.status_code==200,response.data
+  assert b'Saved snapshots (1)' in response.data
+  from web_control.maintenance import saved
+  name=saved(root)[0]['name']
+  assert client.get('/backup/saved/'+name).status_code==200
+  assert client.post('/backup/check',data={'csrf_token':'test'}).status_code==302
+  assert b'passed' in client.get('/backup').data
+  assert client.post('/backup/saved/'+name+'/review').status_code==403
+  assert client.post('/backup/saved/'+name+'/review',data={'csrf_token':'test'}).status_code==200
+  assert client.get('/backup/saved/auto-invalid.json').status_code==404
+  identifier=archive.save({'information':'<script>bad</script>'},{},'2026-10-02T12:00:00+00:00','preview',{})
+  response=client.get('/receipts/'+identifier)
+  assert response.status_code==200,response.data
+  assert b'&lt;script&gt;bad&lt;/script&gt;' in response.data
+  assert client.get('/receipts/latest').headers['Location'].endswith('/receipts/'+identifier)
+  assert client.get('/corrections').status_code==200
+  response=client.get('/diagnostics/download')
+  assert response.status_code==200 and response.headers['Cache-Control']=='no-store'
+  assert 'attachment' in response.headers['Content-Disposition']
+  assert b'What changed since the previous saved receipt?' in client.get('/receipts/'+identifier).data
+  assert client.post('/receipts/'+identifier+'/collected').status_code==403
+  assert client.get('/receipts/'+identifier+'?page=finance').status_code==404
+  assert client.post('/receipts/'+identifier+'/print',data={'csrf_token':'test','page':'unknown'}).status_code==400
+  assert client.get('/receipts?date=2026-10-02').status_code==200
+  response=client.get('/receipts?q=bad');assert response.status_code==200 and identifier.encode() in response.data
+  response=client.get('/receipts?q=absent');assert response.status_code==200 and identifier.encode() not in response.data
+'''
+            result=subprocess.run([sys.executable,'-c',script],cwd=ROOT,env=os.environ.copy(),capture_output=True,text=True,timeout=20)
+            self.assertEqual(result.returncode,0,result.stderr)
+        finally:
+            if created:secret.unlink(missing_ok=True)

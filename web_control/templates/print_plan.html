@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Prepare print · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <header>
+                <h1>Prepare print</h1>
+            </header>
+            {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            <section>
+                <p>
+                    Choose pages in your configured receipt order. Live data is collected and a preview saved before the printer opens.
+                </p>
+                <form method="post" action="{{ url_for('print_plan_start') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% for page in settings.layout.order %}
+                        <label>
+                            <input type="checkbox" name="pages" value="{{ page }}" checked>
+                            {{ page|title }}
+                        </label>
+                    {% endfor %}
+                    <p>
+                        {{ today_view.tasks|length }} pending tasks · {{ today_view.exercises|length }} workout items · {{ today_view.deliveries|length }} saved delivery notices.
+                    </p>
+                    <p>
+                        Today’s saved meal: {{ meal_name }}. {{ today_view.events|length }} saved calendar events · {{ today_view.calendar_checked or 'calendar not yet checked' }}.
+                    </p>
+                    <p class="muted">
+                        These counts come from local records; calendar and deliveries may change when refreshed. Finance can be included by selecting its page. Meals reflect the current plan, confirmations and Away dates.
+                    </p>
+                    <label>
+                        <input type="checkbox" name="allow_repeat">
+                        Allow intentional reprint
+                    </label>
+                    <button class="primary">Generate and print selected pages</button>
+                </form>
+                <a class="button" href="{{ url_for('preview') }}">Generate without printing</a>
+            </section>
+            <section>
+                <details>
+                    <summary>Installation checks</summary>
+                    <ul>
+                        {% for check in installation %}
+                            <li>
+                                <strong>{{ check.name }}</strong> · {{ 'OK' if check.ok else 'Needs attention' }} · {{ check.detail }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <p>See deployment/README.md for Raspberry Pi installation and physical acceptance checks.</p>
+                </details>
+            </section>
+        </main>
+    </body>
+</html>

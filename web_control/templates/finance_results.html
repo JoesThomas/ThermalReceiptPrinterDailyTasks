@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Finance results · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <header>
+                <p class="eyebrow">Plan and actual results</p>
+                <h1>Finance results</h1>
+                <a href="{{ url_for('finance_review') }}">Refresh in Finance</a>
+            </header>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            <section>
+                <h2>Payday reconciliation</h2>
+                <p>
+                    The first valid salary allocation observed by Finance is preserved. Comparisons start the following day: capture-day spending already affects that remaining-money plan. This is not a reconstructed payday budget if first observed later. Savings are confirmed by you, not guessed from transfers or investment growth.
+                </p>
+                {% for period in periods %}
+                    <details {% if loop.first %}open{% endif %}>
+                        <summary>Salary {{ period.date }} · plan captured {{ period.observed_on }}</summary>
+                        <p>
+                            {% if period.no_days %}
+                                Comparison starts {{ period.comparison_from }}; no later days observed yet
+                            {% else %}
+                                Comparing {{ period.comparison_from }} through {{ period.actual.as_of if period.actual else 'not checked' }}
+                            {% endif %}
+                            · plan ends {{ period.end }}. {{ 'Returned bank window covers this comparison' if period.covered else 'Incomplete coverage: observed totals only' }}.
+                        </p>
+                        {% for row in period.comparisons %}
+                            <div class="category-row">
+                                <p>
+                                    <strong>{{ row.name }}</strong> · saved plan £{{ '%.2f'|format(row.amount|float) }} · {{ 'actual £%.2f'|format(row.actual) if row.actual is not none else 'actual not confirmed' }}
+                                    {% if row.difference is not none %}
+                                        · difference £{{ '%.2f'|format(row.difference) }}
+                                    {% endif %}
+                                </p>
+                            </div>
+                        {% endfor %}
+                        <p class="muted">
+                            Bills use matched commitments; everyday spending uses other returned external spending, including discretionary purchases. Additional spending is not a separate transaction category. Card purchase/settlement timing can overlap; this comparison is not a current-account cash ledger.
+                        </p>
+                        <form method="post" action="{{ url_for('confirm_period_savings') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="period" value="{{ period.date }}">
+                            <label>
+                                Net salary-funded savings added since {{ period.comparison_from }} (£)
+                                <input name="amount"
+                                       type="number"
+                                       min="0"
+                                       max="10000000"
+                                       step="0.01"
+                                       value="{{ period.confirmed_savings if period.confirmed_savings is not none else '' }}"
+                                       required>
+                            </label>
+                            <p class="muted">
+                                Exclude transfers between existing savings accounts and market growth. Subtract withdrawals of these contributions; use zero if none remains.
+                            </p>
+                            <button>Confirm savings contribution</button>
+                        </form>
+                    </details>
+                {% else %}
+                    <p>
+                        No valid salary plan captured yet. Refresh Finance after an identified salary payment and complete bank coverage.
+                    </p>
+                {% endfor %}
+            </section>
+            <section>
+                <h2>Rental-property performance</h2>
+                <form method="get">
+                    <label>
+                        Ledger month
+                        <input name="month" type="month" value="{{ performance.month }}" required>
+                    </label>
+                    <button>View month</button>
+                </form>
+                <p>
+                    Recorded entries only: totals are not a complete or verified tax profit. Link observed bank rent to a property, then enter property costs. Annual tax assumptions are maintained separately. Do not enter a linked bank receipt again manually.
+                </p>
+                <div class="finance-metrics">
+                    <article><span>Recorded rent</span><strong>£{{ '%.2f'|format(performance.totals.rent) }}</strong></article><article><span>Recorded cash flow after all listed costs</span><strong>£{{ '%.2f'|format(performance.cash_flow) }}</strong></article><article><span>After indicative tax provision</span><strong>{{ '£%.2f'|format(performance.after_provision) if performance.after_provision is not none else 'No compatible annual tax plan' }}</strong></article>
+                </div>
+                <p class="muted">
+                    The portfolio tax provision is annual estimated rental tax ÷ 12. Actual tax payments already listed are credited against this provision rather than deducted twice. It is a smoothing estimate, not a tax recalculation for this month's vacancy or expenses.
+                </p>
+                {% for property in performance.properties %}
+                    <details>
+                        <summary>{{ property.name }} · recorded cash flow £{{ '%.2f'|format(property.cash_flow) }}</summary>
+                        {% for kind,amount in property.totals.items() %}
+                            <p>{{ kind|title }}: £{{ '%.2f'|format(amount) }}</p>
+                        {% endfor %}
+                        <p>
+                            Rent minus operating costs, repairs and interest: £{{ '%.2f'|format(property.before_tax_capital) }}; then minus mortgage capital and actual tax payments: £{{ '%.2f'|format(property.cash_flow) }}.
+                        </p>
+                    </details>
+                {% endfor %}
+                {% if rent_candidates %}
+                    <details>
+                        <summary>Link bank-observed rental receipts ({{ rent_candidates|length }})</summary>
+                        {% for candidate in rent_candidates %}
+                            <form method="post" action="{{ url_for('rental_entry_save') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="candidate" value="{{ candidate.id }}">
+                                <p>{{ candidate.date }} · {{ candidate.name }} · £{{ candidate.amount }}</p>
+                                <label>
+                                    Property
+                                    <select name="property" required>
+                                        <option value="">Choose property</option>
+                                        {% for property in properties %}<option value="{{ property.id }}">{{ property.name }}</option>{% endfor %}
+                                    </select>
+                                </label>
+                                <button>Link rent receipt once</button>
+                            </form>
+                        {% endfor %}
+                    </details>
+                {% endif %}
+                <form method="post" action="{{ url_for('rental_entry_save') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label>
+                        Property
+                        <select name="property" required>
+                            <option value="">Choose property</option>
+                            {% for property in properties %}<option value="{{ property.id }}">{{ property.name }}</option>{% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Entry type
+                        <select name="kind">
+                            {% for kind in ['rent','operating','repair','interest','capital','tax'] %}
+                                <option value="{{ kind }}">{{ kind|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Date
+                        <input name="date"
+                               type="date"
+                               value="{{ today.isoformat() }}"
+                               max="{{ today.isoformat() }}"
+                               required>
+                    </label>
+                    <label>
+                        Amount (£, your share)
+                        <input name="amount"
+                               type="number"
+                               min="0"
+                               max="10000000"
+                               step="0.01"
+                               required>
+                    </label>
+                    <label>
+                        Note (optional)
+                        <input name="note" maxlength="180">
+                    </label>
+                    <button>Add manual ledger entry</button>
+                </form>
+                <p>
+                    <a href="/finance/assets">Add / manage properties</a> · <a href="/finance/tax">Edit annual tax assumptions</a>
+                </p>
+                <details>
+                    <summary>Recorded entries for {{ performance.month }}</summary>
+                    {% for entry in performance.entries %}
+                        <p>
+                            {{ entry.date }} · {{ entry.label }} · {{ entry.kind }} · £{{ entry.amount }} · {{ entry.source }} · {{ entry.note }}
+                        </p>
+                        <form method="post" action="{{ url_for('rental_entry_save') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="id" value="{{ entry.id }}">
+                            <button>Remove entry</button>
+                        </form>
+                    {% else %}
+                        <p>No entries recorded.</p>
+                    {% endfor %}
+                </details>
+            </section>
+            <section>
+                <h2>Frozen monthly finance summaries</h2>
+                <p>
+                    A dated observation, not necessarily a whole month's history. Coverage, collection window, selected source scope and forecast assumptions are preserved. Later refreshes cannot overwrite a frozen summary. Freezing now locks this month even if more data arrives; wait until month end if you want its final observation.
+                </p>
+                {% if review_state.latest_summary and unfrozen_months %}
+                    <form method="post" action="{{ url_for('freeze_finance_summary') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <label>
+                            Observation to freeze
+                            <select name="month">
+                                {% for month, observation in unfrozen_months %}
+                                    {% if month not in review_state.summaries %}
+                                        <option value="{{ month }}">{{ month }} · observed {{ observation.as_of }} · {{ observation.coverage }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <p>
+                            Latest observation: {{ review_state.latest_summary.as_of }} · {{ review_state.latest_summary.coverage }} coverage.
+                        </p>
+                        <label>
+                            <input name="confirm" type="checkbox" required>
+                            Freeze the selected monthly observation permanently
+                        </label>
+                        <button>Save monthly summary once</button>
+                    </form>
+                {% endif %}
+                {% for month,summary in review_state.summaries|dictsort(reverse=true) %}
+                    <details>
+                        <summary>
+                            {{ month }} · observed {{ summary.as_of }} · {{ summary.coverage }} · {{ 'whole month' if summary.whole_month else 'partial-month observation' }}
+                        </summary>
+                        <p>
+                            Returned window {{ summary.window_from }} to {{ summary.window_to }}. Income £{{ summary.income }} · spending £{{ summary.spending }} · cash {{ summary.cash or 'Unavailable' }} · recorded net worth {{ summary.net_worth or 'Unavailable' }} {{ '(partial)' if not summary.net_worth_complete else '' }}.
+                        </p>
+                        <p>
+                            Protected reserves: £{{ summary.assumptions.protected_reserves }} · everyday spending estimate: £{{ summary.assumptions.daily_spending }} per day · next payday: {{ summary.assumptions.payday or 'unset' }}. Rental-tax estimate: {{ '£' ~ summary.assumptions.rental_tax if summary.assumptions.rental_tax is not none else 'not enabled' }} · rule version {{ summary.assumptions.tax_rules or 'not recorded' }}.
+                        </p>
+                        <p>
+                            {% if summary.scope %}
+                                {% for source in summary.scope.sources %}
+                                    {{ source.provider }}: {{ source.included }} of {{ source.available }} sources included ({{ source.mode }}).
+                                {% endfor %}
+                            {% else %}
+                                Collection scope was not recorded.
+                            {% endif %}
+                        </p>
+                    </details>
+                {% else %}
+                    <p>No frozen summaries yet.</p>
+                {% endfor %}
+            </section>
+        </main>
+    </body>
+</html>

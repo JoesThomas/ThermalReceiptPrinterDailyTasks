@@ -1,0 +1,39 @@
+{
+  "components": [
+    {
+      "id": "mayonnaise", "name": "Mayonnaise", "category": "sauce_base", "default_action": "buy",
+      "buy": {"item": "mayonnaise", "estimated_cost": 2.0},
+      "make": {"minutes": 10, "ingredients": ["1 egg yolk", "1 tsp Dijon mustard", "150ml neutral oil", "1 tsp lemon juice"], "method": ["Whisk yolk and mustard.", "Whisk in oil very gradually until emulsified.", "Season with lemon and salt."], "allergens": ["eggs", "mustard"]}
+    },
+    {
+      "id": "sriracha_mayo", "name": "Sriracha Mayo", "category": "sauce", "default_action": "make",
+      "buy": {"item": "sriracha mayonnaise", "estimated_cost": 2.5},
+      "make": {"minutes": 3, "ingredients": ["80g mayonnaise", "20g sriracha", "1 tsp lime juice"], "method": ["Mix until smooth and refrigerate in a clean covered container."], "allergens": ["eggs"], "check_labels_for": ["sriracha", "mayonnaise"]}
+    },
+    {
+      "id": "tahini_yoghurt", "name": "Tahini Yoghurt", "category": "sauce", "default_action": "make",
+      "buy": {"item": "tahini dressing", "estimated_cost": 2.5},
+      "make": {"minutes": 5, "ingredients": ["120g Greek yoghurt", "1 tbsp tahini", "1/2 lemon", "pinch of salt"], "method": ["Mix until smooth; loosen with a teaspoon of water if needed."], "allergens": ["milk", "sesame"]}
+    },
+    {
+      "id": "quick_pickled_onions", "name": "Quick Pickled Onions", "category": "pickle", "default_action": "make",
+      "buy": {"item": "pickled red onions", "estimated_cost": 2.0},
+      "make": {"minutes": 10, "ingredients": ["1 red onion", "100ml vinegar", "1 tsp sugar", "1/2 tsp salt"], "method": ["Slice onion thinly.", "Mix with vinegar, sugar and salt; refrigerate in a clean covered container."]}
+    },
+    {
+      "id": "shawarma_spice", "name": "Shawarma Spice", "category": "spice_blend", "default_action": "make",
+      "buy": {"item": "shawarma spice blend", "estimated_cost": 2.0},
+      "make": {"minutes": 2, "ingredients": ["2 tsp cumin", "2 tsp coriander", "2 tsp paprika", "1 tsp garlic powder", "1/2 tsp cinnamon"], "method": ["Mix thoroughly and store airtight."]}
+    },
+    {
+      "id": "chicken_stock", "name": "Chicken Stock", "category": "stock", "default_action": "buy",
+      "buy": {"item": "chicken stock cubes or fresh stock", "estimated_cost": 1.5},
+      "make": {"minutes": 120, "ingredients": ["1 chicken carcass", "1 onion", "1 carrot", "water"], "method": ["Cover carcass and vegetables with water.", "Simmer gently, strain, cool promptly, then refrigerate or freeze."]}
+    },
+    {
+      "id": "pesto", "name": "Pesto", "category": "sauce", "default_action": "buy",
+      "buy": {"item": "small jar pesto", "estimated_cost": 2.0},
+      "make": {"minutes": 10, "ingredients": ["30g basil", "20g parmesan", "20g pine nuts", "1 garlic clove", "60ml olive oil"], "method": ["Blend or pound ingredients to a coarse sauce and season."], "allergens": ["milk", "tree_nuts"]}
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "rice_cooker": {
+    "owned": true,
+    "capacity_litres": null,
+    "minimum_portions": 2
+  },
+  "air_fryer": {
+    "owned": false,
+    "capacity_litres": null
+  },
+  "slow_cooker": {
+    "owned": false,
+    "capacity_litres": null
+  },
+  "pressure_cooker": {
+    "owned": false,
+    "capacity_litres": null
+  },
+  "food_processor": {
+    "owned": false
+  },
+  "blender": {
+    "owned": false
+  },
+  "stand_mixer": {
+    "owned": false
+  },
+  "pasta_machine": {
+    "owned": false
+  },
+  "wok": {
+    "owned": true
+  },
+  "large_stock_pot": {
+    "owned": true
+  },
+  "roasting_tin": {
+    "owned": true
+  }
+}

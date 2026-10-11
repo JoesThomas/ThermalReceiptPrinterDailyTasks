@@ -1,0 +1,229 @@
+(() => {
+  const main = document.querySelector('main');
+  if (main) main.id = 'main-content';
+  // Native disclosures keep editing available without a large wall of form fields.
+  document.querySelectorAll('.instalment').forEach(row => {
+    if (row.closest('details.editor-disclosure')) return;
+    const name = row.querySelector('[name="name"]')?.value || row.querySelector('h3')?.textContent.trim();
+    if (!name || !row.querySelector('input:not([type="hidden"])')) return;
+    const details = document.createElement('details');
+    details.className = 'editor-disclosure';
+    const summary = document.createElement('summary');
+    const title = document.createElement('strong');
+    title.textContent = name;
+    summary.append(title);
+    const amount = row.querySelector('[name="amount"]')?.value;
+    const hint = document.createElement('span');
+    hint.textContent = amount && Number.isFinite(Number(amount)) ?
+      new Intl.NumberFormat('en-GB', {style:'currency',currency:'GBP'}).format(amount) + ' · Edit' : 'Edit details';
+    summary.append(hint);
+    details.append(summary);
+    row.replaceWith(details);
+    details.append(row);
+  });
+  // Reduce visual noise in the large receipt-settings form without dropping fields.
+  if (document.body.dataset.controlView) {
+    document.querySelectorAll('section').forEach(section => {
+      const heading = section.querySelector(':scope > h2');
+      if (!heading || section.closest('#overview') || section.closest('#live-data')) return;
+      const names = ['Therapy payment reminder','Salary identification','Receipt location','Output'];
+      const collapse = names.includes(heading.textContent.trim()) ||
+        (document.body.dataset.controlView === 'settings' && ['Next receipt','Daily receipt'].includes(heading.textContent.trim()));
+      if (!collapse) return;
+      const details = document.createElement('details');
+      details.className = 'section-disclosure';
+      if (document.body.dataset.controlView === 'settings' && ['Receipt location'].includes(heading.textContent.trim())) details.open = true;
+      const summary = document.createElement('summary');
+      summary.textContent = heading.textContent;
+      heading.remove();
+      const nodes = [...section.childNodes];
+      details.append(summary, ...nodes);
+      section.append(details);
+    });
+  }
+  // Existing bookmarked anchors still lead to the appropriate focused view.
+  const routes = {'routines':'tasks','food-shop':'tasks','to-buy':'tasks','future-tasks':'tasks','instalments':'accounts','commitments':'accounts','annual-subscriptions':'accounts','printing':'settings','next-receipt':'receipt','daily-receipt':'receipt'};
+  const anchor = location.hash.slice(1);
+  const view = routes[anchor];
+  if (document.body.dataset.controlView && view && view !== document.body.dataset.controlView) {
+    const url = new URL(location.href); url.searchParams.set('view',view); location.replace(url);
+  }
+  document.querySelectorAll('form').forEach(form => form.addEventListener('invalid',event => {
+    let parent = event.target.parentElement;
+    while (parent) { if (parent.tagName === 'DETAILS') parent.open = true; parent = parent.parentElement; }
+  },true));
+})();
+
+(() => {
+  const panel = document.getElementById('global-job-panel');
+  if (!panel) return;
+  let busy = false;
+  let wasActive = false;
+  async function poll() {
+    if (busy || document.hidden) return;
+    busy = true;
+    try {
+      const response = await fetch(panel.dataset.statusUrl, {cache:'no-store', signal:AbortSignal.timeout(8000)});
+      if (!response.ok) throw new Error('status unavailable');
+      const jobs = await response.json();
+      const kind = jobs.print?.state === 'running' ? 'print' : jobs.preview?.state === 'running' ? 'preview' : null;
+      panel.hidden = !kind;
+      if (!kind) {
+        if (wasActive) location.reload();
+        return;
+      }
+      wasActive = true;
+      const job = jobs[kind];
+      document.getElementById('global-job-kind').value = kind;
+      document.getElementById('global-job-title').textContent = kind === 'print' ? 'Printing your receipt' : 'Building your preview';
+      document.getElementById('global-job-stage').textContent = job.stage || 'Starting…';
+      const done = Math.max(0, Math.min(5, Number(job.completed) || 0));
+      document.getElementById('global-job-progress').value = done;
+      const start = Date.parse(job.started_at || job.updated_at);
+      const seconds = Number.isFinite(start) ? Math.max(0, Math.floor((Date.now()-start)/1000)) : 0;
+      document.getElementById('global-job-time').textContent = `${done}/5 sections · ${Math.floor(seconds/60)}m ${seconds%60}s elapsed · Job ${job.job_id || 'earlier job'}`;
+      const history = document.getElementById('global-job-steps');
+      history.replaceChildren(...(job.stages || [job.stage]).filter(Boolean).slice(-5).map((stage, index, rows) => {
+        const li = document.createElement('li');
+        li.textContent = (index === rows.length - 1 ? 'In progress: ' : 'Completed: ') + stage;
+        li.className = index === rows.length - 1 ? 'active' : 'done';
+        return li;
+      }));
+      document.getElementById('global-job-timings').replaceChildren(...(job.timings || []).map(row => {
+        const li = document.createElement('li'); li.textContent = `${row.stage}: ${Number(row.seconds).toFixed(1)}s`; return li;
+      }));
+      document.querySelectorAll('form[action$="/print-page"], form[action$="/print-now"], form[action$="/preview/generate"]').forEach(form => {
+        form.querySelectorAll('button[type="submit"],button:not([type])').forEach(button => button.disabled = true);
+      });
+    } catch (_) {
+      if (wasActive) document.getElementById('global-job-stage').textContent = 'Reconnecting to job updates…';
+    } finally { busy = false; }
+  }
+  poll(); setInterval(poll, 2000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+})();
+
+// Give slow review pages immediate feedback without trapping browser back navigation.
+(() => {
+  const notice = document.createElement('div');
+  notice.className = 'navigation-loading'; notice.hidden = true;
+  notice.setAttribute('role','status');
+  const spinner = document.createElement('span'); spinner.className='preview-spinner'; spinner.setAttribute('aria-hidden','true');
+  const text = document.createElement('span'); text.textContent='Loading your review…';
+  notice.append(spinner,text); document.body.append(notice);
+  document.addEventListener('click', event => {
+    const link = event.target.closest('a[href]');
+    if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.target || event.button !== 0) return;
+    const url = new URL(link.href);
+    if (url.origin === location.origin && ['/finance-review','savings-review','gigs','meals','calendar-map'].includes(url.pathname)) {
+      notice.hidden=false;
+      setTimeout(() => { notice.hidden=true; },15000);
+    }
+  });
+  window.addEventListener('pageshow', () => { notice.hidden=true; });
+})();
+
+// Display preferences contain no account or finance data and stay in this browser.
+(() => {
+    const key = 'receipt-display-preferences';
+    const text = document.getElementById('accessibility-text');
+    const contrast = document.getElementById('accessibility-contrast');
+    const motion = document.getElementById('accessibility-motion');
+    const reset = document.getElementById('accessibility-reset');
+    if (!text || !contrast || !motion || !reset) return;
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch (_) {}
+    const apply = () => {
+        document.documentElement.dataset.textSize = text.value;
+        document.documentElement.dataset.highContrast = String(contrast.checked);
+        document.documentElement.dataset.reduceMotion = String(motion.checked);
+    };
+    text.value = ['normal', 'large', 'larger'].includes(saved.text) ? saved.text : 'normal';
+    contrast.checked = saved.contrast === true;
+    motion.checked = saved.motion === true || (saved.motion === undefined && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    for (const input of [text, contrast, motion]) input.addEventListener('change', () => {
+        apply();
+        try { localStorage.setItem(key, JSON.stringify({text: text.value, contrast: contrast.checked, motion: motion.checked})); } catch (_) {}
+    });
+    reset.addEventListener('click', () => {
+        text.value = 'normal'; contrast.checked = false;
+        motion.checked = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        try { localStorage.removeItem(key); } catch (_) {}
+        apply();
+    });
+    apply();
+})();
+
+// Keep error feedback visible and keyboard focus in the user's current task.
+(() => {
+    const messages = [...document.querySelectorAll('.flash, .helper[role="status"]')];
+    const live = document.createElement('div');
+    live.className = 'sr-only';
+    live.setAttribute('role', 'status');
+    live.setAttribute('aria-live', 'polite');
+    document.body.append(live);
+    let afterSubmit = false;
+    try { afterSubmit = sessionStorage.getItem('receipt-form-pending') === '1'; sessionStorage.removeItem('receipt-form-pending'); } catch (_) {}
+    document.addEventListener('submit', event => {
+        if (event.target.method.toLowerCase() === 'post') {
+            try { sessionStorage.setItem('receipt-form-pending','1'); } catch (_) {}
+        }
+    });
+    if (messages.length) {
+        messages.forEach(node => {
+            node.tabIndex = -1;
+            node.setAttribute('role', 'status');
+        });
+        live.textContent = messages.map(node => node.textContent.trim()).join(' ');
+        if (afterSubmit) messages[0].focus({preventScroll: true});
+    }
+    document.addEventListener('invalid', event => {
+        const input = event.target;
+        let parent = input.parentElement;
+        while (parent) {
+            if (parent.tagName === 'DETAILS') parent.open = true;
+            parent = parent.parentElement;
+        }
+        input.setAttribute('aria-invalid', 'true');
+        const first = input.form?.querySelector('input:invalid,select:invalid,textarea:invalid');
+        if (first && first !== input) return;
+        live.textContent = input.validationMessage || 'Check the highlighted field.';
+        requestAnimationFrame(() => input.focus());
+    }, true);
+    document.addEventListener('input', event => {
+        if (event.target.matches('input,select,textarea') && event.target.validity.valid) event.target.removeAttribute('aria-invalid');
+    });
+})();
+
+// Browser-only presentation preferences; receipt output and data remain unchanged.
+(() => {
+  const privacy = document.getElementById('privacy-toggle');
+  const setPrivacy = enabled => {
+    document.documentElement.dataset.privacy = String(enabled);
+    if (privacy) { privacy.setAttribute('aria-pressed', String(enabled)); privacy.textContent = enabled ? 'Show private details' : 'Hide private details'; }
+    document.querySelectorAll('main section, main .paper-roll, main .review-row, main .today-item, main form').forEach(el => {
+      el.dataset.private = 'true';
+      if (enabled) { el.dataset.previousAria = el.getAttribute('aria-hidden') || ''; el.setAttribute('aria-hidden','true'); el.inert = true; }
+      else { if (el.dataset.previousAria) el.setAttribute('aria-hidden',el.dataset.previousAria); else el.removeAttribute('aria-hidden'); el.inert = false; }
+    });
+    try { sessionStorage.setItem('receipt-privacy', String(enabled)); } catch (_) {}
+  };
+  if (privacy) {
+    privacy.addEventListener('click', () => setPrivacy(privacy.getAttribute('aria-pressed') !== 'true'));
+    try { setPrivacy(sessionStorage.getItem('receipt-privacy') === 'true'); } catch (_) {}
+  }
+  const find = document.getElementById('settings-find');
+  if (find) find.addEventListener('input', () => {
+    let count=0;
+    document.querySelectorAll('.settings-directory a').forEach(link => { link.hidden = !link.textContent.toLowerCase().includes(find.value.toLowerCase().trim()); if (!link.hidden) count++; });
+    document.getElementById('settings-no-results').hidden = count > 0;
+  });
+  document.querySelectorAll('form[action$="/print-now"],form[action$="/print-page"],form[action$="/selected-print"],form[action^="/receipts/"][action$="/print"]').forEach(form => {
+    const label = document.createElement('label'); label.className='reprint-choice';
+    const input=document.createElement('input'); input.type='checkbox'; input.name='allow_repeat';
+    label.append(input,document.createTextNode(' Allow intentional reprint within three minutes'));
+    form.append(label);
+  });
+})();
+
+(() => { document.querySelectorAll('.undo-toast').forEach(el => { setTimeout(() => el.hidden=true, Math.max(0, Number(el.dataset.expires)*1000-Date.now())); }); })();

@@ -1,0 +1,193 @@
+"""Capture the printable text of a web-triggered receipt as it prints."""
+from __future__ import annotations
+
+import json
+import base64
+import binascii
+import re
+from datetime import datetime, timezone
+from pathlib import Path
+
+CAPTURE_FILE = Path(__file__).resolve().parent.parent / "data" / "last_web_receipt.json"
+LIVE_PREVIEW_FILE = Path(__file__).resolve().parent.parent / "data" / "live_receipt_preview.json"
+PAGE_NAMES = ("information", "actions", "food", "finance")
+IMAGE_MARKER = re.compile(r"\[\[RECEIPT_IMAGE_(\d+)\]\]")
+
+
+class RecordingPrinter:
+    def __init__(self, printer, defer=False):
+        self.printer = printer
+        self.defer = defer
+        self.operations = []
+        self.lines = []
+        self.images = []
+        self.align = "left"
+        self.capture_order = None
+
+    def __getattr__(self, name):
+        return getattr(self.printer, name)
+
+    def set(self, *args, **kwargs):
+        self._output('set', args, kwargs)
+        if kwargs.get("align"):
+            self.align = kwargs["align"]
+
+    def hw(self, *args, **kwargs):
+        self._output('hw', args, kwargs)
+
+    def text(self, value):
+        value = str(value)
+        # Closing/opening section rules can meet with no content between them.
+        if re.fullmatch(r"[-=]{42}\n", value) and self.lines and re.fullmatch(r"[-=]{42}\n", self.lines[-1]):
+            return
+        self._output('text', (value,), {})
+        if self.align == "center":
+            value = "".join(line.rstrip("\r\n").center(42) + ("\n" if line.endswith("\n") else "")
+                            for line in value.splitlines(keepends=True))
+        self.lines.append(value)
+
+    def image(self, *args, **kwargs):
+        if self.defer:
+            from io import BytesIO
+            position = args[0].tell(); args[0].seek(0)
+            buffered = BytesIO(args[0].read()); args[0].seek(position)
+            self._output('image', (buffered, *args[1:]), kwargs)
+        else:
+            self.printer.image(*args, **kwargs)
+        try:
+            bitmap = args[0]
+            position = bitmap.tell()
+            bitmap.seek(0)
+            data = bitmap.read()
+            bitmap.seek(position)
+            if len(data) > 512_000:
+                raise ValueError("Image too large for preview")
+            self.images.append("data:image/png;base64," + base64.b64encode(data).decode("ascii"))
+            self.lines.append(f"[[RECEIPT_IMAGE_{len(self.images) - 1}]]\n")
+        except (AttributeError, IndexError, OSError, ValueError):
+            self.lines.append("[ PRINTED GRAPH / IMAGE ]\n")
+
+    def cut(self, *args, **kwargs):
+        self._output('cut', args, kwargs)
+        self.lines.append("\n--- CUT ---\n")
+
+    def _output(self, method, args, kwargs):
+        if self.defer: self.operations.append((method, args, kwargs))
+        else: getattr(self.printer, method)(*args, **kwargs)
+
+    def send(self):
+        from receipt.quality import check
+        from receipt.freshness import snapshot
+        import logging
+        sections = [x for x in ''.join(self.lines).split('\n--- CUT ---\n') if x.strip()]
+        warnings = check({f'page {i+1}':text for i,text in enumerate(sections)}, snapshot())
+        for warning in warnings:
+            logging.getLogger(__name__).warning('Receipt quality: %s', warning['message'])
+        for method,args,kwargs in self.operations:
+            getattr(self.printer, method)(*args, **kwargs)
+        self.operations.clear()
+
+    def save(self, only_page=None, path=CAPTURE_FILE, replace=False):
+        content = "".join(self.lines)
+        sections = [part.strip("\n") for part in content.split("\n--- CUT ---\n") if part.strip()]
+        captured_at = datetime.now(timezone.utc).isoformat()
+        existing = None if replace else load_capture(path)
+        pages = existing['pages'] if existing else {}
+        page_times = existing['page_times'] if existing else {}
+        page_images = existing['page_images'] if existing else {}
+
+        def store_section(name, section):
+            images = []
+            def local_marker(match):
+                number = int(match.group(1))
+                if number >= len(self.images):
+                    return "[ PRINTED GRAPH / IMAGE ]"
+                images.append(self.images[number])
+                return f"[[RECEIPT_IMAGE_{len(images) - 1}]]"
+            pages[name] = IMAGE_MARKER.sub(local_marker, section)
+            page_images[name] = images
+            page_times[name] = captured_at
+
+        if only_page is None:
+            names = self.capture_order or PAGE_NAMES[:3] + (("finance",) if len(sections) > 3 else ())
+            for name, section in zip(names, sections):
+                store_section(name, section)
+        else:
+            store_section(only_page, sections[0] if sections else "")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        from receipt.freshness import snapshot
+        from storage import write_json
+        order = self.capture_order or PAGE_NAMES
+        if existing and not replace and (not self.capture_order or len(self.capture_order) < len(PAGE_NAMES)):
+            order = list(existing.get('page_order') or PAGE_NAMES)
+            order += [name for name in (self.capture_order or PAGE_NAMES) if name not in order]
+        write_json(path, {"page_order": list(order), "freshness": {**((existing or {}).get("freshness", {})), **snapshot()}, "page_times": page_times, "pages": pages,
+                          "page_images": page_images})
+        from receipt.archive import save as archive_save
+        from receipt.freshness import snapshot
+        fresh = {name: pages[name] for name in order if name in pages and page_times.get(name) == captured_at}
+        if fresh:
+            if path == CAPTURE_FILE and 'finance' in fresh:
+                try:
+                    from receipt.finance_details import commit as commit_finance_details
+                    commit_finance_details()
+                except (OSError,ValueError):
+                    import logging
+                    logging.getLogger(__name__).warning('Receipt sent, but finance detail state could not be saved.')
+            try:
+                from web_control.today_summary import snapshot_changes
+                snapshot_changes(fresh)
+            except (OSError, ValueError):
+                import logging
+                logging.getLogger(__name__).warning("Receipt comparison could not be saved.")
+            try:
+                archive_save(fresh, {name: page_images[name] for name in fresh}, captured_at,
+                             "preview" if path == LIVE_PREVIEW_FILE else "printed", snapshot())
+            except OSError:
+                import logging
+                logging.getLogger(__name__).warning("Receipt saved, but its archive copy could not be written.")
+
+
+def load_capture(path=CAPTURE_FILE):
+    try:
+        data = json.loads(path.read_text(encoding='utf-8'))
+        if not isinstance(data, dict) or not isinstance(data.get('pages'), dict):
+            return None
+        pages = {key: value for key, value in data['pages'].items() if key in PAGE_NAMES and isinstance(value, str)}
+        raw_times = data.get('page_times', {})
+        times = {key: value for key, value in raw_times.items() if key in pages and isinstance(value, str)} if isinstance(raw_times, dict) else {}
+        raw_images = data.get('page_images', {})
+        images = {key: value for key, value in raw_images.items() if key in pages and isinstance(value, list)} if isinstance(raw_images, dict) else {}
+        raw_checks = data.get('freshness', {})
+        checks = {key: value for key, value in raw_checks.items() if isinstance(value, dict) and isinstance(value.get('status'), str) and isinstance(value.get('checked_at'), str)} if isinstance(raw_checks, dict) else {}
+        order = data.get('page_order', list(PAGE_NAMES))
+        if not isinstance(order, list) or not order or any(not isinstance(name, str) or name not in PAGE_NAMES for name in order) or len(order) != len(set(order)):
+            order = list(PAGE_NAMES)
+        order += [name for name in PAGE_NAMES if name not in order]
+        return dict(page_order=order, pages=pages, page_times=times, page_images=images, freshness=checks)
+    except (OSError, ValueError, TypeError, RecursionError):
+        return None
+
+
+def receipt_blocks(text, images=()):
+    """Return escaped-by-template text and captured images in paper order."""
+    result = []
+    for position, piece in enumerate(IMAGE_MARKER.split(str(text))):
+        if position % 2:
+            index = int(piece)
+            if index < len(images) and str(images[index]).startswith("data:image/png;base64,"):
+                image = images[index]
+                try:
+                    header = base64.b64decode(image.split(",", 1)[1][:32], validate=True)
+                    if header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
+                        raise ValueError("Invalid PNG header")
+                    width = int.from_bytes(header[16:20], "big")
+                    width_percent = min(100, max(1, width * 100 / 576))
+                except (ValueError, IndexError, binascii.Error):
+                    width_percent = 100
+                result.append({"image": image, "width_percent": width_percent})
+            else:
+                result.append({"text": "[ PRINTED GRAPH / IMAGE ]"})
+        elif piece:
+            result.append({"text": piece})
+    return result

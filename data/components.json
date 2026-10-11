@@ -1,0 +1,272 @@
+{
+  "components": [
+    {
+      "id": "mayonnaise",
+      "name": "Mayonnaise",
+      "category": "sauce_base",
+      "default_action": "buy",
+      "buy": {
+        "item": "mayonnaise",
+        "estimated_cost": 2.0
+      },
+      "make": {
+        "minutes": 10,
+        "ingredients": [
+          "1 egg yolk",
+          "1 tsp Dijon mustard",
+          "150ml neutral oil",
+          "1 tsp lemon juice"
+        ],
+        "method": [
+          "Whisk yolk and mustard.",
+          "Whisk in oil very gradually until emulsified.",
+          "Season with lemon and salt."
+        ],
+        "allergens": [
+          "eggs",
+          "mustard"
+        ]
+      }
+    },
+    {
+      "id": "sriracha_mayo",
+      "name": "Sriracha Mayo",
+      "category": "sauce",
+      "default_action": "make",
+      "buy": {
+        "item": "sriracha mayonnaise",
+        "estimated_cost": 2.5
+      },
+      "make": {
+        "minutes": 5,
+        "background_minutes": 0,
+        "yield": "~100g",
+        "ingredients": [
+          "80g mayonnaise",
+          "20g sriracha",
+          "1 tsp lime juice"
+        ],
+        "method": [
+          "Stir the mayonnaise and sriracha together until the colour is completely even.",
+          "Mix in the lime juice, taste, and add a little more lime if it needs brightness.",
+          "Transfer to a clean covered container and refrigerate until needed."
+        ],
+        "storage": "Keep refrigerated in a clean covered container and use within the safe life of the mayonnaise used.",
+        "allergens": [
+          "eggs"
+        ],
+        "check_labels_for": [
+          "sriracha",
+          "mayonnaise"
+        ]
+      }
+    },
+    {
+      "id": "tahini_yoghurt",
+      "name": "Tahini Yoghurt",
+      "category": "sauce",
+      "default_action": "make",
+      "buy": {
+        "item": "tahini dressing",
+        "estimated_cost": 2.5
+      },
+      "make": {
+        "minutes": 5,
+        "ingredients": [
+          "120g Greek yoghurt",
+          "1 tbsp tahini",
+          "1/2 lemon",
+          "pinch of salt"
+        ],
+        "method": [
+          "Mix until smooth; loosen with a teaspoon of water if needed."
+        ],
+        "allergens": [
+          "milk",
+          "sesame"
+        ]
+      }
+    },
+    {
+      "id": "quick_pickled_onions",
+      "name": "Quick Pickled Onions",
+      "category": "pickle",
+      "default_action": "make",
+      "buy": {
+        "item": "pickled red onions",
+        "estimated_cost": 2.0
+      },
+      "make": {
+        "minutes": 10,
+        "background_minutes": 30,
+        "yield": "~150g",
+        "ingredients": [
+          "1 red onion",
+          "50ml vinegar",
+          "50ml water",
+          "1 tsp sugar",
+          "1/2 tsp salt"
+        ],
+        "method": [
+          "Slice the onion as thinly and evenly as possible and pack it into a clean container.",
+          "Stir the vinegar, water, sugar and salt together until the sugar and salt have dissolved.",
+          "Pour the pickling liquid over the onion and press the slices down so they are coated.",
+          "Cover and refrigerate for at least 30 minutes before using."
+        ],
+        "storage": "Keep refrigerated in a clean covered container."
+      }
+    },
+    {
+      "id": "shawarma_spice",
+      "name": "Shawarma Spice",
+      "category": "spice_blend",
+      "default_action": "make",
+      "buy": {
+        "item": "shawarma spice blend",
+        "estimated_cost": 2.0
+      },
+      "make": {
+        "minutes": 3,
+        "background_minutes": 0,
+        "yield": "~25g",
+        "ingredients": [
+          "2 tsp ground cumin",
+          "2 tsp ground coriander",
+          "2 tsp smoked paprika",
+          "1 tsp garlic powder",
+          "1/2 tsp ground cinnamon",
+          "1/2 tsp black pepper"
+        ],
+        "method": [
+          "Measure all of the spices into a small bowl.",
+          "Mix thoroughly until the colour is even and there are no clumps.",
+          "Transfer to a dry airtight container and label it."
+        ],
+        "storage": "Store airtight in a cool, dry cupboard."
+      }
+    },
+    {
+      "id": "chicken_stock",
+      "name": "Chicken Stock",
+      "category": "stock",
+      "default_action": "buy",
+      "buy": {
+        "item": "chicken stock cubes or fresh stock",
+        "estimated_cost": 1.5
+      },
+      "make": {
+        "minutes": 15,
+        "background_minutes": 120,
+        "yield": "~750ml",
+        "ingredients": [
+          "1 cooked chicken carcass",
+          "1 onion or suitable clean trimmings",
+          "1 carrot or suitable clean trimmings",
+          "herb stalks if available",
+          "cold water to cover"
+        ],
+        "method": [
+          "Put the carcass, vegetables and any suitable herb stalks into a large saucepan or stock pot.",
+          "Add enough cold water to just cover the contents and bring slowly to a gentle simmer.",
+          "Keep at a gentle simmer rather than a hard boil for about 1 1/2-2 hours, skimming the surface if necessary.",
+          "Strain through a fine sieve, discard the solids, and cool the stock promptly.",
+          "Refrigerate the amount needed soon and freeze the remainder in useful measured portions."
+        ],
+        "storage": "Cool promptly. Refrigerate only for short-term use; freeze portions not needed soon."
+      }
+    },
+    {
+      "id": "pesto",
+      "name": "Pesto",
+      "category": "sauce",
+      "default_action": "buy",
+      "buy": {
+        "item": "small jar pesto",
+        "estimated_cost": 2.0
+      },
+      "make": {
+        "minutes": 10,
+        "ingredients": [
+          "30g basil",
+          "20g parmesan",
+          "20g pine nuts",
+          "1 garlic clove",
+          "60ml olive oil"
+        ],
+        "method": [
+          "Blend or pound ingredients to a coarse sauce and season."
+        ],
+        "allergens": [
+          "milk",
+          "tree_nuts"
+        ]
+      }
+    },
+    {
+      "id": "focaccia",
+      "name": "Focaccia",
+      "category": "bread",
+      "default_action": "smart",
+      "buy": {
+        "item": "focaccia",
+        "estimated_cost": 2.5
+      },
+      "make": {
+        "minutes": 20,
+        "background_minutes": 100,
+        "yield": "1 loaf",
+        "ingredients": [
+          "500g strong white flour",
+          "7g dried yeast",
+          "10g fine salt",
+          "400ml lukewarm water",
+          "30ml olive oil"
+        ],
+        "method": [
+          "Mix the flour, yeast and salt, keeping the salt from sitting directly on the yeast before mixing.",
+          "Add the water and 20ml olive oil and mix to a sticky dough; knead or stretch until smoother and elastic.",
+          "Cover and leave until roughly doubled in size.",
+          "Transfer to a well-oiled baking tin, gently stretch towards the corners and leave until visibly puffed.",
+          "Heat the oven to 220C / 200C fan. Dimple the dough with oiled fingertips and drizzle over the remaining oil.",
+          "Bake for 20-25 minutes until deeply golden on top and crisp around the edges, then cool on a rack."
+        ],
+        "storage": "Keep the amount needed soon; slice and freeze surplus once completely cool.",
+        "allergens": [
+          "cereals_containing_gluten"
+        ]
+      }
+    },
+    {
+      "id": "fresh_pasta",
+      "name": "Fresh Pasta Dough",
+      "category": "pasta",
+      "default_action": "smart",
+      "buy": {
+        "item": "fresh or dried pasta",
+        "estimated_cost": 2.0
+      },
+      "make": {
+        "minutes": 30,
+        "background_minutes": 30,
+        "yield": "~600g dough",
+        "ingredients": [
+          "400g 00 flour",
+          "4 large eggs",
+          "semolina or flour for dusting"
+        ],
+        "method": [
+          "Tip the flour onto the work surface and make a wide well in the centre.",
+          "Crack in the eggs and beat them with a fork, gradually drawing flour in from the sides.",
+          "Bring the dough together and knead for 8-10 minutes until smooth and elastic.",
+          "Wrap tightly and rest at room temperature for 30 minutes before rolling.",
+          "Divide according to the week's plan, then roll and cut or shape as required."
+        ],
+        "storage": "Use promptly or freeze suitable shaped pasta in portions.",
+        "allergens": [
+          "cereals_containing_gluten",
+          "eggs"
+        ]
+      }
+    }
+  ]
+}

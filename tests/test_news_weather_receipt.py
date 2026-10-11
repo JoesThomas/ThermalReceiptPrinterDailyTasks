@@ -1,0 +1,135 @@
+import ast
+from io import BytesIO
+from pathlib import Path
+from types import SimpleNamespace
+import unittest
+import math
+from PIL import Image, ImageDraw
+
+
+SOURCE = ast.parse((Path(__file__).resolve().parents[1] / "services" / "live_pipeline.py").read_text())
+
+
+def renderer(name, namespace):
+    function = next(node for node in SOURCE.body
+                    if isinstance(node, ast.FunctionDef) and node.name == name)
+    exec(compile(ast.Module(body=[function], type_ignores=[]), "live_pipeline.py", "exec"), namespace)
+    return namespace[name]
+
+
+class NewsWeatherReceiptTests(unittest.TestCase):
+    def test_temperature_graph_fits_receipt_and_centres_image(self):
+        sizes = []
+        alignment = []
+        labels = []
+        real_draw = ImageDraw.Draw
+
+        class LabelledDraw:
+            def __init__(self, image):
+                self.draw = real_draw(image)
+
+            def text(self, position, value, **kwargs):
+                labels.append(value)
+                self.draw.text(position, value, **kwargs)
+
+            def line(self, *args, **kwargs):
+                self.draw.line(*args, **kwargs)
+
+        def capture(buffer):
+            sizes.append(Image.open(BytesIO(buffer.getvalue())).size)
+
+        printer = SimpleNamespace(image=capture,
+                                  set=lambda **kwargs: alignment.append(kwargs["align"]))
+        graph = renderer("print_temperature_graph", {
+            "Image": Image, "ImageDraw": SimpleNamespace(Draw=LabelledDraw),
+            "BytesIO": BytesIO, "math": math,
+            "printer_text": lambda *args: None,
+        })
+        graph(printer, [{"time": f"{hour:02d}:00", "temperature": float(hour)}
+                        for hour in range(24)])
+        self.assertEqual(sizes, [(440, 160)])
+        self.assertEqual(alignment, ["center", "left"])
+        self.assertTrue({"HOUR", "00", "03", "06", "09", "12", "15",
+                         "18", "21", "23"}.issubset(labels))
+        self.assertTrue(any(value.endswith("C") for value in labels))
+
+    def test_local_news_omits_description(self):
+        lines = []
+        namespace = {"DEFAULT_LOCATION": {"local_news_label": "Birmingham"},
+                     "print_line": lambda *args: None,
+                     "left": lambda printer, line: lines.append(line),
+                     "print_wrapped": lambda printer, line, width: lines.append(line),
+                     "_news_summary_is_useful": lambda *args: True}
+        namespace["_print_news_stories"] = renderer("_print_news_stories", namespace)
+        print_local_news = renderer("print_local_news", namespace)
+        print_local_news(SimpleNamespace(set=lambda **kwargs: None, text=lambda line: None),
+                         [{"headline": "Council opens new library", "summary": "Long description"}])
+        self.assertIn("1. Council opens new library", lines)
+        self.assertNotIn("Long description", lines)
+
+    def test_weather_graph_receives_all_hourly_points(self):
+        graph = []
+        weather = {"current": {"weather_code": 61, "temperature_2m": 10.0,
+                               "apparent_temperature": 9.0, "relative_humidity_2m": 80,
+                               "wind_speed_10m": 4.0, "surface_pressure": 1013,
+                               "wind_direction_10m": 90},
+                   "daily": {"temperature_2m_max": [12.0], "temperature_2m_min": [8.0],
+                             "precipitation_probability_max": [70],
+                             "sunrise": ["2026-09-28T07:00"], "sunset": ["2026-09-28T19:00"]},
+                   "hourly": {"time": [f"2026-09-28T{hour:02d}:00" for hour in range(24)],
+                              "temperature_2m": list(range(24)),
+                              "relative_humidity_2m": [80] * 24,
+                              "wind_speed_10m": [4] * 24,
+                              "weather_code": [61] * 24}}
+        import datetime
+        namespace = {"DEFAULT_LOCATION": {"name": "Birmingham", "region": "UK"},
+                     "datetime": datetime.datetime, "is_definitively_boring_weather": lambda _: False,
+                     "weather_description": lambda _: "RAIN", "print_weather_graphic": lambda *args: None,
+                     "print_line": lambda *args: None, "centre": lambda *args: None,
+                     "left": lambda *args: None, "print_wrapped": lambda *args, **kwargs: None,
+                     "print_temperature_graph": lambda printer, readings: graph.extend(readings)}
+        namespace["get_hourly_weather"] = renderer("get_hourly_weather", namespace)
+        print_weather = renderer("print_weather", namespace)
+        print_weather(SimpleNamespace(set=lambda **kwargs: None), weather,
+                      {"name": "Birmingham", "region": "UK"})
+        self.assertEqual([reading["time"] for reading in graph],
+                         [f"{hour:02d}:00" for hour in range(24)])
+
+
+class WeatherIllustrationTests(unittest.TestCase):
+    def test_complete_outlines_and_same_width_rows_for_every_condition(self):
+        rows = []
+        namespace = {'centre': lambda printer, text: rows.append(text)}
+        graphic = renderer('weather_graphic', namespace)
+        draw = renderer('print_weather_graphic', namespace)
+        for code in (0, 1, 2, 3, 45, 48, 51, 61, 71, 85, 95, 99, -1):
+            with self.subTest(code=code):
+                rows.clear()
+                draw(None, code)
+                self.assertEqual(len(rows), len(graphic(code)) + 1)
+                self.assertEqual(rows[-1], '')
+                self.assertEqual(len({len(row) for row in rows[:-1]}), 1)
+                self.assertTrue(all(len(row) <= 42 for row in rows))
+                self.assertEqual(rows[-2].strip(), graphic(code)[-1].strip())
+                if code in (1, 2, 3):
+                    self.assertEqual(rows[-2].strip(), "'------'")
+
+    def test_capture_keeps_closing_row_and_gap_before_caption(self):
+        from receipt.capture import RecordingPrinter
+        class Printer:
+            def set(self, **kwargs): pass
+            def text(self, text): pass
+        recorder = RecordingPrinter(Printer())
+        namespace = {'centre': lambda printer, text: (printer.set(align='center'), printer.text(text+'\n'))}
+        renderer('weather_graphic', namespace)
+        draw = renderer('print_weather_graphic', namespace)
+        draw(recorder, 3)
+        namespace['centre'](recorder, '12.0C CLOUDY')
+        lines = ''.join(recorder.lines).splitlines()
+        self.assertEqual(lines[-3].strip(), "'------'")
+        self.assertEqual(lines[-2].strip(), '')
+        self.assertEqual(lines[-1].strip(), '12.0C CLOUDY')
+
+
+if __name__ == "__main__":
+    unittest.main()

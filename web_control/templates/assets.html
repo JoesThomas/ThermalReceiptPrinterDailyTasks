@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Property assets · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <header>
+                <p class="eyebrow">Private finance</p>
+                <h1>Property assets</h1>
+                <a href="{{ url_for('finance_review') }}">Back to Finance</a>
+            </header>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            <section>
+                <h2>{{ 'Edit property' if asset_edit else 'Add property' }}</h2>
+                <p>
+                    Addresses stay private and are omitted from receipts. Values are manual estimates: a Zoopla link opens the provider's page, it does not fetch or scrape valuations.
+                </p>
+                <form method="post" action="{{ url_for('assets_save') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="kind" value="properties">
+                    <input type="hidden"
+                           name="id"
+                           value="{{ asset_edit.id if asset_edit else '' }}">
+                    <label>
+                        Receipt label (avoid an address)
+                        <input name="name"
+                               maxlength="90"
+                               required
+                               value="{{ asset_edit.name if asset_edit else '' }}">
+                    </label>
+                    <label>
+                        Private address<textarea name="address" maxlength="300">{{ asset_edit.address if asset_edit else '' }}</textarea>
+                    </label>
+                    <label>
+                        Ownership share (%)
+                        <input name="share"
+                               type="number"
+                               min="0.01"
+                               max="100"
+                               step="0.01"
+                               required
+                               value="{{ asset_edit.share if asset_edit else '100' }}">
+                    </label>
+                    <label>
+                        Linked mortgage
+                        <select name="mortgage">
+                            <option value="">No recorded mortgage</option>
+                            {% for debt in asset_view.mortgages %}
+                                <option value="{{ debt.id }}"
+                                        {% if asset_edit and asset_edit.mortgage == debt.id %}selected{% endif %}>
+                                    {{ debt.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Zoopla property link (optional)
+                        <input name="url"
+                               type="url"
+                               value="{{ asset_edit.url if asset_edit else '' }}">
+                    </label>
+                    <fieldset>
+                        <legend>Add or update a dated valuation</legend>
+                        <p>
+                            Enter the full property's value, before ownership share. Leave the value blank to edit details only. Saving the same date replaces that observation.
+                        </p>
+                        <label>
+                            Estimated value (£)
+                            <input name="value" type="number" min="0" max="100000000" step="0.01">
+                        </label>
+                        <label>
+                            Value date
+                            <input name="date"
+                                   type="date"
+                                   value="{{ today.isoformat() }}"
+                                   max="{{ today.isoformat() }}">
+                        </label>
+                        <label>
+                            Range low (£, optional)
+                            <input name="low" type="number" min="0" step="0.01">
+                        </label>
+                        <label>
+                            Range high (£, optional)
+                            <input name="high" type="number" min="0" step="0.01">
+                        </label>
+                        <label>
+                            Source
+                            <select name="source">
+                                {% for source in ['Manual','Zoopla estimate','Agent valuation','Surveyor valuation'] %}
+                                    <option>{{ source }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </fieldset>
+                    <button class="primary">Save property</button>
+                    {% if asset_edit %}<a href="{{ url_for('assets_page') }}">Cancel edit</a>{% endif %}
+                </form>
+            </section>
+            <section>
+                <h2>Recorded properties</h2>
+                {% for property in asset_view.properties %}
+                    <article class="goal-card">
+                        <h3>{{ property.name }}</h3>
+                        <p>{{ property.address }}</p>
+                        <p>Ownership {{ property.share }}% · your recorded mortgage liability £{{ '%.2f'|format(property.liability) }}</p>
+                        {% if property.latest %}
+                            <p>
+                                Full value £{{ '%.2f'|format(property.latest.value|float) }} · your equity <strong>£{{ '%.2f'|format(property.equity) }}</strong>
+                            </p>
+                            <p>
+                                {{ property.latest.source }} · {{ property.latest.date }}
+                                {% if property.latest.low and property.latest.high %}
+                                    · range £{{ property.latest.low }}–£{{ property.latest.high }}
+                                {% endif %}
+                            </p>
+                        {% else %}
+                            <p class="helper">No valuation: this property's value is missing from totals.</p>
+                        {% endif %}
+                        {% if property.stale or property.mortgage_stale %}
+                            <p class="helper">Check this record: a value is missing or a valuation/mortgage balance is more than 90 days old.</p>
+                        {% endif %}
+                        {% if property.change is not none %}
+                            <p>Full-property value change since first observation: £{{ '%.2f'|format(property.change) }}.</p>
+                        {% endif %}
+                        {% if property.url %}
+                            <a href="{{ property.url }}" rel="noopener noreferrer" target="_blank">Check on Zoopla</a>
+                        {% endif %}
+                        <a href="{{ url_for('assets_page',edit=property.id) }}">Edit / add valuation</a>
+                        <details>
+                            <summary>Valuation history</summary>
+                            {% for point in property.history %}<p>{{ point.date }} · £{{ point.value }} · {{ point.source }}</p>{% endfor %}
+                        </details>
+                        <form method="post" action="{{ url_for('assets_save') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="kind" value="properties">
+                            <input type="hidden" name="id" value="{{ property.id }}">
+                            <button name="action" value="delete">Remove property record</button>
+                        </form>
+                    </article>
+                {% else %}
+                    <p>No properties recorded.</p>
+                {% endfor %}
+            </section>
+            <section>
+                <h2>Shared mortgage liabilities</h2>
+                <p>
+                    Enter <strong>your liability</strong>, not automatically the full joint loan. Each mortgage links to at most one property. The same name replaces a matching legacy mortgage in calculations so it is deducted once. These records are the authoritative balance for that name. Add a separately dated repayment in Finance for runway; a balance is not a payment schedule.
+                </p>
+                {% for debt in asset_view.mortgages %}
+                    <form method="post" action="{{ url_for('assets_save') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="kind" value="mortgages">
+                        <input type="hidden" name="id" value="{{ debt.id }}">
+                        <label>
+                            Mortgage name
+                            <input name="name" value="{{ debt.name }}" required maxlength="90">
+                        </label>
+                        <label>
+                            Your outstanding balance (£)
+                            <input name="balance"
+                                   type="number"
+                                   min="0"
+                                   step="0.01"
+                                   value="{{ debt.balance }}"
+                                   required>
+                        </label>
+                        <label>
+                            Balance date
+                            <input name="date"
+                                   type="date"
+                                   value="{{ debt.date }}"
+                                   max="{{ today.isoformat() }}"
+                                   required>
+                        </label>
+                        <button>Update mortgage</button>
+                        <button name="action" value="delete">Remove unlinked mortgage</button>
+                    </form>
+                {% endfor %}
+                <form method="post" action="{{ url_for('assets_save') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="kind" value="mortgages">
+                    <label>
+                        New mortgage name
+                        <input name="name" required maxlength="90">
+                    </label>
+                    <label>
+                        Your outstanding balance (£)
+                        <input name="balance" type="number" min="0" step="0.01" required>
+                    </label>
+                    <label>
+                        Balance date
+                        <input name="date"
+                               type="date"
+                               value="{{ today.isoformat() }}"
+                               max="{{ today.isoformat() }}"
+                               required>
+                    </label>
+                    <button>Add mortgage</button>
+                </form>
+            </section>
+        </main>
+    </body>
+</html>

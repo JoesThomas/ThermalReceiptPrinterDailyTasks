@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Rental tax planning · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <header>
+                <p class="eyebrow">Private finance settings</p>
+                <h1>Rental tax planning</h1>
+                <a href="{{ url_for('finance_review') }}">Back to Finance</a>
+            </header>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            {% if tax_error %}<p class="helper" role="alert">{{ tax_error }}</p>{% endif %}
+            <section>
+                <h2>Personally owned separate property</h2>
+                <p>
+                    A planning estimate for 6 April 2026 to 5 April 2027, using England, Wales and Northern Ireland income-tax rules. Enter your share of annual figures for the whole tax year, including expected amounts. These are manual estimates, not verified annual bank totals.
+                </p>
+                <p>
+                    Salary in the app means take-home pay unless explicitly labelled gross. Tax planning needs income before tax: enter 0 while you have no employment or other taxable income. Never enter a net salary here.
+                </p>
+                <form method="post" action="{{ url_for('rental_tax_save') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="year" value="2026/27">
+                    <input type="hidden" name="region" value="England/Wales/NI">
+                    <label>
+                        <input type="checkbox"
+                               name="enabled"
+                               {% if tax_settings.enabled %}checked{% endif %}>
+                        Enable this estimate
+                    </label>
+                    {% for key, label in [('other_income','Annual gross employment, taxable pension and other non-savings income (£; 0 if none)'),('rent','Annual gross rental receipts: your ownership share (£)'),('expenses','Annual allowable property expenses, excluding mortgage payments (£)'),('interest','Annual eligible residential mortgage interest and finance costs, excluding capital repayments (£)'),('losses','Eligible property losses brought forward (£)'),('finance_carried','Eligible unused finance costs brought forward (£)'),('reserved','Tax money already reserved within current bank accounts (£)')] %}
+                        <label>
+                            {{ label }}
+                            <input name="{{ key }}"
+                                   type="number"
+                                   min="0"
+                                   max="100000000"
+                                   step="0.01"
+                                   value="{{ tax_settings[key] }}"
+                                   placeholder="Enter 0 if none">
+                        </label>
+                    {% endfor %}
+                    <label>
+                        Rental profit deduction method
+                        <select name="method">
+                            <option value="expenses"
+                                    {% if tax_settings.method == 'expenses' %}selected{% endif %}>
+                                Actual allowable expenses
+                            </option>
+                            <option value="allowance"
+                                    {% if tax_settings.method == 'allowance' %}selected{% endif %}>
+                                £1,000 property allowance instead of expenses, if eligible
+                            </option>
+                        </select>
+                    </label>
+                    <p class="muted">
+                        For the allowance method, expenses are still used for the cash-flow figure but are not also deducted for tax. Confirm allowance eligibility with HMRC; it cannot be combined here with residential finance-cost relief.
+                    </p>
+                    <label>
+                        <input name="protect"
+                               type="checkbox"
+                               {% if tax_settings.protect %}checked{% endif %}>
+                        Protect the full estimated annual rental tax (or the larger amount already reserved) in cash forecasts and savings suggestions
+                    </label>
+                    <p class="muted">
+                        This is conservative ring-fencing, not a transfer. Enable only if the reserved money is within the current accounts used for forecasting. It stacks with your HSBC emergency reserve. Monthly top-ups below are a suggested pace toward that annual reserve.
+                    </p>
+                    <button class="primary">Save and calculate</button>
+                </form>
+            </section>
+            {% include 'rental_tax_summary.html' %}
+            <section>
+                <h2>Scope and assumptions</h2>
+                <p>
+                    This estimates additional Income Tax caused by rental profit, including Personal Allowance tapering and restricted finance-cost relief. It is not your complete tax return or the exact amount HMRC will collect. Savings interest, dividends, pension/Gift Aid reliefs, special allowances, Scottish tax, companies, overseas property and multiple complex property businesses need a broader calculation.
+                </p>
+                <p>
+                    Capital mortgage repayments are not allowable rental expenses. Unused losses and finance costs need checking before carrying them forward. The cash-flow figure excludes mortgage capital repayments and capital improvements.
+                </p>
+                <p>
+                    A £0 tax estimate does not determine whether a tax return is required. Check the HMRC reporting guidance. Payments on account, tax already paid and filing/payment deadlines are not included. A first Self Assessment bill can require an advance payment as well as the year's balancing payment. Recheck whenever income or tax rules change; this version will stop calculating outside 2026/27.
+                </p>
+                <p>
+                    <a href="https://www.gov.uk/income-tax-rates">HMRC income-tax rates</a> · <a href="https://www.gov.uk/renting-out-a-property/paying-tax">Rental expenses and reporting</a> · <a href="https://www.gov.uk/guidance/changes-to-tax-relief-for-residential-landlords-how-its-worked-out-including-case-studies">Finance-cost relief</a> · <a href="https://www.gov.uk/guidance/tax-free-allowances-on-property-and-trading-income">Property allowance eligibility</a>
+                </p>
+            </section>
+        </main>
+    </body>
+</html>

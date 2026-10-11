@@ -1,0 +1,13 @@
+# Bin collection reminders
+
+Open **Settings → Manage bin collections**. Birmingham users can look up a postcode and select an address, or enter the address, postcode and UPRN (property reference) directly. The UPRN can be found at https://www.findmyaddress.co.uk/. Enable reminders and save. Address changes clear old dates before checking the new property. Nothing is preconfigured with a personal address.
+
+The Birmingham adapter reads exact dated rows from the council’s collection page at https://www.birmingham.gov.uk/info/50388/check_your_collection_day using its postcode/UPRN parameters. The endpoint and table formats were cross-checked with the current Birmingham source in the open-source Waste Collection Schedule project: https://github.com/mampfes/hacs_waste_collection_schedule/blob/master/custom_components/waste_collection_schedule/waste_collection_schedule/source/birmingham_gov_uk.py . The council returned HTTP 403 from the development environment, so live retrieval could not be verified there. Changes to its form/table or access restrictions are reported as failed checks. No colours or weekly patterns are guessed from council results.
+
+On the day before an exact collection, the Actions receipt prints a checkbox and the council’s bin label. It uses Europe/London dates, including month/year boundaries. Home shows the same reminder from saved data without a network call. Address details do not appear on the paper reminder.
+
+Automatic checks reuse the schedule for six hours, retry failed checks after one hour, and have bounded request timeouts and response size. “Check council now” forces a refresh. A failed check retains exact cached dates for up to 48 hours and marks them as cached. Older dates are excluded from reminders; a failed-check message is printed instead. Check service changes on the council website; this is a schedule reminder, not confirmation that a collection will happen.
+
+For other councils, or if Birmingham lookup is unavailable, select **Manual** and enter one row per bin: `YYYY-MM-DD | bin name | repeat days`. Use 0 for a one-off collection, 7 weekly, 14 fortnightly or 28 every four weeks. Repeats are anchored to the entered date; dates before the anchor do not match. Manual bank-holiday and disruption changes must be entered by the user. Replace a repeating row with dated one-off rows for exceptions.
+
+Private settings and cached dates are stored in `data/bin_collections.json` and included in the existing private backup. The JSON and lock are gitignored. All editing/refresh routes require login and CSRF protection. No credentials, subscription or third-party bin-data service is required.

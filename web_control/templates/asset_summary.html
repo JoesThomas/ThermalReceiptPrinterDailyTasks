@@ -1,0 +1,34 @@
+{% if net_worth %}
+    <details class="section-disclosure">
+        <summary>Assets & recorded net worth</summary>
+        <section>
+            <h2>Recorded net worth</h2>
+            <p>
+                <strong>£{{ '%.2f'|format(net_worth.known_total) }}</strong> · {{ 'recorded components available' if net_worth.complete else 'partial: some figures are missing' }}
+            </p>
+            <p class="muted">{{ net_worth.note }}</p>
+            {% if net_worth.stale %}
+                <p class="helper">Some property or mortgage figures need updating (missing or over 90 days old).</p>
+            {% endif %}
+            <details>
+                <summary>How this amount was calculated</summary>
+                {% for label, amount in net_worth.components.items() %}
+                    <p>{{ label }}: {{ '£%.2f'|format(amount) if amount is not none else 'Unavailable' }}</p>
+                {% endfor %}
+                <p>Minus known debts: £{{ '%.2f'|format(net_worth.debt_total) }}</p>
+                {% for debt in net_worth.debts %}
+                    <p>{{ debt.name }} · £{{ '%.2f'|format(debt.balance) }}</p>
+                {% endfor %}
+                <p>
+                    Full owned property value is added, then its linked mortgage is deducted in the debt total once. Property equity is a separate subtotal, not an additional asset.
+                </p>
+            </details>
+            {% for property in net_worth.properties %}
+                <p>
+                    {{ property.name }} · equity {{ '£%.2f'|format(property.equity) if property.equity is not none else 'Unknown' }} · {{ property.latest.date if property.latest else 'No valuation' }}
+                </p>
+            {% endfor %}
+            <a href="/finance/assets">Manage private properties and mortgages</a>
+        </section>
+    </details>
+{% endif %}

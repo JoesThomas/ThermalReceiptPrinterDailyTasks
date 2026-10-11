@@ -1,2 +1,478 @@
-# ThermalReceiptPrinterDailyTasks
-Project that allows a thermal printer to output a to do list including news updates, weather updates and calender updates
+# Thermal Receipt Printer — Complete Modular
+
+This is the complete merged project based on `thermal_receipt_modular_v3`, with
+the later calendar, news, finance, savings and savings-growth work folded
+back into the project.
+
+## Install and check
+
+Use your project's Python environment and install all application dependencies:
+
+```sh
+python -m pip install -r requirements.txt
+```
+
+The RSS parser uses `defusedxml` to reject entity declarations. For development
+checks, install `requirements-dev.txt` and run `python -m unittest discover -s tests`.
+GitHub checks run tests, compilation, undefined-name checks and high-severity
+security checks on Python 3.11 and 3.14. Offline `--preview`, `--health` and
+`--validate` commands do not import the live printer/bank pipeline. Missing optional
+private runtime files are permitted; malformed present files still report errors.
+See [the code review notes](docs/codebase-review.md) for fixes and limitations.
+
+## Physical receipts
+
+1. Daily Information — weather + compact UK, BBC regional and BBC Sport headlines
+2. Daily Actions — calendar events with locations, Villa match-day trains, to-do, deliveries, other requested checks
+3. Food — daily recipe; Saturday plan/shopping; Sunday prep
+4. Finance — only when requested
+
+The **Receipt location** fields in Receipt Control set the name and region on
+the information receipt, the weather coordinates, and the BBC local news feed
+and heading. The default values reproduce the original Stirchley and
+Birmingham output. Choose a BBC regional RSS feed under
+`https://feeds.bbci.co.uk/news/` when changing area; the receipt still filters
+out live blogs, hub pages and previews. UK headlines, BBC Sport and Aston
+Villa match-day trains remain separate from the local-news location.
+The automatic "Pay for therapy" checklist item appears only two or three days
+before a dated therapy event in the calendar.
+Receipt Control can also omit this automatic reminder when a matching outgoing
+payment appears today or in the preceding two days. Under **Therapy payment
+reminder**, set the bank payment reference (payee name as shown on the bank
+transaction) and choose Monzo or HSBC. This private setting stays in the ignored
+`data/receipt_settings.json`. Bank access failures leave the reminder visible.
+The same completed payment also hides an exact "Pay for therapy." task in the
+Google Doc for that receipt.
+The therapy reference defaults to blank. Set it privately in Receipt Control;
+existing saved local settings are retained. Finance receipts show a dedicated 30-day incoming
+section: salary totals and payments, all other incoming payments, and the amount
+remaining after outgoings. Salary/payroll descriptions are recognised automatically;
+enter an employer bank reference under **Salary identification** if the bank uses a
+different name.
+Other incoming credits are grouped as rent received, Premium Bonds, friends or
+family repayments, betting winnings, or other income. Each payment is listed
+within the last 30 calendar days, including records supplied with a date instead
+of a full timestamp. A bank connection must return the credit for it to appear.
+
+## Added since modular v3
+
+- Calendar locations print beneath each event when present; ordinary event directions are omitted
+- Aston Villa home match train information remains on the receipt
+- Three UK items, BBC Birmingham & Black Country articles and BBC Sport articles with compact headlines
+- Optional news disappears if unavailable
+- Finance uses £ formatting
+- Upcoming payments are one line: name / amount / date
+- Spending summaries use available bank records; unavailable historical baselines are omitted
+- Transfers/savings/income/card repayments excluded from spending categories
+- Savings loaded from `data/savings.json`
+- Per-savings-account `include_in_net_cash` and `include_in_runway`
+- Runway bar removed
+- Available-cash + accessible-savings runway
+- Quarterly/yearly finance snapshots in `data/finance_history.json`
+- Quarterly/yearly savings growth comparisons
+- Meal planner compatibility fixed so the live legacy collector can use modular `data/`
+
+## Setup
+
+Copy `passwords.example.json` to `passwords.json` and fill in your private
+credentials/URLs. Keep `passwords.json` out of source control.
+
+For travel estimates, fill in:
+
+- `google_maps.routes_api_key`
+- `locations.home`
+
+Edit:
+
+- `data/savings.json` for savings balances and runway flags
+- `data/finance_categories.json` for merchant category overrides
+- meal JSON files under `data/` for recipes/preferences/inventory
+
+## Commands
+
+Validate JSON:
+`python main.py --validate`
+
+Run health checks:
+`python main.py --health`
+
+Preview modular renderer:
+`python main.py --preview`
+
+Run live printer:
+`python main.py`
+
+The live external collectors remain in `legacy_main.py`; the newer modules are
+separated so they can continue to be migrated out cleanly.
+
+## Debt and payday receipt
+
+The finance receipt shows live HSBC and Monzo cash, live Amex debt, and any
+instalment balances in `data/subscriptions.json`. It separates short-term debt
+from a future mortgage. The `NET LIQUID` figure subtracts short-term debt from
+cash. Existing savings, investments, spending, runway and period reviews still
+print below the new cash/debt/payday summary.
+
+Copy `data/finance_settings.example.json` to `data/finance_settings.json` and
+replace the example values with your own. This private file is ignored by Git.
+Add other debts (including a mortgage), a future `next_payday`, a protected
+buffer, and individual dated `commitments`. Do not duplicate Amex or an existing
+instalment name: live Amex and known instalment balances take precedence. Enter
+payments due before payday, not the entire card or loan balance. The daily
+allowance is cash minus listed commitments and the buffer, divided by days left.
+Without a future payday the receipt says the forecast is unconfigured.
+
+`forecast_events` are separate signed cash changes over the next 30 days. Only
+listed events contribute to that projection; it does not estimate discretionary
+spending. If a bill is in `commitments` and `forecast_events`, the two sections
+answer separate questions and are not summed together. Refresh dated entries
+after payments and payday. Optional `savings_goals` display saved and target
+amounts.
+
+### Rolling dates and review date
+
+Set `payday_repeat` to `monthly` to calculate the next payday from the original
+`next_payday` date without editing the file each month. Add `repeat: "monthly"`
+or `repeat: "yearly"` to a dated commitment; omit it for a one-time payment.
+Add the same `repeat` field to a `forecast_events` row to roll that dated
+cash movement in the 30-day forecast. An occurrence on payday is excluded from
+the before-payday budget. Dates on
+29–31 use the last day of shorter months and return to their original day in
+later months. Rolling happens when printing and does not rewrite your settings.
+If payday moves for a weekend or bank holiday, update the anchor date manually.
+
+Set `reviewed_on` to the date you last checked the *manual* payment amounts and
+schedule. The receipt shows that date beside the payday calculation and warns
+if it is missing, in the future or more than 30 days old. The date does not
+claim that bank balances were refreshed. Rolling a recurring payment assumes it
+still applies at the configured amount; update or remove it when that changes.
+
+### Finance source labels
+
+The finance receipt marks figures with a compact legend: `[B]` is a bank balance
+from TrueLayer, `[F]` is a stored value from a local finance, savings,
+instalment or investment file, `[C]` is calculated from those inputs, and `[E]`
+is a forward estimate. The 30-day spending section uses bank transactions and
+calculated totals; payday and future cash figures depend on dated file entries.
+A bank label identifies its source, not its age or a guarantee that the bank
+updated that figure today. The `reviewed_on` date covers manual payment settings
+only. Monthly commitment labels indicate whether a stored bill was matched to
+bank activity; an unmatched item may still need checking.
+
+## Local and sport news
+
+Local news uses the dedicated BBC Birmingham & Black Country RSS feed rather
+than broad search results. Sport uses the BBC Sport RSS feed and prints in its
+own section. Both require dated BBC article links and skip live pages, hub
+pages, previews, videos and promotional headlines. Local stories may be fewer
+than three when the feed has no suitable recent articles; unavailable news
+sections are omitted. The control page has a Sport news toggle and a separate
+sport story count (default 3). General UK news remains unchanged.
+
+### Monthly repayments in commitments
+
+`MONTHLY COMMITMENTS` includes monthly bill/subscription entries, instalment
+payments from `data/subscriptions.json`, and `monthly_payment` on debts in
+`data/finance_settings.json` (including a mortgage). It prints a separate
+`REPAYMENTS DUE` subtotal and includes unpaid repayments in `REMAINING`.
+Outstanding *balances* stay in `AMOUNTS OWED` and are not added to the monthly
+total. Fully repaid entries (zero remaining balance) are omitted.
+
+A repayment already in the `monthly` list is not added again when its name
+matches, ignoring case and punctuation. If the display names differ, add
+`"monthly_commitment_name": "Exact monthly list name"` to the instalment or
+debt entry. Add `"match": ["bank transaction wording"]` to a repayment
+entry if you want a transaction to mark this month's instalment as paid;
+without a match, the receipt conservatively lists it as due. A recognised
+merchant can also be matched at the exact monthly payment amount.
+The paid check uses the existing account transactions and the recorded repayment amount.
+When a repayment has a `next_payment` or `due_date`, a debit with the same amount
+within two days of that day of the month can also verify payment even if the
+merchant wording differs. A transaction can verify only one commitment;
+repayments without a scheduled date or matching merchant stay due.
+An observed streaming subscription can be included at its latest charge amount
+when a recent payment exists; an explicit monthly entry takes precedence.
+No repayment is automatically turned into a dated payday commitment: add an
+individual or recurring date to `commitments` if it needs to affect the
+before-payday allowance.
+
+### Spending categories
+
+Built-in merchant rules now recognise common entries such as supermarkets,
+petrol, public transport, restaurants, utilities, rent, insurance, household
+shops, entertainment and subscriptions. They apply to the 30-day category
+trends and quarterly/yearly comparisons. A private
+`data/finance_categories.json` still overrides them; for example:
+
+```json
+{
+  "A SPECIFIC MERCHANT": "HOUSEHOLD"
+}
+```
+
+The rules change category labels, not transaction totals. The finance receipt
+prints up to three merchants in `CATEGORY CHECK - OTHER` when uncategorised
+spending reaches £20 in the last 30 days. Person-to-person payments and
+ambiguous merchant names intentionally remain `OTHER` until you add a private
+rule based on what the purchase actually was. Do not put personal payee names
+in the public repository.
+
+## Printer connection
+
+The daily receipt and web print actions use the configured network printer by
+default. The live preview uses a virtual printer and never sends data to the
+printer. To change the destination, set
+`RECEIPT_PRINTER_HOST` and optionally `RECEIPT_PRINTER_PORT` in the environment
+that launches the application. To return to USB printing, set
+`RECEIPT_PRINTER_CONNECTION=usb` (USB IDs `0x0416:0x5011`). The standalone
+`print_google_doc.py` has its own network connection setting. Reserve the
+printer's address on the router to avoid a later address conflict.
+
+## Receipt Control server address
+
+Receipt Control now groups the main print actions at the top and links to
+settings, routines, instalments and food shop on the same page. Its paper-width
+preview can generate a full receipt using current sources without printing or
+consuming one-shot requests. It stores the latest generated pages (including
+charts) locally in the ignored `data/live_receipt_preview.json`, so they remain
+available in the authenticated web interface while away from the printer.
+Choose **Include finance** to run the finance page outside its usual schedule.
+Generation happens in the background; the page updates when it finishes. You
+can also switch to the last successful web-triggered print stored in the ignored
+`data/last_web_receipt.json`. Pages without a captured result show clearly
+labelled illustrative examples. A preview reflects its generation time, so it
+may differ from a later print. Failed refreshes leave the previous saved preview
+available. Preview errors are logged in `logs/web_preview.log`. Finance review fetches current bank transactions when
+opened and shows the transaction behind each monthly payment match. The print
+status reports whether the web print command is running, finished or failed;
+the detailed diagnostic log is `logs/web_print.log`.
+
+The control page also links to today's meal plan, a calendar map and Tesco
+shopping review. You can choose today's recipe from the recipe library; that
+updates the printed recipe and regenerates the plan's shopping items. Confirming
+a recipe eaten records that fact separately from cooking and can be undone.
+Calendar events and locations come from the read-only iCal feed; edit them in
+your calendar. The map sends a selected event's location to Google Maps.
+
+The food-shop editor saves a local list that replaces the Google Doc list on
+the control page and the printed food-shop section. Reset returns to the Doc.
+The Tesco review combines food-shop items and the current meal plan's shopping
+items; it opens Tesco searches for product selection and keeps a weekly local checklist.
+It cannot read or add products to your Tesco basket. Confirm each actual addition
+on Tesco before marking it on the checklist. Monthly commitments can be edited
+under their own section; instalment balances are edited separately.
+
+Finance review includes a paid versus unverified commitments bar, 30-day
+spending by category, and four seven-day spending bars. The figures come from
+the same cleaned transactions and private category rules as the receipt; each
+bar also has its exact amount in text. Instalment cards show repayment progress
+when a total and remaining balance are available. The charts use local CSS
+and require no external chart service.
+
+The finance review also shows all observed outgoings from the current calendar
+month, grouped by merchant, with each group's combined spend and an expandable
+list of dates and individual amounts. Identical same-day payments without a
+transaction ID remain separate; duplicated bank transaction IDs are removed.
+Income, refunds, internal transfers and card repayments are excluded. This
+calendar-month total is distinct from the rolling 30-day category chart and
+from future commitments.
+
+`web_control/run_waitress.py` listens on `127.0.0.1:5050` by default, so the
+control page is available only on this computer. To access it from another
+device, put it behind an HTTPS reverse proxy with authentication and set
+`RECEIPT_WEB_SECURE_COOKIE=1`. If you deliberately bind to a LAN address,
+set `RECEIPT_WEB_HOST` explicitly; plain HTTP on a shared network can expose
+the password and session. The control page requires a form token for each
+change and limits failed sign-ins to five per client address in 15 minutes.
+The limit is held in the server process and resets when it restarts.
+
+While the Waitress server is running, it starts one full receipt print at
+**03:00 UK time** every day (including daylight saving changes). Starting the
+server after 03:00 waits until the next day. If another print is running at
+03:00, it retries every five minutes that day. The date of a launched scheduled
+job is kept in `data/.scheduled_print_date` so a server restart does not print
+twice. The usual receipt rules still decide whether to include finance. Print
+results appear in `data/web_print_status.json` and `logs/web_print.log`.
+
+If startup
+fails with `Address already in use`, check for an existing instance on macOS:
+
+```bash
+lsof -nP -iTCP:5050 -sTCP:LISTEN
+```
+
+Stop the process you recognise as an old Receipt Control server, or use another
+port without editing the script:
+
+```bash
+RECEIPT_WEB_PORT=5051 python web_control/run_waitress.py
+```
+
+Other socket errors include the address and a relevant diagnostic. The final line of the
+Python traceback (`OSError: [Errno ...] ...`) determines which bind error
+occurred.
+
+Category rules classify historical transactions without creating future
+commitments. Remove cancelled monthly entries from the private subscription
+file. Instalment spending and outstanding balances are shown separately when
+configured. Personal payee names belong only in private category overrides.
+
+For a purchase whose category depends on the *item* rather than the merchant,
+put a one-off rule in the ignored `data/finance_categories.json`:
+
+```json
+{
+  "transactions": [
+    {"date": "YYYY-MM-DD", "amount": 22.00,
+     "merchant": "EXAMPLE SHOP", "category": "GIFTS"}
+  ]
+}
+```
+
+A one-off rule matches the date, absolute amount and merchant text together.
+It overrides merchant-wide categories for that transaction only. Merge it with
+any existing private merchant rules; do not replace your whole file. If there
+are two purchases at the same merchant for the same amount on the same day,
+this format will match both and needs a more specific transaction identifier.
+
+
+### HTML template formatting
+
+Templates use four-space indentation with the Jinja-aware settings in `.djlintrc`.
+Install `requirements-dev.txt`, then run:
+
+```bash
+python tools/format_templates.py
+python tools/format_templates.py --check
+```
+
+Inline scripts and styles are excluded from HTML reformatting to preserve their contents.
+Receipt text in `pre` blocks and editable textarea contents retain their whitespace.
+
+
+### Shared boundaries and interface checks
+
+The interface uses a shared theme, responsive navigation and a collapsible More tools menu.
+Display preferences include larger text, higher contrast and reduced motion. Form validation
+opens hidden sections and focuses the first invalid field; submission feedback is announced.
+
+`storage.PrivateStore` provides locked, validated, atomic updates for migrated private state.
+Invalid files are retained for recovery rather than overwritten. `finance.money` handles
+Decimal parsing and penny rounding at shared calculation boundaries; legacy provider and
+receipt dictionaries remain compatible. Typed models normalise transactions, commitments,
+deliveries and source observations. Delivery parsing and bank collection now have separate
+service modules with injected dependencies.
+
+Source observations distinguish fresh, cached, partial, unavailable and disabled results.
+Monthly finance observations retain the collection scope without account identifiers.
+Older observations with no scope are labelled accordingly, and a mid-month observation is
+never marked as covering a whole month. CI runs Python 3.11–3.14 tests, lint, security checks
+and template formatting checks. The template wrapper preserves excluded scripts and styles.
+
+### Receipt generation and interface regression checks
+
+Scheduled printing, manual printing and previews share the bounded child supervisor
+and lifecycle status writer. Workers release only a lock bearing their own PID.
+The shared receipt builder saves its buffered output before opening hardware; a failed
+printer connection leaves the generated copy available. A successful socket send does
+not certify that paper was produced.
+
+The loading panel shows actual stage names, recently completed steps and elapsed time.
+The moving indicator means work is in progress; the stage count is not a time estimate.
+Expand **Generation timings** to find slow collection stages. Timings contain stage
+names and durations only, and are bounded to the latest 80 stages of the job.
+
+PrivateStore supports explicit schema versions and sequential migrations. Finance
+planning and subscriptions are versioned stores: legacy data is migrated in memory and persisted
+on its next successful update. Unsupported future versions and damaged files are
+preserved instead of overwritten. Other private stores retain their existing formats
+until an explicit migration is introduced; take a private backup before upgrades.
+
+The receipt uses shared width-safe money columns, compact savings indicators, dashed
+rules and a local-time footer identifying cached or incomplete source checks. Delivery
+items retain their confirmation identities while timing appears below the item group.
+Source fetching remains outside the extracted calendar and delivery rendering module.
+
+Browser CI exercises manual bin dates, adding a commitment, confirming a delivery and
+opening a generated preview at four viewport widths. The harness uses real Flask routes
+and templates in an isolated temporary project; external collection and hardware are
+replaced by fixtures. It communicates through standard input/output rather than exposing
+a fixture login endpoint on the production server. To run locally after installing
+Playwright and Chromium:
+
+```bash
+npm install --no-save playwright@1.56.1
+npx playwright install chromium
+node tools/browser_smoke.cjs
+```
+
+Anonymous integration examples are in `tests/fixtures/receipt_integrations.json`.
+Timezone regressions cover midnight and the autumn BST/GMT transition.
+
+### Away mode, private preferences and credit limits
+
+Open **More tools → Away & preferences** to set departure and return dates. The return date is the first day back. While away, scheduled jobs save a live receipt copy instead of physically printing; manual printing remains available. Pausing home meals removes their recipe ingredients and prep from the displayed plan and shopping list without deleting the underlying plan. Shared ingredients, manual shopping items and household essentials remain. Travel-meal exceptions keep cooking on selected dates. Existing Tesco baskets are unchanged.
+
+Credit-card limits are private reference records. Add a card name, limit and optional used balance; reuse the same name to update it. Finance review can use the bank-reported Amex balance. Remaining credit and utilisation never increase available cash or runway.
+
+Preferences also provide settings search, a visual privacy toggle and optional retention periods. Retention defaults to keeping everything; opted-in maintenance removes older receipt archives or payment detail/history, preserving savings ledgers, settings and the latest receipt copy. Existing backups retain their contents until they expire. Privacy view hides on-screen details and is not an access-control mechanism.
+
+Payment explanations show the basis for category and commitment matches, correction history and possible subscription price increases. Recent checklist, meal and delivery confirmations offer a short-lived Undo, provided the record has not changed since. Repeated manual print requests show a warning and allow an intentional reprint.
+
+### Rental tax planning
+
+Finance → Rental tax planning stores private annual inputs for personally owned UK residential rental property. The calculator supports only 2026/27 England/Wales/Northern Ireland ordinary non-savings income, Personal Allowance taper, allowable expenses or an eligible property allowance, losses and restricted residential finance-cost relief. Take-home salary is never converted into gross taxable income. Enter zero for other income when none is expected, and your ownership share of full-year rent/costs. Bank history is not annualised automatically.
+
+The summary estimates additional rental tax, a monthly reserve top-up and rental cash after tax/expenses/interest. Optional protection excludes the full annual estimate (or the larger existing reserve) from pooled cash/runway and salary spending/savings suggestions, in addition to emergency/cash reserves. This is deliberately conservative; no money is moved. Inputs exclude savings/dividend income, special reliefs, Scottish rates, company taxation, payments on account and tax already paid. Estimates stop outside the supported tax year; update rules before relying on a later year's figure. Private tax settings are included in private backups and excluded from Git.
+
+### Property assets and finance scenarios
+
+Finance → Property assets stores private addresses, ownership percentages, optional Zoopla links and dated manual valuation/range/source history. No Zoopla scraper or automatic API access is assumed. Missing or over-90-day valuations and mortgage balances are flagged. Your linked mortgage liability is recorded separately from the property's full value; each mortgage links to at most one property. These shared mortgage records override matching legacy mortgage names in calculations, preserving repayment aliases and preventing duplicate debt deductions. Conflicts with non-mortgage debts are rejected. Removing a shared mortgage does not delete an older legacy record in finance settings.
+
+Recorded net worth adds selected bank cash, recorded physical cash, savings, investments and your ownership share of full property values, then subtracts known debts once. Equity is a separate subtotal. Confirm account coverage and overlap: this is recorded net worth, not a certified complete statement. Properties are excluded from spendable cash and runway. Finance receipts show a compact asset summary in the first seven days of the month or within seven days of a valuation update; private addresses are omitted.
+
+Private plans → What if? stores hypothetical monthly take-home salary, rent available after costs/tax, initial vacant months, one repair cost, start date and 1–24 monthly receipts. Finance refresh compares these with the no-future-income baseline and displays weekly graph points, daily minima and dated receipts. Existing reserves/costs remain; scenario inputs never overwrite live balances, annual tax inputs or salary records. Vacancy affects receipts only; include continuing property costs separately without counting them twice.
+
+Verified tax rules now live in finance/tax_rules.json with a tax-year key, version and HMRC source links. Only supported years are selectable by the calculator. Changing a later rule record must not replace an older year's entry. Rental tax explains profit, allowance, baseline/combined tax and finance-cost relief. Existing saved receipts retain the generated explanation and amounts rather than being recalculated.
+
+### Finance results and less repeated receipt detail
+
+Finance → Plans & actual results preserves the first valid observed salary allocation. Bank-spending comparisons start the following day, because capture-day activity already reduces that remaining-money allocation; a plan captured late is not a reconstructed payday budget. Actual matched commitments and other external spending are separate observations. Salary-funded savings contributions require manual confirmation, excluding internal savings transfers and market growth. Card purchase/settlement timing may overlap; this is not an account cash ledger.
+
+The private rental ledger links bank-observed rental credits to one recorded property, or accepts dated manual rent, operating costs, repairs, interest, capital repayments and tax payments. Repeating a bank link is rejected. Property labels are retained on ledger entries if the property record changes. Known cash flow is recorded rent minus listed costs, not certified tax profit. A portfolio smoothing provision uses the enabled annual rental-tax estimate divided by twelve, offsetting actual tax already recorded to avoid counting it twice. Rental ledger entries do not silently rewrite annual tax assumptions.
+
+The expandable Needs updating panel brings together bank coverage, repayment/date warnings and stale property records. Monthly summaries can be explicitly frozen once per month, preserving the observation date, bank window/scope, totals and forecast/tax assumptions. A partial observation remains labelled partial; later data cannot replace the frozen record.
+
+Receipt asset/tax detail is expanded after an input change or in a new calendar month; otherwise a compact current-value reminder is printed. Only a successfully sent finance receipt commits the detail signature. Previews and failed sends do not suppress future detail. Private rental ledgers, plans and frozen summaries are backed up and excluded from Git.
+
+### Source resilience and local checks
+
+`python main.py --health` runs read-only configuration, meal-data, application-file and recorded-source checks. The same checks appear under **Integration health → Local project checks**. It does not contact your bank, mailbox or printer. Source timestamps describe the last successful fetch, rather than the time an old result was reused.
+
+Public downloads use connection/read timeouts, a download deadline and size limits; calendar recurrence parsing runs in a disposable worker with its own timeout. Task and optional random-line documents now share the bounded document collector. Calendar and delivery caches retain complete last-good results when a refresh fails or returns only partial mailbox data. Cached results expire; news and weather cache keys include the local date so yesterday's content is not silently reused. The overall receipt job watchdog remains the final deadline.
+
+Weather fetching and hourly transformation live in `services/weather_source.py`; receipt rendering and section order remain in the live pipeline. UK scheduling uses `receipt/local_time.py`, including spring clock gaps and repeated autumn times.
+
+Shopping and preparation are recalculated from remaining home meals, pantry contents, Away dates and meal confirmations. Past or confirmed dinners do not add dinner ingredients; next-day lunch extras remain where needed. Shared ingredients stay if another meal needs them. Replacing today's dinner clears its earlier confirmation. Manually entered shopping items remain separate.
+
+### Receipt exercise rotation
+
+The receipt cycles through only **bicep curls, shrugs, sit-ups, press-ups, rowing and jogging**. A four-day cycle (anchored on 6 October 2026) alternates strength, rowing, strength and jogging. Reprints on the same UK day keep the same selection. The selected targets are four sets of 20 curls, shrugs, sit-ups and press-ups, 15 minutes steady rowing, or 20 minutes easy jogging with walking breaks if needed. These are adjustable starting targets, not a complete personalised training programme or the whole weekly activity recommendation. Warm up for five minutes and rest 60–90 seconds between strength sets; choose weights you can control comfortably.
+
+Targets and completion are stored privately in the exercise checklist and can be changed on **Exercises**. Configured equipment settings exclude curls/shrugs without dumbbells; a rowing day becomes a jogging day if a rowing machine is unavailable. With no equipment configuration, equipment requirements are printed. The receipt no longer fetches an exercise Google Doc. Additional workouts selected from the wider web library stay separate from the fixed receipt rotation.
+
+The selected four-set targets are a user preference, above the NHS starting guidance of at least two sets of 8–12 repetitions: https://www.nhs.uk/live-well/exercise/how-to-improve-strength-flexibility/ . Cardio durations are modest starting defaults chosen for this application, rather than prescribed NHS session lengths.
+
+### Printing, retries and setup
+
+**Prepare print** shows selected pages in configured order and local task, exercise and delivery counts. Live generation saves the preview before opening the physical printer. A failed send can therefore leave a usable generated copy. **Receipt → Retry a source or print the saved copy** lets you explicitly queue that saved text/graph snapshot without fetching live data again; confirmation is required and repeated requests are guarded. Saved-copy data keeps its original dates and is frozen before the print job starts.
+
+Source retry buttons force a refresh for weather, UK/local/sport news, calendar, deliveries or task documents, regenerate the affected information/actions page, and preserve other saved pages and their timestamps. Valid cached sibling sources are reused; unavailable/expired siblings are labelled unavailable rather than silently fetched or described as fresh. Some actions-page checks (such as therapy payments) remain normal live checks. It is a page refresh using one targeted cache refresh, not a replacement of a single text paragraph.
+
+**Settings** groups Location, Receipt, Connections, Meals, Exercise and Printing. Search filters the shortcuts. **Setup** provides separate checks for configured public/document/calendar connections; missing configuration has a plain-language setup description. Bank/email health stays observational during normal use. Credentials stay in private local files.
+
+Tasks support completion, skip today and removal of local items with Undo. Deliveries distinguish received, skip today and removal of a notice; removal does not mark a parcel received and persists across refreshed notices. Skipping a planned meal does not confirm it eaten and updates shopping/prep; Undo restores the prior plan if nothing else has changed. A direct meal replacement remains available after Undo expires.
+
+Actions, food, weather, news and finance rendering now live in separate `receipt/*_renderers.py` modules, with compatibility wrappers in the live orchestration module. Network collectors remain separate from rendering helpers. Adjacent horizontal section rules are coalesced in the recording buffer, so a closing rule followed by the delivery heading's opening rule produces one line in both preview and physical output.
+
+See [deployment/README.md](deployment/README.md) for the Raspberry Pi service template, installation checks, and physical reboot/network/printer acceptance checks. These checks cannot confirm hardware behaviour until run on your Pi.

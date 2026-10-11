@@ -1,0 +1,192 @@
+# ============================================================
+# SECRETS / CREDENTIALS
+# ============================================================
+
+passwords.json
+credentials.json
+web_control/secret_key.txt
+web_control/passwords.json
+ThermalReceiptPrinterDailyTasks/credentials.json
+
+# OAuth / API tokens
+*.token
+*.tokens
+*_tokens.json
+.spotify*
+.truelayer*
+
+
+# ============================================================
+# PERSONAL FINANCE DATA
+# ============================================================
+
+# Contains personal subscriptions, bills and instalments
+data/subscriptions.json
+data/subscriptions.example.json
+
+# Finance history / categorisation
+data/finance_history.json
+data/finance_categories.json
+data/savings.json
+
+# Personal finance data
+regular_payments.txt
+
+# Personal runtime data
+data/routines.json
+data/freezer.json
+data/pantry.json
+freezer.json
+pantry.json
+
+
+
+# ============================================================
+# PERSONAL / GENERATED DATA
+# ============================================================
+
+data/receipt_settings.json
+data/food_shop_override.json
+data/to_buy.json
+data/tesco_progress.json
+data/meals_eaten.json
+data/web_print_status.json
+data/last_web_receipt.json
+
+meal_plans/
+data/meal_plans/
+
+recipe_history.json
+data/recipe_history.json
+
+
+# ============================================================
+# PYTHON
+# ============================================================
+
+__pycache__/
+*.py[cod]
+*.pyo
+
+.venv/
+venv/
+env/
+
+
+# ============================================================
+# IDE / OS
+# ============================================================
+
+.idea/
+.vscode/
+.DS_Store
+
+
+# ============================================================
+# TEMPORARY FILES
+# ============================================================
+
+*.tmp
+*.log
+# Personal debt, payday and payment data
+data/finance_settings.json
+data/live_receipt_preview.json
+data/live_preview_status.json
+
+# Private suggestion dismissal IDs
+data/finance_suggestions.json
+
+data/future_tasks.json
+data/future_tasks.json.tmp
+
+data/wealth_history.json
+data/wealth_history.json.tmp
+
+data/local_gigs_config.json
+data/local_gigs_config.json.tmp
+
+# Private receipt archives and backup/restore staging
+data/receipt_archive/
+data/private_backups/
+data/restore_pending/
+
+data/investments.json
+
+# Private Premium Bonds prize and balance ledger
+data/premium_bonds.json
+data/premium_bonds.lock
+
+# Generated caches, logs and job markers can contain private data
+cache/
+logs/
+receipt_preview.txt
+data/.*.lock
+data/.scheduled_print_date
+
+# Private delivery descriptions and confirmations
+data/delivery_state.json
+data/delivery_state.lock
+
+# Private daily tasks and exercise completions
+data/daily_lists.json
+data/daily_lists.lock
+
+# Private dashboard caches and comparison snapshots
+data/today_calendar.json
+data/receipt_changes.json
+
+# Private collection address and bin schedule
+data/bin_collections.json
+data/bin_collections.lock
+
+# Redacted integration health history and worker locks
+data/api_health.json
+data/api_health.lock
+data/api_health_run.lock
+
+# Private parsed source caches and diagnostics
+data/source_cache.json
+data/source_cache.lock
+data/printer_diagnostics.json
+data/finance_review_queue.json
+data/finance_categories.lock
+
+# Private savings targets and ISA contributions
+data/savings_goals.json
+data/savings_goals.lock
+
+# Private aggregate finance observations
+data/finance_monthly_snapshots.json
+data/finance_monthly_snapshots.lock
+
+# Private cash account selection and display metadata
+data/bank_account_selection.json
+data/bank_account_catalog.json
+data/receipt_recovery.json
+data/calendar_location_overrides.json
+data/backup_health.json
+data/receipt_recovery.lock
+data/calendar_location_overrides.lock
+
+data/finance_planning.json
+data/finance_planning.lock
+
+data/transaction_sources.json
+
+# Private Away preferences, credit limits and payment explanations
+data/lifestyle.json
+data/lifestyle.lock
+data/finance_explanations.json
+data/finance_explanations.lock
+data/recent_print_request.json
+
+data/rental_tax.json
+data/rental_tax.lock
+
+data/assets.json
+data/assets.lock
+
+data/finance_reviews.json
+data/finance_reviews.lock
+data/finance_details.json
+data/finance_details.lock

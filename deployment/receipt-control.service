@@ -1,0 +1,21 @@
+[Unit]
+Description=Thermal Receipt Control
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=receipt
+WorkingDirectory=/opt/thermal-receipt
+EnvironmentFile=/etc/thermal-receipt.env
+ExecStart=/opt/thermal-receipt/.venv/bin/python -m web_control.run_waitress
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,95 @@
+{
+  "basmati_rice": {
+    "display_name": "Basmati Rice",
+    "portion_g": 75,
+    "saucepan": {
+      "water_ml_per_75g": 110,
+      "instructions": [
+        "Rinse the rice until the water is mostly clear.",
+        "Add the measured rice and water to a small saucepan and bring to the boil.",
+        "Cover tightly, reduce to the lowest heat and cook for 10 minutes without lifting the lid.",
+        "Remove from the heat, leave covered for 10 minutes, then fluff gently with a fork."
+      ]
+    }
+  },
+  "jasmine_rice": {
+    "display_name": "Jasmine Rice",
+    "portion_g": 75,
+    "saucepan": {
+      "water_ml_per_75g": 95,
+      "instructions": [
+        "Rinse the rice briefly and drain well.",
+        "Add the measured rice and water to a small saucepan and bring to the boil.",
+        "Cover tightly, reduce to the lowest heat and cook for 12 minutes without lifting the lid.",
+        "Remove from the heat, leave covered for 10 minutes, then fluff gently."
+      ]
+    }
+  },
+  "couscous": {
+    "display_name": "Couscous",
+    "portion_g": 75,
+    "liquid_ml_per_75g": 75,
+    "liquid": "hot stock or water",
+    "instructions": [
+      "Put the couscous in a heatproof bowl and pour over the measured boiling liquid.",
+      "Cover tightly and leave for 5 minutes.",
+      "Fluff thoroughly with a fork and season before serving."
+    ]
+  },
+  "quinoa": {
+    "display_name": "Quinoa",
+    "portion_g": 75,
+    "liquid_ml_per_75g": 150,
+    "liquid": "water",
+    "instructions": [
+      "Rinse the quinoa thoroughly in a fine sieve.",
+      "Add the quinoa and measured water to a saucepan and bring to the boil.",
+      "Cover and simmer gently for about 15 minutes until the liquid is absorbed.",
+      "Remove from the heat, rest covered for 5 minutes, then fluff."
+    ]
+  },
+  "bulgur_wheat": {
+    "display_name": "Bulgur Wheat",
+    "portion_g": 75,
+    "liquid_ml_per_75g": 150,
+    "liquid": "water or stock",
+    "instructions": [
+      "Add the bulgur and measured liquid to a saucepan and bring to a gentle simmer.",
+      "Cover and cook gently for 10-12 minutes until tender and the liquid is absorbed.",
+      "Rest covered for 5 minutes, then fluff with a fork."
+    ]
+  },
+  "polenta": {
+    "display_name": "Polenta",
+    "portion_g": 50,
+    "liquid_ml_per_50g": 200,
+    "liquid": "water or stock",
+    "instructions": [
+      "Bring the measured liquid to a gentle simmer.",
+      "Pour in the polenta in a steady stream while whisking continuously.",
+      "Cook according to the packet type, stirring frequently, until thick and no longer gritty.",
+      "Season and finish with butter or cheese if the recipe calls for it."
+    ]
+  },
+  "porridge_oats": {
+    "display_name": "Porridge Oats",
+    "portion_g": 50,
+    "liquid_ml_per_50g": 250,
+    "liquid": "milk, water, or a mixture",
+    "instructions": [
+      "Combine the oats and measured liquid in a saucepan.",
+      "Bring gently to a simmer, stirring regularly.",
+      "Cook for 4-6 minutes until creamy and the oats are tender."
+    ]
+  },
+  "pasta": {
+    "display_name": "Dried Pasta",
+    "rule_type": "non_ratio",
+    "instructions": [
+      "Bring a generous saucepan of water to a rolling boil and salt it.",
+      "Add the pasta and stir well during the first minute so it does not stick.",
+      "Cook until al dente, using the packet time as a guide and tasting before draining.",
+      "Reserve a little pasta water before draining if the sauce may need loosening."
+    ]
+  }
+}
