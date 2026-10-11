@@ -34,7 +34,7 @@ class SimulationTests(TestCase):
         self.assertEqual(source, before)
         text = receipt(result, TODAY)
         self.assertIn('SIMULATION - POTENTIAL SALARY', text)
-        self.assertIn('GBP 4,500.00', text)
+        self.assertIn('£4,500.00', text)
         self.assertNotIn('Existing salary (additional mode)', text)
         self.assertEqual(result['forecast']['payments'][0]['salary'], D('4500'))
         self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
@@ -68,7 +68,7 @@ class SimulationTests(TestCase):
         self.assertEqual(result['forecast']['end_cash'] - build(projection(), zero, TODAY)['forecast']['end_cash'], D('10000'))
         text = receipt(result, TODAY)
         self.assertIn('SIMULATION - LUMP SUM ONLY', text)
-        self.assertNotIn('GBP 4,500.00', text)
+        self.assertNotIn('£4,500.00', text)
         self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
         values['start'] = '2026-11-10'
         self.assertLess(build(projection(), values, TODAY)['forecast']['run_out'], date(2026, 11, 10))
@@ -86,7 +86,7 @@ class SimulationTests(TestCase):
         text = receipt(build(projection(), values, TODAY), TODAY)
         self.assertIn('Funding shortfall at forecast end', text)
         self.assertIn('6 month(s): funding shortfall', text)
-        self.assertNotIn('GBP -', text)
+        self.assertNotIn('£-', text)
         self.assertIn('No savings transfers assumed', text)
 
     def test_save_all_allocates_only_recurring_surplus_and_updates_forecast(self):
@@ -134,8 +134,8 @@ class SimulationTests(TestCase):
         text=receipt(result,TODAY)
         self.assertIn('Amex - extra repayment', text)
         self.assertEqual(text.count('Amex - extra repayment'),1)
-        self.assertIn('GBP 4,190.00', text)
-        self.assertIn('GBP 760.00', text)
+        self.assertIn('£4,190.00', text)
+        self.assertIn('£760.00', text)
         self.assertIn('Savings redirected to repayment', text)
         self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
         source['amex']['full_reserved']=True
