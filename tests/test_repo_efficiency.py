@@ -55,6 +55,8 @@ class RepoEfficiencyTests(TestCase):
         barrier = Barrier(4)
         collected = []
         rendered = []
+        weather_details = []
+        weather_coordinates = []
 
         def collect(name):
             barrier.wait(timeout=3)
@@ -64,6 +66,9 @@ class RepoEfficiencyTests(TestCase):
         printer = Mock()
         printer.profile.profile_data = {"media": {"width": {"pixels": 0}}}
         settings = deepcopy(DEFAULT_SETTINGS)
+        settings["display"]["weather_detail"] = "compact"
+        settings["layout"] = {"detail":"compact"}
+        settings["location"] = dict(DEFAULT_LOCATION, name="Edinburgh", region="Scotland", latitude=55.95, longitude=-3.19)
         settings["features"].update(
             weather=True, national_news=True, local_news=True, sport_news=True
         )
@@ -86,11 +91,11 @@ class RepoEfficiencyTests(TestCase):
             NEWS_HEADLINES=3,
             LOCAL_NEWS_HEADLINES=3,
             SPORT_NEWS_HEADLINES=3,
-            get_weather=lambda *args: collect("weather"),
+            get_weather=lambda *args: (weather_coordinates.append(args), collect("weather"))[1],
             get_top_news_headlines=lambda *args: collect("national"),
             get_local_news_headlines=lambda *args: collect("local"),
             get_sport_news_headlines=lambda *args: collect("sport"),
-            print_weather=lambda p, value, *args, **kwargs: rendered.append(value),
+            print_weather=lambda p, value, *args, **kwargs: (rendered.append(value), weather_details.append(kwargs["detail"])),
             print_news=lambda p, value: rendered.append(value),
             print_local_news=lambda p, value, *args: rendered.append(value),
             print_sport_news=lambda p, value: rendered.append(value),
@@ -114,6 +119,8 @@ class RepoEfficiencyTests(TestCase):
             namespace["run_live_pipeline"](selected_pages=["information"])
         self.assertEqual(set(collected), {"weather", "national", "local", "sport"})
         self.assertEqual(rendered, ["weather", "national", "local", "sport"])
+        self.assertEqual(weather_details, ["full"])
+        self.assertEqual(weather_coordinates, [(55.95, -3.19)])
 
     def test_printer_cleaner_keeps_pounds_and_removes_control_sequences(self):
         self.assertEqual(

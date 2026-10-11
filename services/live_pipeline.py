@@ -5100,7 +5100,7 @@ def run_live_pipeline(
                     printer,
                     weather,
                     location,
-                    detail="compact" if compact else display_value(settings, "weather_detail", "auto"),
+                    detail="full",
                 )
 
             except Exception as error:
