@@ -89,10 +89,7 @@ def receipt(result, today):
     def goal_duration(reached):
         text('Estimated time to target:')
         text(format_runway((reached - today).days, today))
-        text(f'From {today:%d %b %Y}, using this pathway.')
-        if reached > forecast['end']:
-            text('Time beyond selected forecast:')
-            text(format_runway((reached - forecast['end']).days, forecast['end']))
+        if reached > forecast['end']: text('Beyond selected forecast; same pathway.')
     def goal_progress(starting, projected, target, added, *, enabled=True, reserved=Decimal(0)):
         current = min(Decimal(100), starting / target * 100)
         future = min(Decimal(100), projected / target * 100)
@@ -111,33 +108,23 @@ def receipt(result, today):
     section('TEST FINANCE')
     text('SIMULATION - LUMP SUM ONLY' if data['mode']=='lump' else 'SIMULATION - POTENTIAL SALARY')
     text(f'Generated {today:%d %b %Y}')
-    section('INCOME')
+    text(f'Forecast ends {forecast["end"]:%d %b %Y} ({data["months"]} months)')
+    section('PAY PERIOD ALLOCATION')
+    text(f'{data["start"]:%d %b} to {result["cycle_end"]:%d %b %Y}')
     if data['mode'] in {'lump', 'lump_income'}: amount('One-off lump sum',data['lump'])
     amount('Monthly take-home salary',data['salary'])
     if data['existing']: amount('Existing salary (additional mode)',data['existing'])
     amount('Other monthly income',data['other'])
     amount('TOTAL MONTHLY INCOME',data['salary']+data['existing']+data['other'])
     text(f'Income receipt date: {data["start"]:%d %b %Y}')
-    section('PAY PERIOD ALLOCATION')
-    text(f'{data["start"]:%d %b} to {result["cycle_end"]:%d %b %Y}')
     strategies={'savings_first':'Savings first','amex_first':'Amex first','split':f'Split: {data["split"].normalize():f}% to Amex'}
     text('Strategy: '+strategies[data['strategy']])
-    amount('Scheduled payments reserved',first['costs'])
-    amount('Estimated everyday spending',result['variable'])
     amount('Per day (expected spending)',base.get('daily_cost',base['daily']))
-    text('Expected spending, not a maximum allowance.')
     amount('INCOME SURPLUS' if result['surplus']>=0 else 'INCOME FUNDING GAP',abs(result['surplus']))
-    text('Surplus excludes existing bank cash.')
     if data['save_all']: text('Saving all remaining income surplus.')
     elif not data['savings']: text('Savings target not set')
-    amount('Extra Amex repayment applied',first['extra'])
-    amount('Savings allocation this period',first['savings'])
-    amount('Income left after allocation',max(Decimal(0),first['budget']-first['extra']-first['savings']))
-    amount('Cash remaining after allocation',result['spend'])
-    text('Includes existing cash, after costs and reserves; not a monthly allowance.')
     if result['shortfall']: amount('SHORTFALL after reserves',result['shortfall'])
     section('WHERE TO MOVE THIS PAYDAY')
-    text(f'{data["start"]:%d %b} to {result["cycle_end"]:%d %b %Y}')
     text('Extra transfers to make:')
     moved=Decimal(0)
     if data['use_accounts']:
@@ -160,18 +147,18 @@ def receipt(result, today):
     if regular:
         text('Already scheduled - do not send again:')
         for bill in regular: amount(f'{bill["date"]:%d %b} {bill["name"]}',bill['amount'])
-        text('Included in scheduled payments above.')
+        text('Included in the bills total below.')
         if any(not bill.get('savings_account') for bill in regular): text('Unlinked regular payments are not credited to an account goal. Enable saved accounts and check account names.')
     amount('Keep for bills / regular payments',first['costs'])
     amount('Keep for everyday spending',result['variable'])
     amount('Income left in bank',max(Decimal(0),first['budget']-first['extra']-first['savings']))
-    text('Cash top-up comes from protected reserves; do not deduct it again. Plan only.')
+    if reserve.get('gap'): text('Cash top-up uses protected reserves; do not deduct it again.')
     section('CASH & RESERVES')
     amount('Current bank cash',base['cash'])
     reserve=base.get('reserve_details')
     if reserve:
         amount('Bank / emergency reserve',base['buffer']-reserve['gap']-reserve['tax_reserve'])
-        amount('Physical cash top-up',reserve['gap']); amount('Tax reserve',reserve['tax_reserve'])
+        if reserve['tax_reserve']: amount('Tax reserve',reserve['tax_reserve'])
     amount('TOTAL PROTECTED',base['buffer'])
     amount('Existing cash above reserves',max(Decimal(0),base['cash']-base['buffer']))
     card=base.get('amex')
@@ -185,11 +172,9 @@ def receipt(result, today):
                 text('Full balance reserved once today; already deducted in the forecast. Additional suggested repayment: GBP 0.00.')
             else:
                 amount('Listed payments this period',first['planned_card'])
-                amount('Surplus affordable before savings',first['budget'])
-                amount('SUGGESTED EXTRA AMEX PAYMENT',first['extra'])
-                text('Extra is limited by the unpaid balance, income surplus, cash after reserves and selected strategy.')
                 baseline_saving=first['budget'] if data['save_all'] else min(first['budget'],data['savings'])
-                amount('Savings redirected to repayment',max(Decimal(0),baseline_saving-first['savings']))
+                redirected=max(Decimal(0),baseline_saving-first['savings'])
+                if redirected: amount('Savings redirected to repayment',redirected)
                 amount('Estimated balance after this period',first['closing_card'])
             amount('Extra repayments over forecast',forecast['extra_total'])
             amount('Amex owed at forecast end',forecast['card_end'])
@@ -199,21 +184,10 @@ def receipt(result, today):
             else:
                 text(f'APR assumption: {forecast["apr"]}%')
                 amount('Estimated interest over forecast',forecast['interest'])
-            text('Applied to forecast and savings goal. Listed payments stop at payoff. No new card purchases assumed; no real payment is made.')
-    section('UPCOMING PAYMENTS')
-    for bill in result['bills']:
-        basis=bill.get('basis','')
-        reserved=bool(bill.get('undated') or 'reserved' in basis.lower())
-        estimated='estimated' in basis.lower()
-        marker=' [R]' if reserved else ' *' if estimated else ''
-        amount(f'{bill["date"]:%d %b} {bill["name"]}'+marker,bill['amount'])
-    if not result['bills']: text('No scheduled payments in this period')
-    text('[R] Undated/overdue amount reserved today; not proof of a missed payment. * Day estimated from a past payment.')
-    amount('PAYMENTS TOTAL',result['bills_total'])
-    section('OTHER REPAYMENTS')
+
     from finance.test_forecast import is_amex
     options=[item for item in base.get('repayment_options',[]) if not is_amex(item.get('name'))]
-    if not options: text('No other confirmed repayment balances.')
+    if options: section('OTHER REPAYMENTS')
     budget=max(Decimal(0),first['budget']-first['extra']-first['savings'])
     for item in options:
         text(str(item.get('name') or 'Repayment').upper())
@@ -227,10 +201,11 @@ def receipt(result, today):
         if item.get('payments_remaining') is not None: text(f'Payments remaining: {item["payments_remaining"]}')
         if balance is None or rate is None: text('Confirm balance/rate and early repayment terms before deciding.')
         elif balance>0 and budget>=balance: amount('Potential full payoff',balance)
-    text('Finite listed schedules end automatically. Other early payoff options are not applied.')
+
     if result['account_plan']['accounts']:
         section('RECORDED SAVINGS & INVESTMENTS')
-        for account in result['account_plan']['accounts']:
+        for index,account in enumerate(result['account_plan']['accounts']):
+            if index: rule()
             text(account['name'].upper())
             if account['balance'] is None:
                 text('Balance unavailable; excluded from totals and contribution allocation.')
@@ -241,19 +216,9 @@ def receipt(result, today):
             else: text('Balance date not recorded.')
             if account['target']:
                 amount('Target balance',account['target'])
-                remaining=max(Decimal(0),account['target']-account['balance'])
-                amount('Remaining to target',remaining)
-                text(f'{min(Decimal(100),account["balance"]/account["target"]*100):.0f}% of balance goal')
-                amount('Extra transfer this period',account['first'])
-                if account['reserved_added']:
-                    amount('Top-up from protected cash reserve',account['reserved_added'])
-                    text('One-off transfer already funded by the reserve; not another monthly saving.')
-                if account['automatic_added']:
-                    amount('Scheduled saving this period',account['first_automatic'])
-                    amount('Scheduled saving over forecast',account['automatic_added'])
-                amount('Contributions in selected forecast',account['added'])
                 amount('Projected account balance',account['projected'])
-                amount('Still to save at forecast end',max(Decimal(0),account['target']-account['projected']))
+                if account['projected']<account['target']:
+                    amount('Still to save at forecast end',account['target']-account['projected'])
                 goal_progress(account['balance'], account['projected'], account['target'], account['added'], enabled=data['use_accounts'],reserved=account['reserved_added'])
                 reached=account['goal_date'] or account.get('extended_goal_date')
                 if reached=='already': text('Target already reached.')
@@ -268,28 +233,17 @@ def receipt(result, today):
             if account['isa_contributions'] is not None:
                 amount('Recorded ISA contributions this FY',account['isa_contributions'])
                 text('ISA allowance progress is separate from the balance target.')
-        amount('TOTAL RECORDED ACCOUNT BALANCES',result['account_plan']['current_total'])
-        amount('New savings not assigned to accounts',forecast['unallocated_savings'])
-        text('Account contributions share one savings budget. Finished goals redistribute their share to other selected goals; no growth or interest assumed.')
+        if forecast['unallocated_savings']: amount('New savings not assigned to accounts',forecast['unallocated_savings'])
         if not data['use_accounts']: text('Account allocation disabled; overall goal uses the manual starting savings input.')
         if not result['account_plan']['complete']: text('Totals include known balances only.')
-        text('These are hypothetical allocations, not recorded ISA subscriptions. Check shared contribution allowance before making deposits.')
+
     section('SAVINGS PROJECTION')
     amount('Starting savings (separate to cash)',data['starting_savings'])
     amount('Extra savings transfers over forecast',forecast['savings_total'])
     if forecast['automatic_total']: amount('Scheduled savings over forecast',forecast['automatic_total'])
     if forecast['reserved_total']: amount('One-off cash top-up from reserves',forecast['reserved_total'])
     amount('Projected savings at forecast end',forecast['savings_end'])
-    periods=forecast['payments']
-    examples={0, len(periods)-1}
-    if len(periods)>1: examples.add(1)
-    if forecast['payoff']:
-        after=next((i for i,p in enumerate(periods) if p['date']>forecast['payoff']), None)
-        if after is not None: examples.add(after)
-    for index in sorted(examples):
-        period=periods[index]
-        amount(f'{period["date"]:%d %b %Y} savings',period['savings'])
-    if not forecast['savings_total']: text('No extra savings transfers assumed in this test.' if forecast['automatic_total'] else 'No savings transfers assumed in this test.')
+    if not forecast['savings_total']: text('No extra savings transfers assumed in this test.' if forecast['automatic_total'] or forecast['reserved_total'] else 'No savings transfers assumed in this test.')
     else: text('Bank cash excludes transferred savings.')
     if data['goal']:
         section('SAVINGS GOAL')
@@ -306,10 +260,8 @@ def receipt(result, today):
             if forecast.get('extended_goal_date'):
                 text(f'Extended projected goal date: {forecast["extended_goal_date"]:%d %b %Y}')
                 goal_duration(forecast['extended_goal_date'])
-                text('Beyond selected cash forecast; uses the same strategy, costs and finite repayments.')
             elif not forecast['savings_total'] and not forecast['automatic_total'] and not forecast['reserved_total']: text('No savings contribution selected or available; no funded goal date within the planning period.')
             else: text(f"No funded goal date within the {forecast.get('extended_goal_months', data['months'])}-month planning period.")
-        text('Goal uses actual period allocations and starting savings; excludes savings interest.')
     section('RUNWAY WITH TEST INCOME')
     if forecast['run_out']:
         text(f'Reserves breached: {forecast["run_out"]:%d %b %Y}')
@@ -321,8 +273,9 @@ def receipt(result, today):
         label='cash above reserves' if cash>=0 else 'funding shortfall'
         amount(f'{months} month(s): {label}',abs(cash))
     section('ASSUMPTIONS')
-    text('Take-home income only; lump sum once. Costs and savings recalculate each pay period. Starting savings are separate from bank cash. Reserves and everyday costs are protected before extra repayment/saving.')
-    text('Amex interest uses a daily APR estimate when provided; actual statement interest/minimum payments may differ. Forecast assumes no new card purchases. Goal dates and payoff dates are estimates; no transfers are made.')
+    text(f'Forecast: {data["months"]} months from {data["start"]:%d %b %Y}. Goal durations measured from {today:%d %b %Y}.')
+    text('Extra savings use recurring income surplus after bills, spending and reserves; existing bank cash is not used for extra savings. Scheduled savings may use bank cash. Reserved cash top-up is separate.')
+    text('Same income and costs continue; finite repayments stop at completion. No savings growth or new card purchases assumed. Goal dates are estimates; no transfers are made.')
     for warning in base.get('warnings',[]): text(warning)
     rule(); text('SIMULATION ONLY - LIVE RECORDS UNCHANGED'); rule()
     return '\n'.join(lines)+'\n'
