@@ -188,10 +188,12 @@
                         <div class="paper-roll">
                             {% for block in receipt.blocks %}
                                 {% if block.image %}
-                                    <img class="paper-image"
-                                         src="{{ block.image }}"
-                                         style="width:{{ block.width_percent }}%"
-                                         alt="Printed chart">
+                                    <div class="paper-graphic">
+                                        <img class="paper-image"
+                                             src="{{ block.image }}"
+                                             style="width:{{ block.width_percent }}%"
+                                             alt="Printed chart">
+                                    </div>
                                 {% else %}
                                     <pre class="paper-text">{{ block.text }}</pre>
                                 {% endif %}

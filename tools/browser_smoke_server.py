@@ -56,6 +56,15 @@ def fixture_preview():
     # Replace external collection, retaining the production capture/save/render path.
     printer = RecordingPrinter(VirtualPrinter(), defer=True)
     printer.text('INFORMATION\nFixture receipt generated\n')
+    printer.text('-'*42 + '\n')
+    from io import BytesIO
+    import math
+    from PIL import Image, ImageDraw
+    from receipt.weather_renderers import print_temperature_graph
+    print_temperature_graph(printer, [{'time':f'{h:02d}:00','temperature':8+h/3} for h in range(24)],
+        _context={'Image':Image,'ImageDraw':ImageDraw,'BytesIO':BytesIO,'math':math,
+                  'printer_text':lambda printer,text:printer.text(text)})
+    printer.text('-'*42 + '\n')
     from receipt.capture import LIVE_PREVIEW_FILE
     printer.save('information', path=LIVE_PREVIEW_FILE, replace=True)
     preview_job.save_status('running')
