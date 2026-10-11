@@ -30,12 +30,12 @@ class AmexPeriodSummaryTests(TestCase):
         text=receipt(result,TODAY).split('AMEX PLAN')[1].split('SAVINGS PROJECTION')[0]
         period,forecast=text.split('WHOLE FORECAST')
         for label,value in [('Balance at period start','£3,549.94'),
-                            ('Scheduled repayment this period','£50.00'),
+                            ('Scheduled repayment via direct debit this period','£50.00'),
                             ('Extra repayment this period','£3,302.41'),
                             ('Balance at period end','£197.53')]:
-            self.assertIn(label,period)
+            self.assertIn(label,' '.join(period.split()))
             self.assertIn(value,period)
-        self.assertIn('Scheduled repayments over forecast',forecast)
+        self.assertIn('Scheduled repayments via direct debit over forecast',' '.join(forecast.split()))
         self.assertIn('£100.00',forecast)
         self.assertIn('£3,449.94',forecast)
         self.assertNotIn('Savings redirected',text)
