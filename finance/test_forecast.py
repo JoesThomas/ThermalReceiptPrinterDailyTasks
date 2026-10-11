@@ -29,7 +29,7 @@ def simulate(base, inputs, today):
     paydays = {occurs(inputs['start'], month): month for month in range(inputs['months'])}
     periods = []; points = []; actual = []; transfers = ZERO; extra_total = ZERO
     run_out = None; payoff = None; goal_date = today if inputs['goal'] and inputs['starting_savings'] >= inputs['goal'] else None
-    interest_total = ZERO; checkpoints = []
+    interest_total = ZERO; checkpoints = []; automatic_total=ZERO
     for offset in range((end-today).days):
         on = today + timedelta(days=offset)
         if known and balance > 0 and offset:
@@ -45,6 +45,7 @@ def simulate(base, inputs, today):
             if known:
                 scheduled = min(scheduled, balance + balance*rate*(next_pay-on).days)
             costs = noncard + scheduled
+            automatic=sum((e['amount'] for e in period_events if e.get('savings_account')),ZERO)
             variable = daily * (next_pay-on).days
             surplus = income - costs - variable
             budget = max(ZERO, min(surplus, cash-costs-variable)).quantize(CENT)
@@ -54,17 +55,17 @@ def simulate(base, inputs, today):
             elif strategy == 'split': extra = min(budget*inputs['split']/100, debt_budget).quantize(CENT)
             else: extra = ZERO
             available = budget-extra
-            saving = available if inputs['save_all'] else min(available, inputs['savings'])
+            saving = available if inputs['save_all'] else min(available, max(ZERO,inputs['savings']-automatic))
             if strategy == 'savings_first': extra = min(budget-saving, debt_budget)
             balance = max(ZERO, balance-extra); cash -= extra+saving
             transfers += saving; extra_total += extra
             if known and balance <= CENT and payoff is None and card.get('balance', ZERO) > 0:
                 payoff = on; balance = ZERO
-            if inputs['goal'] and goal_date is None and inputs['starting_savings']+transfers >= inputs['goal'] and run_out is None:
+            if inputs['goal'] and goal_date is None and inputs['starting_savings']+transfers+automatic_total >= inputs['goal'] and run_out is None:
                 goal_date = on
             periods.append(dict(funded=run_out is None, date=on, end=next_pay-timedelta(days=1), salary=inputs['salary']+inputs['existing'],
                 rent=inputs['other'], opening=opening, costs=costs, variable=variable, surplus=surplus,
-                budget=budget, savings=saving, extra=extra, planned_card=scheduled,
+                budget=budget, savings=saving, automatic_savings=automatic, extra=extra, planned_card=scheduled,
                 balance_after_extra=balance, savings_total=transfers, cash_after_allocation=cash-costs-variable))
         for event in events.get(on, []):
             amount = event['amount']
@@ -74,7 +75,12 @@ def simulate(base, inputs, today):
                 if balance <= CENT and payoff is None and card.get('balance', ZERO) > 0:
                     payoff = on; balance = ZERO
             if amount > 0:
-                cash -= amount; actual.append(dict(event, amount=amount))
+                cash -= amount
+                actual.append(dict(event, amount=amount, funded=run_out is None and cash-daily>=0))
+                if event.get('savings_account'):
+                    automatic_total+=amount
+                    if inputs['goal'] and goal_date is None and inputs['starting_savings']+transfers+automatic_total>=inputs['goal'] and run_out is None and cash-daily>=0:
+                        goal_date=on
         cash -= daily
         if periods: periods[-1]['closing_card'] = balance if known else None
         if cash < 0 and run_out is None: run_out = on
@@ -84,4 +90,4 @@ def simulate(base, inputs, today):
     return dict(valid=True, end=end-timedelta(days=1), end_cash=cash, run_out=run_out, payments=periods,
         points=points, checkpoints=checkpoints, events=actual, savings_total=transfers, extra_total=extra_total,
         card_end=balance if known else None, payoff=payoff, apr=apr, interest=interest_total,
-        goal_date=goal_date, savings_end=inputs['starting_savings']+transfers)
+        goal_date=goal_date, automatic_total=automatic_total, savings_end=inputs['starting_savings']+transfers+automatic_total)

@@ -48,7 +48,7 @@ class SimulationTests(TestCase):
         text = receipt(result, TODAY)
         self.assertIn('Remaining balance', text)
         self.assertIn('Per day (expected spending)', text)
-        self.assertIn('Test savings transfers over forecast', text)
+        self.assertIn('Extra savings transfers over forecast', text)
         self.assertIn('Bank cash excludes transferred savings.', text)
         self.assertIn('Confirm balance/rate', text)
         self.assertIn('Final payment: 01 Jun 2027', text)

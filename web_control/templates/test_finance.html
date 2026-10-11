@@ -142,13 +142,14 @@
                             <small>Leave blank to use a saved rate, if known. Otherwise interest is excluded explicitly.</small>
                         </label>
                         <label>
-                            Desired monthly savings (£)
+                            Desired total monthly savings (£)
                             <input type="number"
                                    name="savings_target"
                                    min="0"
                                    max="10000000"
                                    step="0.01"
                                    value="{{ values.get('savings_target', '0') }}">
+                            <small>Includes linked regular savings payments. The receipt shows the extra transfers needed after those payments.</small>
                         </label>
                         <label>
                             <input type="checkbox"
