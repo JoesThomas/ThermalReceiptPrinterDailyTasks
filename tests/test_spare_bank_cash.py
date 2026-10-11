@@ -73,12 +73,17 @@ class SpareBankCashTests(TestCase):
         self.assertEqual(result['account_plan']['accounts'][0]['goal_date'],TODAY)
         self.assertEqual(result['forecast']['goal_date'],TODAY)
 
-    def test_income_strategy_is_applied_before_spare_cash_investment(self):
+    def test_amex_first_uses_income_and_spare_bank_cash_before_savings(self):
         base=source();base['amex']={'balance':D(5000),'full_reserved':False}
         result=build(base,values(salary='1000',strategy='amex_first'),TODAY)
         first=result['forecast']['payments'][0]
-        self.assertEqual(first['extra'],500)
-        self.assertEqual(first['cash_invested'],2000)
+        self.assertEqual(first['extra'],2500)
+        self.assertEqual(first['cash_repaid'],2000)
+        self.assertEqual(first['cash_invested'],0)
+        self.assertEqual(first['savings'],0)
+        self.assertEqual(result['account_plan']['accounts'][0]['first'],0)
+        text=' '.join(receipt(result,TODAY).split())
+        self.assertIn('Includes £2,000.00 from spare bank cash in the Amex repayment above.',text)
         self.assertEqual(result['forecast']['end_cash'],0)
 
     def test_future_periods_do_not_transfer_the_starting_cash_twice(self):
@@ -128,3 +133,45 @@ class SpareBankCashTests(TestCase):
     def test_additional_existing_salary_counts_as_salary_for_the_cash_transfer(self):
         result=build(source(),values(salary='0',mode='additional',existing_salary='100'),TODAY)
         self.assertEqual(result['forecast']['cash_invested_total'],1600)
+
+    def test_amex_first_only_saves_money_left_after_card_is_fully_reserved(self):
+        base=source();base['amex']={'balance':D(1200),'full_reserved':False}
+        base['events'].append({'name':'Amex payment','amount':D(50),'date':date(2026,10,25)})
+        result=build(base,values(salary='1000',strategy='amex_first',save_all='on'),TODAY)
+        first=result['forecast']['payments'][0]
+        self.assertEqual(first['extra'],1150)
+        self.assertEqual(first['savings'],1300)
+        self.assertEqual(first['cash_repaid'],700)
+        self.assertEqual(result['forecast']['card_end'],0)
+        self.assertEqual(result['forecast']['end_cash'],0)
+
+    def test_split_strategy_includes_spare_cash_in_the_split(self):
+        base=source();base['amex']={'balance':D(5000),'full_reserved':False}
+        result=build(base,values(salary='1000',strategy='split',amex_split='50',save_all='on'),TODAY)
+        first=result['forecast']['payments'][0]
+        self.assertEqual(first['extra'],1250)
+        self.assertEqual(first['savings'],1250)
+        self.assertEqual(first['cash_repaid'],750)
+        self.assertEqual(first['cash_invested'],1250)
+        self.assertEqual(result['forecast']['end_cash'],0)
+
+    def test_quoted_receipt_amounts_go_to_amex_first_without_extra_savings(self):
+        base=source(cash='3541.90',buffer='1000');base['daily']=D('55.91806451612903225806451613')
+        base['events']=[{'name':'Bills','amount':D('1406.03'),'date':date(2026,10,20)}]
+        base['amex']={'balance':D(10000),'full_reserved':False}
+        result=build(base,values(salary='3900',strategy='amex_first',save_all='on'),TODAY)
+        first=result['forecast']['payments'][0]
+        self.assertEqual(first['extra'],D('3302.41'))
+        self.assertEqual(first['cash_repaid'],D('2541.90'))
+        self.assertEqual(first['savings'],0)
+        self.assertEqual(result['account_plan']['accounts'][0]['first'],0)
+
+    def test_runway_shows_bank_reserve_separately_from_money_above_it(self):
+        for buffer,expected in [('0','£1,000.00'),('1500','£1,500.00')]:
+            base=source(buffer=buffer)
+            result=build(base,values(),TODAY)
+            text=receipt(result,TODAY).split('RUNWAY WITH TEST INCOME')[1]
+            reserve_line=next(line for line in text.splitlines() if 'Bank reserve kept' in line)
+            self.assertIn(expected,reserve_line)
+            self.assertIn('Bank cash above reserves at end',text)
+            self.assertTrue(all(len(line)<=42 for line in text.splitlines()))

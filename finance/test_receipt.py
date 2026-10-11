@@ -128,7 +128,7 @@ def receipt(result, today):
     if data['save_all']: text('Saving all remaining income surplus.')
     elif not data['savings'] and not data['invest_spare_cash']: text('Savings target not set')
     if data['invest_spare_cash']:
-        if data['salary']+data['existing']>0: text('Invest spare bank cash after salary; keep at least £1,000 plus bills, spending and other reserves.')
+        if data['salary']+data['existing']>0: text('Use spare bank cash with this strategy; keep at least £1,000 plus bills, spending and other reserves.')
         else: text('No salary: spare bank cash investment paused.')
     if result['shortfall']: amount('SHORTFALL after reserves',result['shortfall'])
     section('WHERE TO MOVE THIS PAYDAY')
@@ -141,6 +141,7 @@ def receipt(result, today):
     unassigned=first['savings']-moved
     if unassigned: amount('Savings - choose an account',unassigned)
     if first['extra']: amount('Amex - extra repayment',first['extra'])
+    if first['cash_repaid']: text(f'Includes £{first["cash_repaid"]:,.2f} from spare bank cash in the Amex repayment above.')
     if first['cash_invested']: text(f'Includes £{first["cash_invested"]:,.2f} from spare bank cash in the savings transfers above.')
     reserve=base.get('reserve_details') or {}
     if reserve.get('gap'):
@@ -180,7 +181,7 @@ def receipt(result, today):
                 text('Full balance reserved once today; already deducted in the forecast. Additional suggested repayment: £0.00.')
             else:
                 amount('Listed payments this period',first['planned_card'])
-                baseline_saving=first['budget'] if data['save_all'] else min(first['budget'],data['savings'])
+                baseline_saving=first['income_budget'] if data['save_all'] else min(first['income_budget'],data['savings'])
                 redirected=max(Decimal(0),baseline_saving-first['income_savings'])
                 if redirected: amount('Savings redirected to repayment',redirected)
                 amount('Estimated balance after this period',first['closing_card'])
@@ -276,6 +277,8 @@ def receipt(result, today):
         text(f'Reserves breached: {forecast["run_out"]:%d %b %Y}')
         text(format_runway((forecast['run_out']-today).days,today))
     else: text(f'No shortfall through {forecast["end"]:%d %b %Y}')
+    reserve=base.get('reserve_details') or {}
+    amount('Bank reserve kept',base['buffer']-money(reserve.get('gap'),Decimal(0))-money(reserve.get('tax_reserve'),Decimal(0)))
     amount('Bank cash above reserves at end',max(Decimal(0),forecast['end_cash']))
     if forecast['end_cash']<0: amount('Funding shortfall at forecast end',-forecast['end_cash'])
     for months,cash in result['checkpoints']:
@@ -284,7 +287,7 @@ def receipt(result, today):
     section('ASSUMPTIONS')
     text(f'Forecast: {data["months"]} months from {data["start"]:%d %b %Y}. Goal durations measured from {today:%d %b %Y}.')
     if data['invest_spare_cash']:
-        text('Spare bank cash is invested only on salary paydays, after the income strategy. Protects £1,000, bills, everyday spending and other reserves. No salary means no spare cash investment. Uses selected account shares and targets.')
+        text('Spare bank cash follows the selected strategy on salary paydays; Amex first repays Amex before extra savings. Protects £1,000, bills, everyday spending and other reserves. No salary means no spare cash investment. Uses selected account shares and targets.')
     else: text('Extra savings use recurring income surplus after bills, spending and reserves; existing bank cash is not used for extra savings.')
     text('Scheduled savings may use bank cash. Reserved cash top-up is separate.')
     text('Same income and costs continue; finite repayments stop at completion. No savings growth or new card purchases assumed. Goal dates are estimates; no transfers are made.')
