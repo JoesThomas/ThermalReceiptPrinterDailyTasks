@@ -183,8 +183,10 @@ process.on('exit', () => child.kill());
   for (const submit of [false, true]) {
     let heldRoute;
     let release;
+    let started;
+    const requestStarted = new Promise(resolve => { started = resolve; });
     const pending = new Promise(resolve => { release = resolve; });
-    const handler = async route => { heldRoute = route; await pending; await route.fulfill({contentType:'text/html',body:'<p>Finance retrieved</p>'}); };
+    const handler = async route => { heldRoute = route; started(); await pending; await route.fulfill({contentType:'text/html',body:'<p>Finance retrieved</p>'}); };
     await page.route('**/finance-review**', handler);
     if (submit) {
       await page.evaluate(() => {
@@ -195,11 +197,13 @@ process.on('exit', () => child.kill());
     } else {
       await page.locator('.app-navigation a[href="/finance-review"]').evaluate(link => link.click());
     }
-    await page.locator('.navigation-loading:not([hidden])').waitFor();
-    assert.match(await page.locator('.navigation-loading').innerText(), /Retrieving bank transactions and balances/);
+    await requestStarted;
+    // Locator actions wait for navigation; inspect the still-visible outgoing document directly.
+    assert.equal(await page.evaluate(() => document.querySelector('.navigation-loading').hidden), false);
+    assert.match(await page.evaluate(() => document.querySelector('.navigation-loading').textContent), /Retrieving bank transactions and balances/);
     await page.clock.fastForward(16000);
-    assert.equal(await page.locator('.navigation-loading').isVisible(), true);
-    assert.match(await page.locator('.navigation-loading').innerText(), /Still retrieving bank data/);
+    assert.equal(await page.evaluate(() => document.querySelector('.navigation-loading').hidden), false);
+    assert.match(await page.evaluate(() => document.querySelector('.navigation-loading').textContent), /Still retrieving bank data/);
     assert.ok(heldRoute, 'Bank navigation was intercepted');
     const loaded = page.waitForURL(url => url.pathname.startsWith('/finance-review'));
     release(); await loaded;
