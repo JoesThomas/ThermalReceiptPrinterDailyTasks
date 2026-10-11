@@ -256,6 +256,11 @@ class FinanceRefresh:
             if status.pop("scope", None) == self.scope()
             else None
         )
+        try:
+            if stamp and datetime.fromisoformat(stamp).tzinfo is None:
+                stamp = None
+        except (ValueError, TypeError):
+            stamp = None
         status.update(
             checked_at=stamp,
             fresh=self.fresh({"checked_at": stamp}, status) if stamp else False,

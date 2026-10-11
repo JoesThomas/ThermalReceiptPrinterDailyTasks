@@ -160,6 +160,10 @@ class FinanceBackgroundTests(TestCase):
             self.assertIsNotNone(status["checked_at"])
             self.assertNotIn("scope", status)
             self.assertFalse(manager.fresh({"checked_at": "bad timestamp"}))
+            status = manager.status()
+            status["checked_at"] = "bad timestamp"
+            write_json(manager.status_file, status)
+            self.assertIsNone(manager.public_status()["checked_at"])
 
     def test_snapshot_codec_preserves_money_and_dates_without_credentials(self):
         value = {

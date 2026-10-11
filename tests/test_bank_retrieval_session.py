@@ -1,4 +1,6 @@
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from contextlib import ExitStack
 from datetime import date
 from pathlib import Path
@@ -13,7 +15,7 @@ from services.bank_transport import refresh, get
 from services.finance_source import FinanceDependencies
 from services.observability import LOGGER, event
 from finance import bank_accounts
-from storage import write_json
+from storage import read_json_object, write_json
 
 
 class BankSessionTests(TestCase):
@@ -129,6 +131,47 @@ class BankSessionTests(TestCase):
                 auth("HSBC", None)
             self.assertEqual(http.post.call_count, 4)
             self.assertFalse((root / "tokens.json").exists())
+
+    def test_token_rotation_is_serialized_across_concurrent_sessions(self):
+        with TemporaryDirectory() as folder:
+            path = Path(folder) / "tokens.json"
+            write_json(path, {"HSBC": "r0", "MONZO": "m0"})
+            used = []
+            barrier = Barrier(2)
+            http = Mock()
+
+            def post(url, **kwargs):
+                used.append(kwargs["data"]["refresh_token"])
+                response = Mock()
+                response.json.return_value = {
+                    "access_token": "access",
+                    "refresh_token": f"r{len(used)}",
+                }
+                return response
+
+            http.post.side_effect = post
+
+            def collect(_):
+                barrier.wait(timeout=3)
+                with retrieval():
+                    return refresh(
+                        "HSBC",
+                        token_file=path,
+                        initial=lambda p: read_json_object(path)[p],
+                        load_tokens=lambda: read_json_object(path),
+                        save_tokens=lambda value: write_json(path, value),
+                        client_id="client",
+                        client_secret="secret",
+                        auth_url="https://invalid.test",
+                        http=http,
+                    )
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                self.assertEqual(
+                    list(pool.map(collect, range(2))), ["access", "access"]
+                )
+            self.assertEqual(used, ["r0", "r1"])
+            self.assertEqual(read_json_object(path), {"HSBC": "r2", "MONZO": "m0"})
 
     def test_failed_authentication_is_not_retried_in_same_session(self):
         with TemporaryDirectory() as folder:

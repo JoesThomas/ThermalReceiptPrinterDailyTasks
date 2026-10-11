@@ -99,7 +99,7 @@ class ForecastInvariantTests(TestCase):
                     self.assertGreaterEqual(period["savings"], 0)
                     self.assertLessEqual(
                         period["extra"] + period["savings"],
-                        period["budget"] + period["cash_invested"],
+                        period["budget"],
                     )
                     if D(salary) == 0:
                         self.assertEqual(period["cash_invested"], 0)
