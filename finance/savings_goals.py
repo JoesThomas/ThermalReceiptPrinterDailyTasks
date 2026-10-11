@@ -1,6 +1,5 @@
 """Private savings targets and dated ISA subscriptions, separate from valuations."""
 import calendar
-import fcntl
 import hashlib
 import json
 import re
@@ -11,7 +10,7 @@ from decimal import Decimal, ROUND_CEILING
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from finance.wealth_history import amount
-from storage import write_json
+from storage import write_json, file_lock
 
 FILE = Path(__file__).resolve().parents[1] / 'data' / 'savings_goals.json'
 TYPES = {'savings':'Savings goal','premium_bonds':'Premium Bonds','cash_isa':'Adult cash ISA',
@@ -80,10 +79,11 @@ def load():
 
 @contextmanager
 def edit():
-    FILE.parent.mkdir(parents=True,exist_ok=True)
-    with FILE.with_suffix('.lock').open('a') as lock:
-        fcntl.flock(lock,fcntl.LOCK_EX)
-        value=load();yield value;validate(value);write_json(FILE,value)
+    with file_lock(FILE):
+        value = load()
+        yield value
+        validate(value)
+        write_json(FILE, value)
 
 
 def account_settings(name,kind,account_type,target=None,monthly_share=None):

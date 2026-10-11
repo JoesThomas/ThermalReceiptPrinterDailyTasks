@@ -210,8 +210,7 @@ def generate_week(start: date | None = None, force: bool = False, raw=False) -> 
         if not pool:
             raise RuntimeError(f"No eligible recipes for {d.isoformat()}; check allergen/diet settings")
         want_batch = (not batch_used and d.weekday() == preferred_batch_day)
-        ranked = sorted(pool, key=lambda r: _score(r, previous, used, history, d, want_batch), reverse=True)
-        chosen = ranked[0]
+        chosen = max(pool, key=lambda r: _score(r, previous, used, history, d, want_batch))
         used.add(chosen.get("name", ""))
         if chosen.get("meal_type") in {"batch", "whole_joint"}:
             batch_used = True

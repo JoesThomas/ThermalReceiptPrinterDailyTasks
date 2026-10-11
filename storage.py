@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
+from contextlib import contextmanager
 
 def write_bytes(path, content):
     path = Path(path)
@@ -68,20 +69,37 @@ class PrivateStore:
             raise PrivateStateError(f'Private state is invalid: {self.path.name}. Restore a valid backup.') from error
 
     def update(self, change):
-        import fcntl
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.path.with_suffix('.lock').open('a') as lock:
-            os.chmod(lock.name, 0o600)
-            fcntl.flock(lock, fcntl.LOCK_EX)
-            try:
-                value = self.read()
-                change(value)
-                if self.schema_version is not None:
-                    value['schema_version'] = self.schema_version
-                self.validate(value)
-                if len(json.dumps(value,ensure_ascii=False,allow_nan=False).encode()) > self.max_bytes:
-                    raise PrivateStateError("Private state exceeds its size limit.")
-                write_json(self.path, value)
-                return value
-            finally:
-                fcntl.flock(lock, fcntl.LOCK_UN)
+        with file_lock(self.path):
+            value = self.read()
+            change(value)
+            if self.schema_version is not None:
+                value['schema_version'] = self.schema_version
+            self.validate(value)
+            if len(json.dumps(value, ensure_ascii=False, allow_nan=False).encode()) > self.max_bytes:
+                raise PrivateStateError("Private state exceeds its size limit.")
+            write_json(self.path, value)
+            return value
+
+
+def read_json_object(path):
+    """Read optional display metadata; strict stores retain their validators."""
+    try:
+        value = json.loads(Path(path).read_text())
+        return value if isinstance(value, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+@contextmanager
+def file_lock(path):
+    """Hold the established sidecar lock for one private state operation."""
+    import fcntl
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.with_suffix('.lock').open('a') as lock:
+        os.chmod(lock.name, 0o600)
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)

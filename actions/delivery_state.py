@@ -4,22 +4,16 @@ from html import unescape
 import json
 from contextlib import contextmanager
 from pathlib import Path
-import fcntl
 from actions.delivery_summary import consolidate, identity, item_title
-from storage import write_json
+from storage import write_json, file_lock
 
 FILE = Path(__file__).resolve().parents[1] / 'data' / 'delivery_state.json'
 
 
 @contextmanager
 def locked_state():
-    FILE.parent.mkdir(parents=True, exist_ok=True)
-    with FILE.with_suffix('.lock').open('a') as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(lock, fcntl.LOCK_UN)
+    with file_lock(FILE):
+        yield
 
 
 def load_state():

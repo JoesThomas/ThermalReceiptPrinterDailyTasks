@@ -11,7 +11,7 @@ from threading import Event, Lock, Thread
 from urllib.parse import urljoin, urlsplit
 import fcntl
 import requests
-from storage import write_json
+from storage import write_json, file_lock
 
 ROOT = Path(__file__).resolve().parents[1]
 FILE = ROOT / 'data' / 'api_health.json'
@@ -50,12 +50,10 @@ def load():
 
 @contextmanager
 def transaction():
-    FILE.parent.mkdir(parents=True,exist_ok=True)
-    with FILE.with_suffix('.lock').open('a') as lock:
-        fcntl.flock(lock,fcntl.LOCK_EX)
-        try:
-            value=load();yield value;write_json(FILE,value)
-        finally: fcntl.flock(lock,fcntl.LOCK_UN)
+    with file_lock(FILE):
+        value = load()
+        yield value
+        write_json(FILE, value)
 
 
 def record(name,status='healthy',code=None,duration=None,mode='observed',reason=''):

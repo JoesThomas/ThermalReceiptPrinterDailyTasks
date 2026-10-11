@@ -137,29 +137,7 @@ def get_aston_villa_match_today(
     return None
 
 
-def _rail_time(
-    date_value,
-    time_text,
-):
-    if not time_text:
-        return None
-
-    try:
-        parsed = datetime.strptime(
-            time_text,
-            "%H:%M",
-        ).time()
-
-    except ValueError:
-        return None
-
-    return datetime.combine(
-        date_value,
-        parsed,
-        tzinfo=ZoneInfo(
-            "Europe/London"
-        ),
-    )
+from services.rail_time import rail_time as _rail_time
 
 
 def get_villa_matchday_trains(

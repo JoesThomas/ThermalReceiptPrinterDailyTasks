@@ -169,10 +169,18 @@ process.on('exit', () => child.kill());
   await page.goto('http://receipt.test/print-plan');
   await Promise.all([page.waitForURL('**/preview'),page.getByRole('button',{name:'Generate and print selected pages'}).click()]);
   assert.match(await page.locator('main').innerText(),/Selected receipt pages queued/);
+  await page.goto('http://receipt.test/__fixture_archive_pages');
+  assert.equal(await page.locator('main .review-row').count(),50);
+  const firstArchiveIds=await page.locator('main .review-row > a').evaluateAll(rows=>rows.map(row=>row.getAttribute('href')));
+  await Promise.all([page.waitForURL(url=>url.searchParams.get('offset')==='50'),page.getByRole('link',{name:'Older receipts',exact:true}).click()]);
+  assert.equal(await page.locator('main .review-row').count(),5);
+  const olderArchiveIds=await page.locator('main .review-row > a').evaluateAll(rows=>rows.map(row=>row.getAttribute('href')));
+  assert.equal(olderArchiveIds.some(id=>firstArchiveIds.includes(id)),false);
+  await page.getByRole('link',{name:'Newer receipts',exact:true}).waitFor();
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
-    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/tasks','/finance/test','/savings/goals']) {
+    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/tasks','/finance/test','/savings/goals','/receipts']) {
       await page.goto('http://receipt.test'+path);
       await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `${path} overflows at ${width}`);
@@ -184,7 +192,7 @@ process.on('exit', () => child.kill());
     await page.goto('http://receipt.test/bins');
     await page.screenshot({path:process.env.RECEIPT_BROWSER_SCREENSHOT, fullPage:true});
   }
-  console.log(`Browser checks passed: 19 form flows, ${checks} responsive layouts`);
+  console.log(`Browser checks passed: 19 form flows and archive pagination, ${checks} responsive layouts`);
   await browser.close();
   child.kill();
 })().catch(error => { console.error(error); process.exit(1); });

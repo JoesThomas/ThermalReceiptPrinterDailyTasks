@@ -498,3 +498,8 @@ Forecast input validation is in `finance/scenario_inputs.py`, scenario preparati
 in `finance/scenario_plan.py`, daily cash flow in `finance/test_forecast.py`, contribution
 comparisons in `finance/contribution_plan.py`, and receipt rendering in `finance/test_receipt.py`.
 The existing `build` and `validate` imports from `finance.test_receipt` remain supported.
+
+
+Repository maintenance and measured performance changes are described in
+[Repository performance](docs/repository-performance.md). Development checks and
+the one-update-per-squash-commit workflow are in [Contributing](CONTRIBUTING.md).

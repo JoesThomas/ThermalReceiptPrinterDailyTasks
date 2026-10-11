@@ -1,6 +1,5 @@
 """Local setup guidance and date-based reminders, without remote API calls."""
 from receipt.local_time import uk_now
-import json
 from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -10,11 +9,7 @@ from finance.yearly_subscriptions import next_renewal
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def read(path):
-    try:
-        value = json.loads(path.read_text())
-        return value if isinstance(value, dict) else {}
-    except (OSError, ValueError): return {}
+from storage import read_json_object as read
 
 
 def reminders(data=None, today=None):

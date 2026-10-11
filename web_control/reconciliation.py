@@ -1,3 +1,4 @@
+from finance_trends import prepare_rules
 """Private review of uncertain payments; category edits never verify a bill payment."""
 import fcntl
 import hashlib
@@ -36,7 +37,7 @@ def read(path):
 
 
 def save_review(transactions, rows, today):
-    rules = load_rules(RULES); payments = []; reviewable=[]
+    rules = prepare_rules(load_rules(RULES)); payments = []; reviewable=[]
     for tx in external_payments(transactions):
         paid = _parse_date(tx)
         if not paid or not 0 <= (today-paid).days <= 29: continue
@@ -61,7 +62,7 @@ def register(app, login_required):
     @login_required
     def finance_reconciliation():
         from receipt.local_time import uk_receipt_time
-        try: state = read(QUEUE); rules = load_rules(RULES); error = None
+        try: state = read(QUEUE); rules = prepare_rules(load_rules(RULES)); error = None
         except ValueError as problem: state, rules, error = {}, {}, str(problem)
         chosen=request.args.get('payment')
         if chosen:
