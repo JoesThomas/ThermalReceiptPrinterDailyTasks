@@ -19,7 +19,7 @@ class FinanceProjectionWebTests(unittest.TestCase):
         try:
             script = '''
 import sys, json, tempfile
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -44,8 +44,15 @@ with tempfile.TemporaryDirectory() as directory:
          patch.object(receipt, 'load_finance_settings', side_effect=lambda: json.loads(settings.read_text())), \\
          patch.object(finance_insights, 'FILE', Path(directory) / 'observations.json'), \\
          patch.object(finance_suggestions, 'DISMISSED_FILE', Path(directory) / 'dismissed.json'), \\
-         patch.object(planning, 'FILE', Path(directory) / 'planning.json'):
+         patch.object(planning, 'FILE', Path(directory) / 'planning.json'), \\
+         patch.object(app.extensions['finance_refresh'], 'read', side_effect=lambda: {
+             'data': pipeline.get_regular_finance_data(), 'balances': pipeline.get_account_balances(),
+             'checked_at':datetime.now(timezone.utc).isoformat()}), \\
+         patch.object(app.extensions['finance_refresh'], 'fresh', return_value=True), \\
+         patch.object(app.extensions['finance_refresh'], 'start'):
         with app.test_client() as client:
+            assert client.get('/finance-review/status').status_code == 302
+            assert client.post('/finance-review/refresh').status_code == 403
             with client.session_transaction() as session:
                 session['authenticated'] = True
                 session['csrf_token'] = 'test-csrf'
@@ -68,6 +75,12 @@ with tempfile.TemporaryDirectory() as directory:
             with patch.dict(app.config, {'SELECTED_PRINT_START':lambda args:(args == ['--pages','actions','finance'],None)}):
                 assert client.post('/receipt/selected-print',data={'csrf_token':'test-csrf','sections':['actions','finance']}).status_code == 302
             assert client.post('/preview/generate',data={'csrf_token':'test-csrf','selected_sections':'1','sections':[]}).status_code == 400
+            with patch.object(app.extensions['finance_refresh'], 'read', return_value=None):
+                shell = client.get('/finance-review')
+                assert shell.status_code == 200
+                assert b'This page is ready while the banks respond' in shell.data
+            assert client.get('/finance-review/status').status_code == 200
+            assert client.post('/finance-review/refresh', data={'csrf_token':'test-csrf'}, headers={'Accept':'application/json'}).status_code == 202
             response = client.get('/finance-review')
             assert response.status_code == 200, response.status_code
             assert b'Finance suggestions' in response.data
@@ -77,6 +90,12 @@ with tempfile.TemporaryDirectory() as directory:
             assert b'Private monthly observations' in response.data
             assert (Path(directory)/'observations.json').exists()
             assert b'Example bill' in response.data
+            from finance import reviews
+            with patch.object(app.extensions['finance_refresh'], 'fresh', return_value=False), patch.object(reviews, 'capture') as capture:
+                stale = client.get('/finance-review')
+                assert stale.status_code == 200
+                assert b'Forecasts are withheld' in stale.data
+                capture.assert_not_called()
             assert client.post('/finance-review/forecast-settings', data={
                 'csrf_token': 'test-csrf', 'next_payday': '2026-10-30', 'payday_repeat': 'monthly',
                 'emergency_buffer': '100', 'runway_daily_spend': '8'}).status_code == 302

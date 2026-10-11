@@ -71,6 +71,53 @@ def fixture_archive_pages():
     return redirect('/receipts?q=Archive+pagination+fixture')
 
 
+# A controlled background bank fixture exercises the production snapshot/refresh path.
+from threading import Event
+from types import SimpleNamespace
+from datetime import date
+from flask import jsonify
+finance_release = Event()
+finance_manager = web.app.extensions['finance_refresh']
+
+@web.app.get('/__fixture_finance_setup')
+def fixture_finance_setup():
+    finance_release.set()
+    if finance_manager.worker:
+        finance_manager.worker.join(2)
+    finance_release.clear()
+    finance_manager.snapshot_file.unlink(missing_ok=True)
+    finance_manager.status_file.unlink(missing_ok=True)
+    def collect(progress):
+        progress('Retrieving HSBC transactions')
+        if not finance_release.wait(30):
+            raise TimeoutError('Bank fixture was not released')
+        return {'data':([{'date':date.today().isoformat(),'amount':-30,'description':'Fixture everyday store'}], [], [], [], {'bank_data_status':'complete'}),
+                'balances':{'HSBC':{'available':500},'MONZO':{'available':50},'AMEX':{'current':0}}}
+    finance_manager.collect = collect
+    def subscriptions(*args, **kwargs):
+        from services.subscriptions import load_subscriptions
+        values = load_subscriptions()
+        return {'monthly':values.get('monthly',[]),'yearly':values.get('yearly',[]),'ended':[]}
+    sys.modules['services.live_pipeline'] = SimpleNamespace(build_subscription_status=subscriptions,
+        matching_subscription_transaction=lambda *args:None,
+        analyse_incoming_payments=lambda *args,**kwargs:([],[]))
+    return redirect('/finance-review')
+
+@web.app.get('/__fixture_finance_release')
+def fixture_finance_release():
+    finance_release.set()
+    if finance_manager.worker:
+        finance_manager.worker.join(2)
+    return jsonify(finance_manager.public_status())
+
+@web.app.get('/__fixture_finance_fail')
+def fixture_finance_fail():
+    def fail(progress):
+        raise RuntimeError('Simulated unavailable bank')
+    finance_manager.collect = fail
+    return jsonify(ok=True)
+
+
 web._generate_live_preview_locked = fixture_preview
 if '--stdio' in sys.argv:
     import json

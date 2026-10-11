@@ -4,6 +4,8 @@ from typing import Callable, Any
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import requests
+from services.bank_session import stage
+from services.observability import event
 
 
 @dataclass(frozen=True)
@@ -70,7 +72,7 @@ def collect(dependencies: FinanceDependencies, *, persist=True):
         try:
             provider_tokens[provider] = dependencies._refresh_truelayer_access_token(provider, dependencies._initial_truelayer_refresh_token(provider))
         except Exception as error:
-            print(f'{provider} unavailable:', repr(error))
+            event('bank_connection', provider=provider, status='failed', error=error)
             provider_tokens[provider] = None
             fetch_failed += 1
             source_coverage.append({'provider': provider, 'source': 'Connection', 'status': 'Unavailable', 'count': None})
@@ -80,10 +82,11 @@ def collect(dependencies: FinanceDependencies, *, persist=True):
         access_token = provider_tokens.get(provider)
         if not access_token:
             continue
+        stage(f'Retrieving {provider} account list', provider=provider)
         try:
             account_ids = dependencies._truelayer_account_ids(access_token)
         except requests.RequestException as error:
-            print(f'{provider} account-list error:', error)
+            event('bank_inventory', provider=provider, status='failed', error=error)
             fetch_failed += 1
             source_coverage.append({'provider': provider, 'source': 'Account list', 'status': 'Unavailable', 'count': None})
             continue
@@ -95,16 +98,17 @@ def collect(dependencies: FinanceDependencies, *, persist=True):
         if len(included_ids) < len(account_ids):
             source_coverage.append({'provider': provider, 'source': f'{len(account_ids) - len(included_ids)} other accounts', 'status': 'Disabled by first-account setting', 'count': None})
         for source_number, account_id in enumerate(included_ids, 1):
+            stage(f'Retrieving {provider} payments and transactions', provider=provider)
             try:
                 dd_items = dependencies._truelayer_regular_payments(access_token, account_id, 'direct_debits')
                 direct_debits.extend((dependencies._normalise_regular_payment(item, 'DD') for item in dd_items))
             except requests.RequestException as error:
-                print(f'{provider} direct-debit error:', error)
+                event('bank_direct_debits', provider=provider, status='failed', error=error)
             try:
                 so_items = dependencies._truelayer_regular_payments(access_token, account_id, 'standing_orders')
                 standing_orders.extend((dependencies._normalise_regular_payment(item, 'SO') for item in so_items))
             except requests.RequestException as error:
-                print(f'{provider} standing-order error:', error)
+                event('bank_standing_orders', provider=provider, status='failed', error=error)
             try:
                 fetch_attempted += 1
                 fetched = dependencies._truelayer_transactions(access_token, 'accounts', account_id, from_date, today, range_info=transaction_range_info)
@@ -114,13 +118,14 @@ def collect(dependencies: FinanceDependencies, *, persist=True):
             except requests.RequestException as error:
                 fetch_failed += 1
                 source_coverage.append({'provider': provider, 'source': f'Account {source_number}', 'status': 'Unavailable', 'count': None})
-                print(f'{provider} transaction error:', error)
+                event('bank_transactions', provider=provider, status='failed', error=error)
     amex_token = provider_tokens.get('AMEX')
     if amex_token:
+        stage('Retrieving AMEX card list', provider='AMEX')
         try:
             card_ids = dependencies._truelayer_card_ids(amex_token)
         except requests.RequestException as error:
-            print('AMEX card-list error:', error)
+            event('bank_inventory', provider='AMEX', status='failed', error=error)
             fetch_failed += 1
             card_ids = []
         if not card_ids:
@@ -128,6 +133,7 @@ def collect(dependencies: FinanceDependencies, *, persist=True):
             source_coverage.append({'provider': 'AMEX', 'source': 'Card list', 'status': 'Unavailable or empty', 'count': None})
         collection_sources.append({'provider':'AMEX','mode':'all','included':len(card_ids),'available':len(card_ids)})
         for source_number, card_id in enumerate(card_ids, 1):
+            stage('Retrieving AMEX transactions', provider='AMEX')
             try:
                 fetch_attempted += 1
                 card_transactions = dependencies._truelayer_transactions(amex_token, 'cards', card_id, from_date, today, range_info=transaction_range_info)
@@ -138,7 +144,7 @@ def collect(dependencies: FinanceDependencies, *, persist=True):
             except requests.RequestException as error:
                 fetch_failed += 1
                 source_coverage.append({'provider': 'AMEX', 'source': f'Card {source_number}', 'status': 'Unavailable', 'count': None})
-                print('AMEX transaction error:', error)
+                event('bank_transactions', provider='AMEX', status='failed', error=error)
     direct_debits = dependencies._dedupe_regular_payments(direct_debits)
     standing_orders = dependencies._dedupe_regular_payments(standing_orders)
     subscriptions = dependencies.infer_subscriptions(all_transactions)
@@ -153,13 +159,12 @@ def collect(dependencies: FinanceDependencies, *, persist=True):
         try:
             capture_bond_prizes(all_transactions, dependencies._other_incoming_category, dependencies._is_incoming_transaction, dependencies._looks_like_internal_transfer, dependencies._transaction_date)
         except (ValueError, OSError):
-            print('Premium Bonds history could not be saved; check the private ledger file.')
+            event('bond_history_save', status='failed')
     salary_30 = dependencies._incoming_total(salary_incomings, days=30)
     other_30 = dependencies._incoming_total(other_incomings, days=30)
     total_incoming_30 = salary_30 + other_30
     net_flow_30 = total_incoming_30 - last_30_days
     bank_data_status = 'unavailable' if not fetch_succeeded else 'partial' if fetch_failed else 'complete'
     spending_summary = {'average_period_days': average_days, 'bank_data_status': bank_data_status, 'source_coverage': source_coverage, 'collection_scope': {'monzo':source_settings['monzo'],'sources':collection_sources}, 'requested_from': (today - timedelta(days=29) if transaction_range_info.get('shortened') else from_date).isoformat(), 'requested_to': today.isoformat(), 'bank_fetch_attempted': fetch_attempted, 'bank_fetch_succeeded': fetch_succeeded, 'normal_monthly_burn': ninety_day_average, 'essential_monthly_burn': essential_monthly_burn, 'last_30_days': last_30_days, 'ninety_day_average': ninety_day_average, 'salary_incomings': salary_incomings, 'other_incomings': other_incomings, 'salary_30_days': salary_30, 'other_incoming_30_days': other_30, 'total_incoming_30_days': total_incoming_30, 'net_flow_30_days': net_flow_30}
-    print('DIRECT DEBITS:', repr(direct_debits))
-    print('STANDING ORDERS:', repr(standing_orders))
+    event('finance_sources', status=bank_data_status, count=fetch_succeeded)
     return (all_transactions, direct_debits, standing_orders, subscriptions, spending_summary)

@@ -27,11 +27,12 @@
                         {% endif %}
                     </p>
                 </div>
-                <a class="button primary" href="{{ url_for('finance_review') }}">Refresh bank data</a>
+
             </header>
             {% with messages=get_flashed_messages() %}
                 {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
             {% endwith %}
+            {% include 'finance_refresh_status.html' %}
             {% include 'renewal_reminders.html' %}
             {% if update_items %}
                 <details class="section-disclosure">
@@ -79,7 +80,7 @@
                         <small class="muted">Activity for this calendar month</small>
                     </div>
                     <div class="finance-metrics">
-                        <article><span>Cash available now</span><strong>{{ '£%.2f'|format(projection.cash) if projection.cash is not none else 'Unavailable' }}</strong><small>Selected current accounts (first account until configured)</small></article>
+                        <article><span>Cash at last bank check</span><strong>{{ '£%.2f'|format(projection.cash) if projection.cash is not none else 'Unavailable' }}</strong><small>Selected current accounts (first account until configured)</small></article>
                         <article><span>Money in</span><strong>£{{ '%.2f'|format(income.month_total) }}</strong><small>{{ income.month_count }} incoming payments this month</small></article>
                         <article><span>Money out</span><strong>£{{ '%.2f'|format(month.total) }}</strong><small>{{ month.count }} outgoing payments this month</small></article>
                         <article><span>Monthly balance</span>{% set month_net = income.month_total - month.total %}<strong class="{{ 'negative' if month_net < 0 else '' }}">{{ '-' if month_net < 0 else '+' }}£{{ '%.2f'|format(month_net|abs) }}</strong><small>Money in minus money out · not your bank balance</small></article>

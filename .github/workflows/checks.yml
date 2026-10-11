@@ -1,11 +1,16 @@
 name: Project checks
 on:
   push:
+    branches: [main]
   pull_request:
+concurrency:
+  group: project-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   checks:
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -24,6 +29,7 @@ jobs:
       - run: python -m unittest discover -s tests -v
       - run: python -m bandit -r . --exclude ./tests -lll
   browser:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

@@ -1,0 +1,33 @@
+<section class="helper"
+         id="finance-refresh"
+         data-status-url="{{ url_for('finance_refresh_status') }}"
+         data-snapshot="{{ snapshot.checked_at if snapshot else '' }}"
+         data-state="{{ refresh_status.state }}"
+         aria-labelledby="finance-refresh-heading">
+    <h2 id="finance-refresh-heading">Bank retrieval</h2>
+    <p id="finance-refresh-stage" role="status" aria-live="polite">{{ refresh_status.stage }}</p>
+    <p id="finance-refresh-detail" class="muted">
+        {% if snapshot %}
+            {% if snapshot_fresh %}
+                Showing the last bank check, cached for up to 30 minutes. Forecast settings are recalculated when you open this page.
+            {% else %}
+                Showing a previous bank check. Forecasts are withheld until fresh, complete data is available. This is not a current bank balance.
+            {% endif %}
+        {% else %}
+            This page is ready while the banks respond. Your review will appear when retrieval finishes.
+        {% endif %}
+    </p>
+    <ol id="finance-refresh-timings" class="muted">
+        {% for timing in refresh_status.timings|default([]) %}<li>{{ timing.stage }} · {{ timing.seconds }}s</li>{% endfor %}
+    </ol>
+    <form action="{{ url_for('refresh_finance') }}"
+          method="post"
+          id="finance-refresh-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit"
+                {% if refresh_status.state == 'running' %}disabled{% endif %}>Refresh bank data</button>
+    </form>
+</section>
+<!-- djlint:off -->
+<script src="{{ url_for('static', filename='finance-refresh.js') }}" defer></script>
+<!-- djlint:on -->

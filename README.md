@@ -503,3 +503,6 @@ The existing `build` and `validate` imports from `finance.test_receipt` remain s
 Repository maintenance and measured performance changes are described in
 [Repository performance](docs/repository-performance.md). Development checks and
 the one-update-per-squash-commit workflow are in [Contributing](CONTRIBUTING.md).
+
+For background bank retrieval, snapshot freshness, structured logs and Raspberry Pi
+benchmark commands, see [Finance refresh and runtime checks](docs/finance-refresh-and-runtime.md).

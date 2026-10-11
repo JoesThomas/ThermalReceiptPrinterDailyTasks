@@ -203,10 +203,28 @@ process.on('exit', () => child.kill());
     assert.equal(await page.locator('.navigation-loading').isVisible(), false);
   }
   await page.clock.resume();
+  await page.goto('http://receipt.test/__fixture_finance_setup');
+  await page.getByText('This page is ready while the banks respond.', {exact:false}).waitFor();
+  await page.getByText('Retrieving HSBC transactions', {exact:true}).waitFor();
+  const completedReview = page.waitForResponse(r => new URL(r.url()).pathname === '/finance-review' && r.request().isNavigationRequest());
+  await page.evaluate(async () => { await fetch('/__fixture_finance_release'); });
+  await completedReview;
+  await page.getByText('Cash at last bank check', {exact:true}).waitFor();
+  assert.match(await page.locator('#finance-refresh').innerText(), /cached for up to 30 minutes/);
+  const refreshReview = page.waitForResponse(r => new URL(r.url()).pathname === '/finance-review' && r.request().isNavigationRequest());
+  await page.locator('#finance-refresh-form button').click();
+  await refreshReview;
+  await page.locator('#finance-refresh-form button:not([disabled])').waitFor();
+  await page.evaluate(async () => { await fetch('/__fixture_finance_fail'); });
+  const failedReview = page.waitForResponse(r => new URL(r.url()).pathname === '/finance-review' && r.request().isNavigationRequest());
+  await page.locator('#finance-refresh-form button').click();
+  await failedReview;
+  await page.getByText('Showing a previous bank check.', {exact:false}).waitFor();
+  assert.match(await page.locator('#finance-refresh').innerText(), /Forecasts are withheld/);
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
-    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/tasks','/finance/test','/savings/goals','/receipts']) {
+    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/tasks','/finance/test','/savings/goals','/receipts','/finance-review']) {
       await page.goto('http://receipt.test'+path);
       await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `${path} overflows at ${width}`);
@@ -218,7 +236,7 @@ process.on('exit', () => child.kill());
     await page.goto('http://receipt.test/bins');
     await page.screenshot({path:process.env.RECEIPT_BROWSER_SCREENSHOT, fullPage:true});
   }
-  console.log(`Browser checks passed: 19 form flows, finance loading and archive pagination, ${checks} responsive layouts`);
+  console.log(`Browser checks passed: 19 form flows, finance background refresh/failure and archive pagination, ${checks} responsive layouts`);
   await browser.close();
   child.kill();
 })().catch(error => { console.error(error); process.exit(1); });
