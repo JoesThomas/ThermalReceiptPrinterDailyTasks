@@ -140,7 +140,8 @@ class SimulationTests(TestCase):
         self.assertEqual(text.count('Amex - extra repayment'),1)
         self.assertIn('£4,190.00', text)
         self.assertIn('£760.00', text)
-        self.assertIn('Savings redirected to repayment', text)
+        self.assertIn('Extra repayment this period', text)
+        self.assertNotIn('Savings redirected to repayment', text)
         self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
         source['amex']['full_reserved']=True
         text=receipt(build(source,inputs(),TODAY),TODAY)

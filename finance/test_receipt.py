@@ -3,7 +3,7 @@ from copy import deepcopy
 from datetime import timedelta
 from decimal import Decimal
 from textwrap import wrap
-from finance.test_forecast import simulate
+from finance.test_forecast import simulate, is_amex
 from finance.projection import day, money, occurs, format_runway
 
 
@@ -176,15 +176,22 @@ def receipt(result, today):
         if card['balance'] is None:
             text('Balance unavailable. Listed repayments are included; enter Amex owed for payoff modelling.')
         else:
-            amount('Balance owed now',card['balance'])
             if card.get('full_reserved'):
+                amount('Balance owed now',card['balance'])
                 text('Full balance reserved once today; already deducted in the forecast. Additional suggested repayment: £0.00.')
             else:
-                amount('Listed payments this period',first['planned_card'])
-                baseline_saving=first['income_budget'] if data['save_all'] else min(first['income_budget'],data['savings'])
-                redirected=max(Decimal(0),baseline_saving-first['income_savings'])
-                if redirected: amount('Savings redirected to repayment',redirected)
-                amount('Estimated balance after this period',first['closing_card'])
+                text('THIS PAY PERIOD')
+                text(f'{data["start"]:%d %b} to {result["cycle_end"]:%d %b %Y}')
+                scheduled=sum((e['amount'] for e in result['bills'] if is_amex(e['name'])),Decimal(0))
+                interest=max(Decimal(0),first['closing_card']-first['opening_card']+scheduled+first['extra'])
+                amount('Balance at period start',first['opening_card'])
+                if interest>=Decimal('0.005'): amount('Estimated interest this period',interest)
+                amount('Scheduled repayment this period',scheduled)
+                amount('Extra repayment this period',first['extra'])
+                amount('Balance at period end',first['closing_card'])
+            text('WHOLE FORECAST')
+            scheduled_total=sum((e['amount'] for e in forecast['events'] if is_amex(e['name'])),Decimal(0))
+            amount('Scheduled repayments over forecast',scheduled_total)
             amount('Extra repayments over forecast',forecast['extra_total'])
             amount('Amex owed at forecast end',forecast['card_end'])
             if forecast['payoff']: text(f'Projected Amex cleared: {forecast["payoff"]:%d %b %Y}')
@@ -194,7 +201,6 @@ def receipt(result, today):
                 text(f'APR assumption: {forecast["apr"]}%')
                 amount('Estimated interest over forecast',forecast['interest'])
 
-    from finance.test_forecast import is_amex
     options=[item for item in base.get('repayment_options',[]) if not is_amex(item.get('name'))]
     if options: section('OTHER REPAYMENTS')
     budget=max(Decimal(0),first['budget']-first['extra']-first['savings'])
