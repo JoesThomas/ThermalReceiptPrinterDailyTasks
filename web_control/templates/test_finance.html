@@ -201,6 +201,48 @@
                         </label>
                     </div>
                     <details>
+                        <summary>Scheduled savings and Hargreaves Lansdown contribution</summary>
+                        <p>
+                            Choose where scheduled savings go when you have multiple accounts with the same provider. These choices apply to this test.
+                        </p>
+                        {% for payment in payment_options %}
+                            <label>
+                                Destination for {{ payment.name }}
+                                <select name="payment_account_{{ payment.key }}">
+                                    <option value="">Automatic matching when unambiguous</option>
+                                    {% for account in saved_savings if account.balance is not none %}
+                                        <option value="{{ account.id }}"
+                                                {% if values.get('payment_account_' ~ payment.key) == account.id %}selected{% endif %}>
+                                            {{ account.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                        {% endfor %}
+                        <label>
+                            Hargreaves Lansdown account to compare
+                            <select name="hl_account">
+                                <option value="">Use the uniquely linked scheduled payment</option>
+                                {% for account in saved_savings if account.balance is not none %}
+                                    <option value="{{ account.id }}"
+                                            {% if values.get('hl_account') == account.id %}selected{% endif %}>
+                                        {{ account.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label>
+                            Regular contribution to compare (£, optional)
+                            <input type="number"
+                                   name="hl_monthly"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('hl_monthly', '') }}">
+                            <small>Leave blank for a suggestion from income-funded extras. Spare bank cash stays a one-off transfer. Increases require salary, respect protected reserves and wait for Amex clearance under Amex first. This does not change your real payment.</small>
+                        </label>
+                    </details>
+                    <details>
                         <summary>Salary dates, spending comparisons and one-off costs</summary>
                         <div class="grid">
                             <label>
@@ -352,6 +394,74 @@
                             </article>
                         {% endfor %}
                     </div>
+                    {% if scenario_details.contribution %}
+                        <h3>Hargreaves Lansdown contribution</h3>
+                        {% set contribution = scenario_details.contribution %}
+                        {% if contribution.available %}
+                            <p>
+                                <strong>{{ contribution.account }}</strong>
+                            </p>
+                            <dl>
+                                <dt>Existing regular payment</dt>
+                                <dd>
+                                    {{ contribution.existing }}
+                                </dd>
+                                <dt>Scheduled this period</dt>
+                                <dd>
+                                    {{ contribution.scheduled_this_period }}
+                                </dd>
+                                <dt>Extra from income this period</dt>
+                                <dd>
+                                    {{ contribution.income_extra_this_period }}
+                                </dd>
+                                <dt>One-off extra this period</dt>
+                                <dd>
+                                    {{ contribution.one_off_this_period }}
+                                </dd>
+                                <dt>Total this period</dt>
+                                <dd>
+                                    {{ contribution.total_this_period }}
+                                </dd>
+                                <dt>Suggested regular contribution</dt>
+                                <dd>
+                                    {{ contribution.suggested }}
+                                </dd>
+                                <dt>Regular contribution being compared</dt>
+                                <dd>
+                                    {{ contribution.proposed }}
+                                </dd>
+                                <dt>Current pathway target date</dt>
+                                <dd>
+                                    {{ contribution.goal_keep or 'No funded date in planning horizon' }} ({{ contribution.time_keep }})
+                                </dd>
+                                <dt>Compared pathway target date</dt>
+                                <dd>
+                                    {{ contribution.goal_proposed or 'No funded date in planning horizon' }} ({{ contribution.time_proposed }})
+                                </dd>
+                                <dt>Projected balance: current / compared</dt>
+                                <dd>
+                                    {{ contribution.projected_keep }} / {{ contribution.projected_proposed }}
+                                </dd>
+                                <dt>Amex clearance: current / compared</dt>
+                                <dd>
+                                    {{ contribution.amex_keep or 'Not cleared in selected forecast' }} / {{ contribution.amex_proposed or 'Not cleared in selected forecast' }}
+                                </dd>
+                                <dt>Lowest bank balance in comparison</dt>
+                                <dd>
+                                    {{ contribution.minimum_bank }}
+                                </dd>
+                                <dt>Protected reserves in comparison</dt>
+                                <dd>
+                                    {{ 'Hold throughout forecast' if contribution.reserves_hold else 'Funding shortfall: review the comparison' }}
+                                </dd>
+                            </dl>
+                            <details>
+                                <summary>Compared scheduled amounts by period</summary>
+                                {% for period in contribution.periods %}<p>{{ period.date }}: {{ period.scheduled }}</p>{% endfor %}
+                            </details>
+                        {% endif %}
+                        <p>{{ contribution.message }}</p>
+                    {% endif %}
                     <h3>Spending £100 less each month</h3>
                     <p>{{ scenario_details.sensitivity.message }}</p>
                     {% if scenario_details.sensitivity.goal_message %}<p>{{ scenario_details.sensitivity.goal_message }}</p>{% endif %}
