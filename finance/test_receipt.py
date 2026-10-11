@@ -3,7 +3,7 @@ from copy import deepcopy
 from datetime import timedelta
 from decimal import Decimal
 from textwrap import wrap
-from finance.test_forecast import simulate, is_amex
+from finance.test_forecast import simulate, is_amex, is_card_payment
 from finance.projection import day, money, occurs, format_runway
 
 
@@ -37,12 +37,41 @@ def validate(values, today):
         raise ValueError('Choose 1 to 60 forecast months.') from None
     if not 1 <= months <= 60 or (occurs(start, months) - today).days > 1826:
         raise ValueError('Choose a forecast ending within five years of today.')
+    salary_start=day(values.get('salary_start')) if values.get('salary_start','').strip() else None
+    salary_end=day(values.get('salary_end')) if values.get('salary_end','').strip() else None
+    horizon=occurs(start,months)-timedelta(days=1)
+    for field,parsed in [('salary_start',salary_start),('salary_end',salary_end)]:
+        if values.get(field,'').strip() and (parsed is None or not today<=parsed<=today+timedelta(days=1826)):
+            raise ValueError('Choose valid salary dates within five years of today.')
+    if salary_start and salary_end and salary_end<salary_start: raise ValueError('Last salary date must not be before the first salary date.')
+    skipped=[]
+    paydays={occurs(start,month) for month in range(months)}
+    for raw_date in values.get('missed_salary_dates','').split(','):
+        if not raw_date.strip(): continue
+        missed=day(raw_date.strip())
+        if missed not in paydays: raise ValueError('Skipped salary dates must be paydays within the selected forecast, separated by commas.')
+        skipped.append(missed)
+    difference=money(values.get('comparison_spend','100') or '100')
+    if difference is None or not 0<=difference<=100000: raise ValueError('Choose a monthly spending comparison between £0 and £100,000.')
+    expenses=[]
+    raw=values.get('one_off_expenses','')
+    if len(raw)>10000: raise ValueError('Use at most 50 one-off expenses.')
+    for line in raw.splitlines():
+        if not line.strip(): continue
+        parts=[part.strip() for part in line.split('|',2)]
+        on=day(parts[0]) if len(parts)==3 else None
+        cost=money(parts[1]) if len(parts)==3 else None
+        if on is None or not today<=on<=horizon or cost is None or not 0<cost<=10000000 or not parts[2] or len(parts[2])>90 or any(ord(c)<32 for c in parts[2]):
+            raise ValueError('Use one expense per line: YYYY-MM-DD | amount | description. Dates must be inside the selected forecast.')
+        expenses.append({'date':on,'amount':cost,'name':parts[2],'category':'one_off','scenario_expense':True})
+    if len(expenses)>50: raise ValueError('Use at most 50 one-off expenses.')
     return dict(equal_savings=values.get('equal_savings') == 'on', invest_spare_cash=values.get('invest_spare_cash') == 'on', use_accounts=values.get('use_saved_accounts') == 'on', strategy=strategy, split=split, apr=apr, goal=goal, starting_savings=starting_savings, salary=salary, existing=existing if mode == 'additional' else Decimal(0),
-                other=other, lump=lump, savings=savings, save_all=not lump_mode and values.get('save_all') == 'on', mode=mode, start=start, months=months)
+                salary_start=salary_start, salary_end=salary_end, missed_salary_dates=skipped, comparison_spend=difference, one_off_expenses=expenses, other=other, lump=lump, savings=savings, save_all=not lump_mode and values.get('save_all') == 'on', mode=mode, start=start, months=months)
 
 
-def build(projection, values, today):
+def build(projection, values, today, *, spending_adjustment=Decimal(0)):
     inputs = validate(values, today)
+    inputs['spending_adjustment']=spending_adjustment
     if not projection.get('valid'):
         raise ValueError('The finance forecast is incomplete. Refresh Finance review and confirm balances, repayment dates and a daily spending estimate first.')
     base = deepcopy(projection)
@@ -50,6 +79,7 @@ def build(projection, values, today):
         reserve=base.get('reserve_details') or {}
         separate=money(reserve.get('gap'),Decimal(0))+money(reserve.get('tax_reserve'),Decimal(0))
         base['buffer']=max(base['buffer'],Decimal(1000)+separate)
+    base['events'].extend(inputs['one_off_expenses'])
     accounts=base.get('savings_accounts',[])
     from finance.savings_targets import allocate, link_regular_savings, prepare_cash_topup
     if inputs['use_accounts']:
@@ -86,13 +116,14 @@ def receipt(result, today):
     def section(title):
         rule(); text(title.center(42)); rule()
     def amount(label, value):
-        right = f"£{value:,.2f}"
+        right = f"{'-' if value<0 else ''}£{abs(value):,.2f}"
         if len(label)+len(right)+1 <= 42: lines.append(label+right.rjust(42-len(label)))
         else: text(label); lines.append(right.rjust(42))
     data, base, forecast = result['inputs'], result['projection'], result['forecast']
     def goal_duration(reached):
         text('Estimated time to target:')
-        text(format_runway((reached - today).days, today))
+        months=(reached.year-today.year)*12+reached.month-today.month+(reached.day>today.day)
+        text('Now' if reached<=today else f'About {months} '+('month' if months==1 else 'months'))
         if reached > forecast['end']: text('Beyond selected forecast; same pathway.')
     def goal_progress(starting, projected, target, added, *, enabled=True, reserved=Decimal(0)):
         current = min(Decimal(100), starting / target * 100)
@@ -116,11 +147,15 @@ def receipt(result, today):
     section('PAY PERIOD ALLOCATION')
     text(f'{data["start"]:%d %b} to {result["cycle_end"]:%d %b %Y}')
     if data['mode'] in {'lump', 'lump_income'}: amount('One-off lump sum',data['lump'])
-    amount('Monthly take-home salary',data['salary'])
+    amount('Monthly salary when active',data['salary'])
     if data['existing']: amount('Existing salary (additional mode)',data['existing'])
     amount('Other monthly income',data['other'])
-    amount('TOTAL MONTHLY INCOME',data['salary']+data['existing']+data['other'])
+    amount('INCOME THIS PERIOD',first['salary']+data['other'])
     text(f'Income receipt date: {data["start"]:%d %b %Y}')
+    if data['salary_start'] or data['salary_end'] or data['missed_salary_dates']:
+        text('Salary window: '+(data['salary_start'].isoformat() if data['salary_start'] else 'from first payday')+' to '+(data['salary_end'].isoformat() if data['salary_end'] else 'forecast end'))
+        amount('Salary received this period',first['salary'])
+        if data['missed_salary_dates']: text(f'Skipped salary paydays: {len(data["missed_salary_dates"])}')
     strategies={'savings_first':'Savings first','amex_first':'Amex first','split':f'Split: {data["split"].normalize():f}% to Amex'}
     text('Strategy: '+strategies[data['strategy']])
     amount('Per day (expected spending)',base.get('daily_cost',base['daily']))
@@ -128,7 +163,7 @@ def receipt(result, today):
     if data['save_all']: text('Saving all remaining income surplus.')
     elif not data['savings'] and not data['invest_spare_cash']: text('Savings target not set')
     if data['invest_spare_cash']:
-        if data['salary']+data['existing']>0: text('Use spare bank cash with this strategy; keep at least £1,000 plus bills, spending and other reserves.')
+        if first['salary']>0: text('Use spare bank cash with this strategy; keep at least £1,000 plus bills, spending and other reserves.')
         else: text('No salary: spare bank cash investment paused.')
     if result['shortfall']: amount('SHORTFALL after reserves',result['shortfall'])
     section('WHERE TO MOVE THIS PAYDAY')
@@ -183,7 +218,7 @@ def receipt(result, today):
             else:
                 text('THIS PAY PERIOD')
                 text(f'{data["start"]:%d %b} to {result["cycle_end"]:%d %b %Y}')
-                scheduled=sum((e['amount'] for e in result['bills'] if is_amex(e['name'])),Decimal(0))
+                scheduled=sum((e['amount'] for e in result['bills'] if is_card_payment(e)),Decimal(0))
                 interest=max(Decimal(0),first['closing_card']-first['opening_card']+scheduled+first['extra'])
                 amount('Balance at period start',first['opening_card'])
                 if interest>=Decimal('0.005'): amount('Estimated interest this period',interest)
@@ -191,11 +226,11 @@ def receipt(result, today):
                 amount('Extra repayment this period',first['extra'])
                 amount('Balance at period end',first['closing_card'])
             text('WHOLE FORECAST')
-            scheduled_total=sum((e['amount'] for e in forecast['events'] if is_amex(e['name'])),Decimal(0))
+            scheduled_total=sum((e['amount'] for e in forecast['events'] if is_card_payment(e)),Decimal(0))
             amount('Scheduled repayments via direct debit over forecast',scheduled_total)
             amount('Extra repayments over forecast',forecast['extra_total'])
             amount('Amex owed at forecast end',forecast['card_end'])
-            if forecast['payoff']: text(f'Projected Amex cleared: {forecast["payoff"]:%d %b %Y}')
+            if forecast['payoff']: text(f'Projected Amex cleared: around {forecast["payoff"]:%B %Y}')
             else: text('Amex not cleared within this forecast.' if forecast['card_end'] else 'No outstanding Amex balance.')
             if forecast['apr'] is None: text('Rate unknown: interest excluded. Enter APR to include estimated interest.')
             else:
@@ -239,7 +274,7 @@ def receipt(result, today):
                 reached=account['goal_date'] or account.get('extended_goal_date')
                 if reached=='already': text('Target already reached.')
                 elif reached:
-                    text(f'Projected target date: {reached:%d %b %Y}' + (' (extended)' if not account['goal_date'] else ''))
+                    text(f'Projected target date: around {reached:%B %Y}' + (' (extended)' if not account['goal_date'] else ''))
                     goal_duration(reached)
                 elif not data['use_accounts']: text('Enable saved account allocation to estimate time to target.')
                 else:
@@ -269,13 +304,13 @@ def receipt(result, today):
         goal_progress(data['starting_savings'], forecast['savings_end'], data['goal'], forecast['savings_total']+forecast['automatic_total']+forecast['reserved_total'],reserved=forecast['reserved_total'])
         if data['starting_savings']>=data['goal']: text('Goal already met at the starting balance.')
         elif forecast['goal_date']:
-            text(f'Projected goal date: {forecast["goal_date"]:%d %b %Y}')
+            text(f'Projected goal date: around {forecast["goal_date"]:%B %Y}')
             goal_duration(forecast['goal_date'])
         else:
             text(f'Goal not reached within the {data["months"]}-month forecast.')
             amount('Still to save at forecast end',max(Decimal(0),data['goal']-forecast['savings_end']))
             if forecast.get('extended_goal_date'):
-                text(f'Extended projected goal date: {forecast["extended_goal_date"]:%d %b %Y}')
+                text(f'Extended projected goal date: around {forecast["extended_goal_date"]:%B %Y}')
                 goal_duration(forecast['extended_goal_date'])
             elif not forecast['savings_total'] and not forecast['automatic_total'] and not forecast['reserved_total']: text('No savings contribution selected or available; no funded goal date within the planning period.')
             else: text(f"No funded goal date within the {forecast.get('extended_goal_months', data['months'])}-month planning period.")
@@ -288,16 +323,21 @@ def receipt(result, today):
     amount('Bank reserve kept',base['buffer']-money(reserve.get('gap'),Decimal(0))-money(reserve.get('tax_reserve'),Decimal(0)))
     amount('Bank cash above reserves at end',max(Decimal(0),forecast['end_cash']))
     if forecast['end_cash']<0: amount('Funding shortfall at forecast end',-forecast['end_cash'])
-    for months,cash in result['checkpoints']:
-        label='cash above reserves' if cash>=0 else 'funding shortfall'
-        amount(f'{months} month(s): {label}',abs(cash))
+    amount('Lowest projected bank balance',forecast['minimum_bank'])
+    text('Protected reserves hold through forecast.' if not forecast['run_out'] else 'Protected reserves would be breached.')
+    reached=sum(1 for row in result['account_plan']['accounts'] if row['target'] and row['goal_date'])
+    if data['use_accounts']: text(f'Account goals reached: {reached} of '+str(sum(1 for row in result['account_plan']['accounts'] if row['target'])))
+    if result.get('sensitivity'):
+        text(result['sensitivity']['message'])
+        if result['sensitivity'].get('goal_message'): text(result['sensitivity']['goal_message'])
     section('ASSUMPTIONS')
+    text('Rough planning estimate; goal dates are approximate.')
     text(f'Forecast: {data["months"]} months from {data["start"]:%d %b %Y}. Goal durations measured from {today:%d %b %Y}.')
     if data['invest_spare_cash']:
         text('Spare bank cash follows the selected strategy on salary paydays; Amex first repays Amex before extra savings. Protects £1,000, bills, everyday spending and other reserves. No salary means no spare cash investment. Uses selected account shares and targets.')
     else: text('Extra savings use recurring income surplus after bills, spending and reserves; existing bank cash is not used for extra savings.')
     text('Scheduled savings may use bank cash. Reserved cash top-up is separate.')
-    text('Same income and costs continue; finite repayments stop at completion. No savings growth or new card purchases assumed. Goal dates are estimates; no transfers are made.')
+    text('Salary follows selected dates; other income continues. One-off costs occur once; finite repayments stop at completion. No savings growth or new card purchases assumed. Goal dates are estimates; no transfers are made.')
     for warning in base.get('warnings',[]): text(warning)
     rule(); text('SIMULATION ONLY - LIVE RECORDS UNCHANGED'); rule()
     return '\n'.join(lines)+'\n'

@@ -45,7 +45,7 @@ def link_regular_savings(events, accounts):
         value=key(value)
         return 'hargreaves' in value or value.startswith(('hlam','handl')) or value=='hl' or value.startswith('hlisa') or bool(re.search(r'\bh\s*(?:&|and)\s*l\b|\bhl\b',original,re.I))
     for event in events:
-        if event.get('amount',ZERO)<=0: continue
+        if event.get('scenario_expense') or event.get('amount',ZERO)<=0: continue
         candidates=[row for row in accounts if key(row['name'])==key(event['name']) or (hl(row['name']) and hl(event['name']))]
         if len(candidates)==1 and (event.get('category')=='savings' or hl(event['name'])):
             event['savings_account']=candidates[0]['id']
