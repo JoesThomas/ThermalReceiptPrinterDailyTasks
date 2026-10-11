@@ -53,19 +53,8 @@ PROJECT_PASSWORDS_FILE = (
 
 
 def _google_doc_id(value):
-    text = str(value or "").strip()
-
-    if not text:
-        return ""
-
-    if "/document/d/" in text:
-        return (
-            text.split("/document/d/", 1)[1]
-            .split("/", 1)[0]
-            .strip()
-        )
-
-    return text
+    from services.google_docs import document_id
+    return document_id(value, allow_empty=True)
 
 
 def load_food_shop_items():
@@ -102,10 +91,8 @@ def load_food_shop_items():
                 "Food-shop Google Doc is not configured."
             )
 
-        export_url = (
-            "https://docs.google.com/document/d/"
-            f"{document_id}/export?format=txt"
-        )
+        from services.google_docs import export_url as document_export_url
+        export_url = document_export_url(document_id)
 
         with urlopen(
             export_url,

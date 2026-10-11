@@ -146,6 +146,14 @@
                         <p>No archived receipts for this selection. Generate a preview or print a receipt to save one.</p>
                     {% endfor %}
                 </section>
+                <nav aria-label="Saved receipt pages" class="page-actions">
+                    {% if previous_offset is not none %}
+                        <a href="{{ url_for('archive_list',date=selected_date,q=query,offset=previous_offset) }}">Newer receipts</a>
+                    {% endif %}
+                    {% if next_offset is not none %}
+                        <a href="{{ url_for('archive_list',date=selected_date,q=query,offset=next_offset) }}">Older receipts</a>
+                    {% endif %}
+                </nav>
             {% endif %}
         </main>
     </body>

@@ -98,9 +98,12 @@ def review(today, month=None):
     start = date.fromisoformat(month + '-01')
     end = date(start.year + (start.month == 12), start.month % 12 + 1, 1)
     rows = [r for r in load_history() if r['date'] <= today.isoformat()]
+    grouped = {}
+    for row in rows:
+        grouped.setdefault((row['kind'], row['name'].casefold()), []).append(row)
     accounts = []
-    for identity in sorted({(r['kind'], r['name'].casefold()) for r in rows}):
-        values = sorted([r for r in rows if (r['kind'], r['name'].casefold()) == identity], key=lambda r:r['date'])
+    for identity, values in sorted(grouped.items()):
+        values = sorted(values, key=lambda row: row['date'])
         opening = next((r for r in reversed(values) if r['date'] <= start.isoformat()), None)
         period = [r for r in values if start.isoformat() <= r['date'] < end.isoformat()]
         # If month-start is unavailable, clearly use the first recorded valuation.

@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 """Standalone Google Doc -> ESC/POS thermal receipt printer."""
 
-import re
-import unicodedata
 import requests
 from escpos.printer import Network, Usb
 
-from services.live_pipeline import private_value
 
 # ==================== CONFIG ====================
 
-GOOGLE_DOC_URL = private_value("google_docs", "to_buy_url")
+GOOGLE_DOC_URL = ""  # Optional explicit override; private settings are read by main().
 
 # "auto" tries USB first, then network.
 # You can also force "usb" or "network".
@@ -35,29 +32,15 @@ CUT_AFTER_PRINT = True
 # ==================== GOOGLE DOC ====================
 
 def extract_google_doc_id(value):
-    """Accept a Google Docs URL or bare document ID."""
-    value = (value or "").strip()
-
-    if not value:
-        raise ValueError("Google Docs URL/ID is empty.")
-
-    match = re.search(r"/document/d/([a-zA-Z0-9_-]+)", value)
-    if match:
-        return match.group(1)
-
-    if re.fullmatch(r"[a-zA-Z0-9_-]{20,}", value):
-        return value
-
-    raise ValueError("Could not find a Google Docs document ID.")
+    from services.google_docs import document_id
+    return document_id(value, strict=True)
 
 
 def download_google_doc_text(value):
     """Download the Google Doc through Google's plain-text export endpoint."""
     document_id = extract_google_doc_id(value)
-    export_url = (
-        "https://docs.google.com/document/d/"
-        f"{document_id}/export?format=txt"
-    )
+    from services.google_docs import export_url as document_export_url
+    export_url = document_export_url(document_id)
 
     response = requests.get(export_url, timeout=20)
     response.raise_for_status()
@@ -73,65 +56,7 @@ def download_google_doc_text(value):
 
 # ==================== TEXT ====================
 
-def printer_safe_text(text):
-    """Make text conservative for an ESC/POS printer while preserving £."""
-    if text is None:
-        return ""
-
-    text = str(text)
-
-    replacements = {
-        "\ufeff": "",
-        "\u200b": "",
-        "\u200c": "",
-        "\u200d": "",
-        "\u2060": "",
-        "\u2018": "'",
-        "\u2019": "'",
-        "\u201c": '"',
-        "\u201d": '"',
-        "\u2013": "-",
-        "\u2014": "-",
-        "\u2212": "-",
-        "\u2026": "...",
-        "\u00a0": " ",
-        "\u2022": "-",
-        "\u00b7": "-",
-        "\u00ae": "(R)",
-        "\u00a9": "(C)",
-        "\u2122": "(TM)",
-        "\u20ac": "EUR",
-        "\u2192": "->",
-        "\u2190": "<-",
-        "\u2191": "^",
-        "\u2193": "v",
-        "\u00b0": " DEG ",
-    }
-
-    for original, replacement in replacements.items():
-        text = text.replace(original, replacement)
-
-    text = re.sub(
-        r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])",
-        "",
-        text,
-    )
-
-    text = unicodedata.normalize("NFKD", text)
-    text = "".join(
-        ch for ch in text
-        if not unicodedata.combining(ch)
-    )
-
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    text = text.replace("\t", "    ")
-
-    text = "".join(
-        ch for ch in text
-        if ch == "\n" or 32 <= ord(ch) <= 126 or ch == "£"
-    )
-
-    return text
+from receipt.text import printer_safe_text
 
 
 def tidy_document_text(text):
@@ -303,16 +228,20 @@ def print_document(printer, document_text):
 # ==================== MAIN ====================
 
 def main():
+    document_url = GOOGLE_DOC_URL
+    if not document_url:
+        from services.private_config import load, value
+        document_url = value(load(), 'google_docs', 'to_buy_url')
     if (
-        not GOOGLE_DOC_URL
-        or GOOGLE_DOC_URL == "PASTE_GOOGLE_DOC_URL_HERE"
+        not document_url
+        or document_url == "PASTE_GOOGLE_DOC_URL_HERE"
     ):
         raise ValueError(
             "Set GOOGLE_DOC_URL at the top of this file first."
         )
 
     print("Downloading Google Doc...")
-    document_text = download_google_doc_text(GOOGLE_DOC_URL)
+    document_text = download_google_doc_text(document_url)
     document_text = tidy_document_text(document_text)
 
     print("Connecting to thermal printer...")

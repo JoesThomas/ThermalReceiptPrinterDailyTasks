@@ -1,5 +1,4 @@
 """Fast, private dashboard snapshots; browsing never fetches external services."""
-import json
 from datetime import datetime, timezone
 from pathlib import Path
 from actions import checklists, delivery_state
@@ -11,11 +10,7 @@ CALENDAR = ROOT / 'data' / 'today_calendar.json'
 CHANGES = ROOT / 'data' / 'receipt_changes.json'
 
 
-def read(path):
-    try:
-        value = json.loads(path.read_text())
-        return value if isinstance(value, dict) else {}
-    except (OSError, ValueError): return {}
+from storage import read_json_object as read
 
 
 def save_calendar(events):

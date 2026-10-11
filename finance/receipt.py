@@ -1,4 +1,5 @@
 from __future__ import annotations
+from finance_trends import prepare_rules
 from finance.investments import (
     load_investments,
     investment_totals,
@@ -711,9 +712,7 @@ def print_integrated_finance(
     # CATEGORY TRENDS
     # ==========================================
 
-    rules = load_rules(
-        RULES_FILE
-    )
+    rules = prepare_rules(load_rules(RULES_FILE))
 
     trends = category_trends(
         clean_transactions,

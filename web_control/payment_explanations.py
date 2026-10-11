@@ -1,4 +1,5 @@
 """Private category/match explanations and a bounded correction history."""
+from finance_trends import prepare_rules
 from datetime import datetime, timezone
 from pathlib import Path
 from flask import render_template
@@ -32,6 +33,7 @@ def basis(tx, rules, private):
 
 
 def capture(transactions, rows, today, rules, private):
+    rules = prepare_rules(rules)
     payments = []
     external = external_payments(transactions)
     for tx in external:

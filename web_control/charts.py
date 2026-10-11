@@ -1,5 +1,6 @@
 """Small, accessible finance chart summaries built from receipt inputs."""
 from __future__ import annotations
+from finance_trends import prepare_rules
 
 from collections import defaultdict
 from datetime import timedelta
@@ -28,6 +29,7 @@ def finance_charts(transactions, commitments, today, rules=None):
     }
 
     rules = load_rules(RULES_FILE) if rules is None else rules
+    rules = prepare_rules(rules)
     category_totals = defaultdict(float)
     week_totals = [0.0] * 4
     start = today - timedelta(days=27)

@@ -1,5 +1,4 @@
 """Private bounded cache of parsed calendar/delivery results and timing metadata."""
-import fcntl
 import os
 import hashlib
 import json
@@ -7,7 +6,7 @@ import time
 from datetime import date, datetime, timezone
 from pathlib import Path
 from contextlib import contextmanager
-from storage import write_json
+from storage import write_json, file_lock
 
 FILE = Path(__file__).resolve().parents[1] / 'data' / 'source_cache.json'
 
@@ -40,11 +39,8 @@ def load():
 
 @contextmanager
 def locked():
-    FILE.parent.mkdir(parents=True, exist_ok=True)
-    with FILE.with_suffix('.lock').open('a') as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        try: yield
-        finally: fcntl.flock(lock, fcntl.LOCK_UN)
+    with file_lock(FILE):
+        yield
 
 
 def key(name, identity):

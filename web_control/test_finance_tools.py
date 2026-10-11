@@ -47,21 +47,9 @@ def collect(values, today):
             raise ValueError(
                 "Configure bank connections, or enter both starting cash and daily spending for a manual estimate."
             ) from None
-        from services.finance_source import (
-            collect as collect_source,
-            FinanceDependencies,
-        )
-        from dataclasses import fields
+        from services.finance_source import collect as collect_source, dependencies_from
         from concurrent.futures import ThreadPoolExecutor
-
-        dependencies = FinanceDependencies(
-            **{
-                field.name: (lambda: today)
-                if field.name == "today"
-                else getattr(pipeline, field.name)
-                for field in fields(FinanceDependencies)
-            }
-        )
+        dependencies = dependencies_from(pipeline, today=lambda: today)
         with ThreadPoolExecutor(max_workers=2) as pool:
             data_future = pool.submit(collect_source, dependencies, persist=False)
             balance_future = pool.submit(pipeline.get_account_balances)
