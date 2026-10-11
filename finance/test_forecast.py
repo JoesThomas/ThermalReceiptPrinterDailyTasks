@@ -52,6 +52,7 @@ def simulate(base, inputs, today):
             income_budget = max(ZERO, min(surplus, cash-costs-variable)).quantize(CENT)
             use_spare_cash=inputs.get('invest_spare_cash') and inputs['salary']+inputs['existing']>0
             budget=max(ZERO,cash-costs-variable).quantize(CENT,rounding=ROUND_DOWN) if use_spare_cash else income_budget
+            opening_card=balance if known else None
             debt_budget = max(ZERO, balance-scheduled) if known and not card.get('full_reserved') else ZERO
             strategy = inputs['strategy']
             if strategy == 'amex_first': extra = min(budget, debt_budget)
@@ -75,7 +76,7 @@ def simulate(base, inputs, today):
             periods.append(dict(funded=run_out is None, date=on, end=next_pay-timedelta(days=1), salary=inputs['salary']+inputs['existing'],
                 rent=inputs['other'], opening=opening, costs=costs, variable=variable, surplus=surplus,
                 budget=budget, income_budget=income_budget, cash_repaid=cash_repaid, savings=saving, income_savings=income_savings, cash_invested=cash_invested, automatic_savings=automatic, extra=extra, planned_card=scheduled,
-                balance_after_extra=balance, savings_total=transfers, cash_after_allocation=cash-costs-variable))
+                opening_card=opening_card, balance_after_extra=balance, savings_total=transfers, cash_after_allocation=cash-costs-variable))
         for event in events.get(on, []):
             amount = event['amount']
             if known and is_amex(event['name']):
