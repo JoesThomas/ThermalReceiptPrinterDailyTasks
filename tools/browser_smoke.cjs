@@ -112,7 +112,7 @@ process.on('exit', () => child.kill());
   assert.match(await page.locator('#forecast-comparison').innerText(), /Suggested regular contribution/);
   assert.match(await page.locator('.test-finance-paper').innerText(), /HARGREAVES LANSDOWN PLAN/);
   assert.equal(await page.locator('input[name=hl_monthly]').inputValue(), '100');
-  assert.equal(await page.locator('select[name=payment_account_hargreaveslansdown] option:checked').innerText(), 'Example ISA');
+  assert.equal((await page.locator('select[name=payment_account_hargreaveslansdown] option:checked').textContent()).trim(), 'Example ISA');
   assert.equal(await page.locator('#forecast-comparison h3').filter({hasText:/^(Lower spending|Current plan|Higher spending)$/}).count(),3);
   assert.match(await page.locator('#forecast-comparison').innerText(), /Lowest projected bank balance/);
   assert.equal(await page.locator('textarea[name=one_off_expenses]').inputValue(), new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'})+' | 30 | One-off test cost');
