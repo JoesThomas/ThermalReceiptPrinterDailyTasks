@@ -156,7 +156,14 @@
                                    name="save_all"
                                    {% if values.get('save_all') == 'on' %}checked{% endif %}>
                             Save all remaining income surplus
-                            <small>Overrides the savings target. Existing bank cash is excluded; test transfers occur each payday.</small>
+                            <small>Overrides the savings target. This setting uses income surplus; the spare bank cash option below can add to it. Test transfers occur each payday.</small>
+                        </label>
+                        <label>
+                            <input type="checkbox"
+                                   name="invest_spare_cash"
+                                   {% if values.get('invest_spare_cash') == 'on' %}checked{% endif %}>
+                            Invest spare bank cash above £1,000 after salary
+                            <small>On salary paydays, keep £1,000 plus the period's bills, everyday spending and other reserves. Move the rest using the account shares and targets below. Paused when salary is £0, even with other income or a lump sum. Higher bank reserves still apply.</small>
                         </label>
                         <label>
                             Savings goal (£, optional)

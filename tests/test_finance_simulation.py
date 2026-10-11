@@ -120,9 +120,13 @@ class SimulationTests(TestCase):
             'web_control.test_finance_tools.render_template', return_value='ok') as render:
             client.get('/finance/test')
             self.assertEqual(render.call_args.kwargs['values']['save_all'], 'on')
-            with client.session_transaction() as saved: saved['test_finance_save_all']=False
+            self.assertEqual(render.call_args.kwargs['values']['invest_spare_cash'], 'on')
+            with client.session_transaction() as saved:
+                saved['test_finance_save_all']=False
+                saved['test_finance_invest_spare_cash']=False
             client.get('/finance/test')
             self.assertEqual(render.call_args.kwargs['values']['save_all'], '')
+            self.assertEqual(render.call_args.kwargs['values']['invest_spare_cash'], '')
             with client.session_transaction() as saved: saved['test_finance_save_all']=True
             client.get('/finance/test')
             self.assertEqual(render.call_args.kwargs['values']['save_all'], 'on')

@@ -1,6 +1,6 @@
 """Daily scenario cash flow with payday allocation and finite card repayment."""
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN
 from finance.projection import occurs
 
 ZERO = Decimal(0)
@@ -29,7 +29,7 @@ def simulate(base, inputs, today):
     paydays = {occurs(inputs['start'], month): month for month in range(inputs['months'])}
     periods = []; points = []; actual = []; transfers = ZERO; extra_total = ZERO
     run_out = None; payoff = None; goal_date = today if inputs['goal'] and inputs['starting_savings'] >= inputs['goal'] else None
-    interest_total = ZERO; checkpoints = []; automatic_total=ZERO
+    interest_total = ZERO; checkpoints = []; automatic_total=ZERO;cash_invested_total=ZERO
     reserve_transfers=[];reserved_total=ZERO;topup=base.get('cash_topup')
     for offset in range((end-today).days):
         on = today + timedelta(days=offset)
@@ -59,6 +59,9 @@ def simulate(base, inputs, today):
             saving = available if inputs['save_all'] else min(available, max(ZERO,inputs['savings']-automatic))
             if strategy == 'savings_first': extra = min(budget-saving, debt_budget)
             balance = max(ZERO, balance-extra); cash -= extra+saving
+            income_savings=saving
+            cash_invested=max(ZERO,cash-costs-variable).quantize(CENT,rounding=ROUND_DOWN) if inputs.get('invest_spare_cash') and inputs['salary']+inputs['existing']>0 else ZERO
+            cash-=cash_invested;saving+=cash_invested;cash_invested_total+=cash_invested
             transfers += saving; extra_total += extra
             if known and balance <= CENT and payoff is None and card.get('balance', ZERO) > 0:
                 payoff = on; balance = ZERO
@@ -66,7 +69,7 @@ def simulate(base, inputs, today):
                 goal_date = on
             periods.append(dict(funded=run_out is None, date=on, end=next_pay-timedelta(days=1), salary=inputs['salary']+inputs['existing'],
                 rent=inputs['other'], opening=opening, costs=costs, variable=variable, surplus=surplus,
-                budget=budget, savings=saving, automatic_savings=automatic, extra=extra, planned_card=scheduled,
+                budget=budget, savings=saving, income_savings=income_savings, cash_invested=cash_invested, automatic_savings=automatic, extra=extra, planned_card=scheduled,
                 balance_after_extra=balance, savings_total=transfers, cash_after_allocation=cash-costs-variable))
         for event in events.get(on, []):
             amount = event['amount']
@@ -96,7 +99,7 @@ def simulate(base, inputs, today):
         for months in (1,3,6,12,24,36,48,60):
             if months <= inputs['months'] and on == occurs(inputs['start'], months)-timedelta(days=1): checkpoints.append((months, cash))
     return dict(valid=True, end=end-timedelta(days=1), end_cash=cash, run_out=run_out, payments=periods,
-        points=points, checkpoints=checkpoints, events=actual, savings_total=transfers, extra_total=extra_total,
+        points=points, checkpoints=checkpoints, events=actual, savings_total=transfers, cash_invested_total=cash_invested_total, extra_total=extra_total,
         card_end=balance if known else None, payoff=payoff, apr=apr, interest=interest_total,
         goal_date=goal_date, automatic_total=automatic_total,reserved_total=reserved_total,reserve_transfers=reserve_transfers,
         savings_end=inputs['starting_savings']+transfers+automatic_total+reserved_total)
