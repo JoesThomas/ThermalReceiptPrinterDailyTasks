@@ -85,7 +85,7 @@ process.on('exit', () => child.kill());
   await testFinance.locator('input[name=daily_spend]').fill('10');
   await Promise.all([page.waitForResponse(r => r.url().endsWith('/finance/test/generate') && r.request().method()==='POST'), testFinance.getByRole('button',{name:'Generate test receipt'}).click()]);
   assert.match(await page.locator('.test-finance-paper').innerText(), /SIMULATION - POTENTIAL SALARY/);
-  assert.match(await page.locator('.test-finance-paper').innerText(), /GBP 4,500.00/);
+  assert.match(await page.locator('.test-finance-paper').innerText(), /£4,500\.00/);
   assert.match(await page.locator('.test-finance-paper').innerText(), /Strategy: Split: 50% to Amex/);
   assert.match(await page.locator('.test-finance-paper').innerText(), /Projected goal date:/);
   assert.match(await page.locator('.test-finance-paper').innerText(), /EXAMPLE ISA/);
