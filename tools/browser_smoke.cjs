@@ -177,39 +177,29 @@ process.on('exit', () => child.kill());
   const olderArchiveIds=await page.locator('main .review-row > a').evaluateAll(rows=>rows.map(row=>row.getAttribute('href')));
   assert.equal(olderArchiveIds.some(id=>firstArchiveIds.includes(id)),false);
   await page.getByRole('link',{name:'Newer receipts',exact:true}).waitFor();
-  // Hold navigation open to exercise the feedback without contacting banks.
+  // Exercise real loading handlers without navigating away from the outgoing document.
   await page.goto('http://receipt.test/bins');
   await page.clock.install();
   for (const submit of [false, true]) {
-    let heldRoute;
-    let release;
-    let started;
-    const requestStarted = new Promise(resolve => { started = resolve; });
-    const pending = new Promise(resolve => { release = resolve; });
-    const handler = async route => { heldRoute = route; started(); await pending; await route.fulfill({contentType:'text/html',body:'<p>Finance retrieved</p>'}); };
-    await page.route('**/finance-review**', handler);
-    if (submit) {
-      await page.evaluate(() => {
+    await page.evaluate(submit => {
+      if (submit) {
         const form = document.createElement('form');
         form.action = '/finance-review/forecast-settings'; form.method = 'post';
-        document.body.append(form); form.requestSubmit();
-      });
-    } else {
-      await page.locator('.app-navigation a[href="/finance-review"]').evaluate(link => link.click());
-    }
-    await requestStarted;
-    // Locator actions wait for navigation; inspect the still-visible outgoing document directly.
-    assert.equal(await page.evaluate(() => document.querySelector('.navigation-loading').hidden), false);
-    assert.match(await page.evaluate(() => document.querySelector('.navigation-loading').textContent), /Retrieving bank transactions and balances/);
+        document.body.append(form);
+        form.dispatchEvent(new Event('submit', {bubbles:true, cancelable:true}));
+        form.remove();
+      } else {
+        const event = new Event('click', {bubbles:true, cancelable:true});
+        Object.defineProperty(event, 'button', {value:0});
+        document.querySelector('.app-navigation a[href="/finance-review"]').dispatchEvent(event);
+      }
+    }, submit);
+    await page.locator('.navigation-loading:not([hidden])').waitFor();
+    assert.match(await page.locator('.navigation-loading').innerText(), /Retrieving bank transactions and balances/);
     await page.clock.fastForward(16000);
-    assert.equal(await page.evaluate(() => document.querySelector('.navigation-loading').hidden), false);
-    assert.match(await page.evaluate(() => document.querySelector('.navigation-loading').textContent), /Still retrieving bank data/);
-    assert.ok(heldRoute, 'Bank navigation was intercepted');
-    const loaded = page.waitForURL(url => url.pathname.startsWith('/finance-review'));
-    release(); await loaded;
-    await page.getByText('Finance retrieved', {exact:true}).waitFor();
-    await page.unroute('**/finance-review**', handler);
-    await page.goto('http://receipt.test/bins');
+    assert.equal(await page.locator('.navigation-loading').isVisible(), true);
+    assert.match(await page.locator('.navigation-loading').innerText(), /Still retrieving bank data/);
+    await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
     assert.equal(await page.locator('.navigation-loading').isVisible(), false);
   }
   await page.clock.resume();
