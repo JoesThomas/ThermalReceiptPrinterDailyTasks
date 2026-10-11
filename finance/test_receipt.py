@@ -37,7 +37,7 @@ def validate(values, today):
         raise ValueError('Choose 1 to 60 forecast months.') from None
     if not 1 <= months <= 60 or (occurs(start, months) - today).days > 1826:
         raise ValueError('Choose a forecast ending within five years of today.')
-    return dict(use_accounts=values.get('use_saved_accounts') == 'on', strategy=strategy, split=split, apr=apr, goal=goal, starting_savings=starting_savings, salary=salary, existing=existing if mode == 'additional' else Decimal(0),
+    return dict(invest_spare_cash=values.get('invest_spare_cash') == 'on', use_accounts=values.get('use_saved_accounts') == 'on', strategy=strategy, split=split, apr=apr, goal=goal, starting_savings=starting_savings, salary=salary, existing=existing if mode == 'additional' else Decimal(0),
                 other=other, lump=lump, savings=savings, save_all=not lump_mode and values.get('save_all') == 'on', mode=mode, start=start, months=months)
 
 
@@ -46,6 +46,10 @@ def build(projection, values, today):
     if not projection.get('valid'):
         raise ValueError('The finance forecast is incomplete. Refresh Finance review and confirm balances, repayment dates and a daily spending estimate first.')
     base = deepcopy(projection)
+    if inputs['invest_spare_cash'] and inputs['salary']+inputs['existing']>0:
+        reserve=base.get('reserve_details') or {}
+        separate=money(reserve.get('gap'),Decimal(0))+money(reserve.get('tax_reserve'),Decimal(0))
+        base['buffer']=max(base['buffer'],Decimal(1000)+separate)
     accounts=base.get('savings_accounts',[])
     from finance.savings_targets import allocate, link_regular_savings, prepare_cash_topup
     if inputs['use_accounts']:
@@ -122,7 +126,10 @@ def receipt(result, today):
     amount('Per day (expected spending)',base.get('daily_cost',base['daily']))
     amount('INCOME SURPLUS' if result['surplus']>=0 else 'INCOME FUNDING GAP',abs(result['surplus']))
     if data['save_all']: text('Saving all remaining income surplus.')
-    elif not data['savings']: text('Savings target not set')
+    elif not data['savings'] and not data['invest_spare_cash']: text('Savings target not set')
+    if data['invest_spare_cash']:
+        if data['salary']+data['existing']>0: text('Invest spare bank cash after salary; keep at least £1,000 plus bills, spending and other reserves.')
+        else: text('No salary: spare bank cash investment paused.')
     if result['shortfall']: amount('SHORTFALL after reserves',result['shortfall'])
     section('WHERE TO MOVE THIS PAYDAY')
     text('Extra transfers to make:')
@@ -134,6 +141,7 @@ def receipt(result, today):
     unassigned=first['savings']-moved
     if unassigned: amount('Savings - choose an account',unassigned)
     if first['extra']: amount('Amex - extra repayment',first['extra'])
+    if first['cash_invested']: text(f'Includes £{first["cash_invested"]:,.2f} from spare bank cash in the savings transfers above.')
     reserve=base.get('reserve_details') or {}
     if reserve.get('gap'):
         if base.get('cash_topup') and not forecast['reserve_transfers']:
@@ -173,7 +181,7 @@ def receipt(result, today):
             else:
                 amount('Listed payments this period',first['planned_card'])
                 baseline_saving=first['budget'] if data['save_all'] else min(first['budget'],data['savings'])
-                redirected=max(Decimal(0),baseline_saving-first['savings'])
+                redirected=max(Decimal(0),baseline_saving-first['income_savings'])
                 if redirected: amount('Savings redirected to repayment',redirected)
                 amount('Estimated balance after this period',first['closing_card'])
             amount('Extra repayments over forecast',forecast['extra_total'])
@@ -239,7 +247,8 @@ def receipt(result, today):
 
     section('SAVINGS PROJECTION')
     amount('Starting savings (separate to cash)',data['starting_savings'])
-    amount('Extra savings transfers over forecast',forecast['savings_total'])
+    amount('Extra savings transfers over forecast',forecast['savings_total']-forecast['cash_invested_total'])
+    if data['invest_spare_cash']: amount('Spare bank cash invested over forecast',forecast['cash_invested_total'])
     if forecast['automatic_total']: amount('Scheduled savings over forecast',forecast['automatic_total'])
     if forecast['reserved_total']: amount('One-off cash top-up from reserves',forecast['reserved_total'])
     amount('Projected savings at forecast end',forecast['savings_end'])
@@ -274,7 +283,10 @@ def receipt(result, today):
         amount(f'{months} month(s): {label}',abs(cash))
     section('ASSUMPTIONS')
     text(f'Forecast: {data["months"]} months from {data["start"]:%d %b %Y}. Goal durations measured from {today:%d %b %Y}.')
-    text('Extra savings use recurring income surplus after bills, spending and reserves; existing bank cash is not used for extra savings. Scheduled savings may use bank cash. Reserved cash top-up is separate.')
+    if data['invest_spare_cash']:
+        text('Spare bank cash is invested only on salary paydays, after the income strategy. Protects £1,000, bills, everyday spending and other reserves. No salary means no spare cash investment. Uses selected account shares and targets.')
+    else: text('Extra savings use recurring income surplus after bills, spending and reserves; existing bank cash is not used for extra savings.')
+    text('Scheduled savings may use bank cash. Reserved cash top-up is separate.')
     text('Same income and costs continue; finite repayments stop at completion. No savings growth or new card purchases assumed. Goal dates are estimates; no transfers are made.')
     for warning in base.get('warnings',[]): text(warning)
     rule(); text('SIMULATION ONLY - LIVE RECORDS UNCHANGED'); rule()
