@@ -81,3 +81,10 @@ class CashTopupGoalTests(TestCase):
         values=inputs();values['use_saved_accounts']=''
         result=build(source(),values,TODAY)
         self.assertEqual(result['forecast']['reserved_total'],0)
+
+    def test_reserved_cash_topup_does_not_require_incoming_salary(self):
+        settings=inputs();settings['salary']='0'
+        result=build(source(),settings,TODAY)
+        self.assertEqual(result['forecast']['savings_total'],0)
+        self.assertEqual(result['forecast']['reserved_total'],280)
+        self.assertEqual(result['account_plan']['accounts'][0]['goal_date'],TODAY)
