@@ -177,6 +177,32 @@ process.on('exit', () => child.kill());
   const olderArchiveIds=await page.locator('main .review-row > a').evaluateAll(rows=>rows.map(row=>row.getAttribute('href')));
   assert.equal(olderArchiveIds.some(id=>firstArchiveIds.includes(id)),false);
   await page.getByRole('link',{name:'Newer receipts',exact:true}).waitFor();
+  // Exercise real loading handlers without navigating away from the outgoing document.
+  await page.goto('http://receipt.test/bins');
+  await page.clock.install();
+  for (const submit of [false, true]) {
+    await page.evaluate(submit => {
+      if (submit) {
+        const form = document.createElement('form');
+        form.action = '/finance-review/forecast-settings'; form.method = 'post';
+        document.body.append(form);
+        form.dispatchEvent(new Event('submit', {bubbles:true, cancelable:true}));
+        form.remove();
+      } else {
+        const event = new Event('click', {bubbles:true, cancelable:true});
+        Object.defineProperty(event, 'button', {value:0});
+        document.querySelector('.app-navigation a[href="/finance-review"]').dispatchEvent(event);
+      }
+    }, submit);
+    await page.locator('.navigation-loading:not([hidden])').waitFor();
+    assert.match(await page.locator('.navigation-loading').innerText(), /Retrieving bank transactions and balances/);
+    await page.clock.fastForward(16000);
+    assert.equal(await page.locator('.navigation-loading').isVisible(), true);
+    assert.match(await page.locator('.navigation-loading').innerText(), /Still retrieving bank data/);
+    await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+    assert.equal(await page.locator('.navigation-loading').isVisible(), false);
+  }
+  await page.clock.resume();
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
@@ -192,7 +218,7 @@ process.on('exit', () => child.kill());
     await page.goto('http://receipt.test/bins');
     await page.screenshot({path:process.env.RECEIPT_BROWSER_SCREENSHOT, fullPage:true});
   }
-  console.log(`Browser checks passed: 19 form flows and archive pagination, ${checks} responsive layouts`);
+  console.log(`Browser checks passed: 19 form flows, finance loading and archive pagination, ${checks} responsive layouts`);
   await browser.close();
   child.kill();
 })().catch(error => { console.error(error); process.exit(1); });
