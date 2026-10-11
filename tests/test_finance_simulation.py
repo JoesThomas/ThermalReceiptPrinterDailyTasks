@@ -85,7 +85,7 @@ class SimulationTests(TestCase):
         values.update(mode='lump', lump_sum='0', months='12')
         text = receipt(build(projection(), values, TODAY), TODAY)
         self.assertIn('Funding shortfall at forecast end', text)
-        self.assertIn('6 month(s): funding shortfall', text)
+        self.assertIn('Protected reserves would be breached.', text)
         self.assertNotIn('£-', text)
         self.assertIn('No savings transfers assumed', text)
 
@@ -104,7 +104,7 @@ class SimulationTests(TestCase):
     def test_savings_goal_date_uses_existing_savings_and_payday_transfers(self):
         values=inputs(); values.update(savings_goal='2500', starting_savings='500')
         result=build(projection(), values, TODAY)
-        self.assertIn('Projected goal date: 10 Nov 2026', receipt(result,TODAY))
+        self.assertIn('Projected goal date: around November 2026', ' '.join(receipt(result,TODAY).split()))
         values['savings_goal']='5000'
         self.assertIn('Goal not reached within the 2-month', receipt(build(projection(),values,TODAY),TODAY))
         values.update(savings_goal='400', starting_savings='500')

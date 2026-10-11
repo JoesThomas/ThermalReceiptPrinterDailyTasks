@@ -201,6 +201,53 @@
                         </label>
                     </div>
                     <details>
+                        <summary>Salary dates, spending comparisons and one-off costs</summary>
+                        <div class="grid">
+                            <label>
+                                Salary starts on (optional)
+                                <input type="date"
+                                       name="salary_start"
+                                       min="{{ today }}"
+                                       value="{{ values.get('salary_start', '') }}">
+                                <small>Salary arrives on the usual payday only from this date. Other income continues.</small>
+                            </label>
+                            <label>
+                                Last salary date (optional)
+                                <input type="date"
+                                       name="salary_end"
+                                       min="{{ today }}"
+                                       value="{{ values.get('salary_end', '') }}">
+                                <small>Salary and spare-bank-cash transfers stop after this date. Scheduled payments continue.</small>
+                            </label>
+                            <label>
+                                Skip salary on these paydays (optional)
+                                <input type="text"
+                                       name="missed_salary_dates"
+                                       value="{{ values.get('missed_salary_dates', '') }}"
+                                       placeholder="2026-11-11, 2026-12-11">
+                                <small>Comma-separated payday dates inside this forecast. Other income and scheduled payments continue.</small>
+                            </label>
+                            <label>
+                                Lower / higher monthly spending difference (£)
+                                <input type="number"
+                                       name="comparison_spend"
+                                       min="0"
+                                       max="100000"
+                                       step="0.01"
+                                       value="{{ values.get('comparison_spend', '100') }}">
+                                <small>Compare everyday spending by this amount each month. Spending cannot fall below £0; bills and one-off costs are unchanged.</small>
+                            </label>
+                        </div>
+                        <label>
+                            One-off expenses (one per line)
+                            <textarea name="one_off_expenses"
+                                      rows="4"
+                                      maxlength="10000"
+                                      placeholder="2026-12-01 | 300 | Holiday">{{ values.get('one_off_expenses', '') }}</textarea>
+                            <small>Use YYYY-MM-DD | amount | description. Dates must be within your selected forecast; each cost is paid once.</small>
+                        </label>
+                    </details>
+                    <details>
                         <summary>Optional scenario assumptions</summary>
                         <label>
                             Amex balance owed (£, optional scenario override)
@@ -235,7 +282,7 @@
                         </label>
                     </details>
                     <p class="muted">
-                        Existing salary is not automatically added to replacement scenarios. Other income is assumed to arrive on payday. Savings and extra Amex repayments recalculate each pay period and are applied to the forecast. Finishing repayments frees income for later savings. Forecasts can extend to five years.
+                        Existing salary is not automatically added to replacement scenarios. Other income is assumed to arrive on payday, even outside the salary window. Savings and extra Amex repayments recalculate each pay period and are applied to the forecast. Finishing repayments frees income for later savings. Forecasts can extend to five years.
                     </p>
                     <button class="primary" type="submit">Generate test receipt</button>
                     <p id="test-finance-loading" class="helper" role="status" hidden>
@@ -243,6 +290,78 @@
                     </p>
                 </form>
             </section>
+            {% if scenario_details %}
+                <section data-private id="forecast-comparison">
+                    <h2>Forecast comparisons</h2>
+                    <p>
+                        Rough planning estimates using the same starting balances, bills, one-off costs and strategy. Lower and higher cases change everyday spending by {{ scenario_details.comparison_spend }} per month. Goal dates are calculated estimates; dates beyond the selected forecast use the same assumptions for up to five years.
+                    </p>
+                    <div class="grid forecast-cases">
+                        {% for scenario in scenario_details.scenarios %}
+                            <article class="card">
+                                <h3>{{ scenario.name }}</h3>
+                                <p>Monthly spending change: {{ scenario.adjustment }}</p>
+                                <dl>
+                                    <dt>Amex clearance</dt>
+                                    <dd>
+                                        {{ scenario.payoff or ('Balance unavailable' if scenario.amex_end == 'Unavailable' else 'Not cleared in selected forecast') }}
+                                    </dd>
+                                    <dt>Amex left at forecast end</dt>
+                                    <dd>
+                                        {{ scenario.amex_end }}
+                                    </dd>
+                                    <dt>Savings at forecast end</dt>
+                                    <dd>
+                                        {{ scenario.savings_end }}
+                                    </dd>
+                                    <dt>Lowest projected bank balance</dt>
+                                    <dd>
+                                        {{ scenario.minimum_bank }} on {{ scenario.minimum_date }}
+                                    </dd>
+                                    <dt>Bank reserve kept</dt>
+                                    <dd>
+                                        {{ scenario.bank_reserve }}
+                                    </dd>
+                                    <dt>Protected reserves</dt>
+                                    <dd>
+                                        {{ 'Hold throughout forecast' if scenario.reserves_hold else 'First breach: ' ~ scenario.shortfall_date }}
+                                    </dd>
+                                    {% if scenario.has_goal %}
+                                        <dt>Overall savings goal</dt>
+                                        <dd>
+                                            {{ scenario.goal_date or 'No funded date in planning horizon' }}{{ ' (beyond selected forecast)' if scenario.goal_extended else '' }}
+                                        </dd>
+                                    {% endif %}
+                                </dl>
+                                <h4>Account targets</h4>
+                                {% for account in scenario.accounts %}
+                                    <p>
+                                        <strong>{{ account.name }}</strong>: {{ account.balance }} now; {{ account.projected }} at forecast end against {{ account.target }}. Goal: {{ account.goal_date or 'No funded target date' }}{{ ' (beyond selected forecast)' if account.extended else '' }}.
+                                    </p>
+                                {% else %}
+                                    <p>No recorded accounts selected.</p>
+                                {% endfor %}
+                                <details>
+                                    <summary>Calculated period allocations</summary>
+                                    {% for period in scenario.periods %}
+                                        <p>
+                                            <strong>{{ period.date }}</strong>: salary {{ period.salary }}; bills/one-offs {{ period.costs }}; everyday spending {{ period.spending }}; extra Amex {{ period.extra }}; extra savings {{ period.savings }}; scheduled savings {{ period.automatic }} (included in bills).
+                                        </p>
+                                    {% endfor %}
+                                </details>
+                            </article>
+                        {% endfor %}
+                    </div>
+                    <h3>Spending £100 less each month</h3>
+                    <p>{{ scenario_details.sensitivity.message }}</p>
+                    {% if scenario_details.sensitivity.goal_message %}<p>{{ scenario_details.sensitivity.goal_message }}</p>{% endif %}
+                    {% if scenario_details.sensitivity.amex_message %}<p>{{ scenario_details.sensitivity.amex_message }}</p>{% endif %}
+                    {% for goal in scenario_details.sensitivity.goals %}<p>{{ goal.name }}: {{ goal.message }}</p>{% endfor %}
+                    <p class="muted">
+                        Reductions apply to everyday spending only, capped at zero. Forecasts do not assume investment growth. None of these allocations move real money.
+                    </p>
+                </section>
+            {% endif %}
             {% if result_text %}
                 <section data-private>
                     <h2>Simulation receipt</h2>

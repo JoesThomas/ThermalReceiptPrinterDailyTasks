@@ -95,3 +95,5 @@ html[data-high-contrast="true"] :is(.muted,small,.helper){color:#222}
 html[data-reduce-motion="true"],html[data-reduce-motion="true"] *{scroll-behavior:auto!important;animation:none!important;transition:none!important}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
 @media(max-width:600px){.accessibility-settings{margin:8px 10px}.accessibility-settings label{display:flex}}
+
+.forecast-cases{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}.forecast-cases article{min-width:0;overflow-wrap:anywhere;padding:16px;border:1px solid var(--border);border-radius:12px;background:#f7faf7}.forecast-cases dt{font-weight:600;margin-top:12px}.forecast-cases dd{margin:3px 0 0}.forecast-cases h3{margin-top:0}.forecast-cases details{margin-top:18px}@media(max-width:800px){.forecast-cases{grid-template-columns:minmax(0,1fr)}}

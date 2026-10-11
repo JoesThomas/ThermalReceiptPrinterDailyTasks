@@ -108,12 +108,15 @@ def register(app, login_required, start_print):
     def test_finance_page():
         from receipt.archive import load
         text = None
+        details = None
         identifier = session.get('test_finance_receipt')
         if identifier:
             try:
                 item = load(identifier)
                 candidate = item['pages'].get('finance', '')
-                if candidate.startswith('-'*42) and ('SIMULATION - POTENTIAL SALARY' in candidate or 'SIMULATION - LUMP SUM ONLY' in candidate): text = candidate
+                if candidate.startswith('-'*42) and ('SIMULATION - POTENTIAL SALARY' in candidate or 'SIMULATION - LUMP SUM ONLY' in candidate):
+                    text = candidate
+                    details=item.get('test_finance')
             except ValueError: pass
         from finance.receipt import load_finance_settings
         from finance.savings_targets import load_view
@@ -125,7 +128,8 @@ def register(app, login_required, start_print):
                     'invest_spare_cash': 'on' if session.get('test_finance_invest_spare_cash', True) else '',
                     'equal_savings': 'on' if session.get('test_finance_equal_savings', True) else '',
                     'strategy': session.get('test_finance_strategy', 'amex_first')}
-        return render_template('test_finance.html', today=uk_today(), result_text=text, values=defaults, saved_savings=saved_savings)
+        if isinstance(details,dict): defaults.update(details.get('values',{}))
+        return render_template('test_finance.html', today=uk_today(), result_text=text, values=defaults, saved_savings=saved_savings, scenario_details=details)
 
     @app.post('/finance/test/generate')
     @login_required
@@ -140,9 +144,13 @@ def register(app, login_required, start_print):
             validate(values, today)
             projection = collect(values, today)
             result = build(projection, values, today)
+            from finance.test_scenarios import compare
+            details=compare(projection,values,today,current=result)
+            details['values']={key:value for key,value in values.items() if key!='csrf_token'}
+            result['sensitivity']=details['sensitivity']
             text = receipt(result, today)
             from receipt.archive import save
-            identifier = save({'finance': text}, {}, datetime.now(timezone.utc).isoformat(), 'preview', {})
+            identifier = save({'finance': text}, {}, datetime.now(timezone.utc).isoformat(), 'preview', {},test_finance=details)
             session['test_finance_receipt'] = identifier
             session['test_finance_equal_savings'] = values['equal_savings'] == 'on'
             session['test_finance_invest_spare_cash'] = values['invest_spare_cash'] == 'on'

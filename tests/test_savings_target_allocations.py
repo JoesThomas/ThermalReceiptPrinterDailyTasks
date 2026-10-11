@@ -50,8 +50,8 @@ class AccountGoalTests(TestCase):
         self.assertEqual(result['forecast']['goal_date'],date(2026,12,10))
         text=receipt(result,TODAY)
         self.assertIn('RECORDED SAVINGS & INVESTMENTS',text)
-        self.assertIn('Projected target date: 10 Oct 2026',text)
-        self.assertIn('Estimated time to target:\n0 days (0 days)', text)
+        self.assertIn('Projected target date: around October 2026',text)
+        self.assertIn('Estimated time to target:\nNow', text)
         self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
 
     def test_account_target_duration_extends_and_disabled_allocation_is_explicit(self):
@@ -60,9 +60,9 @@ class AccountGoalTests(TestCase):
         values={'salary':'100','start':str(TODAY),'months':'1','save_all':'on','use_saved_accounts':'on'}
         result=build(source,values,TODAY)
         text=receipt(result,TODAY)
-        self.assertIn('Projected target date: 10 Dec 2026', text)
+        self.assertIn('Projected target date: around December 2026', ' '.join(text.split()))
         self.assertIn('Estimated time to target:', text)
-        self.assertIn('2 months (61 days)', ' '.join(text.split()))
+        self.assertIn('About 2 months', ' '.join(text.split()))
         self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
         values['use_saved_accounts']=''
         text=receipt(build(source,values,TODAY),TODAY)
