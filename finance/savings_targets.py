@@ -3,7 +3,7 @@ from decimal import Decimal, ROUND_DOWN
 from pathlib import Path
 from copy import deepcopy
 import re
-from finance.projection import money
+from finance.projection import money, day
 
 ZERO=Decimal(0)
 CENT=Decimal('0.01')
@@ -51,10 +51,34 @@ def link_regular_savings(events, accounts):
             event['savings_account']=candidates[0]['id']
 
 
+def prepare_cash_topup(base, accounts, today, start):
+    """Align a single physical cash goal and reserve without another cash charge."""
+    reserve=base.get('reserve_details')
+    if not reserve or not money(reserve.get('target')): return
+    aliases={'cash','physical cash','cash on hand','cash in hand','cash at home','cash reserve','cash savings','cash stash','cash pot'}
+    candidates=[row for row in accounts if row['kind']=='savings' and row['type']=='savings' and ' '.join(row['name'].casefold().split()) in aliases]
+    if len(candidates)!=1: return
+    account=candidates[0]
+    account_date=day(account.get('date'));reserve_date=day(reserve.get('date'))
+    held=money(reserve.get('held'))
+    if held is not None and reserve_date and reserve_date<=today and (not account_date or reserve_date>account_date):
+        account['balance']=held;account['date']=reserve_date.isoformat()
+    elif account['balance'] is not None:
+        held=account['balance']
+    else: return
+    gap=max(ZERO,money(reserve['target'])-held)
+    base['buffer']+=gap-money(reserve.get('gap'),ZERO)
+    reserve.update(held=held,gap=gap,date=day(account.get('date')))
+    if gap:
+        base['cash_topup']={'savings_account':account['id'],'amount':gap,
+                           'date':today if base['cash']>=base['buffer'] else start,
+                           'reserved_cash_topup':True}
+
+
 def allocate(accounts, periods, automatic_events=()):
     rows=deepcopy(accounts)
     for row in rows:
-        row.update(projected=row['balance'],added=ZERO,first=ZERO,automatic_added=ZERO,first_automatic=ZERO,goal_date=None)
+        row.update(projected=row['balance'],added=ZERO,first=ZERO,automatic_added=ZERO,first_automatic=ZERO,reserved_added=ZERO,goal_date=None)
         if row['target'] and row['balance'] is not None and row['balance']>=row['target']: row['goal_date']='already'
     explicit=any(row['share']>0 for row in rows)
     fraction=min(Decimal(100),sum((row['share'] for row in rows if row['balance'] is not None and row['target']),ZERO))/100 if explicit else Decimal(1)
@@ -66,8 +90,12 @@ def allocate(accounts, periods, automatic_events=()):
             row=next((r for r in rows if r['id']==period['savings_account']),None)
             if row is None or row['projected'] is None: continue
             part=period['amount']
-            row['projected']+=part;row['added']+=part;row['automatic_added']+=part
-            if periods and periods[0]['date']<=on<=periods[0]['end']: row['first_automatic']+=part
+            row['projected']+=part;row['added']+=part
+            if period.get('reserved_cash_topup'):
+                row['reserved_added']+=part
+            else:
+                row['automatic_added']+=part
+                if periods and periods[0]['date']<=on<=periods[0]['end']: row['first_automatic']+=part
             if row['target'] and row['projected']>=row['target'] and row['goal_date'] is None and period.get('funded',True): row['goal_date']=on
             continue
         amount=period['savings']

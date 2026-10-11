@@ -47,12 +47,13 @@ def build(projection, values, today):
         raise ValueError('The finance forecast is incomplete. Refresh Finance review and confirm balances, repayment dates and a daily spending estimate first.')
     base = deepcopy(projection)
     accounts=base.get('savings_accounts',[])
-    from finance.savings_targets import allocate, link_regular_savings
+    from finance.savings_targets import allocate, link_regular_savings, prepare_cash_topup
     if inputs['use_accounts']:
+        prepare_cash_topup(base,accounts,today,inputs['start'])
         inputs['starting_savings']=sum((row['balance'] for row in accounts if row['balance'] is not None),Decimal(0))
         link_regular_savings(base['events'],[row for row in accounts if row['balance'] is not None])
     forecast = simulate(base, inputs, today)
-    account_plan=allocate(accounts,forecast['payments'] if inputs['use_accounts'] else [],forecast['events'] if inputs['use_accounts'] else [])
+    account_plan=allocate(accounts,forecast['payments'] if inputs['use_accounts'] else [],forecast['events']+forecast['reserve_transfers'] if inputs['use_accounts'] else [])
     if (inputs['goal'] and forecast['goal_date'] is None or inputs['use_accounts'] and any(row['target'] and row['goal_date'] is None for row in account_plan['accounts'])) and inputs['mode'] != 'lump':
         extended_inputs = dict(inputs, months=60)
         while (occurs(inputs['start'], extended_inputs['months'])-today).days > 1826:
@@ -60,7 +61,7 @@ def build(projection, values, today):
         extended = simulate(base, extended_inputs, today)
         forecast['extended_goal_date'] = extended['goal_date']
         forecast['extended_goal_months'] = extended_inputs['months']
-        extended_accounts=allocate(accounts,extended['payments'] if inputs['use_accounts'] else [],extended['events'] if inputs['use_accounts'] else [])
+        extended_accounts=allocate(accounts,extended['payments'] if inputs['use_accounts'] else [],extended['events']+extended['reserve_transfers'] if inputs['use_accounts'] else [])
         for row,full in zip(account_plan['accounts'],extended_accounts['accounts']):
             row['extended_goal_date']=full['goal_date']
     first = forecast['payments'][0]
@@ -92,14 +93,15 @@ def receipt(result, today):
         if reached > forecast['end']:
             text('Time beyond selected forecast:')
             text(format_runway((reached - forecast['end']).days, forecast['end']))
-    def goal_progress(starting, projected, target, added, *, enabled=True):
+    def goal_progress(starting, projected, target, added, *, enabled=True, reserved=Decimal(0)):
         current = min(Decimal(100), starting / target * 100)
         future = min(Decimal(100), projected / target * 100)
         text(f'Goal progress now: {current:.1f}%')
         if not enabled:
             text('Account pathway is disabled.'); return
         text(f'Projected progress at forecast end: {future:.1f}%')
-        amount('Average saved per forecast month', added / data['months'])
+        if reserved: amount('Average ongoing additions / month', (added-reserved) / data['months'])
+        else: amount('Average saved per forecast month', added / data['months'])
         if starting >= target: text('Savings status: target already reached.')
         elif forecast['run_out']: text('Savings status: pathway has a funding shortfall. Review income and costs.')
         elif projected >= target: text('Savings status: target reached in the selected forecast.')
@@ -146,7 +148,13 @@ def receipt(result, today):
     if unassigned: amount('Savings - choose an account',unassigned)
     if first['extra']: amount('Amex - extra repayment',first['extra'])
     reserve=base.get('reserve_details') or {}
-    if reserve.get('gap'): amount('Cash top-up (already reserved)',reserve['gap'])
+    if reserve.get('gap'):
+        if base.get('cash_topup') and not forecast['reserve_transfers']:
+            amount('Cash top-up - funding needed',reserve['gap'])
+            text('Not credited to the cash goal yet.')
+        else:
+            amount('Cash top-up (already reserved)',reserve['gap'])
+            if forecast['reserve_transfers']: text(f"Cash goal credited on {forecast['reserve_transfers'][0]['date']:%d %b %Y} in this plan.")
     if not moved and not unassigned and not first['extra'] and not reserve.get('gap'): text('No extra transfers in this period.')
     regular=[bill for bill in result['bills'] if bill.get('savings_account') or bill.get('category')=='savings' or 'hargreaves' in bill['name'].casefold() or bill['name'].casefold().strip()=='hlam regular saving']
     if regular:
@@ -237,13 +245,16 @@ def receipt(result, today):
                 amount('Remaining to target',remaining)
                 text(f'{min(Decimal(100),account["balance"]/account["target"]*100):.0f}% of balance goal')
                 amount('Extra transfer this period',account['first'])
+                if account['reserved_added']:
+                    amount('Top-up from protected cash reserve',account['reserved_added'])
+                    text('One-off transfer already funded by the reserve; not another monthly saving.')
                 if account['automatic_added']:
                     amount('Scheduled saving this period',account['first_automatic'])
                     amount('Scheduled saving over forecast',account['automatic_added'])
                 amount('Contributions in selected forecast',account['added'])
                 amount('Projected account balance',account['projected'])
                 amount('Still to save at forecast end',max(Decimal(0),account['target']-account['projected']))
-                goal_progress(account['balance'], account['projected'], account['target'], account['added'], enabled=data['use_accounts'])
+                goal_progress(account['balance'], account['projected'], account['target'], account['added'], enabled=data['use_accounts'],reserved=account['reserved_added'])
                 reached=account['goal_date'] or account.get('extended_goal_date')
                 if reached=='already': text('Target already reached.')
                 elif reached:
@@ -267,6 +278,7 @@ def receipt(result, today):
     amount('Starting savings (separate to cash)',data['starting_savings'])
     amount('Extra savings transfers over forecast',forecast['savings_total'])
     if forecast['automatic_total']: amount('Scheduled savings over forecast',forecast['automatic_total'])
+    if forecast['reserved_total']: amount('One-off cash top-up from reserves',forecast['reserved_total'])
     amount('Projected savings at forecast end',forecast['savings_end'])
     periods=forecast['payments']
     examples={0, len(periods)-1}
@@ -283,7 +295,7 @@ def receipt(result, today):
         section('SAVINGS GOAL')
         amount('Target savings balance',data['goal'])
         amount('Still to save at start',max(Decimal(0),data['goal']-data['starting_savings']))
-        goal_progress(data['starting_savings'], forecast['savings_end'], data['goal'], forecast['savings_total']+forecast['automatic_total'])
+        goal_progress(data['starting_savings'], forecast['savings_end'], data['goal'], forecast['savings_total']+forecast['automatic_total']+forecast['reserved_total'],reserved=forecast['reserved_total'])
         if data['starting_savings']>=data['goal']: text('Goal already met at the starting balance.')
         elif forecast['goal_date']:
             text(f'Projected goal date: {forecast["goal_date"]:%d %b %Y}')
@@ -295,7 +307,7 @@ def receipt(result, today):
                 text(f'Extended projected goal date: {forecast["extended_goal_date"]:%d %b %Y}')
                 goal_duration(forecast['extended_goal_date'])
                 text('Beyond selected cash forecast; uses the same strategy, costs and finite repayments.')
-            elif not forecast['savings_total'] and not forecast['automatic_total']: text('No savings contribution selected or available; no funded goal date within the planning period.')
+            elif not forecast['savings_total'] and not forecast['automatic_total'] and not forecast['reserved_total']: text('No savings contribution selected or available; no funded goal date within the planning period.')
             else: text(f"No funded goal date within the {forecast.get('extended_goal_months', data['months'])}-month planning period.")
         text('Goal uses actual period allocations and starting savings; excludes savings interest.')
     section('RUNWAY WITH TEST INCOME')

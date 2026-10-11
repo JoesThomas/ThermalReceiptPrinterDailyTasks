@@ -84,6 +84,17 @@ with an existing £25 regular payment needs £75 in extra transfers. Save-all mo
 allocates the surplus after scheduled payments. Contribution shares apply to
 extra transfers; ongoing payments keep their existing destination. The simulator
 does not change standing orders or write new real contribution records.
+
+When there is one physical cash account (such as Cash, Physical cash or Cash on
+hand), its dated balance and the dated physical cash count are reconciled before
+planning: the newest value is used, with the account valuation winning date ties.
+The cash reserve gap is recalculated from that balance. A funded reserve top-up
+is credited once to the same cash goal on its planned transfer date, rather than
+leaving a second monthly savings pathway to fund the same gap. It is an internal
+transfer from money already excluded through the protected buffer; bank cash is
+not charged a second time. If the reserve has a different target, the cash goal
+may only be partly filled. Unfunded or ambiguous top-ups do not claim immediate
+goal completion. Actual cash records remain unchanged until the user updates them.
 Enable saved account allocation to calculate these dates using the selected
 salary, repayment strategy and shared savings budget. Extended estimates use the
 same cash simulation for up to five years; a target beyond that period is labelled

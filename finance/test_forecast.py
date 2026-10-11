@@ -30,6 +30,7 @@ def simulate(base, inputs, today):
     periods = []; points = []; actual = []; transfers = ZERO; extra_total = ZERO
     run_out = None; payoff = None; goal_date = today if inputs['goal'] and inputs['starting_savings'] >= inputs['goal'] else None
     interest_total = ZERO; checkpoints = []; automatic_total=ZERO
+    reserve_transfers=[];reserved_total=ZERO;topup=base.get('cash_topup')
     for offset in range((end-today).days):
         on = today + timedelta(days=offset)
         if known and balance > 0 and offset:
@@ -61,7 +62,7 @@ def simulate(base, inputs, today):
             transfers += saving; extra_total += extra
             if known and balance <= CENT and payoff is None and card.get('balance', ZERO) > 0:
                 payoff = on; balance = ZERO
-            if inputs['goal'] and goal_date is None and inputs['starting_savings']+transfers+automatic_total >= inputs['goal'] and run_out is None:
+            if inputs['goal'] and goal_date is None and inputs['starting_savings']+transfers+automatic_total+reserved_total >= inputs['goal'] and run_out is None:
                 goal_date = on
             periods.append(dict(funded=run_out is None, date=on, end=next_pay-timedelta(days=1), salary=inputs['salary']+inputs['existing'],
                 rent=inputs['other'], opening=opening, costs=costs, variable=variable, surplus=surplus,
@@ -79,9 +80,16 @@ def simulate(base, inputs, today):
                 actual.append(dict(event, amount=amount, funded=run_out is None and cash-daily>=0))
                 if event.get('savings_account'):
                     automatic_total+=amount
-                    if inputs['goal'] and goal_date is None and inputs['starting_savings']+transfers+automatic_total>=inputs['goal'] and run_out is None and cash-daily>=0:
+                    if inputs['goal'] and goal_date is None and inputs['starting_savings']+transfers+automatic_total+reserved_total>=inputs['goal'] and run_out is None and cash-daily>=0:
                         goal_date=on
         cash -= daily
+        if topup and on==topup['date'] and cash>=0:
+            # The gap was deducted in the starting protected buffer already.
+            # Moving that reserved cash to the physical cash goal is one transfer.
+            reserved_total=topup['amount']
+            reserve_transfers.append(dict(topup,funded=True))
+            if inputs['goal'] and goal_date is None and inputs['starting_savings']+transfers+automatic_total+reserved_total>=inputs['goal'] and run_out is None:
+                goal_date=on
         if periods: periods[-1]['closing_card'] = balance if known else None
         if cash < 0 and run_out is None: run_out = on
         if offset % 7 == 0 or on == end-timedelta(days=1): points.append({'date': on, 'scenario': cash})
@@ -90,4 +98,5 @@ def simulate(base, inputs, today):
     return dict(valid=True, end=end-timedelta(days=1), end_cash=cash, run_out=run_out, payments=periods,
         points=points, checkpoints=checkpoints, events=actual, savings_total=transfers, extra_total=extra_total,
         card_end=balance if known else None, payoff=payoff, apr=apr, interest=interest_total,
-        goal_date=goal_date, automatic_total=automatic_total, savings_end=inputs['starting_savings']+transfers+automatic_total)
+        goal_date=goal_date, automatic_total=automatic_total,reserved_total=reserved_total,reserve_transfers=reserve_transfers,
+        savings_end=inputs['starting_savings']+transfers+automatic_total+reserved_total)
