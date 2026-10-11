@@ -12,10 +12,16 @@ def is_amex(name):
     return 'amex' in key or 'americanexpress' in key
 
 
+def is_card_payment(event):
+    return not event.get('scenario_expense') and is_amex(event['name'])
+
+
 def simulate(base, inputs, today):
     end = occurs(inputs['start'], inputs['months'])
     daily = base.get('daily_cost', base['daily'])
-    income = inputs['salary'] + inputs['existing'] + inputs['other']
+    salary_amount = inputs['salary'] + inputs['existing']
+    daily_base=daily
+    minimum_bank=None;minimum_cash=None;minimum_date=None
     card = base.get('amex') or {}
     balance = card.get('balance')
     known = balance is not None
@@ -38,11 +44,15 @@ def simulate(base, inputs, today):
             balance += interest; interest_total += interest
         if on in paydays:
             month = paydays[on]; next_pay = occurs(inputs['start'], month+1)
+            salary_active=(not inputs.get('salary_start') or on>=inputs['salary_start']) and (not inputs.get('salary_end') or on<=inputs['salary_end']) and on not in inputs.get('missed_salary_dates',[])
+            salary=salary_amount if salary_active else ZERO
+            income=salary+inputs['other']
+            daily=max(ZERO,daily_base+inputs.get('spending_adjustment',ZERO)/Decimal((next_pay-on).days))
             cash += income + (inputs['lump'] if month == 0 else ZERO)
             opening = cash + base['buffer']
             period_events = [e for e in base['events'] if on <= e['date'] < next_pay]
-            noncard = sum((e['amount'] for e in period_events if not is_amex(e['name'])), ZERO)
-            scheduled = sum((e['amount'] for e in period_events if is_amex(e['name'])), ZERO)
+            noncard = sum((e['amount'] for e in period_events if not is_card_payment(e)), ZERO)
+            scheduled = sum((e['amount'] for e in period_events if is_card_payment(e)), ZERO)
             if known:
                 scheduled = min(scheduled, balance + balance*rate*(next_pay-on).days)
             costs = noncard + scheduled
@@ -50,7 +60,7 @@ def simulate(base, inputs, today):
             variable = daily * (next_pay-on).days
             surplus = income - costs - variable
             income_budget = max(ZERO, min(surplus, cash-costs-variable)).quantize(CENT)
-            use_spare_cash=inputs.get('invest_spare_cash') and inputs['salary']+inputs['existing']>0
+            use_spare_cash=inputs.get('invest_spare_cash') and salary>0
             budget=max(ZERO,cash-costs-variable).quantize(CENT,rounding=ROUND_DOWN) if use_spare_cash else income_budget
             opening_card=balance if known else None
             debt_budget = max(ZERO, balance-scheduled) if known and not card.get('full_reserved') else ZERO
@@ -73,13 +83,13 @@ def simulate(base, inputs, today):
                 payoff = on; balance = ZERO
             if inputs['goal'] and goal_date is None and inputs['starting_savings']+transfers+automatic_total+reserved_total >= inputs['goal'] and run_out is None:
                 goal_date = on
-            periods.append(dict(funded=run_out is None, date=on, end=next_pay-timedelta(days=1), salary=inputs['salary']+inputs['existing'],
+            periods.append(dict(funded=run_out is None, date=on, end=next_pay-timedelta(days=1), salary=salary,
                 rent=inputs['other'], opening=opening, costs=costs, variable=variable, surplus=surplus,
                 budget=budget, income_budget=income_budget, cash_repaid=cash_repaid, savings=saving, income_savings=income_savings, cash_invested=cash_invested, automatic_savings=automatic, extra=extra, planned_card=scheduled,
                 opening_card=opening_card, balance_after_extra=balance, savings_total=transfers, cash_after_allocation=cash-costs-variable))
         for event in events.get(on, []):
             amount = event['amount']
-            if known and is_amex(event['name']):
+            if known and is_card_payment(event):
                 amount = min(amount, balance)
                 balance -= amount
                 if balance <= CENT and payoff is None and card.get('balance', ZERO) > 0:
@@ -92,6 +102,8 @@ def simulate(base, inputs, today):
                     if inputs['goal'] and goal_date is None and inputs['starting_savings']+transfers+automatic_total+reserved_total>=inputs['goal'] and run_out is None and cash-daily>=0:
                         goal_date=on
         cash -= daily
+        # Monthly spending adjustments can leave sub-penny Decimal division residue.
+        if abs(cash)<Decimal('1e-18'): cash=ZERO
         if topup and on==topup['date'] and cash>=0:
             # The gap was deducted in the starting protected buffer already.
             # Moving that reserved cash to the physical cash goal is one transfer.
@@ -99,12 +111,15 @@ def simulate(base, inputs, today):
             reserve_transfers.append(dict(topup,funded=True))
             if inputs['goal'] and goal_date is None and inputs['starting_savings']+transfers+automatic_total+reserved_total>=inputs['goal'] and run_out is None:
                 goal_date=on
+        bank=cash+base['buffer']-reserved_total
+        if minimum_bank is None or bank<minimum_bank: minimum_bank=bank;minimum_date=on
+        minimum_cash=cash if minimum_cash is None else min(minimum_cash,cash)
         if periods: periods[-1]['closing_card'] = balance if known else None
         if cash < 0 and run_out is None: run_out = on
         if offset % 7 == 0 or on == end-timedelta(days=1): points.append({'date': on, 'scenario': cash})
         for months in (1,3,6,12,24,36,48,60):
             if months <= inputs['months'] and on == occurs(inputs['start'], months)-timedelta(days=1): checkpoints.append((months, cash))
-    return dict(valid=True, end=end-timedelta(days=1), end_cash=cash, run_out=run_out, payments=periods,
+    return dict(minimum_bank=minimum_bank, minimum_cash=minimum_cash, minimum_date=minimum_date, valid=True, end=end-timedelta(days=1), end_cash=cash, run_out=run_out, payments=periods,
         points=points, checkpoints=checkpoints, events=actual, savings_total=transfers, cash_invested_total=cash_invested_total, cash_repaid_total=cash_repaid_total, extra_total=extra_total,
         card_end=balance if known else None, payoff=payoff, apr=apr, interest=interest_total,
         goal_date=goal_date, automatic_total=automatic_total,reserved_total=reserved_total,reserve_transfers=reserve_transfers,

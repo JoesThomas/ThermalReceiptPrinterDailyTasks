@@ -18,6 +18,7 @@ def load(identifier):
             raise ValueError()
         if any(name not in PAGE_NAMES or not isinstance(text, str) for name, text in value['pages'].items()):
             raise ValueError()
+        if 'test_finance' in value and not isinstance(value['test_finance'],dict): raise ValueError()
         datetime.fromisoformat(value['captured_at'])
         if value.get('source') not in {'preview', 'printed'} or not isinstance(value.get('page_images', {}), dict) or not isinstance(value.get('freshness', {}), dict):
             raise ValueError()
@@ -29,11 +30,12 @@ def load(identifier):
     except (OSError, ValueError, KeyError, TypeError, RecursionError):
         raise ValueError('Archived receipt unavailable') from None
 
-def save(pages, images, captured_at, source, freshness):
+def save(pages, images, captured_at, source, freshness, *, test_finance=None):
     DIRECTORY.mkdir(parents=True, exist_ok=True, mode=0o700)
     identifier = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ-') + uuid.uuid4().hex[:12]
     value = dict(id=identifier, captured_at=captured_at, source=source, pages=pages,
                  page_images=images, freshness=freshness)
+    if test_finance is not None: value['test_finance']=test_finance
     target = DIRECTORY / (identifier + '.json')
     from storage import write_json
     write_json(target, value)
