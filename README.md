@@ -476,3 +476,25 @@ Tasks support completion, skip today and removal of local items with Undo. Deliv
 Actions, food, weather, news and finance rendering now live in separate `receipt/*_renderers.py` modules, with compatibility wrappers in the live orchestration module. Network collectors remain separate from rendering helpers. Adjacent horizontal section rules are coalesced in the recording buffer, so a closing rule followed by the delivery heading's opening rule produces one line in both preview and physical output.
 
 See [deployment/README.md](deployment/README.md) for the Raspberry Pi service template, installation checks, and physical reboot/network/printer acceptance checks. These checks cannot confirm hardware behaviour until run on your Pi.
+
+
+### Test finance contribution planning
+
+On **Test finance**, open **Scheduled savings and Hargreaves Lansdown contribution**.
+Choose a destination for a scheduled saving when more than one account could match it.
+Destinations use account IDs, so two ISAs at the same provider can stay separate. Choices
+are saved with the private test receipt and do not change the live payment configuration.
+
+The Hargreaves Lansdown plan separates the existing scheduled payment, extra income-funded
+saving and one-off spare bank cash. It suggests a regular total from eligible salary periods,
+or lets you enter an amount to compare. The compared amount includes the existing payment
+and replaces part of the extra allocation, rather than adding it twice. Increases require a
+salary payday, fit the available income and protected reserves, and wait for Amex clearance
+when **Amex first** is selected. Existing payments continue when salary stops. Period amounts,
+estimated target dates and time to target are shown on the page; the receipt keeps a compact
+summary. These are conditional planning allocations, not changes to a real direct debit.
+
+Forecast input validation is in `finance/scenario_inputs.py`, scenario preparation and goals
+in `finance/scenario_plan.py`, daily cash flow in `finance/test_forecast.py`, contribution
+comparisons in `finance/contribution_plan.py`, and receipt rendering in `finance/test_receipt.py`.
+The existing `build` and `validate` imports from `finance.test_receipt` remain supported.
