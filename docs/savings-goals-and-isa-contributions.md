@@ -68,6 +68,22 @@ goal dates also show the time beyond the selected forecast. These are scenario
 projections rather than measurements of historical savings performance. An Amex
 first pathway can still show a later goal date when its initial periods save
 nothing but contributions begin after the card is paid off.
+
+The Test finance receipt also has a basic "Where to move this payday" list:
+extra transfers by account, additional Amex payments, any already-reserved cash
+top-up, and amounts to retain for bills and everyday spending. Scheduled savings
+payments are listed separately as already arranged, not instructions to send
+them again. Hargreaves Lansdown / HLAM / H and L payments can be linked to one
+unambiguous recorded account. Other savings payments require an exact account
+name. Unlinked or ambiguous payments remain costs and are labelled explicitly.
+
+Linked regular savings are still deducted from bank cash once on their scheduled
+dates, and are credited to the account balance on those dates for goal forecasts.
+The desired total monthly savings includes these linked payments: a £100 target
+with an existing £25 regular payment needs £75 in extra transfers. Save-all mode
+allocates the surplus after scheduled payments. Contribution shares apply to
+extra transfers; ongoing payments keep their existing destination. The simulator
+does not change standing orders or write new real contribution records.
 Enable saved account allocation to calculate these dates using the selected
 salary, repayment strategy and shared savings budget. Extended estimates use the
 same cash simulation for up to five years; a target beyond that period is labelled

@@ -2,6 +2,7 @@
 from decimal import Decimal, ROUND_DOWN
 from pathlib import Path
 from copy import deepcopy
+import re
 from finance.projection import money
 
 ZERO=Decimal(0)
@@ -36,15 +37,39 @@ def load_view(today):
     return rows
 
 
-def allocate(accounts, periods):
+def link_regular_savings(events, accounts):
+    """Link regular savings to one account; ambiguous destinations stay unlinked."""
+    def key(value): return re.sub(r'[^a-z0-9]', '', str(value).casefold())
+    def hl(value):
+        original=str(value)
+        value=key(value)
+        return 'hargreaves' in value or value.startswith(('hlam','handl')) or value=='hl' or value.startswith('hlisa') or bool(re.search(r'\bh\s*(?:&|and)\s*l\b|\bhl\b',original,re.I))
+    for event in events:
+        if event.get('amount',ZERO)<=0: continue
+        candidates=[row for row in accounts if key(row['name'])==key(event['name']) or (hl(row['name']) and hl(event['name']))]
+        if len(candidates)==1 and (event.get('category')=='savings' or hl(event['name'])):
+            event['savings_account']=candidates[0]['id']
+
+
+def allocate(accounts, periods, automatic_events=()):
     rows=deepcopy(accounts)
     for row in rows:
-        row.update(projected=row['balance'],added=ZERO,first=ZERO,goal_date=None)
+        row.update(projected=row['balance'],added=ZERO,first=ZERO,automatic_added=ZERO,first_automatic=ZERO,goal_date=None)
         if row['target'] and row['balance'] is not None and row['balance']>=row['target']: row['goal_date']='already'
     explicit=any(row['share']>0 for row in rows)
     fraction=min(Decimal(100),sum((row['share'] for row in rows if row['balance'] is not None and row['target']),ZERO))/100 if explicit else Decimal(1)
     unallocated=ZERO
-    for index,period in enumerate(periods):
+    timeline=[(period['date'],1,index,period) for index,period in enumerate(periods)]
+    timeline += [(event['date'],0,None,event) for event in automatic_events if event.get('savings_account')]
+    for on,kind,index,period in sorted(timeline,key=lambda item:(item[0],item[1])):
+        if kind==0:
+            row=next((r for r in rows if r['id']==period['savings_account']),None)
+            if row is None or row['projected'] is None: continue
+            part=period['amount']
+            row['projected']+=part;row['added']+=part;row['automatic_added']+=part
+            if periods and periods[0]['date']<=on<=periods[0]['end']: row['first_automatic']+=part
+            if row['target'] and row['projected']>=row['target'] and row['goal_date'] is None and period.get('funded',True): row['goal_date']=on
+            continue
         amount=period['savings']
         remaining=(amount*fraction).quantize(CENT,rounding=ROUND_DOWN)
         assigned=ZERO
