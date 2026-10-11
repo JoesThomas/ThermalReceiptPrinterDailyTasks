@@ -50,6 +50,14 @@ def print_weather(printer, weather, location=None, detail=None, *, _context):
     printer.set(bold=False)
     centre(printer, location['name'].upper())
     centre(printer, location['region'].upper())
+    printer.set(bold=True)
+    left(printer, 'TODAY')
+    printer.set(bold=False)
+    left(printer, f"MAX {daily['temperature_2m_max'][0]:.1f}C  MIN {daily['temperature_2m_min'][0]:.1f}C")
+    left(printer, f"RAIN {daily['precipitation_probability_max'][0]:.0f}%")
+    sunrise = datetime.fromisoformat(daily['sunrise'][0])
+    sunset = datetime.fromisoformat(daily['sunset'][0])
+    left(printer, f"SUNSET/SUNRISE {sunrise.strftime('%H:%M')}-{sunset.strftime('%H:%M')}")
     print_line(printer)
     print_weather_graphic(printer, current['weather_code'])
     current_temperature = current['temperature_2m']
@@ -78,14 +86,6 @@ def print_weather(printer, weather, location=None, detail=None, *, _context):
         line = f"{reading['time']} {reading['temperature']:4.1f}C {reading['humidity']:3.0f}% {reading['wind']:4.1f}k {condition}"
         print_wrapped(printer, line, width=40)
     print_line(printer)
-    printer.set(bold=True)
-    left(printer, 'TODAY')
-    printer.set(bold=False)
-    left(printer, f"MAX {daily['temperature_2m_max'][0]:.1f}C  MIN {daily['temperature_2m_min'][0]:.1f}C")
-    left(printer, f"RAIN {daily['precipitation_probability_max'][0]:.0f}%")
-    sunrise = datetime.fromisoformat(daily['sunrise'][0])
-    sunset = datetime.fromisoformat(daily['sunset'][0])
-    left(printer, f"SUNSET/SUNRISE {sunrise.strftime('%H:%M')}-{sunset.strftime('%H:%M')}")
 
 def print_temperature_graph(printer, readings, *, _context):
     """
