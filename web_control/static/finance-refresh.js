@@ -21,7 +21,9 @@
     }));
     if (job.state === 'failed') {
       if (panel.dataset.state !== 'failed') { location.reload(); return; }
-      detail.textContent = 'Refresh failed. Previous figures remain dated; forecasts require fresh, complete bank data. You can try again.';
+      detail.textContent = panel.dataset.snapshot
+        ? 'Showing a previous bank check. Forecasts are withheld until fresh, complete bank data is available. You can try again.'
+        : 'No successful bank snapshot yet. Check bank connections and try again.';
     }
     if (job.checked_at && job.checked_at !== panel.dataset.snapshot) {
       // Reload only when a new snapshot is available; failed jobs retain the old one.
