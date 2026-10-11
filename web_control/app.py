@@ -473,8 +473,7 @@ def save():
     # Unlike existing requests, unticking To buy cancels its pending print.
     settings["one_shot"]["to_buy"] = _checked("to_buy")
     settings["one_shot"]["future_tasks"] = _checked("future_tasks")
-    detail = request.form.get("weather_detail", "auto")
-    settings["display"]["weather_detail"] = detail if detail in {"auto", "compact", "full"} else "auto"
+    settings["display"]["weather_detail"] = "full"
     try: settings["display"]["news_count"] = max(1, min(10, int(request.form.get("news_count", 3))))
     except ValueError: settings["display"]["news_count"] = 3
     try: settings["display"]["sport_count"] = max(1, min(5, int(request.form.get("sport_count", 3))))

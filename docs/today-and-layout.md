@@ -8,6 +8,6 @@ Changes compare consecutive generated receipts, including previews. Only generat
 
 Settings → Receipt layout leaves the original Information, Actions, Food, Finance order by default. Each page must appear once in a custom order; finance still requires its existing trigger. The default streams as before. Custom ordering buffers page rendering, collects the selected pages, then sends them in the chosen order, so paper output starts later. A failure during sending may still leave partial paper. Saved previews preserve the order used to generate them; archive reprints preserve their stored page order.
 
-Compact detail uses compact weather and at most two headlines per news section. It retains task text, exercise sets/reps/duration and finance amounts. Detailed preserves existing weather auto/full/compact settings. No automatic essentials-first ordering is applied.
+Compact detail uses at most two headlines per news section. Both compact and detailed receipts always include the weather drawing, hourly forecast and hourly temperature graph for the configured location when weather is enabled. They retain task text, exercise sets/reps/duration and finance amounts. Legacy weather auto/compact settings no longer suppress weather details. No automatic essentials-first ordering is applied.
 
 Successful physical jobs say “Sent to printer”. ESC/POS socket/USB writes do not prove that paper was printed. Preview generation is labelled separately. Real printer output must still be checked on the device.

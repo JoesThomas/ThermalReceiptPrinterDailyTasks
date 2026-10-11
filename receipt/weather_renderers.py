@@ -33,21 +33,17 @@ def print_weather(printer, weather, location=None, detail=None, *, _context):
     centre = _context.get('centre')
     datetime = _context.get('datetime')
     get_hourly_weather = _context.get('get_hourly_weather')
-    is_definitively_boring_weather = _context.get('is_definitively_boring_weather')
     left = _context.get('left')
-    print_compact_weather = _context.get('print_compact_weather')
     print_line = _context.get('print_line')
     print_temperature_graph = _context.get('print_temperature_graph')
     print_weather_graphic = _context.get('print_weather_graphic')
     print_wrapped = _context.get('print_wrapped')
     weather_description = _context.get('weather_description')
-    if detail == 'compact' or (detail != 'full' and is_definitively_boring_weather(weather)):
-        print_compact_weather(printer, weather, location)
-        return
+    # Weather essentials are always present, including for legacy auto/compact settings.
     current = weather['current']
     daily = weather['daily']
-    text_readings = get_hourly_weather(weather, interval_hours=4)
-    graph_readings = get_hourly_weather(weather, interval_hours=1)
+    text_readings = get_hourly_weather(weather, interval_hours=1)
+    graph_readings = text_readings
     print_line(printer, '=')
     printer.set(bold=True)
     centre(printer, 'WEATHER')
@@ -70,7 +66,7 @@ def print_weather(printer, weather, location=None, detail=None, *, _context):
     left(printer, f"PRESS {current['surface_pressure']:.0f}hPa  DIR {current['wind_direction_10m']:.0f}deg")
     print_line(printer)
     printer.set(bold=True)
-    left(printer, '4-HOURLY WEATHER')
+    left(printer, 'HOURLY WEATHER')
     printer.set(bold=False)
     for reading in text_readings:
         condition = weather_description(reading['code'])

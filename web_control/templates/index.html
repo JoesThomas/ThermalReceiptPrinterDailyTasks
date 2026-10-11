@@ -555,29 +555,9 @@
 
                         <h2>Output</h2>
 
-                        <label class="option">
-
-                            <span>Weather detail</span>
-
-                            <select name="weather_detail">
-
-                                {% for v in [
-                                    'auto',
-                                    'compact',
-                                    'full'
-                                    ] %}
-
-                                    <option value="{{ v }}"
-                                            {% if settings.display.weather_detail == v %}selected{% endif %}>
-                                        {{ v|title }}
-                                    </option>
-
-                                {% endfor %}
-
-                            </select>
-
-                        </label>
-
+                        <p class="muted">
+                            Weather always includes the condition drawing, hourly forecast and temperature graph for your configured location.
+                        </p>
 
                         <label class="option">
 

@@ -95,6 +95,38 @@ class NewsWeatherReceiptTests(unittest.TestCase):
         self.assertEqual([reading["time"] for reading in graph],
                          [f"{hour:02d}:00" for hour in range(24)])
 
+    def test_weather_essentials_survive_all_legacy_modes_and_quiet_days(self):
+        import datetime
+        from services.weather_source import get_hourly_weather
+        from receipt.weather_renderers import print_weather
+        weather = {'current': {'weather_code':0,'temperature_2m':15.0,'apparent_temperature':15.0,
+            'relative_humidity_2m':60,'wind_speed_10m':3.0,'surface_pressure':1013,'wind_direction_10m':90},
+            'daily': {'temperature_2m_max':[17.0],'temperature_2m_min':[12.0],
+                'precipitation_probability_max':[0],'sunrise':['2026-10-11T07:00'],'sunset':['2026-10-11T18:00']},
+            'hourly': {'time':[f'2026-10-11T{h:02d}:00' for h in range(24)],
+                'temperature_2m':[15.0]*24,'relative_humidity_2m':[60]*24,
+                'wind_speed_10m':[3.0]*24,'weather_code':[0]*24}}
+        location={'name':'Edinburgh','region':'Scotland'}
+        for detail in (None,'auto','compact','full'):
+            with self.subTest(detail=detail):
+                text=[]; drawings=[]; graphs=[]
+                context={'centre':lambda printer,line:text.append(line),
+                    'left':lambda printer,line:text.append(line), 'datetime':datetime.datetime,
+                    'get_hourly_weather':get_hourly_weather,
+                    'is_definitively_boring_weather':lambda weather:True,
+                    'print_compact_weather':lambda *args:self.fail('Weather essentials were suppressed'),
+                    'print_line':lambda *args:None,
+                    'print_wrapped':lambda printer,line,**kwargs:text.append(line),
+                    'weather_description':lambda code:'CLEAR',
+                    'print_weather_graphic':lambda printer,code:drawings.append(code),
+                    'print_temperature_graph':lambda printer,rows:graphs.append(rows)}
+                print_weather(SimpleNamespace(set=lambda **kwargs:None), weather, location, detail, _context=context)
+                self.assertIn('EDINBURGH',text); self.assertIn('SCOTLAND',text)
+                self.assertIn('HOURLY WEATHER',text); self.assertEqual(drawings,[0])
+                self.assertEqual(len(graphs[0]),24)
+                for hour in range(24):
+                    self.assertTrue(any(line.startswith(f'{hour:02d}:00 ') for line in text))
+
 
 class WeatherIllustrationTests(unittest.TestCase):
     def test_complete_outlines_and_same_width_rows_for_every_condition(self):
