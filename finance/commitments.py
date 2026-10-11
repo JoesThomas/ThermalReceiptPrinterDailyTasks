@@ -4,6 +4,7 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 from datetime import date, datetime, timedelta
 import re
+from finance.repayment_identity import unique_repayments, generic_amazon
 
 
 def _key(name):
@@ -28,10 +29,8 @@ def repayment_commitments(subscriptions_data, settings):
     monthly = subscriptions_data.get("monthly", [])
     known = {_key(item.get("name")) for item in monthly if isinstance(item, dict)}
     result = []
-    sources = (
-        subscriptions_data.get("instalments", []),
-        settings.get("debts", []),
-    )
+    sources = (unique_repayments(subscriptions_data.get("instalments", []),
+                                settings.get("debts", [])),)
     for source in sources:
         for item in source:
             if not isinstance(item, dict):
@@ -39,7 +38,9 @@ def repayment_commitments(subscriptions_data, settings):
             name = str(item.get("name", "Repayment")).strip()
             alias = str(item.get("monthly_commitment_name") or name)
             key = _key(alias)
-            if not key or key in known:
+            if not key or (key in known and (not generic_amazon(item) or any(
+                _key(row.get('name')) == key and _positive_amount(row.get('amount')) == _positive_amount(item.get('monthly_payment', item.get('amount')))
+                for row in monthly))):
                 continue
             amount = _positive_amount(item.get("monthly_payment", item.get("amount")))
             if amount is None:
@@ -49,7 +50,8 @@ def repayment_commitments(subscriptions_data, settings):
                 continue
             if item.get("payments_remaining") == 0:
                 continue
-            known.add(key)
+            if not generic_amazon(item):
+                known.add(key)
             match = item.get("match", [])
             # Amazon instalments have the same merchant as ordinary purchases;
             # the paid check also requires the precise monthly payment amount.

@@ -75,13 +75,13 @@
                 {% endif %}
             </article>
         {% endif %}
-        {% for account in goals.accounts if account.type == 'savings' and account.limit and account.balance is not none %}
+        {% for account in goals.accounts if account.balance_target and (account.type != 'premium_bonds' or account.target) and account.balance is not none %}
             <article class="goal-card">
                 <h3>{{ account.name }}</h3>
-                <strong>£{{ '{:,.2f}'.format(account.balance) }} / £{{ '{:,.2f}'.format(account.limit) }}</strong><progress max="100"
-          value="{{ account.percent }}"
+                <strong>£{{ '{:,.2f}'.format(account.balance) }} / £{{ '{:,.2f}'.format(account.balance_target) }}</strong><progress max="100"
+          value="{{ account.balance_goal.percent }}"
           aria-label="Savings target progress for {{ account.name }}"></progress>
-                <p>£{{ '{:,.2f}'.format(account.remaining) }} to goal · valuation {{ account.balance_date }}</p>
+                <p>£{{ '{:,.2f}'.format(account.balance_goal.remaining) }} to goal · valuation {{ account.balance_date }}</p>
             </article>
         {% endfor %}
         <a class="button" href="{{ url_for('savings_goals_page') }}">Manage goals & ISA entries</a>

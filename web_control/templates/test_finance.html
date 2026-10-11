@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include "favicon.html" %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Test finance · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static', filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+    </head>
+    <body>
+        {% include "navigation.html" %}
+        <main id="main-content" class="finance-page">
+            <header>
+                <p class="eyebrow">Manual scenario</p>
+                <h1>Test finance</h1>
+                <p>
+                    Try a potential monthly take-home salary. This never runs with scheduled prints and never records the salary as money received.
+                </p>
+                <a href="{{ url_for('finance_review') }}">Back to Finance review</a>
+            </header>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            {% if error %}<p class="flash" role="alert">{{ error }}</p>{% endif %}
+            <section>
+                <h2>Potential salary</h2>
+                <form method="post"
+                      action="{{ url_for('generate_test_finance') }}"
+                      id="test-finance-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="grid">
+                        <label>
+                            Potential monthly take-home salary (£)
+                            <input type="number"
+                                   name="salary"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   required
+                                   value="{{ values.get('salary', '') }}">
+                        </label>
+                        <label>
+                            Scenario type
+                            <select name="mode">
+                                <option value="replace"
+                                        {% if values.get('mode', 'replace') == 'replace' %}selected{% endif %}>
+                                    Replacement monthly salary
+                                </option>
+                                <option value="additional"
+                                        {% if values.get('mode') == 'additional' %}selected{% endif %}>
+                                    Additional monthly income
+                                </option>
+                                <option value="lump" {% if values.get('mode') == 'lump' %}selected{% endif %}>
+                                    Lump sum only (no recurring income)
+                                </option>
+                                <option value="lump_income"
+                                        {% if values.get('mode') == 'lump_income' %}selected{% endif %}>
+                                    Lump sum + monthly income
+                                </option>
+                            </select>
+                        </label>
+                        <label>
+                            One-off lump sum (£)
+                            <input type="number"
+                                   name="lump_sum"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('lump_sum', '0') }}">
+                        </label>
+                        <label>
+                            Existing monthly salary (£, used only for additional income)
+                            <input type="number"
+                                   name="existing_salary"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('existing_salary', '0') }}">
+                        </label>
+                        <label>
+                            Other monthly income (£, e.g. rent)
+                            <input type="number"
+                                   name="other_income"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('other_income', '0') }}">
+                        </label>
+                        <label>
+                            First payday / lump sum receipt date
+                            <input type="date"
+                                   name="start"
+                                   min="{{ today }}"
+                                   value="{{ values.get('start', today.isoformat()) }}"
+                                   required>
+                        </label>
+                        <label>
+                            Forecast months
+                            <input type="number"
+                                   name="months"
+                                   min="1"
+                                   max="60"
+                                   value="{{ values.get('months', '12') }}"
+                                   required>
+                        </label>
+                        <label>
+                            Surplus allocation strategy
+                            <select name="strategy">
+                                <option value="amex_first"
+                                        {% if values.get('strategy', 'amex_first') == 'amex_first' %}selected{% endif %}>
+                                    Amex first
+                                </option>
+                                <option value="savings_first"
+                                        {% if values.get('strategy') == 'savings_first' %}selected{% endif %}>
+                                    Savings first
+                                </option>
+                                <option value="split"
+                                        {% if values.get('strategy') == 'split' %}selected{% endif %}>
+                                    Split surplus
+                                </option>
+                            </select>
+                        </label>
+                        <label>
+                            Percentage to Amex when splitting
+                            <input type="number"
+                                   name="amex_split"
+                                   min="0"
+                                   max="100"
+                                   step="1"
+                                   value="{{ values.get('amex_split', '50') }}">
+                        </label>
+                        <label>
+                            Amex APR (%, optional)
+                            <input type="number"
+                                   name="amex_apr"
+                                   min="0"
+                                   max="100"
+                                   step="0.01"
+                                   value="{{ values.get('amex_apr', '') }}">
+                            <small>Leave blank to use a saved rate, if known. Otherwise interest is excluded explicitly.</small>
+                        </label>
+                        <label>
+                            Desired monthly savings (£)
+                            <input type="number"
+                                   name="savings_target"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('savings_target', '0') }}">
+                        </label>
+                        <label>
+                            <input type="checkbox"
+                                   name="save_all"
+                                   {% if values.get('save_all') == 'on' %}checked{% endif %}>
+                            Save all remaining income surplus
+                            <small>Overrides the savings target. Existing bank cash is excluded; test transfers occur each payday.</small>
+                        </label>
+                        <label>
+                            Savings goal (£, optional)
+                            <input type="number"
+                                   name="savings_goal"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('savings_goal', '0') }}">
+                        </label>
+                        <label>
+                            <input type="checkbox"
+                                   name="use_saved_accounts"
+                                   {% if values.get('use_saved_accounts') == 'on' %}checked{% endif %}>
+                            Use recorded savings accounts and their targets
+                            <small>Uses the combined known account balances instead of the manual starting savings below. Set targets and contribution shares on Savings goals.</small>
+                            <a href="{{ url_for('savings_goals_page') }}">Edit account targets and shares</a>
+                        </label>
+                        <label>
+                            Existing savings towards goal (£)
+                            <input type="number"
+                                   name="starting_savings"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('starting_savings', '0') }}">
+                            <small>Separate savings only; do not also include this money in starting bank cash.</small>
+                        </label>
+                    </div>
+                    <details>
+                        <summary>Optional scenario assumptions</summary>
+                        <label>
+                            Amex balance owed (£, optional scenario override)
+                            <input type="number"
+                                   name="amex_owed"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('amex_owed', '') }}">
+                            <small>Without a listed repayment schedule, the full known balance is reserved once today.</small>
+                        </label>
+                        <p>
+                            Leave these blank to use bank balances and your existing spending forecast. With incomplete bank data, supplying both makes this an explicitly manual estimate.
+                        </p>
+                        <label>
+                            Starting bank cash (£, optional)
+                            <input type="number"
+                                   name="opening_cash"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('opening_cash', '') }}">
+                        </label>
+                        <label>
+                            Everyday spending per day (£, optional)
+                            <input type="number"
+                                   name="daily_spend"
+                                   min="0"
+                                   max="100000"
+                                   step="0.01"
+                                   value="{{ values.get('daily_spend', '') }}">
+                        </label>
+                    </details>
+                    <p class="muted">
+                        Existing salary is not automatically added to replacement scenarios. Other income is assumed to arrive on payday. Savings and extra Amex repayments recalculate each pay period and are applied to the forecast. Finishing repayments frees income for later savings. Forecasts can extend to five years.
+                    </p>
+                    <button class="primary" type="submit">Generate test receipt</button>
+                    <p id="test-finance-loading" class="helper" role="status" hidden>
+                        Checking bank balances and payments, then building your salary simulation…
+                    </p>
+                </form>
+            </section>
+            {% if result_text %}
+                <section data-private>
+                    <h2>Simulation receipt</h2>
+                    <p class="muted">This is your saved test, not the scheduled or live receipt.</p>
+                    <pre class="test-finance-paper">{{ result_text }}</pre>
+                    <form method="post" action="{{ url_for('print_test_finance') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit">Print test receipt</button>
+                    </form>
+                </section>
+            {% endif %}
+        </main>
+        <script src="{{ url_for('static', filename='test-finance.js') }}" defer></script>
+    </body>
+</html>

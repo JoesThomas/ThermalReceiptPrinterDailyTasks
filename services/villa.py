@@ -187,33 +187,30 @@ def get_villa_matchday_trains(
         )
     )
 
-    url = (
-        "https://transportapi.com/"
-        "v3/uk/train/station/"
-        f"{BOURNVILLE_CRS}/"
-        f"{window_start:%Y-%m-%d}/"
-        f"{window_start:%H:%M}/"
-        "timetable.json"
-    )
-
+    params = {
+        "app_id": transport_app_id,
+        "app_key": transport_app_key,
+        "datetime": window_start.isoformat(),
+        "from_offset": "PT0S",
+        "to_offset": f"PT{MATCH_TRAIN_WINDOW_HOURS}H",
+        "calling_at": ASTON_CRS,
+        "station_detail": "calling_at",
+        "train_status": "passenger",
+        "type": "departure",
+        "limit": 50,
+    }
     response = get(
-        url,
-        params={
-            "app_id":
-                transport_app_id,
-
-            "app_key":
-                transport_app_key,
-
-            "calling_at":
-                ASTON_CRS,
-
-            "train_status":
-                "passenger",
-        },
-        timeout=20,
+        f"https://transportapi.com/v3/uk/train/station_timetables/{BOURNVILLE_CRS}.json",
+        params=params, timeout=20,
     )
-
+    # Retain the working legacy board for accounts without the newer endpoint.
+    if response.status_code in (400, 403, 404):
+        response = get(
+            f"https://transportapi.com/v3/uk/train/station/{BOURNVILLE_CRS}/{window_start:%Y-%m-%d}/{window_start:%H:%M}/timetable.json",
+            params={key: value for key, value in params.items()
+                    if key in {"app_id", "app_key", "calling_at", "station_detail", "train_status"}},
+            timeout=20,
+        )
     response.raise_for_status()
 
     services = (
@@ -249,11 +246,21 @@ def get_villa_matchday_trains(
                 service.get(
                     "expected_departure_time"
                 )
-                or service.get(
-                    "aimed_departure_time"
-                )
             ),
         )
+
+        details = (service.get("station_detail") or {}).get("calling_at") or []
+        if isinstance(details, dict):
+            details = [details]
+        arrival_time = None
+        for stop in details:
+            if not isinstance(stop, dict):
+                continue
+            code = str(stop.get("station_code") or "").upper().removeprefix("CRS:")
+            name = str(stop.get("station_name") or "").strip().casefold()
+            if code == ASTON_CRS or name == "aston":
+                arrival_time = _rail_time(kickoff.date(), stop.get("aimed_arrival_time"))
+                break
 
         trains.append({
             "departure":
@@ -273,6 +280,9 @@ def get_villa_matchday_trains(
                     "status"
                 )
                 or "",
+            "arrival": arrival_time,
+            "timetable_url": (service.get("service_timetable") or {}).get("id"),
+            "train_uid": service.get("train_uid"),
         })
 
     trains.sort(
@@ -280,6 +290,50 @@ def get_villa_matchday_trains(
             train["departure"]
     )
 
+    # Optional arrival enrichment must not prevent departure times being shown.
+    from concurrent.futures import ThreadPoolExecutor
+    from urllib.parse import urlsplit, urlunsplit
+
+    def arrival(train):
+        if train.get("arrival") is not None:
+            return
+        reason = "no timetable reference"
+        try:
+            url = urlsplit(train.get("timetable_url") or "")
+            if not url.path and train.get("train_uid"):
+                from urllib.parse import quote
+                uid = quote(str(train["train_uid"]), safe="")
+                url = urlsplit(f"https://transportapi.com/v3/uk/train/service_timetables/{uid}:{kickoff:%Y-%m-%d}.json")
+            if url.scheme not in {"http", "https"} or url.netloc != "transportapi.com" or not url.path.startswith(("/v3/uk/train/service/", "/v3/uk/train/service_timetables/")):
+                train["arrival_reason"] = reason
+                return
+            # Some timetable references use HTTP; always upgrade to HTTPS.
+            response = get(urlunsplit(("https", url.netloc, url.path, "", "")),
+                           params={"app_id": transport_app_id, "app_key": transport_app_key}, timeout=5)
+            code = response.status_code
+            if isinstance(code, int) and code >= 400:
+                reason = f"HTTP {code}"
+            response.raise_for_status()
+            stops = response.json().get("stops", [])
+            reason = "Aston stop not returned"
+            for stop in stops:
+                code = str(stop.get("station_code") or "").upper().removeprefix("CRS:")
+                name = str(stop.get("station_name") or "").strip().casefold()
+                if code == ASTON_CRS or name == "aston":
+                    train["arrival"] = _rail_time(kickoff.date(), stop.get("aimed_arrival_time"))
+                    reason = "arrival time missing" if train["arrival"] is None else "loaded"
+                    break
+        except Exception as error:
+            if not reason.startswith("HTTP"):
+                reason = type(error).__name__
+        finally:
+            train["arrival_reason"] = reason
+            if train.get("arrival") is None:
+                # Never print exception messages or API URLs containing keys.
+                print(f"Villa arrival debug: departure={train['departure']:%H:%M} reason={reason}")
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        list(executor.map(arrival, trains))
     return trains
 
 def print_villa_matchday(
@@ -391,6 +445,7 @@ def print_villa_matchday(
 
     if include_trains:
 
+        failed = False
         try:
             trains = get_villa_matchday_trains(
                 kickoff,
@@ -399,10 +454,9 @@ def print_villa_matchday(
             )
 
         except Exception as error:
-            print(
-                "Villa train error:",
-                repr(error),
-            )
+            failed = True
+            # HTTP error URLs can contain credentials; log only the error type.
+            print("Villa train error:", type(error).__name__)
 
             trains = []
 
@@ -452,40 +506,24 @@ def print_villa_matchday(
                     )
                 )
 
-                platform = str(
-                    train.get(
-                        "platform",
-                        "-",
-                    )
-                )
-
-                # ------------------------------
-                # STATUS
-                # ------------------------------
-
-                if (
-                    expected_dt
-                    and expected_dt
-                    > departure_dt
-                ):
-                    status = (
-                        "EXP "
-                        + expected_dt.strftime(
-                            "%H:%M"
-                        )
-                    )
-
-                else:
+                platform = train.get("platform")
+                platform_text = f"Platform {safe_text(str(platform))}" if platform and platform != "-" else "Platform TBC"
+                raw_status = str(train.get("status", "")).upper()
+                if "CANCEL" in raw_status:
+                    status = "CANCELLED"
+                elif expected_dt and expected_dt != departure_dt:
+                    status = "EXP " + expected_dt.strftime("%H:%M")
+                elif expected_dt:
                     status = "ON TIME"
-
-                left(
-                    printer,
-                    (
-                        f"{departure:<7}"
-                        f"{('PLAT ' + platform):<13}"
-                        f"{status:>22}"
-                    ),
-                )
+                else:
+                    status = "SCHEDULED"
+                left(printer, f"{departure:<7}{platform_text:<18}{status:>17}")
+                arrival = train.get("arrival")
+                left(printer, "  Aston arrival: " + (arrival.strftime("%H:%M") + " (scheduled)" if arrival else "unavailable"))
+        else:
+            line(printer, "-")
+            left(printer, "TRAVEL: BOURNVILLE -> ASTON")
+            left(printer, "Train times unavailable" if failed else "No trains returned before kick-off")
 
     line(
         printer,

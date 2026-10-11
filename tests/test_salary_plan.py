@@ -61,3 +61,15 @@ class SalaryPlanTests(unittest.TestCase):
         self.assertEqual(build([],[],balances,projection,settings,None,today)['surplus'],2000)
         projection['valid']=False
         self.assertIsNone(build([],[],balances,projection,settings,None,today)['surplus'])
+
+    def test_suggested_savings_cannot_exceed_cash_after_costs(self):
+        today=date(2026,10,1)
+        settings={'hsbc_emergency_reserve':1000,'next_payday':'2026-11-01',
+                  'salary_savings_target':5000,'runway_daily_spend':20}
+        balances={'HSBC':{'available':2000},'MONZO':{'available':0}}
+        projection=build_projection(balances,[],[],[],settings,today)
+        result=build([],[],balances,projection,settings,None,today)
+        self.assertEqual(result['suggested_savings'],400)
+        self.assertEqual(result['savings_with_surplus'],400)
+        projection['valid']=False
+        self.assertIsNone(build([],[],balances,projection,settings,None,today)['suggested_savings'])

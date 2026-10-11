@@ -50,6 +50,22 @@ targets and entries stay in the gitignored, owner-only `data/savings_goals.json`
 file locks serialize edits. The private backup includes and validates this ledger.
 No personal balance or contribution history is seeded in the public source.
 
+The regular finance receipt groups each recorded savings/investment balance with
+its balance target, amount still to save, progress and balance date. Missing
+targets or balances are labelled explicitly. The Test finance receipt also shows
+the projected completion date and elapsed calendar time from its generation date.
+Each target includes current and projected percentage progress, average savings
+per forecast month, remaining gap and a plain-language pathway status. Extended
+goal dates also show the time beyond the selected forecast. These are scenario
+projections rather than measurements of historical savings performance. An Amex
+first pathway can still show a later goal date when its initial periods save
+nothing but contributions begin after the card is paid off.
+Enable saved account allocation to calculate these dates using the selected
+salary, repayment strategy and shared savings budget. Extended estimates use the
+same cash simulation for up to five years; a target beyond that period is labelled
+unreached rather than extrapolated from a fixed monthly amount. Balance targets
+remain separate from ISA contribution allowance progress.
+
 Sources:
 - https://www.nsandi.com/products/premium-bonds
 - https://www.gov.uk/individual-savings-accounts/how-isas-work

@@ -43,10 +43,12 @@ def validate(value):
     if not isinstance(value,dict) or not isinstance(value.get('accounts'),dict) or not isinstance(value.get('entries'),list) or not isinstance(value.get('years'),dict):
         raise ValueError('Invalid savings goals file; restore it before editing.')
     if len(value['accounts'])>500 or len(value['years'])>101: raise ValueError('Savings record limit reached.')
+    if sum((amount(row.get('monthly_share',0)) for row in value['accounts'].values() if isinstance(row,dict)),Decimal(0))>100: raise ValueError('Total savings shares cannot exceed 100%.')
     for key,row in value['accounts'].items():
         if not isinstance(row,dict) or not isinstance(row.get('name'),str) or not 1 <= len(row['name']) <= 90 or any(ord(c)<32 for c in row['name']) or row.get('kind') not in {'savings','investment'} or key != identity(row['name'],row['kind']) or row.get('type') not in TYPES:
             raise ValueError('Invalid savings account settings.')
         if row.get('target') is not None: amount(row['target'])
+        if row.get('monthly_share') is not None and amount(row['monthly_share'])>100: raise ValueError('Savings shares must be between 0 and 100%.')
         if row.get('interest_rate') is not None:
             if amount(row['interest_rate'])>100 or row.get('type')!='cash_isa': raise ValueError('Use a cash ISA interest rate between 0 and 100%.')
             date.fromisoformat(row['rate_date'])
@@ -84,16 +86,20 @@ def edit():
         value=load();yield value;validate(value);write_json(FILE,value)
 
 
-def account_settings(name,kind,account_type,target=None):
+def account_settings(name,kind,account_type,target=None,monthly_share=None):
     name=name.strip()
     if not name or len(name)>90 or any(ord(c)<32 for c in name) or kind not in {'savings','investment'} or account_type not in TYPES:
         raise ValueError('Choose a valid account and type.')
     target=amount(target) if target not in (None,'') else None
     if target is not None and target <= 0: raise ValueError('Goal must be positive.')
+    if account_type=='premium_bonds' and target is not None and target>50000: raise ValueError('Premium Bonds target cannot exceed 50000.')
+    share=amount(monthly_share) if monthly_share not in (None,'') else None
+    if share is not None and share>100: raise ValueError('Share must be between 0 and 100%.')
+    if share and not target and account_type!='premium_bonds': raise ValueError('Set a balance target before assigning a contribution share.')
     with edit() as value:
         key=identity(name,kind)
         old=value['accounts'].get(key,{})
-        value['accounts'][key]={**{k:v for k,v in old.items() if k in {'interest_rate','rate_date'} and account_type=='cash_isa'},'name':name,'kind':kind,'type':account_type,'target':str(target) if target is not None else None}
+        value['accounts'][key]={**{k:v for k,v in old.items() if k in {'interest_rate','rate_date'} and account_type=='cash_isa'},'name':name,'kind':kind,'type':account_type,'target':str(target) if target is not None else None,'monthly_share':str(share) if share is not None else old.get('monthly_share','0')}
         if old.get('type') != account_type:
             for row in value['years'].values(): row['complete']=False
 
@@ -213,6 +219,8 @@ def review(wealth=None,year=None,state=None,on=None,bond_balances=None):
         else:
             row['limit']=Decimal(50000) if row['type']=='premium_bonds' else amount(row['target']) if row.get('target') else None
             row.update(bar(row.get('balance'),row['limit']))
+        row['balance_target']=amount(row['target']) if row.get('target') else Decimal(50000) if row['type']=='premium_bonds' else None
+        row['balance_goal']=bar(row.get('balance'),row['balance_target'])
         row['entries']=sorted([dict(e,event_label=EVENTS[e['event']]) for e in entries if e['account']==key],key=lambda e:e['date'],reverse=True)
     shared={'used':used,'limit':allowance,**bar(used,allowance),'complete':config.get('complete',False)}
     cash={'used':cash_used,'limit':cash_limit,**bar(cash_used,cash_limit)}
@@ -224,18 +232,38 @@ def review(wealth=None,year=None,state=None,on=None,bond_balances=None):
             'years':years,'has_isa':bool(entries) or any(row['type'] in ISA for row in accounts.values()),'has_cash':cash_used>0 or any(row['type']=='cash_isa' for row in accounts.values()),'today':on}
 
 
-def receipt_lines(view):
+def receipt_lines(view, *, include_balances=False):
     from textwrap import wrap
     from receipt.layout import progress_bar
     lines=[]
+    if include_balances and view['accounts']:
+        from receipt.layout import amount_rows
+        lines += ['', 'SAVINGS & TARGETS [F]', '-' * 40]
+        for row in view['accounts']:
+            lines += [row['name'].upper()]
+            if row['balance'] is None:
+                lines.append('BALANCE UNAVAILABLE')
+            else:
+                lines.extend(amount_rows('BALANCE', row['balance']))
+            if row['balance_target'] is None:
+                lines.append('TARGET NOT SET')
+            else:
+                lines.extend(amount_rows('TARGET', row['balance_target']))
+                if row['balance'] is not None:
+                    lines.extend(amount_rows('STILL TO SAVE', row['balance_goal']['remaining']))
+                    lines.append(progress_bar(row['balance_goal']['percent']))
+                    if row['balance_goal']['remaining'] == 0:
+                        lines.append('TARGET REACHED')
+            if row.get('balance_date'):
+                lines.append('BALANCE AS OF ' + str(row['balance_date']))
     if view['premium']['balance'] is not None:
         row=view['premium'];lines+=['PREMIUM BONDS HOLDING GOAL',f"GBP {row['balance']:.2f} / 50000.00",f"{row['percent']:.0f}% FULL / GBP {row['remaining']:.2f} SPACE"]
         lines.append(progress_bar(row['percent']))
         if row['over']: lines.append('RECORDED HOLDINGS EXCEED LIMIT')
     for row in view['accounts']:
-        if row['type']=='savings' and row['limit'] and row['balance'] is not None:
-            lines += [row['name'].upper()+' GOAL',f"GBP {row['balance']:.2f} / {row['limit']:.2f} ({row['percent']:.0f}%)"]
-            lines.append(progress_bar(row['percent']))
+        if not include_balances and (row['type']!='premium_bonds' or row.get('target')) and row['balance_target'] and row['balance'] is not None:
+            lines += [row['name'].upper()+' BALANCE GOAL',f"GBP {row['balance']:.2f} / {row['balance_target']:.2f} ({row['balance_goal']['percent']:.0f}%)"]
+            lines.append(progress_bar(row['balance_goal']['percent']))
     if view['has_isa']:
         row=view['shared'];lines += ['ISA NEW CONTRIBUTIONS '+view['label'],f"RECORDED GBP {row['used']:.2f}"]
         if row['limit'] is not None:
@@ -244,7 +272,7 @@ def receipt_lines(view):
         for account in view['accounts']:
             if account['type'] in ISA:
                 lines.append(f"{account['name']}: GBP {account['contributions']:.2f}")
-                if account.get('balance') is not None: lines.append(f"BALANCE GBP {account['balance']:.2f}")
+                if not include_balances and account.get('balance') is not None: lines.append(f"BALANCE GBP {account['balance']:.2f}")
                 if account['interest']: lines.append(f"RECORDED INTEREST GBP {account['interest']:.2f}")
         if row['complete'] and row['remaining'] is not None: lines.append(f"RECORDED SPACE GBP {row['remaining']:.2f}")
         else: lines.append('RECORDS MAY BE INCOMPLETE')

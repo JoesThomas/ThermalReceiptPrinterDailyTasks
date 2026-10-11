@@ -27,11 +27,14 @@ def build(projection,value,today):
     if not projection['valid']:return {'valid':False,'reason':'Complete live balances, repayment dates and spending coverage are needed.'}
     months=int(value['months']);end=occurs(start,months)
     if (end-today).days>760:raise ValueError('Choose a scenario starting soon enough for a two-year forecast')
+    lump = parse(value.get('lump_sum', '0'))
+    if lump is None or not ZERO <= lump <= 10000000:
+        raise ValueError('Enter a valid non-negative lump sum')
     incomes={};rows=[]
     for month in range(months):
         on=occurs(start,month)
         salary=parse(value['salary']);rent=ZERO if month<int(value['vacancy']) else parse(value['rent'])
-        incomes[on]=salary+rent;rows.append({'date':on,'salary':salary,'rent':rent,'vacant':month<int(value['vacancy'])})
+        incomes[on]=salary+rent+(lump if month==0 else ZERO);rows.append({'date':on,'salary':salary,'rent':rent,'vacant':month<int(value['vacancy'])})
     costs={}
     for event in projection['events']:
         costs[event['date']]=costs.get(event['date'],ZERO)+event['amount']
