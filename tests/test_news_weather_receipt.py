@@ -47,11 +47,35 @@ class NewsWeatherReceiptTests(unittest.TestCase):
         })
         graph(printer, [{"time": f"{hour:02d}:00", "temperature": float(hour)}
                         for hour in range(24)])
-        self.assertEqual(sizes, [(440, 160)])
+        self.assertEqual(sizes, [(576, 202)])
         self.assertEqual(alignment, ["center", "left"])
         self.assertTrue({"HOUR", "00", "03", "06", "09", "12", "15",
                          "18", "21", "23"}.issubset(labels))
         self.assertTrue(any(value.endswith("C") for value in labels))
+
+    def test_graph_uses_printable_width_and_centres_plot_with_balanced_gutters(self):
+        from receipt.weather_renderers import print_temperature_graph
+        lines=[]; images=[]; labels=[]
+        class Draw:
+            def __init__(self,image):self.draw=ImageDraw.Draw(image)
+            def line(self,points,**kwargs):lines.append(points);self.draw.line(points,**kwargs)
+            def text(self,position,text,**kwargs):labels.append((position,text,kwargs));self.draw.text(position,text,**kwargs)
+        for width in (384,576):
+            with self.subTest(width=width):
+                lines.clear();images.clear();labels.clear()
+                printer=SimpleNamespace(profile=SimpleNamespace(profile_data={'media':{'width':{'pixels':width}}}),
+                    image=lambda buffer:images.append(Image.open(BytesIO(buffer.getvalue()))),set=lambda **kwargs:None)
+                context={'Image':Image,'ImageDraw':SimpleNamespace(Draw=Draw),'BytesIO':BytesIO,
+                         'math':math,'printer_text':lambda *args:None}
+                print_temperature_graph(printer,[{'time':f'{hour:02d}:00','temperature':-5+hour/2} for hour in range(24)],_context=context)
+                self.assertEqual(images[0].width,width)
+                left,top,right,bottom=lines[1]
+                self.assertEqual(left,width-right)
+                self.assertGreater(right-left,width*.75)
+                self.assertTrue(all(kwargs['font'] is not None for pos,label,kwargs in labels))
+                self.assertEqual(next(pos[0] for pos,label,kwargs in labels if label=='HOUR'),width//2)
+                # Labels retain ink inside the image; neither axis endpoint touches paper edges.
+                self.assertGreater(left,0);self.assertLess(right,width)
 
     def test_local_news_omits_description(self):
         lines = []
@@ -123,6 +147,7 @@ class NewsWeatherReceiptTests(unittest.TestCase):
                 print_weather(SimpleNamespace(set=lambda **kwargs:None), weather, location, detail, _context=context)
                 self.assertIn('EDINBURGH',text); self.assertIn('SCOTLAND',text)
                 self.assertIn('HOURLY WEATHER',text); self.assertEqual(drawings,[0])
+                self.assertLess(text.index('TEMPERATURE GRAPH'), text.index('HOURLY WEATHER'))
                 self.assertEqual(len(graphs[0]),24)
                 for hour in range(24):
                     self.assertTrue(any(line.startswith(f'{hour:02d}:00 ') for line in text))

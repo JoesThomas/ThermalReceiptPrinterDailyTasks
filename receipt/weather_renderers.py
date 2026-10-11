@@ -66,17 +66,17 @@ def print_weather(printer, weather, location=None, detail=None, *, _context):
     left(printer, f"PRESS {current['surface_pressure']:.0f}hPa  DIR {current['wind_direction_10m']:.0f}deg")
     print_line(printer)
     printer.set(bold=True)
+    left(printer, 'TEMPERATURE GRAPH')
+    printer.set(bold=False)
+    print_temperature_graph(printer, graph_readings)
+    print_line(printer)
+    printer.set(bold=True)
     left(printer, 'HOURLY WEATHER')
     printer.set(bold=False)
     for reading in text_readings:
         condition = weather_description(reading['code'])
         line = f"{reading['time']} {reading['temperature']:4.1f}C {reading['humidity']:3.0f}% {reading['wind']:4.1f}k {condition}"
         print_wrapped(printer, line, width=40)
-    print_line(printer)
-    printer.set(bold=True)
-    left(printer, 'TEMPERATURE GRAPH')
-    printer.set(bold=False)
-    print_temperature_graph(printer, graph_readings)
     print_line(printer)
     printer.set(bold=True)
     left(printer, 'TODAY')
@@ -112,26 +112,35 @@ def print_temperature_graph(printer, readings, *, _context):
     graph_max = math.ceil(max(temperatures) / tick) * tick
     if graph_min == graph_max:
         graph_max += tick
-    image_width = 440
-    image_height = 160
+    from PIL import ImageFont
+    try:
+        printable_width = printer.profile.profile_data['media']['width']['pixels']
+    except (AttributeError, KeyError, TypeError):
+        printable_width = 576
+    if type(printable_width) is not int or not 256 <= printable_width <= 1024:
+        printable_width = 576
+    image_width = printable_width - printable_width % 8
+    image_height = max(160, min(260, round(image_width * 0.35)))
+    font = ImageFont.load_default(size=14)
+    tick_count = round((graph_max - graph_min) / tick)
+    tick_labels = [f'{graph_min + tick * step:g}C' for step in range(tick_count + 1)]
+    label_width = max(font.getbbox(label)[2] - font.getbbox(label)[0] for label in tick_labels)
     image = Image.new('1', (image_width, image_height), 1)
     draw = ImageDraw.Draw(image)
-    left_margin = 38
-    right_margin = 10
-    top_margin = 8
-    bottom_margin = 32
+    # Centre the plotting area, reserving the same minimal label gutter on each side.
+    left_margin = right_margin = label_width + 12
+    top_margin = 12
+    bottom_margin = 42
     graph_width = image_width - left_margin - right_margin
     graph_height = image_height - top_margin - bottom_margin
     x_axis = top_margin + graph_height
     draw.line((left_margin, top_margin, left_margin, x_axis), fill=0, width=1)
     draw.line((left_margin, x_axis, image_width - right_margin, x_axis), fill=0, width=1)
-    tick_count = round((graph_max - graph_min) / tick)
     for step in range(tick_count + 1):
-        value = graph_min + tick * step
         y = int(x_axis - graph_height * step / tick_count)
         for x in range(left_margin, image_width - right_margin, 8):
             draw.line((x, y, min(x + 3, image_width - right_margin), y), fill=0, width=1)
-        draw.text((2, y - 5), f'{value:g}C', fill=0)
+        draw.text((left_margin - 6, y), tick_labels[step], fill=0, font=font, anchor='rm')
     count = len(readings)
     if count == 1:
         spacing = graph_width
@@ -141,13 +150,13 @@ def print_temperature_graph(printer, readings, *, _context):
     for index, reading in enumerate(readings):
         temperature = reading['temperature']
         normalized = (temperature - graph_min) / (graph_max - graph_min)
-        x = int(left_margin + index * spacing)
+        x = image_width // 2 if count == 1 else int(left_margin + index * spacing)
         y = int(x_axis - normalized * graph_height)
         points.append((x, y))
         hour = int(reading['time'][:2])
         if hour % 3 == 0 or index == count - 1:
-            draw.text((max(0, min(x - 7, image_width - 16)), x_axis + 5), reading['time'][:2], fill=0)
-    draw.text((image_width // 2 - 11, image_height - 10), 'HOUR', fill=0)
+            draw.text((x, x_axis + 8), reading['time'][:2], fill=0, font=font, anchor='mt')
+    draw.text((image_width // 2, image_height - 4), 'HOUR', fill=0, font=font, anchor='mb')
     if len(points) == 1:
         x, y = points[0]
         draw.line((x - 8, y, x + 8, y), fill=0, width=3)
