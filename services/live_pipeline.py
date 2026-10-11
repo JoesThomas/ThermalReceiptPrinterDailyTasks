@@ -47,7 +47,6 @@ from io import BytesIO
 import random
 import re
 from services.safe_xml import parse_feed
-import unicodedata
 from zoneinfo import ZoneInfo
 
 import requests
@@ -121,28 +120,8 @@ def clear_route_cache():
     _ROUTE_CACHE.clear()
 
 def load_private_config():
-    """
-    Load private URLs, API credentials and tokens from passwords.json.
-
-    Keep passwords.json out of source control.
-    """
-    if not PASSWORDS_FILE.exists():
-        raise RuntimeError(
-            f"Missing private configuration file: {PASSWORDS_FILE}"
-        )
-
-    try:
-        with PASSWORDS_FILE.open("r", encoding="utf-8") as file:
-            data = json.load(file)
-    except json.JSONDecodeError as error:
-        raise RuntimeError(
-            f"Invalid JSON in {PASSWORDS_FILE}: {error}"
-        ) from error
-
-    if not isinstance(data, dict):
-        raise RuntimeError("passwords.json must contain a JSON object.")
-
-    return data
+    from services.private_config import load
+    return load(PASSWORDS_FILE)
 
 
 PRIVATE = load_private_config()
@@ -158,11 +137,9 @@ dvla_api_key = (
     .get("api_key", "")
 )
 
-def private_value(section, key, default=""):
-    section_data = PRIVATE.get(section, {})
-    if not isinstance(section_data, dict):
-        return default
-    return section_data.get(key, default)
+def private_value(section, key, default=''):
+    from services.private_config import value
+    return value(PRIVATE, section, key, default)
 
 
 # ============================================================
@@ -788,66 +765,13 @@ def _transportapi_bournville_departures(
         .get("all", [])
     )
 
-def _rail_time(
-    date_value,
-    time_text,
-):
-    if not time_text:
-        return None
-
-    try:
-        parsed_time = datetime.strptime(
-            time_text,
-            "%H:%M",
-        ).time()
-
-        return datetime.combine(
-            date_value,
-            parsed_time,
-            tzinfo=ZoneInfo(
-                "Europe/London"
-            ),
-        )
-
-    except ValueError:
-        return None
+from services.rail_time import rail_time as _rail_time
 
 # ============================================================
 # UPCOMING DELIVERIES
 # ============================================================
 
-def _parse_delivery_date(date_text):
-    """
-    Parse common UK and ISO delivery-date formats.
 
-    UK-style DD/MM/YYYY is deliberately tried before US-style
-    MM/DD/YYYY because this receipt project is UK based.
-    """
-    if not date_text:
-        return None
-
-    date_text = date_text.strip()
-
-    formats = [
-        "%d/%m/%Y",
-        "%d-%m-%Y",
-        "%d/%m/%y",
-        "%d-%m-%y",
-        "%Y-%m-%d",
-        "%m/%d/%Y",
-        "%m-%d-%Y",
-    ]
-
-    for fmt in formats:
-        try:
-            return datetime.strptime(
-                date_text,
-                fmt
-            ).date()
-        except ValueError:
-            continue
-
-    return None
 
 def _normalise_delivery_time(value):
     """
@@ -1569,34 +1493,15 @@ def get_hourly_weather(weather, interval_hours=4):
 # ============================================================
 
 def extract_google_doc_id(value):
-    value = (value or "").strip()
-
-    if not value:
-        raise ValueError("Google Docs URL/ID is empty.")
-
-    if "docs.google.com" not in value:
-        return value
-
-    match = re.search(
-        r"/document/d/([a-zA-Z0-9_-]+)",
-        value,
-    )
-
-    if not match:
-        raise ValueError(
-            "Could not find Google Docs document ID."
-        )
-
-    return match.group(1)
+    from services.google_docs import document_id
+    return document_id(value)
 
 
 def get_google_doc_text(value):
     document_id = extract_google_doc_id(value)
 
-    export_url = (
-        "https://docs.google.com/document/d/"
-        f"{document_id}/export?format=txt"
-    )
+    from services.google_docs import export_url as document_export_url
+    export_url = document_export_url(document_id)
 
     from services.public_sources import document
     return document(export_url)
@@ -1648,73 +1553,7 @@ def get_calendar_events(ical_url, days_ahead=0):
 # PRINTER-SAFE TEXT
 # ============================================================
 
-def printer_safe_text(text):
-    """
-    Convert arbitrary input into conservative printable text for
-    ESC/POS thermal printers while preserving the pound symbol.
-    """
-    if text is None:
-        return ""
-
-    text = str(text)
-
-    replacements = {
-        "\ufeff": "",
-        "\u200b": "",
-        "\u200c": "",
-        "\u200d": "",
-        "\u2060": "",
-        "\u2018": "'",
-        "\u2019": "'",
-        "\u201c": '"',
-        "\u201d": '"',
-        "\u2013": "-",
-        "\u2014": "-",
-        "\u2212": "-",
-        "\u2026": "...",
-        "\u00a0": " ",
-        "\u2022": "-",
-        "\u00b7": "-",
-        "\u00ae": "(R)",
-        "\u00a9": "(C)",
-        "\u2122": "(TM)",
-        "\u20ac": "EUR",
-        "\u2192": "->",
-        "\u2190": "<-",
-        "\u2191": "^",
-        "\u2193": "v",
-        "\u00b0": " DEG ",
-    }
-
-    for original, replacement in replacements.items():
-        text = text.replace(original, replacement)
-
-    text = re.sub(
-        r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])",
-        "",
-        text,
-    )
-
-    text = unicodedata.normalize("NFKD", text)
-    text = "".join(
-        ch for ch in text
-        if not unicodedata.combining(ch)
-    )
-
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    text = text.replace("\t", "    ")
-
-    text = "".join(
-        ch
-        for ch in text
-        if (
-            ch == "\n"
-            or 32 <= ord(ch) <= 126
-            or ch == "£"
-        )
-    )
-
-    return text
+from receipt.text import printer_safe_text
 
 
 def printer_text(printer, text):
@@ -4222,29 +4061,9 @@ def get_truelayer_transactions(
     return transactions
 
 def get_regular_finance_data():
-    from services.finance_source import collect, FinanceDependencies
-    return collect(FinanceDependencies(
-        today=lambda:datetime.now(ZoneInfo("Europe/London")).date(),
-        _dedupe_regular_payments=_dedupe_regular_payments,
-        _dedupe_subscriptions_against_regular=_dedupe_subscriptions_against_regular,
-        _incoming_total=_incoming_total,
-        _initial_truelayer_refresh_token=_initial_truelayer_refresh_token,
-        _is_incoming_transaction=_is_incoming_transaction,
-        _last_n_day_spend=_last_n_day_spend,
-        _looks_like_internal_transfer=_looks_like_internal_transfer,
-        _monthlyised_spend=_monthlyised_spend,
-        _normalise_regular_payment=_normalise_regular_payment,
-        _other_incoming_category=_other_incoming_category,
-        _refresh_truelayer_access_token=_refresh_truelayer_access_token,
-        _transaction_date=_transaction_date,
-        _truelayer_account_ids=_truelayer_account_ids,
-        _truelayer_card_ids=_truelayer_card_ids,
-        _truelayer_regular_payments=_truelayer_regular_payments,
-        _truelayer_transactions=_truelayer_transactions,
-        analyse_incoming_payments=analyse_incoming_payments,
-        infer_subscriptions=infer_subscriptions,
-        load_receipt_settings=load_receipt_settings,
-        FINANCE_TRANSACTION_LOOKBACK_DAYS=FINANCE_TRANSACTION_LOOKBACK_DAYS))
+    import sys
+    from services.finance_source import collect, dependencies_from
+    return collect(dependencies_from(sys.modules[__name__]))
 
 def _strip_html_text(value):
     value = unescape(value or "")
@@ -5358,6 +5177,19 @@ def run_live_pipeline(
         print_header(printer, location)
 
     if print_information_page:
+        from services.parallel import collect_independent
+        tasks = {}
+        if feature_enabled(settings, 'weather'):
+            tasks['weather'] = lambda: get_weather(location['latitude'], location['longitude'])
+        if feature_enabled(settings, 'national_news'):
+            tasks['national_news'] = lambda: get_top_news_headlines(int(display_value(settings, 'news_count', NEWS_HEADLINES)))
+        if feature_enabled(settings, 'local_news'):
+            tasks['local_news'] = lambda: get_local_news_headlines(int(display_value(settings, 'news_count', LOCAL_NEWS_HEADLINES)), location['local_news_feed'])
+        if feature_enabled(settings, 'sport_news'):
+            tasks['sport_news'] = lambda: get_sport_news_headlines(int(display_value(settings, 'sport_count', SPORT_NEWS_HEADLINES)))
+        preview_progress('Fetching enabled weather and news sources', 0, 5)
+        information = collect_independent(tasks)
+
         # ==========================================
         # WEATHER
         # ==========================================
@@ -5367,12 +5199,12 @@ def run_live_pipeline(
             "weather",
         ):
             try:
-                preview_progress("Fetching weather forecast", 0, 5)
+                preview_progress("Formatting weather forecast", 0, 5)
                 print(
-                    f"Downloading {location['name']} weather..."
+                    f"Preparing {location['name']} weather..."
                 )
 
-                weather = get_weather(location["latitude"], location["longitude"])
+                weather = information["weather"].result()
                 from receipt.freshness import mark
                 # Freshness is recorded by the bounded source collector.
 
@@ -5405,24 +5237,13 @@ def run_live_pipeline(
             "national_news",
         ):
             try:
-                preview_progress("Fetching UK news", 0, 5)
-                news_count = int(
-                    display_value(
-                        settings,
-                        "news_count",
-                        NEWS_HEADLINES,
-                    )
-                )
+                preview_progress("Formatting UK news", 0, 5)
 
                 print(
-                    "Downloading today's UK news..."
+                    "Preparing today's UK news..."
                 )
 
-                headlines = (
-                    get_top_news_headlines(
-                        news_count
-                    )
-                )
+                headlines = information['national_news'].result()
 
                 from receipt.freshness import mark
                 # Freshness is recorded by the bounded source collector.
@@ -5447,25 +5268,13 @@ def run_live_pipeline(
             "local_news",
         ):
             try:
-                preview_progress("Fetching local news", 0, 5)
-                news_count = int(
-                    display_value(
-                        settings,
-                        "news_count",
-                        LOCAL_NEWS_HEADLINES,
-                    )
-                )
+                preview_progress("Formatting local news", 0, 5)
 
                 print(
-                    f"Downloading {location['local_news_label']} news..."
+                    f"Preparing {location['local_news_label']} news..."
                 )
 
-                local_headlines = (
-                    get_local_news_headlines(
-                        news_count,
-                        location["local_news_feed"],
-                    )
-                )
+                local_headlines = information['local_news'].result()
 
                 from receipt.freshness import mark
                 # Freshness is recorded by the bounded source collector.
@@ -5487,9 +5296,8 @@ def run_live_pipeline(
         # ==========================================
         if feature_enabled(settings, "sport_news"):
             try:
-                preview_progress("Fetching sport news", 0, 5)
-                sport_count = int(display_value(settings, "sport_count", SPORT_NEWS_HEADLINES))
-                print_sport_news(printer, get_sport_news_headlines(sport_count))
+                preview_progress("Formatting sport news", 0, 5)
+                print_sport_news(printer, information['sport_news'].result())
             except Exception as error:
                 print("Sport news error:", repr(error))
 

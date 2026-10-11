@@ -5,6 +5,7 @@ import re
 import uuid
 from datetime import datetime, timezone
 from io import BytesIO
+from functools import lru_cache
 from pathlib import Path
 from receipt.capture import PAGE_NAMES, receipt_blocks
 DIRECTORY = Path(__file__).resolve().parents[1] / 'data' / 'receipt_archive'
@@ -41,31 +42,52 @@ def save(pages, images, captured_at, source, freshness, *, test_finance=None):
     write_json(target, value)
     return identifier
 
-def entries(on=None, query=None):
+@lru_cache(maxsize=128)
+def _entry_summary(path, modified_ns, size, inode):
+    """Retain small listing/search data, never base64 images or scenario payloads."""
     from zoneinfo import ZoneInfo
+    item = load(Path(path).stem)
+    local = datetime.fromisoformat(item['captured_at']).astimezone(ZoneInfo('Europe/London'))
+    pages = tuple(item['pages'].items())
+    return item['id'], item['source'], local, pages, '\n'.join(text for _, text in pages).casefold()
+
+
+def entries(on=None, query=None, *, limit=None, offset=0):
     result = []
     query = (query or '').strip()[:200].casefold()
+    offset = max(0, offset)
+    if limit is not None and limit <= 0:
+        return result
+    matched = 0
     for path in sorted(DIRECTORY.glob('*.json'), reverse=True):
         try:
-            item = load(path.stem)
-            local = datetime.fromisoformat(item['captured_at']).astimezone(ZoneInfo('Europe/London'))
+            stat = path.stat()
+            identifier, source, local, pages, search_text = _entry_summary(str(path), stat.st_mtime_ns, stat.st_size, stat.st_ino)
             if on and local.date().isoformat() != on:
                 continue
-            if query and query not in '\n'.join(item['pages'].values()).casefold():
+            if query and query not in search_text:
+                continue
+            matched += 1
+            if matched <= offset:
                 continue
             matches = []
             if query:
-                for name, text in item['pages'].items():
+                for name, text in pages:
                     for line in text.splitlines():
                         if query in line.casefold():
                             matches.append({'page': name, 'snippet': line.strip()[:200]})
-                            if len(matches) >= 3: break
-                    if len(matches) >= 3: break
-            result.append(dict(id=item['id'], source=item['source'], local=local,
-                               pages=list(item['pages']), matches=matches))
-        except (ValueError, KeyError, TypeError):
+                            if len(matches) >= 3:
+                                break
+                    if len(matches) >= 3:
+                        break
+            result.append(dict(id=identifier, source=source, local=local,
+                               pages=[name for name, _ in pages], matches=matches))
+            if limit is not None and len(result) >= limit:
+                break
+        except (OSError, ValueError, KeyError, TypeError):
             continue
     return result
+
 
 def reprint(identifier, page='all'):
     from receipt.printer import open_printer

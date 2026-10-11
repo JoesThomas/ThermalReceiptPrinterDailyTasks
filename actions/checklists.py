@@ -7,8 +7,7 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
-import fcntl
-from storage import write_json
+from storage import write_json, file_lock
 
 FILE = Path(__file__).resolve().parents[1] / 'data' / 'daily_lists.json'
 
@@ -82,15 +81,10 @@ def load():
 
 @contextmanager
 def transaction():
-    FILE.parent.mkdir(parents=True, exist_ok=True)
-    with FILE.with_suffix('.lock').open('a') as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        try:
-            state = load()
-            yield state
-            write_json(FILE, state)
-        finally:
-            fcntl.flock(lock, fcntl.LOCK_UN)
+    with file_lock(FILE):
+        state = load()
+        yield state
+        write_json(FILE, state)
 
 
 def clean_lines(text, kind):

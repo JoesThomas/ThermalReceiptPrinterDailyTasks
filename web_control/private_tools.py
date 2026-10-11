@@ -13,8 +13,12 @@ def register(app, login_required, start_print, root, print_lock):
     @app.get('/receipts')
     @login_required
     def archive_list():
-        return render_template('archive.html', entries=archive.entries(request.args.get('date') or None, request.args.get('q')),
-                               selected_date=request.args.get('date', ''), query=request.args.get('q', '')[:200], receipt=None)
+        offset = max(0, min(1_000_000, request.args.get('offset', 0, type=int)))
+        found = archive.entries(request.args.get('date') or None, request.args.get('q'), limit=51, offset=offset)
+        return render_template('archive.html', entries=found[:50],
+                               selected_date=request.args.get('date', ''), query=request.args.get('q', '')[:200], receipt=None,
+                               previous_offset=max(0, offset-50) if offset else None,
+                               next_offset=offset+50 if len(found)>50 else None)
 
     @app.get('/receipts/<identifier>')
     @login_required

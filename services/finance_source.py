@@ -1,5 +1,5 @@
 """Finance collection orchestration separated from receipt rendering."""
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Callable, Any
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -29,6 +29,14 @@ class FinanceDependencies:
     infer_subscriptions: Callable[..., Any]
     load_receipt_settings: Callable[..., Any]
     FINANCE_TRANSACTION_LOOKBACK_DAYS: int
+
+
+def dependencies_from(pipeline, *, today=None):
+    from receipt.local_time import uk_today
+    return FinanceDependencies(**{
+        field.name: (today or uk_today) if field.name == 'today' else getattr(pipeline, field.name)
+        for field in fields(FinanceDependencies)
+    })
 
 
 def collect(dependencies: FinanceDependencies, *, persist=True):

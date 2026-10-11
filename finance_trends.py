@@ -158,56 +158,48 @@ def load_rules(path: Path) -> dict:
     return {**custom, **{name: category for name, category in DEFAULT_MERCHANT_RULES.items()
                         if name not in custom}}
 
+class PreparedRules(dict):
+    """Prepared matching data for one analysis batch; original mapping stays readable."""
+    def __init__(self, source):
+        super().__init__(source)
+        self.merchants = tuple((_normalise_merchant(needle), str(category).upper().strip())
+                               for needle, category in source.items() if needle != 'transactions')
+        self.transactions = defaultdict(list)
+        for rule in source.get('transactions', []):
+            if not isinstance(rule, dict):
+                continue
+            try:
+                on = date.fromisoformat(str(rule['date']))
+                value = abs(float(rule['amount']))
+            except (KeyError, ValueError, TypeError):
+                continue
+            merchant = _normalise_merchant(str(rule.get('merchant') or ''))
+            category = str(rule.get('category') or '').upper().strip()
+            if merchant and category:
+                self.transactions[on].append((merchant, value, category))
+
+
+def prepare_rules(rules):
+    return rules if isinstance(rules, PreparedRules) else PreparedRules(rules)
+
+
 def categorise_transaction(tx: dict, rules: dict) -> str:
-    explicit = str(tx.get("category") or tx.get("transaction_category") or "").upper().strip()
-    merchant = _normalise_merchant(
-        str(tx.get("merchant_name") or tx.get("merchant") or tx.get("description") or "")
-    )
-
-    # Private, one-off rules override broad merchant categories. The date,
-    # merchant and amount must all match, so later visits remain independent.
-    tx_date = _parse_date(tx)
-    for rule in rules.get("transactions", []):
-        if not isinstance(rule, dict):
-            continue
-        expected_merchant = _normalise_merchant(str(rule.get("merchant") or ""))
-        try:
-            expected_date = date.fromisoformat(str(rule["date"]))
-            expected_amount = float(rule["amount"])
-        except (KeyError, ValueError, TypeError):
-            continue
-        if (expected_merchant and expected_merchant in merchant
-                and tx_date == expected_date
-                and math.isclose(_amount(tx), abs(expected_amount), abs_tol=0.005)):
-            category = str(rule.get("category") or "").upper().strip()
-            if category:
+    rules = prepare_rules(rules)
+    explicit = str(tx.get('category') or tx.get('transaction_category') or '').upper().strip()
+    merchant = _normalise_merchant(str(tx.get('merchant_name') or tx.get('merchant') or tx.get('description') or ''))
+    if rules.transactions:
+        for needle, expected_amount, category in rules.transactions.get(_parse_date(tx), ()):
+            if needle in merchant and math.isclose(_amount(tx), expected_amount, abs_tol=0.005):
                 return category
+    for needle, category in rules.merchants:
+        if needle and (bool(re.search(r'\bRENT\b', merchant)) if needle == 'RENT' else needle in merchant):
+            return category
+    aliases = {'GROCERIES': 'FOOD', 'FOOD_AND_DRINK': 'EATING OUT', 'RESTAURANTS': 'EATING OUT',
+               'TRANSPORTATION': 'TRANSPORT', 'TRAVEL': 'TRAVEL', 'ENTERTAINMENT': 'ENTERTAINMENT',
+               'SHOPPING': 'SHOPPING', 'BILLS': 'BILLS & UTILITIES', 'UTILITIES': 'BILLS & UTILITIES',
+               'HEALTH': 'HEALTH', 'CASH': 'CASH'}
+    return aliases.get(explicit, explicit if explicit in DEFAULT_CATEGORIES else 'OTHER')
 
-    for needle, category in rules.items():
-        if needle == "transactions":
-            continue
-        normalised = _normalise_merchant(needle)
-        if not normalised:
-            continue
-        matches = (bool(re.search(r"\bRENT\b", merchant))
-                   if normalised == "RENT" else normalised in merchant)
-        if matches:
-            return str(category).upper().strip()
-
-    aliases = {
-        "GROCERIES": "FOOD",
-        "FOOD_AND_DRINK": "EATING OUT",
-        "RESTAURANTS": "EATING OUT",
-        "TRANSPORTATION": "TRANSPORT",
-        "TRAVEL": "TRAVEL",
-        "ENTERTAINMENT": "ENTERTAINMENT",
-        "SHOPPING": "SHOPPING",
-        "BILLS": "BILLS & UTILITIES",
-        "UTILITIES": "BILLS & UTILITIES",
-        "HEALTH": "HEALTH",
-        "CASH": "CASH",
-    }
-    return aliases.get(explicit, explicit if explicit in DEFAULT_CATEGORIES else "OTHER")
 
 def _parse_date(tx: dict) -> date | None:
     raw = tx.get("date") or tx.get("timestamp") or tx.get("transaction_date")
@@ -682,36 +674,26 @@ def debug_spending_transactions(
     print("=" * 70)
     print()
 
-def _window_totals(
-    transactions: list[dict],
-    rules: dict,
-    start: date,
-    end: date,
-) -> dict[str, float]:
-    totals = defaultdict(Decimal)
-
+def _window_totals_many(transactions, rules, windows):
+    """Parse and categorise each relevant transaction once for all requested windows."""
+    rules = prepare_rules(rules)
+    totals = [defaultdict(Decimal) for _ in windows]
     for tx in transactions:
-        d = _parse_date(tx)
-
-        if d is None or not (start <= d <= end):
+        on = _parse_date(tx)
+        indexes = [index for index, (start, end) in enumerate(windows) if on is not None and start <= on <= end]
+        if not indexes:
             continue
+        category = categorise_transaction(tx, rules)
+        raw = tx['spend_amount'] if 'spend_amount' in tx else _amount(tx)
+        amount = decimal_money(raw or 0, Decimal(0))
+        for index in indexes:
+            totals[index][category] += amount
+    return [{category: float(value) for category, value in total.items()} for total in totals]
 
-        category = categorise_transaction(
-            tx,
-            rules,
-        )
 
-        amount = decimal_money(
-            tx.get(
-                "spend_amount",
-                _amount(tx),
-            )
-            or 0, Decimal(0)
-        )
+def _window_totals(transactions, rules, start, end):
+    return _window_totals_many(transactions, rules, [(start, end)])[0]
 
-        totals[category] += amount
-
-    return {key:float(value) for key,value in totals.items()}
 
 def uncategorised_merchants(
     transactions: list[dict], rules: dict, *, as_of: date | None = None,
@@ -720,6 +702,7 @@ def uncategorised_merchants(
     """Largest uncategorised merchants, summed across the recent window."""
     as_of = as_of or date.today()
     start = as_of - timedelta(days=days - 1)
+    rules = prepare_rules(rules)
     totals = defaultdict(Decimal)
     labels = {}
     for tx in transactions:
@@ -755,8 +738,7 @@ def category_trends(
     baseline_end = current_start - timedelta(days=1)
     baseline_start = baseline_end - timedelta(days=baseline_days - 1)
 
-    current = _window_totals(transactions, rules, current_start, as_of)
-    baseline = _window_totals(transactions, rules, baseline_start, baseline_end)
+    current, baseline = _window_totals_many(transactions, rules, [(current_start, as_of), (baseline_start, baseline_end)])
 
     results = []
     categories = sorted(set(current) | set(baseline))
@@ -809,8 +791,7 @@ def previous_period(kind: str, start: date) -> tuple[date, date]:
 def period_analysis(transactions: list[dict], rules: dict, kind: str, period_date: date) -> dict:
     start, end, label = _period_bounds(kind, period_date)
     pstart, pend = previous_period(kind, start)
-    current = _window_totals(transactions, rules, start, end)
-    previous = _window_totals(transactions, rules, pstart, pend)
+    current, previous = _window_totals_many(transactions, rules, [(start, end), (pstart, pend)])
 
     total = sum(current.values())
     previous_total = sum(previous.values())

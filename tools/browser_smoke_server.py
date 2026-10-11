@@ -62,6 +62,15 @@ def fixture_preview():
     preview_job.save_status('completed')
     return redirect('/preview?source=live')
 
+@web.app.get('/__fixture_archive_pages')
+def fixture_archive_pages():
+    from receipt import archive
+    for index in range(55):
+        archive.save({'information': f'Archive pagination fixture {index}'}, {},
+                     '2026-10-11T12:00:00+00:00', 'preview', {})
+    return redirect('/receipts?q=Archive+pagination+fixture')
+
+
 web._generate_live_preview_locked = fixture_preview
 if '--stdio' in sys.argv:
     import json
