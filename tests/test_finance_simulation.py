@@ -121,12 +121,15 @@ class SimulationTests(TestCase):
             client.get('/finance/test')
             self.assertEqual(render.call_args.kwargs['values']['save_all'], 'on')
             self.assertEqual(render.call_args.kwargs['values']['invest_spare_cash'], 'on')
+            self.assertEqual(render.call_args.kwargs['values']['equal_savings'], 'on')
             with client.session_transaction() as saved:
                 saved['test_finance_save_all']=False
                 saved['test_finance_invest_spare_cash']=False
+                saved['test_finance_equal_savings']=False
             client.get('/finance/test')
             self.assertEqual(render.call_args.kwargs['values']['save_all'], '')
             self.assertEqual(render.call_args.kwargs['values']['invest_spare_cash'], '')
+            self.assertEqual(render.call_args.kwargs['values']['equal_savings'], '')
             with client.session_transaction() as saved: saved['test_finance_save_all']=True
             client.get('/finance/test')
             self.assertEqual(render.call_args.kwargs['values']['save_all'], 'on')
@@ -140,7 +143,8 @@ class SimulationTests(TestCase):
         self.assertEqual(text.count('Amex - extra repayment'),1)
         self.assertIn('£4,190.00', text)
         self.assertIn('£760.00', text)
-        self.assertIn('Savings redirected to repayment', text)
+        self.assertIn('Extra repayment this period', text)
+        self.assertNotIn('Savings redirected to repayment', text)
         self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
         source['amex']['full_reserved']=True
         text=receipt(build(source,inputs(),TODAY),TODAY)

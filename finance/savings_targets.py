@@ -75,12 +75,12 @@ def prepare_cash_topup(base, accounts, today, start):
                            'reserved_cash_topup':True}
 
 
-def allocate(accounts, periods, automatic_events=()):
+def allocate(accounts, periods, automatic_events=(), *, equal=False):
     rows=deepcopy(accounts)
     for row in rows:
         row.update(projected=row['balance'],added=ZERO,first=ZERO,automatic_added=ZERO,first_automatic=ZERO,reserved_added=ZERO,goal_date=None)
         if row['target'] and row['balance'] is not None and row['balance']>=row['target']: row['goal_date']='already'
-    explicit=any(row['share']>0 for row in rows)
+    explicit=not equal and any(row['share']>0 for row in rows)
     fraction=min(Decimal(100),sum((row['share'] for row in rows if row['balance'] is not None and row['target']),ZERO))/100 if explicit else Decimal(1)
     unallocated=ZERO
     timeline=[(period['date'],1,index,period) for index,period in enumerate(periods)]

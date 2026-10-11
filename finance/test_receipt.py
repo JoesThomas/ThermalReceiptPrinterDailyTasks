@@ -3,7 +3,7 @@ from copy import deepcopy
 from datetime import timedelta
 from decimal import Decimal
 from textwrap import wrap
-from finance.test_forecast import simulate
+from finance.test_forecast import simulate, is_amex
 from finance.projection import day, money, occurs, format_runway
 
 
@@ -37,7 +37,7 @@ def validate(values, today):
         raise ValueError('Choose 1 to 60 forecast months.') from None
     if not 1 <= months <= 60 or (occurs(start, months) - today).days > 1826:
         raise ValueError('Choose a forecast ending within five years of today.')
-    return dict(invest_spare_cash=values.get('invest_spare_cash') == 'on', use_accounts=values.get('use_saved_accounts') == 'on', strategy=strategy, split=split, apr=apr, goal=goal, starting_savings=starting_savings, salary=salary, existing=existing if mode == 'additional' else Decimal(0),
+    return dict(equal_savings=values.get('equal_savings') == 'on', invest_spare_cash=values.get('invest_spare_cash') == 'on', use_accounts=values.get('use_saved_accounts') == 'on', strategy=strategy, split=split, apr=apr, goal=goal, starting_savings=starting_savings, salary=salary, existing=existing if mode == 'additional' else Decimal(0),
                 other=other, lump=lump, savings=savings, save_all=not lump_mode and values.get('save_all') == 'on', mode=mode, start=start, months=months)
 
 
@@ -57,7 +57,7 @@ def build(projection, values, today):
         inputs['starting_savings']=sum((row['balance'] for row in accounts if row['balance'] is not None),Decimal(0))
         link_regular_savings(base['events'],[row for row in accounts if row['balance'] is not None])
     forecast = simulate(base, inputs, today)
-    account_plan=allocate(accounts,forecast['payments'] if inputs['use_accounts'] else [],forecast['events']+forecast['reserve_transfers'] if inputs['use_accounts'] else [])
+    account_plan=allocate(accounts,forecast['payments'] if inputs['use_accounts'] else [],forecast['events']+forecast['reserve_transfers'] if inputs['use_accounts'] else [],equal=inputs['equal_savings'])
     if (inputs['goal'] and forecast['goal_date'] is None or inputs['use_accounts'] and any(row['target'] and row['goal_date'] is None for row in account_plan['accounts'])) and inputs['mode'] != 'lump':
         extended_inputs = dict(inputs, months=60)
         while (occurs(inputs['start'], extended_inputs['months'])-today).days > 1826:
@@ -65,7 +65,7 @@ def build(projection, values, today):
         extended = simulate(base, extended_inputs, today)
         forecast['extended_goal_date'] = extended['goal_date']
         forecast['extended_goal_months'] = extended_inputs['months']
-        extended_accounts=allocate(accounts,extended['payments'] if inputs['use_accounts'] else [],extended['events']+extended['reserve_transfers'] if inputs['use_accounts'] else [])
+        extended_accounts=allocate(accounts,extended['payments'] if inputs['use_accounts'] else [],extended['events']+extended['reserve_transfers'] if inputs['use_accounts'] else [],equal=inputs['equal_savings'])
         for row,full in zip(account_plan['accounts'],extended_accounts['accounts']):
             row['extended_goal_date']=full['goal_date']
     first = forecast['payments'][0]
@@ -132,6 +132,7 @@ def receipt(result, today):
         else: text('No salary: spare bank cash investment paused.')
     if result['shortfall']: amount('SHORTFALL after reserves',result['shortfall'])
     section('WHERE TO MOVE THIS PAYDAY')
+    if data['use_accounts']: text('Savings split: equal between active goals.' if data['equal_savings'] else 'Savings split: saved contribution shares.')
     text('Extra transfers to make:')
     moved=Decimal(0)
     if data['use_accounts']:
@@ -176,15 +177,22 @@ def receipt(result, today):
         if card['balance'] is None:
             text('Balance unavailable. Listed repayments are included; enter Amex owed for payoff modelling.')
         else:
-            amount('Balance owed now',card['balance'])
             if card.get('full_reserved'):
+                amount('Balance owed now',card['balance'])
                 text('Full balance reserved once today; already deducted in the forecast. Additional suggested repayment: £0.00.')
             else:
-                amount('Listed payments this period',first['planned_card'])
-                baseline_saving=first['income_budget'] if data['save_all'] else min(first['income_budget'],data['savings'])
-                redirected=max(Decimal(0),baseline_saving-first['income_savings'])
-                if redirected: amount('Savings redirected to repayment',redirected)
-                amount('Estimated balance after this period',first['closing_card'])
+                text('THIS PAY PERIOD')
+                text(f'{data["start"]:%d %b} to {result["cycle_end"]:%d %b %Y}')
+                scheduled=sum((e['amount'] for e in result['bills'] if is_amex(e['name'])),Decimal(0))
+                interest=max(Decimal(0),first['closing_card']-first['opening_card']+scheduled+first['extra'])
+                amount('Balance at period start',first['opening_card'])
+                if interest>=Decimal('0.005'): amount('Estimated interest this period',interest)
+                amount('Scheduled repayment via direct debit this period',scheduled)
+                amount('Extra repayment this period',first['extra'])
+                amount('Balance at period end',first['closing_card'])
+            text('WHOLE FORECAST')
+            scheduled_total=sum((e['amount'] for e in forecast['events'] if is_amex(e['name'])),Decimal(0))
+            amount('Scheduled repayments via direct debit over forecast',scheduled_total)
             amount('Extra repayments over forecast',forecast['extra_total'])
             amount('Amex owed at forecast end',forecast['card_end'])
             if forecast['payoff']: text(f'Projected Amex cleared: {forecast["payoff"]:%d %b %Y}')
@@ -194,7 +202,6 @@ def receipt(result, today):
                 text(f'APR assumption: {forecast["apr"]}%')
                 amount('Estimated interest over forecast',forecast['interest'])
 
-    from finance.test_forecast import is_amex
     options=[item for item in base.get('repayment_options',[]) if not is_amex(item.get('name'))]
     if options: section('OTHER REPAYMENTS')
     budget=max(Decimal(0),first['budget']-first['extra']-first['savings'])

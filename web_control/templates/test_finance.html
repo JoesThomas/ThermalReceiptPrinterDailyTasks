@@ -179,8 +179,15 @@
                                    name="use_saved_accounts"
                                    {% if values.get('use_saved_accounts') == 'on' %}checked{% endif %}>
                             Use recorded savings accounts and their targets
-                            <small>Uses the combined known account balances instead of the manual starting savings below. Set targets and contribution shares on Savings goals.</small>
+                            <small>Uses the combined known account balances instead of the manual starting savings below. Set account targets on Savings goals. Choose equal splitting below or use your saved contribution shares.</small>
                             <a href="{{ url_for('savings_goals_page') }}">Edit account targets and shares</a>
+                        </label>
+                        <label>
+                            <input type="checkbox"
+                                   name="equal_savings"
+                                   {% if values.get('equal_savings') == 'on' %}checked{% endif %}>
+                            Split extra savings equally
+                            <small>When using recorded accounts, divide extra savings between accounts with known balances and unmet targets. No percentages needed; new accounts join automatically once their balance and target are set. Completed goals give their share to the remaining goals. Scheduled savings payments stay separate. Untick to use saved contribution shares.</small>
                         </label>
                         <label>
                             Existing savings towards goal (£)
