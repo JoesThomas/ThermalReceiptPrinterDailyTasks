@@ -30,6 +30,47 @@ class ProjectionTests(unittest.TestCase):
         self.assertEqual(events[1]['date'], date(2026, 11, 30))
         self.assertEqual(events[2]['date'], date(2026, 12, 31))
 
+    def test_estimated_rent_and_sky_do_not_create_an_extra_overdue_reserve(self):
+        today=date(2026,10,11)
+        monthly=[{'name':'Rent','amount':750,'last_paid':'2026-09-10'},
+                 {'name':'Sky','amount':'32.36','last_paid':'2026-09-08'}]
+        events,_,_=payment_schedule(monthly,[],[],{},today,horizon=60)
+        first_period=[event for event in events if event['date']<=date(2026,11,10)]
+        self.assertEqual([(event['name'],event['date'],event['amount']) for event in first_period],
+                         [('Sky',date(2026,11,8),Decimal('32.36')),('Rent',date(2026,11,10),Decimal(750))])
+        self.assertTrue(all(event['basis']=='Estimated from last payment' for event in first_period))
+        self.assertEqual([event['date'] for event in events if event['name']=='Rent'],
+                         [date(2026,11,10),date(2026,12,10)])
+
+    def test_observed_payment_estimate_rolls_forward_even_without_paid_flag(self):
+        events,_,_=payment_schedule([{'name':'Rent','amount':750,'match':['rent']}],[],
+                                    [{'date':'2026-10-10','description':'Rent','amount':-750}],
+                                    {},date(2026,10,11),horizon=31)
+        self.assertEqual([(event['date'],event['amount']) for event in events],
+                         [(date(2026,11,10),Decimal(750))])
+
+    def test_configured_overdue_payment_and_unknown_date_still_reserve_today(self):
+        today=date(2026,10,11)
+        monthly=[{'name':'Confirmed date','amount':750,'next_payment':'2026-10-10'},
+                 {'name':'Unknown date','amount':20}]
+        events,undated,_=payment_schedule(monthly,[],[],{},today,horizon=1)
+        self.assertEqual([event['date'] for event in events],[today,today])
+        self.assertEqual(undated,['Unknown date'])
+
+    def test_test_receipt_counts_one_rent_in_first_pay_period(self):
+        from finance.test_receipt import build, receipt
+        today=date(2026,10,11)
+        events,_,_=payment_schedule([{'name':'Rent','amount':750,'last_paid':'2026-09-10'}],[],[],{},today)
+        source={'valid':True,'cash':Decimal(100),'buffer':Decimal(100),'daily':Decimal(0),'warnings':[],'events':events}
+        result=build(source,{'salary':'2000','start':str(today),'months':'1','save_all':'on'},today)
+        self.assertEqual(result['bills_total'],750)
+        self.assertEqual(result['forecast']['payments'][0]['savings'],1250)
+        self.assertEqual(len(result['bills']),1)
+        text=receipt(result,today)
+        self.assertIn('10 Nov Rent *',text)
+        self.assertNotIn('11 Oct Rent [R]',text)
+        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+
     def test_annual_renewal_paid_early_not_counted_again(self):
         annual = [{'name': 'Annual service', 'amount': 250, 'renewal_date': '2026-09-05', 'match': ['annual service']}]
         tx = [{'date': '2026-08-30', 'amount': -250, 'description': 'Annual service'}]
