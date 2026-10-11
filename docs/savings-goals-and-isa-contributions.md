@@ -8,9 +8,12 @@ Savings balance form or Premium Bonds holdings ledger. Existing valuations are
 reused; the app does not assume a personal starting balance from the public repo.
 
 Premium Bonds is measured against the £50,000 holding maximum. Multiple accounts
-classified as your Premium Bonds are combined for that maximum. A dated Premium
-Bonds holding takes precedence over an undated local observation, or over an older
-manual valuation. It does not duplicate a holding already represented in Savings.
+classified as your Premium Bonds are combined for that maximum. The separate
+Premium Bonds ledger and the named account valuation are compared by date. The
+latest balance wins even when withdrawals reduce it; an older ledger entry cannot
+replace a newer local observation. Manual account valuations win same-date ties,
+and future ledger values are excluded. A ledger holding does not duplicate an
+account already represented in Savings.
 The progress bar is clamped to 100%, but any recorded excess remains visible.
 Ordinary savings use a user-entered target and latest recorded balance.
 
@@ -44,6 +47,11 @@ shared total, and confirm subtype caps with the provider. Junior ISA contributio
 use a separate child allowance and are not tracked by this adult ledger.
 This is a record of inputs, not verification of regulatory eligibility.
 
+The savings summary and finance receipt show Premium Bonds through the named
+account goal only; there is no additional aggregate holdings card or holding-goal
+receipt block. An account without a custom target still uses the existing holding
+maximum as its default target.
+
 The finance receipt gets a compact holdings/target and current ISA contributions
 summary. Website-only progress bars do not widen the paper receipt. Account values,
 targets and entries stay in the gitignored, owner-only `data/savings_goals.json`;
@@ -60,6 +68,33 @@ goal dates also show the time beyond the selected forecast. These are scenario
 projections rather than measurements of historical savings performance. An Amex
 first pathway can still show a later goal date when its initial periods save
 nothing but contributions begin after the card is paid off.
+
+The Test finance receipt also has a basic "Where to move this payday" list:
+extra transfers by account, additional Amex payments, any already-reserved cash
+top-up, and amounts to retain for bills and everyday spending. Scheduled savings
+payments are listed separately as already arranged, not instructions to send
+them again. Hargreaves Lansdown / HLAM / H and L payments can be linked to one
+unambiguous recorded account. Other savings payments require an exact account
+name. Unlinked or ambiguous payments remain costs and are labelled explicitly.
+
+Linked regular savings are still deducted from bank cash once on their scheduled
+dates, and are credited to the account balance on those dates for goal forecasts.
+The desired total monthly savings includes these linked payments: a £100 target
+with an existing £25 regular payment needs £75 in extra transfers. Save-all mode
+allocates the surplus after scheduled payments. Contribution shares apply to
+extra transfers; ongoing payments keep their existing destination. The simulator
+does not change standing orders or write new real contribution records.
+
+When there is one physical cash account (such as Cash, Physical cash or Cash on
+hand), its dated balance and the dated physical cash count are reconciled before
+planning: the newest value is used, with the account valuation winning date ties.
+The cash reserve gap is recalculated from that balance. A funded reserve top-up
+is credited once to the same cash goal on its planned transfer date, rather than
+leaving a second monthly savings pathway to fund the same gap. It is an internal
+transfer from money already excluded through the protected buffer; bank cash is
+not charged a second time. If the reserve has a different target, the cash goal
+may only be partly filled. Unfunded or ambiguous top-ups do not claim immediate
+goal completion. Actual cash records remain unchanged until the user updates them.
 Enable saved account allocation to calculate these dates using the selected
 salary, repayment strategy and shared savings budget. Extended estimates use the
 same cash simulation for up to five years; a target beyond that period is labelled

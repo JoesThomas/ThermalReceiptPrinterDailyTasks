@@ -173,6 +173,10 @@ def payment_schedule(monthly, yearly, transactions, settings, today, horizon=182
             if due_day:
                 due = date(due.year, due.month, min(due_day, monthrange(due.year, due.month)[1]))
             if due < today:
+                # A past payment estimates the next billing day, not unpaid arrears.
+                # Roll inferred dates forward instead of adding a second reserve today.
+                if basis == 'Estimated from last payment':
+                    continue
                 if (due.year, due.month) != (today.year, today.month) or item.get('paid'):
                     continue
                 due = today  # Unverified overdue item: reserve, do not claim it is unpaid.

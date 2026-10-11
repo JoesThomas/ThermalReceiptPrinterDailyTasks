@@ -40,3 +40,12 @@ Projection inputs stay in `data/finance_settings.json`, monthly and annual entri
 in `data/subscriptions.json`, and dismissal IDs in `data/finance_suggestions.json`.
 These private files are ignored by Git. The public repository contains code and
 generic examples only.
+
+## Estimated monthly payment dates
+
+A past bank payment or recorded `last_paid` date estimates the next monthly
+payment day. If that estimated day has already passed, the forecast rolls to the
+next occurrence rather than inventing unpaid arrears reserved today. This avoids
+counting an inferred rent or Sky payment twice in one pay period. Explicit
+configured overdue dates and unknown payment dates retain their conservative
+reserves; real overdue amounts can be recorded as dated commitments.
