@@ -122,6 +122,7 @@ def register(app, login_required, start_print):
         defaults = {'use_saved_accounts': 'on' if session.get('test_finance_use_accounts',bool(saved_savings)) else '',
                     'savings_target': str(load_finance_settings().get('salary_savings_target') or 0),
                     'save_all': 'on' if session.get('test_finance_save_all', True) else '',
+                    'invest_spare_cash': 'on' if session.get('test_finance_invest_spare_cash', True) else '',
                     'strategy': session.get('test_finance_strategy', 'amex_first')}
         return render_template('test_finance.html', today=uk_today(), result_text=text, values=defaults, saved_savings=saved_savings)
 
@@ -131,6 +132,7 @@ def register(app, login_required, start_print):
         today = uk_today()
         values = request.form.to_dict()
         values.setdefault('save_all', '')
+        values.setdefault('invest_spare_cash', '')
         values.setdefault('use_saved_accounts', '')
         try:
             validate(values, today)
@@ -140,6 +142,7 @@ def register(app, login_required, start_print):
             from receipt.archive import save
             identifier = save({'finance': text}, {}, datetime.now(timezone.utc).isoformat(), 'preview', {})
             session['test_finance_receipt'] = identifier
+            session['test_finance_invest_spare_cash'] = values['invest_spare_cash'] == 'on'
             session['test_finance_use_accounts'] = values['use_saved_accounts'] == 'on'
             session['test_finance_strategy'] = values.get('strategy', 'savings_first')
             if values.get('mode', 'replace') != 'lump':

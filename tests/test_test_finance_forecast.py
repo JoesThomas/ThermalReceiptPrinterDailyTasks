@@ -62,7 +62,7 @@ class DailyFinanceTests(TestCase):
         self.assertIn('Goal progress now: 0.0%', text)
         self.assertIn('Projected progress at forecast end: 15.0%', ' '.join(text.split()))
         self.assertIn('Estimated time to target:\n1 year and 7 months (578 days)', text)
-        self.assertIn('Time beyond selected forecast:', text)
+        self.assertIn('Beyond selected forecast; same pathway.', text)
 
     def test_extended_pathway_starts_saving_after_initial_debt_only_periods(self):
         result=build(source(),values(strategy='amex_first',savings_goal='1000'),TODAY)

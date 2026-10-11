@@ -43,7 +43,7 @@ class IncomeTransferTests(TestCase):
         text=receipt(result,TODAY)
         summary=text.split('WHERE TO MOVE THIS PAYDAY')[1].split('CASH & RESERVES')[0]
         self.assertIn('NS and I',summary)
-        self.assertIn('GBP 75.00',summary)
+        self.assertIn('£75.00',summary)
         self.assertIn('Already scheduled - do not send again:',summary)
         self.assertIn('07 Nov Hargreaves Lansdown',summary)
         self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
@@ -73,9 +73,41 @@ class IncomeTransferTests(TestCase):
         base=source();base['reserve_details']={'gap':D(5),'tax_reserve':D(0)}
         text=receipt(build(base,values(),TODAY),TODAY)
         self.assertIn('Cash top-up (already reserved)',text)
-        self.assertIn('GBP 5.00',text)
+        self.assertIn('£5.00',text)
 
     def test_hlam_alias_is_linked_without_hardcoding_the_payment_amount(self):
         events=[{'name':'HLAM Regular Saving','amount':D(30),'date':TODAY}]
         link_regular_savings(events,[account('H and L','100','100')])
         self.assertEqual(events[0]['savings_account'],'H and L')
+
+    def test_compact_receipt_keeps_bill_total_without_individual_bills(self):
+        base=source()
+        base['events'].append({'name':'Rent','amount':D(20),'date':date(2026,10,15)})
+        result=build(base,values(),TODAY)
+        text=receipt(result,TODAY)
+        summary=text.split('WHERE TO MOVE THIS PAYDAY')[1].split('CASH & RESERVES')[0]
+        self.assertIn('£45.00',summary)
+        self.assertNotIn('Rent',text)
+        self.assertNotIn('UPCOMING PAYMENTS',text)
+        self.assertIn('07 Nov Hargreaves Lansdown',summary)
+        self.assertEqual(text.count('Keep for bills / regular payments'),1)
+        self.assertNotIn('Extra transfer this period',text)
+        self.assertNotIn('No other confirmed repayment balances.',text)
+        self.assertLess(text.index('WHERE TO MOVE THIS PAYDAY'),text.index('RECORDED SAVINGS'))
+        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+
+    def test_zero_income_does_not_use_bank_cash_for_extra_savings(self):
+        base=source();base['cash']=D(1000)
+        settings=values();settings['salary']='0'
+        result=build(base,settings,TODAY)
+        self.assertEqual(result['forecast']['savings_total'],0)
+        self.assertEqual(result['forecast']['automatic_total'],50)
+        self.assertEqual(result['account_plan']['accounts'][1]['goal_date'],date(2026,12,7))
+        text=' '.join(receipt(result,TODAY).split())
+        self.assertIn('existing bank cash is not used for extra savings.',text)
+
+    def test_other_recurring_income_can_fund_extra_savings_without_salary(self):
+        settings=values();settings.update(salary='0',other_income='100')
+        result=build(source(),settings,TODAY)
+        self.assertEqual(result['forecast']['savings_total'],150)
+        self.assertEqual(result['forecast']['automatic_total'],50)
