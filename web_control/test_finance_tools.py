@@ -47,20 +47,9 @@ def collect(values, today):
             raise ValueError(
                 "Configure bank connections, or enter both starting cash and daily spending for a manual estimate."
             ) from None
-        from services.finance_source import collect as collect_source, dependencies_from
-        from concurrent.futures import ThreadPoolExecutor
-        dependencies = dependencies_from(pipeline, today=lambda: today)
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            data_future = pool.submit(collect_source, dependencies, persist=False)
-            balance_future = pool.submit(pipeline.get_account_balances)
-            try:
-                data = data_future.result()
-            except Exception:
-                data = ([], [], [], [], {"bank_data_status": "unavailable"})
-            try:
-                balances = balance_future.result()
-            except Exception:
-                balances = {}
+        from services.bank_session import collect_snapshot
+        snapshot = collect_snapshot(pipeline, persist=False, today=lambda: today)
+        data, balances = snapshot['data'], snapshot['balances']
         transactions = data[0]
         status = pipeline.build_subscription_status(
             transactions,

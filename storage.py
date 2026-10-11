@@ -91,14 +91,14 @@ def read_json_object(path):
 
 
 @contextmanager
-def file_lock(path):
+def file_lock(path, *, blocking=True):
     """Hold the established sidecar lock for one private state operation."""
     import fcntl
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.with_suffix('.lock').open('a') as lock:
         os.chmod(lock.name, 0o600)
-        fcntl.flock(lock, fcntl.LOCK_EX)
+        fcntl.flock(lock, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
         try:
             yield
         finally:

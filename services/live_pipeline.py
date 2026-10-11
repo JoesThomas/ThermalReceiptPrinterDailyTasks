@@ -1689,10 +1689,9 @@ def _save_truelayer_tokens(tokens):
         except OSError:
             pass
     except OSError as error:
-        print(
-            "Could not save refreshed TrueLayer tokens:",
-            error,
-        )
+        from services.observability import event
+        event("token_save", status="failed", error=error)
+        raise
 
 
 def _initial_truelayer_refresh_token(provider):
@@ -1710,85 +1709,14 @@ def _initial_truelayer_refresh_token(provider):
     )
 
 
-def _refresh_truelayer_access_token(
-    provider,
-    refresh_token
-):
-    if not TRUELAYER_CLIENT_ID:
-        raise RuntimeError(
-            "TrueLayer client ID is not configured."
-        )
-
-    if not TRUELAYER_CLIENT_SECRET:
-        raise RuntimeError(
-            "TrueLayer client secret is not configured."
-        )
-
-    if not refresh_token:
-        raise RuntimeError(
-            f"No TrueLayer refresh token configured "
-            f"for {provider}."
-        )
-
-    response = requests.post(
-        TRUELAYER_AUTH_URL,
-        data={
-            "grant_type": "refresh_token",
-            "client_id": TRUELAYER_CLIENT_ID,
-            "client_secret": TRUELAYER_CLIENT_SECRET,
-            "refresh_token": refresh_token,
-        },
-        timeout=20,
-    )
-
-    if not response.ok:
-        try:
-            error_data = response.json()
-        except ValueError:
-            error_data = response.text
-
-        print(
-            f"TrueLayer {provider} refresh failed:"
-        )
-        print(
-            f"HTTP {response.status_code}"
-        )
-        print(error_data)
-
-        raise RuntimeError(
-            f"TrueLayer {provider} token refresh failed."
-        )
-
-    payload = response.json()
-
-    access_token = payload.get(
-        "access_token"
-    )
-
-    if not access_token:
-        raise RuntimeError(
-            f"TrueLayer returned no access token "
-            f"for {provider}."
-        )
-
-    replacement_refresh = payload.get(
-        "refresh_token"
-    )
-
-    if replacement_refresh:
-        saved = (
-            _load_truelayer_saved_tokens()
-        )
-
-        saved[provider] = (
-            replacement_refresh
-        )
-
-        _save_truelayer_tokens(
-            saved
-        )
-
-    return access_token
+def _refresh_truelayer_access_token(provider, refresh_token):
+    from services.bank_transport import refresh
+    # Re-read rotated tokens under the shared lock; explicit tokens remain a fallback.
+    return refresh(provider, token_file=TRUELAYER_TOKEN_FILE,
+        initial=lambda p: _initial_truelayer_refresh_token(p) or refresh_token,
+        load_tokens=_load_truelayer_saved_tokens, save_tokens=_save_truelayer_tokens,
+        client_id=TRUELAYER_CLIENT_ID, client_secret=TRUELAYER_CLIENT_SECRET,
+        auth_url=TRUELAYER_AUTH_URL, http=requests)
 
 def load_manual_assets(
     filename="finance_assets.txt",
@@ -2722,15 +2650,8 @@ def historical_monthly_spending(
     }
 
 def _truelayer_get(access_token, endpoint):
-    response = requests.get(
-        f"{TRUELAYER_DATA_URL}{endpoint}",
-        headers={
-            "Authorization": f"Bearer {access_token}"
-        },
-        timeout=20,
-    )
-    response.raise_for_status()
-    return response.json()
+    from services.bank_transport import get
+    return get(access_token, endpoint, data_url=TRUELAYER_DATA_URL, http=requests)
 
 
 def _get_first_account_balance(access_token):
@@ -3380,45 +3301,12 @@ def _truelayer_card_ids(access_token):
     ]
 
 
-def _truelayer_transactions(
-    access_token,
-    endpoint_prefix,
-    account_id,
-    from_date,
-    to_date,
-    timeout=20,
-    range_info=None,
-):
-    # London can be a day ahead of UTC shortly after midnight. Avoid
-    # asking providers for a future day or more than 90 inclusive days.
-    end = min(to_date, datetime.now(ZoneInfo("UTC")).date())
-    start = max(from_date, end - timedelta(days=89))
-
-    def fetch(first, last):
-        response = requests.get(
-            f"{TRUELAYER_DATA_URL}/{endpoint_prefix}/{account_id}/transactions",
-            headers={"Authorization": f"Bearer {access_token}"},
-            params={"from": first.isoformat(), "to": last.isoformat()},
-            timeout=timeout,
-        )
-        response.raise_for_status()
-        return response.json().get("results", [])
-
-    try:
-        return fetch(start, end)
-    except requests.HTTPError as error:
-        response = getattr(error, "response", None)
-        try:
-            code = response.json().get("error")
-        except (AttributeError, ValueError):
-            code = None
-        if response is None or response.status_code != 400 or code != "invalid_date_range":
-            raise
-        # Some providers accept only a shorter transaction window.
-        # Preserve current-month bill matching and incoming payments.
-        if range_info is not None:
-            range_info["shortened"] = True
-        return fetch(max(from_date, end - timedelta(days=29)), end)
+def _truelayer_transactions(access_token, endpoint_prefix, account_id, from_date,
+                            to_date, timeout=20, range_info=None):
+    from services.bank_transport import transactions
+    return transactions(access_token, endpoint_prefix, account_id, from_date, to_date,
+        data_url=TRUELAYER_DATA_URL, http=requests, timeout=timeout,
+        range_info=range_info, now=datetime.now(ZoneInfo("UTC")).date())
 
 
 def _truelayer_regular_payments(
@@ -5822,15 +5710,12 @@ def run_live_pipeline(
 
             subscription_changes = []
 
-            preview_progress("Fetching account balances", 3, 5)
-            balances = (
-                get_account_balances()
-            )
-
-            preview_progress("Fetching payments and commitments", 3, 5)
-            finance_data = (
-                get_regular_finance_data()
-            )
+            from services.bank_session import retrieval
+            with retrieval(progress=lambda message: preview_progress(message, 3, 5)):
+                preview_progress("Fetching account balances", 3, 5)
+                balances = get_account_balances()
+                preview_progress("Fetching payments and commitments", 3, 5)
+                finance_data = get_regular_finance_data()
 
             if (
                 isinstance(
