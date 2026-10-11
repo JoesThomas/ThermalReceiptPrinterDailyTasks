@@ -228,6 +228,19 @@ process.on('exit', () => child.kill());
       await page.goto('http://receipt.test'+path);
       await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `${path} overflows at ${width}`);
+      if (path === '/preview?source=live') {
+        const edges = await page.evaluate(() => {
+          const image = document.querySelector('.paper-image');
+          const text = [...document.querySelectorAll('.paper-text')].find(node => node.textContent.includes('-'.repeat(42)));
+          const offset = text.firstChild.textContent.indexOf('-'.repeat(42));
+          const range = document.createRange();
+          range.setStart(text.firstChild, offset); range.setEnd(text.firstChild, offset+42);
+          const line = range.getBoundingClientRect(); const chart = image.getBoundingClientRect();
+          return {lineLeft:line.left,lineRight:line.right,chartLeft:chart.left,chartRight:chart.right};
+        });
+        assert.ok(Math.abs(edges.lineLeft-edges.chartLeft)<1, `Chart left edge differs from receipt ruler at ${width}: ${JSON.stringify(edges)}`);
+        assert.ok(Math.abs(edges.lineRight-edges.chartRight)<1, `Chart right edge differs from receipt ruler at ${width}: ${JSON.stringify(edges)}`);
+      }
       checks++;
     }
   }
