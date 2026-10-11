@@ -82,7 +82,7 @@ def receipt(result, today):
     def section(title):
         rule(); text(title.center(42)); rule()
     def amount(label, value):
-        right = f"GBP {value:,.2f}"
+        right = f"£{value:,.2f}"
         if len(label)+len(right)+1 <= 42: lines.append(label+right.rjust(42-len(label)))
         else: text(label); lines.append(right.rjust(42))
     data, base, forecast = result['inputs'], result['projection'], result['forecast']
@@ -169,7 +169,7 @@ def receipt(result, today):
         else:
             amount('Balance owed now',card['balance'])
             if card.get('full_reserved'):
-                text('Full balance reserved once today; already deducted in the forecast. Additional suggested repayment: GBP 0.00.')
+                text('Full balance reserved once today; already deducted in the forecast. Additional suggested repayment: £0.00.')
             else:
                 amount('Listed payments this period',first['planned_card'])
                 baseline_saving=first['budget'] if data['save_all'] else min(first['budget'],data['savings'])

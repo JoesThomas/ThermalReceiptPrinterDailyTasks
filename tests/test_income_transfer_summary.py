@@ -43,7 +43,7 @@ class IncomeTransferTests(TestCase):
         text=receipt(result,TODAY)
         summary=text.split('WHERE TO MOVE THIS PAYDAY')[1].split('CASH & RESERVES')[0]
         self.assertIn('NS and I',summary)
-        self.assertIn('GBP 75.00',summary)
+        self.assertIn('£75.00',summary)
         self.assertIn('Already scheduled - do not send again:',summary)
         self.assertIn('07 Nov Hargreaves Lansdown',summary)
         self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
@@ -73,7 +73,7 @@ class IncomeTransferTests(TestCase):
         base=source();base['reserve_details']={'gap':D(5),'tax_reserve':D(0)}
         text=receipt(build(base,values(),TODAY),TODAY)
         self.assertIn('Cash top-up (already reserved)',text)
-        self.assertIn('GBP 5.00',text)
+        self.assertIn('£5.00',text)
 
     def test_hlam_alias_is_linked_without_hardcoding_the_payment_amount(self):
         events=[{'name':'HLAM Regular Saving','amount':D(30),'date':TODAY}]
@@ -86,7 +86,7 @@ class IncomeTransferTests(TestCase):
         result=build(base,values(),TODAY)
         text=receipt(result,TODAY)
         summary=text.split('WHERE TO MOVE THIS PAYDAY')[1].split('CASH & RESERVES')[0]
-        self.assertIn('GBP 45.00',summary)
+        self.assertIn('£45.00',summary)
         self.assertNotIn('Rent',text)
         self.assertNotIn('UPCOMING PAYMENTS',text)
         self.assertIn('07 Nov Hargreaves Lansdown',summary)

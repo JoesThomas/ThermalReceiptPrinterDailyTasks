@@ -68,7 +68,7 @@ class ProjectionTests(unittest.TestCase):
         self.assertEqual(len(result['bills']),1)
         text=receipt(result,today)
         self.assertIn('Keep for bills / regular payments',text)
-        self.assertIn('GBP 750.00',text)
+        self.assertIn('£750.00',text)
         self.assertNotIn('Rent',text)
         self.assertNotIn('UPCOMING PAYMENTS',text)
         self.assertNotIn('11 Oct Rent [R]',text)
