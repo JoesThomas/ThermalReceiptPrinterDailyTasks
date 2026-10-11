@@ -37,7 +37,7 @@ def validate(values, today):
         raise ValueError('Choose 1 to 60 forecast months.') from None
     if not 1 <= months <= 60 or (occurs(start, months) - today).days > 1826:
         raise ValueError('Choose a forecast ending within five years of today.')
-    return dict(invest_spare_cash=values.get('invest_spare_cash') == 'on', use_accounts=values.get('use_saved_accounts') == 'on', strategy=strategy, split=split, apr=apr, goal=goal, starting_savings=starting_savings, salary=salary, existing=existing if mode == 'additional' else Decimal(0),
+    return dict(equal_savings=values.get('equal_savings') == 'on', invest_spare_cash=values.get('invest_spare_cash') == 'on', use_accounts=values.get('use_saved_accounts') == 'on', strategy=strategy, split=split, apr=apr, goal=goal, starting_savings=starting_savings, salary=salary, existing=existing if mode == 'additional' else Decimal(0),
                 other=other, lump=lump, savings=savings, save_all=not lump_mode and values.get('save_all') == 'on', mode=mode, start=start, months=months)
 
 
@@ -57,7 +57,7 @@ def build(projection, values, today):
         inputs['starting_savings']=sum((row['balance'] for row in accounts if row['balance'] is not None),Decimal(0))
         link_regular_savings(base['events'],[row for row in accounts if row['balance'] is not None])
     forecast = simulate(base, inputs, today)
-    account_plan=allocate(accounts,forecast['payments'] if inputs['use_accounts'] else [],forecast['events']+forecast['reserve_transfers'] if inputs['use_accounts'] else [])
+    account_plan=allocate(accounts,forecast['payments'] if inputs['use_accounts'] else [],forecast['events']+forecast['reserve_transfers'] if inputs['use_accounts'] else [],equal=inputs['equal_savings'])
     if (inputs['goal'] and forecast['goal_date'] is None or inputs['use_accounts'] and any(row['target'] and row['goal_date'] is None for row in account_plan['accounts'])) and inputs['mode'] != 'lump':
         extended_inputs = dict(inputs, months=60)
         while (occurs(inputs['start'], extended_inputs['months'])-today).days > 1826:
@@ -65,7 +65,7 @@ def build(projection, values, today):
         extended = simulate(base, extended_inputs, today)
         forecast['extended_goal_date'] = extended['goal_date']
         forecast['extended_goal_months'] = extended_inputs['months']
-        extended_accounts=allocate(accounts,extended['payments'] if inputs['use_accounts'] else [],extended['events']+extended['reserve_transfers'] if inputs['use_accounts'] else [])
+        extended_accounts=allocate(accounts,extended['payments'] if inputs['use_accounts'] else [],extended['events']+extended['reserve_transfers'] if inputs['use_accounts'] else [],equal=inputs['equal_savings'])
         for row,full in zip(account_plan['accounts'],extended_accounts['accounts']):
             row['extended_goal_date']=full['goal_date']
     first = forecast['payments'][0]
@@ -132,6 +132,7 @@ def receipt(result, today):
         else: text('No salary: spare bank cash investment paused.')
     if result['shortfall']: amount('SHORTFALL after reserves',result['shortfall'])
     section('WHERE TO MOVE THIS PAYDAY')
+    if data['use_accounts']: text('Savings split: equal between active goals.' if data['equal_savings'] else 'Savings split: saved contribution shares.')
     text('Extra transfers to make:')
     moved=Decimal(0)
     if data['use_accounts']:

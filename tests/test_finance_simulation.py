@@ -121,12 +121,15 @@ class SimulationTests(TestCase):
             client.get('/finance/test')
             self.assertEqual(render.call_args.kwargs['values']['save_all'], 'on')
             self.assertEqual(render.call_args.kwargs['values']['invest_spare_cash'], 'on')
+            self.assertEqual(render.call_args.kwargs['values']['equal_savings'], 'on')
             with client.session_transaction() as saved:
                 saved['test_finance_save_all']=False
                 saved['test_finance_invest_spare_cash']=False
+                saved['test_finance_equal_savings']=False
             client.get('/finance/test')
             self.assertEqual(render.call_args.kwargs['values']['save_all'], '')
             self.assertEqual(render.call_args.kwargs['values']['invest_spare_cash'], '')
+            self.assertEqual(render.call_args.kwargs['values']['equal_savings'], '')
             with client.session_transaction() as saved: saved['test_finance_save_all']=True
             client.get('/finance/test')
             self.assertEqual(render.call_args.kwargs['values']['save_all'], 'on')
