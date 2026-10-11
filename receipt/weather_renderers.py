@@ -50,6 +50,7 @@ def print_weather(printer, weather, location=None, detail=None, *, _context):
     printer.set(bold=False)
     centre(printer, location['name'].upper())
     centre(printer, location['region'].upper())
+    print_line(printer)
     printer.set(bold=True)
     left(printer, 'TODAY')
     printer.set(bold=False)
