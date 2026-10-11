@@ -103,24 +103,48 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 })();
 
-// Give slow review pages immediate feedback without trapping browser back navigation.
+// Keep feedback visible for the whole bank request, including form redirects.
 (() => {
   const notice = document.createElement('div');
   notice.className = 'navigation-loading'; notice.hidden = true;
-  notice.setAttribute('role','status');
-  const spinner = document.createElement('span'); spinner.className='preview-spinner'; spinner.setAttribute('aria-hidden','true');
-  const text = document.createElement('span'); text.textContent='Loading your review…';
-  notice.append(spinner,text); document.body.append(notice);
+  notice.setAttribute('role', 'status');
+  notice.setAttribute('aria-live', 'polite');
+  const spinner = document.createElement('span');
+  spinner.className = 'preview-spinner'; spinner.setAttribute('aria-hidden', 'true');
+  const text = document.createElement('span');
+  notice.append(spinner, text); document.body.append(notice);
+  let timer;
+  const reset = () => { clearTimeout(timer); notice.hidden = true; };
+  const show = finance => {
+    reset();
+    text.textContent = finance ? 'Retrieving bank transactions and balances…' : 'Loading your review…';
+    notice.hidden = false;
+    timer = setTimeout(() => {
+      if (finance) text.textContent = 'Still retrieving bank data… Some banks take longer to respond.';
+      else reset();
+    }, finance ? 10000 : 15000);
+  };
   document.addEventListener('click', event => {
     const link = event.target.closest('a[href]');
-    if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.target || event.button !== 0) return;
+    if (!link || event.defaultPrevented || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.target || link.hasAttribute('download') || event.button !== 0) return;
     const url = new URL(link.href);
-    if (url.origin === location.origin && ['/finance-review','savings-review','gigs','meals','calendar-map'].includes(url.pathname)) {
-      notice.hidden=false;
-      setTimeout(() => { notice.hidden=true; },15000);
+    if (url.origin !== location.origin) return;
+    if (url.pathname === location.pathname && url.search === location.search && url.hash) return;
+    if (['/finance-review', '/savings-review', '/gigs', '/meals', '/calendar-map'].includes(url.pathname)) {
+      show(url.pathname === '/finance-review');
     }
   });
-  window.addEventListener('pageshow', () => { notice.hidden=true; });
+  document.addEventListener('submit', event => {
+    const form = event.target;
+    const url = new URL(event.submitter?.hasAttribute('formaction') ? event.submitter.formAction : form.action, location.href);
+    if (form.target || url.origin !== location.origin) return;
+    if (url.pathname === '/finance-review' || url.pathname.startsWith('/finance-review/')) {
+      // Other handlers may cancel submission for validation or an AJAX request.
+      queueMicrotask(() => { if (!event.defaultPrevented) show(true); });
+    }
+  });
+  window.addEventListener('pageshow', reset);
+  window.addEventListener('pagehide', reset);
 })();
 
 // Display preferences contain no account or finance data and stay in this browser.

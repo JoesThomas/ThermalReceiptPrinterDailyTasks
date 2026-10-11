@@ -177,6 +177,38 @@ process.on('exit', () => child.kill());
   const olderArchiveIds=await page.locator('main .review-row > a').evaluateAll(rows=>rows.map(row=>row.getAttribute('href')));
   assert.equal(olderArchiveIds.some(id=>firstArchiveIds.includes(id)),false);
   await page.getByRole('link',{name:'Newer receipts',exact:true}).waitFor();
+  // Hold navigation open to exercise the feedback without contacting banks.
+  await page.goto('http://receipt.test/bins');
+  await page.clock.install();
+  for (const submit of [false, true]) {
+    let heldRoute;
+    let release;
+    const pending = new Promise(resolve => { release = resolve; });
+    const handler = async route => { heldRoute = route; await pending; await route.fulfill({contentType:'text/html',body:'<p>Finance retrieved</p>'}); };
+    await page.route('**/finance-review**', handler);
+    if (submit) {
+      await page.evaluate(() => {
+        const form = document.createElement('form');
+        form.action = '/finance-review/forecast-settings'; form.method = 'post';
+        document.body.append(form); form.requestSubmit();
+      });
+    } else {
+      await page.locator('.app-navigation a[href="/finance-review"]').evaluate(link => link.click());
+    }
+    await page.locator('.navigation-loading:not([hidden])').waitFor();
+    assert.match(await page.locator('.navigation-loading').innerText(), /Retrieving bank transactions and balances/);
+    await page.clock.fastForward(16000);
+    assert.equal(await page.locator('.navigation-loading').isVisible(), true);
+    assert.match(await page.locator('.navigation-loading').innerText(), /Still retrieving bank data/);
+    assert.ok(heldRoute, 'Bank navigation was intercepted');
+    const loaded = page.waitForURL(url => url.pathname.startsWith('/finance-review'));
+    release(); await loaded;
+    await page.getByText('Finance retrieved', {exact:true}).waitFor();
+    await page.unroute('**/finance-review**', handler);
+    await page.goto('http://receipt.test/bins');
+    assert.equal(await page.locator('.navigation-loading').isVisible(), false);
+  }
+  await page.clock.resume();
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
@@ -192,7 +224,7 @@ process.on('exit', () => child.kill());
     await page.goto('http://receipt.test/bins');
     await page.screenshot({path:process.env.RECEIPT_BROWSER_SCREENSHOT, fullPage:true});
   }
-  console.log(`Browser checks passed: 19 form flows and archive pagination, ${checks} responsive layouts`);
+  console.log(`Browser checks passed: 19 form flows, finance loading and archive pagination, ${checks} responsive layouts`);
   await browser.close();
   child.kill();
 })().catch(error => { console.error(error); process.exit(1); });
