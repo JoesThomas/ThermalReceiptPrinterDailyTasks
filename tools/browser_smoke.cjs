@@ -252,7 +252,7 @@ process.on('exit', () => child.kill());
   assert.match(await page.locator('#finance-refresh').innerText(), /Forecasts are withheld/);
   await page.goto('http://receipt.test/__fixture_daily_outcome');
   assert.match(await page.locator('main').innerText(), /Today's scheduled receipt:.*Daily print failed/s);
-  await page.getByRole('link', {name:'Open saved preview',exact:true}).waitFor();
+  await page.locator('#overview').getByRole('link', {name:'Find saved daily preview',exact:true}).waitFor();
   await page.goto('http://receipt.test/printer-diagnostics');
   assert.match(await page.locator('main').innerText(), /Cover/);
   assert.match(await page.locator('main').innerText(), /unknown/);

@@ -7,7 +7,8 @@ with seven recent scheduled outcomes. The private operational history retains 90
 days. Outcomes distinguish launching, running, sent to printer, saved preview,
 failure, timeout and cancellation. Sending data does not confirm paper output.
 An unreachable scheduled printer can still produce a saved preview; Home links to
-it. Away mode is recorded as a saved preview rather than a physical print.
+the saved receipts for that day, rather than assuming the latest preview is still
+the scheduled one. Away mode is recorded as a saved preview rather than a physical print.
 
 A missing scheduled job is flagged after today's configured time. Existing date
 markers remain valid and are labelled as older jobs without outcome details.

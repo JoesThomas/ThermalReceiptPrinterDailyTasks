@@ -165,6 +165,7 @@ def summary(settings, *, now=None, directory=None, marker=None):
             pass
         today = {"state": state, "label": LABELS[state], "preview_saved": False}
     return {
+        "date": on,
         "today": today,
         "recent": [
             dict(display(row, now), date=on)

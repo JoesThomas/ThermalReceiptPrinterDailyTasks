@@ -274,7 +274,9 @@
                     </div>
                     <div class="status-line" role="status">
                         <strong>Today's scheduled receipt:</strong> {{ daily_print.today.label }}
-                        {% if daily_print.today.preview_saved %}<a href="{{ url_for('preview') }}">Open saved preview</a>{% endif %}
+                        {% if daily_print.today.preview_saved %}
+                            <a href="{{ url_for('archive_list',date=daily_print.date) }}">Find saved daily preview</a>
+                        {% endif %}
                         {% if daily_print.today.state in ['failed','timed_out','cancelled','interrupted','missed'] %}
                             <span>Review the saved receipt before requesting another print.</span>
                         {% endif %}
@@ -330,21 +332,6 @@
                 <section id="live-data">
                     <p class="eyebrow">Live data</p>
                     <h2>Plan and review</h2>
-                    <div class="status-line" role="status">
-                        <strong>Today's scheduled receipt:</strong> {{ daily_print.today.label }}
-                        {% if daily_print.today.preview_saved %}<a href="{{ url_for('preview') }}">Open saved preview</a>{% endif %}
-                        {% if daily_print.today.state in ['failed','timed_out','cancelled','interrupted','missed'] %}
-                            <span>Review the saved receipt before requesting another print.</span>
-                        {% endif %}
-                    </div>
-                    <details>
-                        <summary>Recent scheduled receipts</summary>
-                        {% for day in daily_print.recent %}
-                            <p>{{ day.date }} · {{ day.label }}{{ ' · Preview saved' if day.preview_saved else '' }}</p>
-                        {% else %}
-                            <p>No daily outcomes recorded yet.</p>
-                        {% endfor %}
-                    </details>
                     <div class="quick-actions">
                         <a class="button" href="{{ url_for('delivery_checklist') }}">Confirm deliveries</a><a class="button" href="{{ url_for('gigs_page') }}">Gigs today</a><a class="button" href="{{ url_for('calendar_map') }}">Calendar map</a><a class="button" href="{{ url_for('meals_page') }}">Meals & recipes</a><a class="button" href="{{ url_for('tesco_list') }}">Tesco shopping review</a>
                     </div>
@@ -626,21 +613,6 @@
 
                 <section id="routines">
 
-                    <div class="status-line" role="status">
-                        <strong>Today's scheduled receipt:</strong> {{ daily_print.today.label }}
-                        {% if daily_print.today.preview_saved %}<a href="{{ url_for('preview') }}">Open saved preview</a>{% endif %}
-                        {% if daily_print.today.state in ['failed','timed_out','cancelled','interrupted','missed'] %}
-                            <span>Review the saved receipt before requesting another print.</span>
-                        {% endif %}
-                    </div>
-                    <details>
-                        <summary>Recent scheduled receipts</summary>
-                        {% for day in daily_print.recent %}
-                            <p>{{ day.date }} · {{ day.label }}{{ ' · Preview saved' if day.preview_saved else '' }}</p>
-                        {% else %}
-                            <p>No daily outcomes recorded yet.</p>
-                        {% endfor %}
-                    </details>
                     <div class="quick-actions">
                         <a class="button primary" href="{{ url_for('task_list') }}">To-do checklist</a><a class="button" href="{{ url_for('exercise_list') }}">Exercises</a>
                     </div>
