@@ -31,6 +31,8 @@ from web_control.future_tasks import load_tasks, update_task
 from web_control.job_process import watch_job
 
 app = Flask(__name__)
+from receipt.profile import web_context
+app.context_processor(web_context)
 
 SUBSCRIPTIONS_FILE = (
     PROJECT_ROOT / "data" / "subscriptions.json"
@@ -1190,10 +1192,15 @@ def savings_delete():
     return redirect(url_for("savings_review"))
 
 
+def _finance_wealth_view():
+    from finance.wealth_history import review
+    return review(_local_today(), request.args.get('month') or None)
+
+
 from types import SimpleNamespace
 from web_control.finance_review import register as register_finance_review
 register_finance_review(app, login_required, SimpleNamespace(
-    app=app, root=PROJECT_ROOT, wealth_view=_wealth_view, today=_local_today,
+    app=app, root=PROJECT_ROOT, wealth_view=_finance_wealth_view, today=_local_today,
     finance_charts=finance_charts, external_payments=external_payments,
     monthly_payments=monthly_payments, incoming_review=incoming_review,
     cash_flow_review=cash_flow_review))

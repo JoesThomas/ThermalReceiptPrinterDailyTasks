@@ -16,7 +16,7 @@ main{max-width:960px;margin:0 auto;padding:24px clamp(15px,3vw,34px) 70px}h1,h2,
 @media(prefers-reduced-motion:reduce){.preview-spinner{animation:none;border-color:var(--green)}}
 
 /* Width and monospaced lines approximate the 42-character, 80 mm paper roll. */
-.receipt-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:20px;align-items:start}.receipt-frame{min-width:0;margin:8px 0;padding:16px}.receipt-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:18px}.paper-roll{width:80mm;max-width:100%;margin:auto;background:#fff;box-shadow:0 10px 22px #18332221;border:1px solid #e7e5df}.paper-text{margin:0;padding:20px 11px 18px;white-space:pre;overflow-x:auto;font:10px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:#171717;tab-size:1}.paper-cut{border-top:2px dashed #b3aea6;text-align:center;color:#858078;font:10px ui-monospace,monospace;letter-spacing:.2em;padding:6px 0 8px}.receipt-meta .badge{font-size:.72rem}
+.receipt-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:20px;align-items:start}.receipt-frame{min-width:0;margin:8px 0;padding:16px}.receipt-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:18px}.paper-roll{width:80mm;max-width:100%;margin:auto;background:#fff;box-shadow:0 10px 22px #18332221;border:1px solid #e7e5df}.paper-text{margin:0;padding:20px 11px 18px;white-space:pre;overflow-x:auto;font:10px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:#171717;tab-size:1}.paper-cut{border-top:2px dashed #b3aea6;text-align:center;color:#655f57;font:10px ui-monospace,monospace;letter-spacing:.2em;padding:6px 0 8px}.receipt-meta .badge{font-size:.72rem}
 .paper-image{display:block;max-width:100%;height:auto;margin:0 auto}.paper-roll .paper-text{padding-top:0;padding-bottom:0}.paper-roll .paper-text:first-child{padding-top:20px}.paper-roll .paper-text:last-of-type{padding-bottom:18px}
 @media(max-width:650px){.receipt-gallery{grid-template-columns:1fr}.receipt-frame{padding:12px}.paper-text{font-size:9px;padding:16px 7px}}
 
@@ -100,6 +100,10 @@ html[data-reduce-motion="true"],html[data-reduce-motion="true"] *{scroll-behavio
 
 /* Text and charts share the centred 42-character receipt column. */
 .paper-roll{font:10px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
-.paper-roll .paper-text{width:42ch;max-width:calc(100% - 22px);margin:0 auto;padding-left:0;padding-right:0;font:inherit;box-sizing:content-box}
-.paper-graphic{width:42ch;max-width:calc(100% - 22px);margin:0 auto}
+.paper-roll .paper-text{width:calc(var(--receipt-columns,42)*1ch);max-width:calc(100% - 22px);margin:0 auto;padding-left:0;padding-right:0;font:inherit;box-sizing:content-box}
+.paper-graphic{width:calc(var(--receipt-columns,42)*1ch);max-width:calc(100% - 22px);margin:0 auto}
 @media(max-width:650px){.paper-roll{font-size:9px}}
+
+#archive-keep-days{max-width:100%;width:100%}
+[data-bank-forecast][hidden]{display:none!important}
+#finance-new-data button{max-width:100%;white-space:normal}

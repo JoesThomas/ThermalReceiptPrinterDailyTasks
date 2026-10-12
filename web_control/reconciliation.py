@@ -36,7 +36,7 @@ def read(path):
     return value
 
 
-def save_review(transactions, rows, today):
+def review_queue(transactions, rows, today):
     rules = prepare_rules(load_rules(RULES)); payments = []; reviewable=[]
     for tx in external_payments(transactions):
         paid = _parse_date(tx)
@@ -51,7 +51,13 @@ def save_review(transactions, rows, today):
         if categorise_transaction(tx,rules)=='OTHER': payments.append(item)
     unmatched = [dict(name=row['item']['name'],amount=row['item']['amount']) for row in rows if row['transaction'] is None]
     state={'checked_at':datetime.now(timezone.utc).isoformat(),'payments':payments[:300], 'unmatched':unmatched,'reviewable':reviewable[:1000]}
+    return state
+
+
+def save_review(transactions, rows, today):
+    state = review_queue(transactions, rows, today)
     write_json(QUEUE,state)
+    rules = prepare_rules(load_rules(RULES))
     from web_control.payment_explanations import capture
     capture(transactions, rows, today, rules, read(RULES))
     return state

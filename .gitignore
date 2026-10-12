@@ -190,3 +190,7 @@ data/finance_reviews.json
 data/finance_reviews.lock
 data/finance_details.json
 data/finance_details.lock
+
+# Private archive retention and pinned receipt IDs
+data/receipt_archive_settings.json
+data/receipt_archive_settings.lock

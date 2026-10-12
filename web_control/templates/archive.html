@@ -22,7 +22,45 @@
             {% with messages=get_flashed_messages() %}
                 {% for message in messages %}<p class="helper" role="status">{{ message }}</p>{% endfor %}
             {% endwith %}
+            <details class="section-disclosure">
+                <summary>Archive storage and retention</summary>
+                <p>
+                    {{ archive_usage.count }} receipts · {{ '%.2f'|format(archive_usage.mib) }} MiB · {{ archive_usage.pinned }} pinned
+                </p>
+                <form action="{{ url_for('archive_settings') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label for="archive-keep-days">Automatic cleanup</label>
+                    <select id="archive-keep-days" name="keep_days">
+                        <option value=""
+                                {% if archive_options.keep_days is none %}selected{% endif %}>
+                            Keep all receipts
+                        </option>
+                        {% for days in [30,90,180,365] %}
+                            <option value="{{ days }}"
+                                    {% if archive_options.keep_days == days %}selected{% endif %}>
+                                Delete unpinned receipts older than {{ days }} days
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <button>Save retention</button>
+                </form>
+                <p>
+                    Cleanup permanently removes eligible receipts. Pinned receipts are kept. Private settings backups do not include archived receipt files.
+                </p>
+                <form action="{{ url_for('archive_prune') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button {% if archive_options.keep_days is none %}disabled{% endif %}>Delete eligible unpinned receipts now</button>
+                </form>
+            </details>
             {% if receipt %}
+                <form action="{{ url_for('archive_pin',identifier=receipt.id) }}"
+                      method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden"
+                           name="pinned"
+                           value="{{ '' if receipt.id in archive_options.pins else 'on' }}">
+                    <button>{{ 'Unpin receipt' if receipt.id in archive_options.pins else 'Pin receipt' }}</button>
+                </form>
                 <a class="button" href="{{ url_for('archive_list') }}">All receipts</a>
                 <p>{{ receipt_delivery_status(receipt.id,receipt.source) }} · generated {{ captured_local }}</p>
                 {% set delivery_state = receipt_recovery_state().get(receipt.id,{}) %}
@@ -137,6 +175,9 @@
                     {% for item in entries %}
                         <div class="review-row">
                             <a href="{{ url_for('archive_detail',identifier=item.id) }}">{{ item.local.strftime('%d %b %Y, %H:%M %Z') }} · {{ receipt_delivery_status(item.id,item.source) }}</a>
+                            <p>
+                                {% if item.id in archive_options.pins %}<span class="badge">Pinned</span>{% endif %}
+                            </p>
                             <p class="muted">{{ item.pages|join(', ') }}</p>
                             {% for match in item.matches %}
                                 <p>

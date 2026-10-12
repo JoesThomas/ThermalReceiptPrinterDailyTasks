@@ -5,6 +5,7 @@ import time
 from io import BytesIO
 from flask import abort, flash, redirect, render_template, request, send_file, session, url_for
 from receipt import archive
+from receipt import archive_policy
 from receipt.capture import PAGE_NAMES, receipt_blocks
 from receipt.local_time import uk_receipt_time
 from web_control import private_backup as backup
@@ -15,7 +16,7 @@ def register(app, login_required, start_print, root, print_lock):
     def archive_list():
         offset = max(0, min(1_000_000, request.args.get('offset', 0, type=int)))
         found = archive.entries(request.args.get('date') or None, request.args.get('q'), limit=51, offset=offset)
-        return render_template('archive.html', entries=found[:50],
+        return render_template('archive.html', archive_options=archive_policy.options(root), archive_usage=archive_policy.usage(root), entries=found[:50],
                                selected_date=request.args.get('date', ''), query=request.args.get('q', '')[:200], receipt=None,
                                previous_offset=max(0, offset-50) if offset else None,
                                next_offset=offset+50 if len(found)>50 else None)
@@ -38,8 +39,34 @@ def register(app, login_required, start_print, root, print_lock):
                      for name, value in item.get('freshness', {}).items()]
         from receipt.quality import check
         from receipt.changes import compare
-        return render_template('archive.html', receipt_changes=compare(item), quality_warnings=check(item['pages'], item.get('freshness', {})), receipt=item, pages=pages, freshness=freshness,
+        return render_template('archive.html', archive_options=archive_policy.options(root), archive_usage=archive_policy.usage(root), receipt_changes=compare(item), quality_warnings=check(item['pages'], item.get('freshness', {})), receipt=item, pages=pages, freshness=freshness,
                                captured_local=uk_receipt_time(item['captured_at']))
+
+    @app.post('/receipts/settings')
+    @login_required
+    def archive_settings():
+        try:
+            raw=request.form.get('keep_days','')
+            archive_policy.save(int(raw) if raw else None,root)
+            flash('Receipt retention saved. Pinned receipts are always kept.')
+        except (ValueError,OSError):flash('Choose a valid retention period.')
+        return redirect(url_for('archive_list'))
+
+    @app.post('/receipts/prune')
+    @login_required
+    def archive_prune():
+        try:
+            deleted=archive_policy.prune(root,force=True)
+            flash(f'{deleted} eligible unpinned receipts deleted.')
+        except (ValueError,OSError):flash('Receipt cleanup could not complete.')
+        return redirect(url_for('archive_list'))
+
+    @app.post('/receipts/<identifier>/pin')
+    @login_required
+    def archive_pin(identifier):
+        try:archive_policy.pin(identifier,request.form.get('pinned')=='on',root)
+        except ValueError:abort(404)
+        return redirect(url_for('archive_detail',identifier=identifier))
 
     @app.post('/receipts/<identifier>/print')
     @login_required

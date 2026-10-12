@@ -87,3 +87,7 @@ modifies application data; synthetic workload files are temporary.
 Compare runs on the same device/Python version. Keep live retrieval timings
 separate from synthetic measurements: bank response times depend on the provider.
 The current development measurements are Linux x86-64 results, not Pi results.
+
+Finance now preserves unsaved edits when new bank data arrives. Viewing cached
+reviews is read-only; successful refreshes record observations separately. See
+[Receipt and interface quality](receipt-interface-quality.md).

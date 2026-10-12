@@ -177,6 +177,16 @@ process.on('exit', () => child.kill());
   const olderArchiveIds=await page.locator('main .review-row > a').evaluateAll(rows=>rows.map(row=>row.getAttribute('href')));
   assert.equal(olderArchiveIds.some(id=>firstArchiveIds.includes(id)),false);
   await page.getByRole('link',{name:'Newer receipts',exact:true}).waitFor();
+  await page.goto('http://receipt.test'+firstArchiveIds[0]);
+  await Promise.all([page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/pin')),page.getByRole('button',{name:'Pin receipt',exact:true}).click()]);
+  await page.getByRole('button',{name:'Unpin receipt',exact:true}).waitFor();
+  await page.goto('http://receipt.test/receipts');
+  await page.getByText('Archive storage and retention',{exact:true}).click();
+  await page.locator('#archive-keep-days').selectOption('90');
+  await Promise.all([page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/receipts/settings')),page.getByRole('button',{name:'Save retention',exact:true}).click()]);
+  assert.equal(await page.locator('#archive-keep-days').inputValue(),'90');
+  assert.ok(await page.locator('.review-row .badge').filter({hasText:'Pinned'}).count()>0);
+
   // Exercise real loading handlers without navigating away from the outgoing document.
   await page.goto('http://receipt.test/bins');
   await page.clock.install();
@@ -211,8 +221,14 @@ process.on('exit', () => child.kill());
   await completedReview;
   await page.getByText('Cash at last bank check', {exact:true}).waitFor();
   assert.match(await page.locator('#finance-refresh').innerText(), /cached for up to 30 minutes/);
-  const refreshReview = page.waitForResponse(r => new URL(r.url()).pathname === '/finance-review' && r.request().isNavigationRequest());
+  await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
+  const unsavedField = page.locator('input[name="emergency_buffer"]');
+  await unsavedField.fill('123.45');
   await page.locator('#finance-refresh-form button').click();
+  await page.locator('#finance-new-data:not([hidden])').waitFor();
+  assert.equal(await unsavedField.inputValue(), '123.45');
+  const refreshReview = page.waitForResponse(r => new URL(r.url()).pathname === '/finance-review' && r.request().isNavigationRequest());
+  await page.locator('#finance-apply-data').click();
   await refreshReview;
   await page.locator('#finance-refresh-form button:not([disabled])').waitFor();
   await page.evaluate(async () => { await fetch('/__fixture_finance_fail'); });
@@ -221,6 +237,7 @@ process.on('exit', () => child.kill());
   await failedReview;
   await page.getByText('Showing a previous bank check.', {exact:false}).waitFor();
   assert.match(await page.locator('#finance-refresh').innerText(), /Forecasts are withheld/);
+  const accessibilityFailures = [];
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
@@ -241,15 +258,25 @@ process.on('exit', () => child.kill());
         assert.ok(Math.abs(edges.lineLeft-edges.chartLeft)<1, `Chart left edge differs from receipt ruler at ${width}: ${JSON.stringify(edges)}`);
         assert.ok(Math.abs(edges.lineRight-edges.chartRight)<1, `Chart right edge differs from receipt ruler at ${width}: ${JSON.stringify(edges)}`);
       }
+      if (width === 1280) {
+        const failure = await require('./browser_accessibility.cjs')(page, path);
+        if (failure) accessibilityFailures.push(failure);
+      }
       checks++;
     }
   }
+  await page.goto('http://receipt.test/bins');
+  await page.keyboard.press('Tab');
+  assert.equal(await page.locator('.skip-link').evaluate(node => node === document.activeElement), true);
+  await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#main-content').evaluate(node => node === document.activeElement), true);
+  assert.deepEqual(accessibilityFailures, [], `Accessibility violations: ${JSON.stringify(accessibilityFailures)}`);
   if (process.env.RECEIPT_BROWSER_SCREENSHOT) {
     await page.setViewportSize({width:390,height:900});
     await page.goto('http://receipt.test/bins');
     await page.screenshot({path:process.env.RECEIPT_BROWSER_SCREENSHOT, fullPage:true});
   }
-  console.log(`Browser checks passed: 19 form flows, finance background refresh/failure and archive pagination, ${checks} responsive layouts`);
+  console.log(`Browser checks passed: receipt pin/retention forms, keyboard/accessibility checks, finance background refresh/failure and archive pagination, ${checks} responsive layouts`);
   await browser.close();
   child.kill();
 })().catch(error => { console.error(error); process.exit(1); });

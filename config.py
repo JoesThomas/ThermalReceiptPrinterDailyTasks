@@ -11,7 +11,7 @@ PASSWORDS_FILE = BASE_DIR / "passwords.json"
 
 TIMEZONE_NAME = "Europe/London"
 TIMEZONE = ZoneInfo(TIMEZONE_NAME)
-RECEIPT_WIDTH = 42
+from receipt.profile import COLUMNS as RECEIPT_WIDTH
 
 FEATURES = {
     "weather": True,

@@ -57,10 +57,10 @@
                 . No future income is assumed. Values are after the protected buffer and estimated everyday spending.
             </p>
             {% if insights.lowest %}
-                <p class="amount-headline">
+                <p class="amount-headline" data-bank-forecast>
                     £{{ '%.2f'|format(insights.lowest.cash) }} · {{ insights.lowest.date.strftime('%d %b %Y') }}
                 </p>
-                <figure class="chart-figure">
+                <figure class="chart-figure" data-bank-forecast>
                     <svg viewBox="0 0 660 180"
                          role="img"
                          aria-label="Projected cash after buffer over the forecast period"
@@ -107,7 +107,7 @@
         <section>
             <h2>Private monthly observations</h2>
             <p class="muted">
-                One latest observation per month, saved when you open Finance. These are dated snapshots, not reconstructed month-end accounts. Income and spending are month-to-date from returned bank records; missing months are not filled in. Savings and investments use latest recorded valuations. No transaction descriptions, account IDs or credentials are saved here.
+                One latest observation per month, saved after a successful bank refresh. These are dated snapshots, not reconstructed month-end accounts. Income and spending are month-to-date from returned bank records; missing months are not filled in. Savings and investments use latest recorded valuations. No transaction descriptions, account IDs or credentials are saved here.
             </p>
             {% if insights.history_error %}<p class="helper">{{ insights.history_error }}</p>{% endif %}
             <p>

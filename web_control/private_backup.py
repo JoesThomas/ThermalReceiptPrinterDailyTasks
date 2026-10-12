@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 MAX_BYTES = 900_000
-OBJECT_FILES = {'finance_reviews.json','assets.json','rental_tax.json','finance_explanations.json','lifestyle.json','transaction_sources.json','finance_planning.json','bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
+OBJECT_FILES = {'receipt_archive_settings.json','finance_reviews.json','assets.json','rental_tax.json','finance_explanations.json','lifestyle.json','transaction_sources.json','finance_planning.json','bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
                 'investments.json', 'finance_settings.json', 'finance_categories.json',
                 'food_shop_override.json', 'tesco_progress.json', 'meals_eaten.json'}
 LIST_FILES = {'finance_monthly_snapshots.json','routines.json', 'future_tasks.json', 'wealth_history.json'}
@@ -77,6 +77,9 @@ def _validate_file(name, content):
         if 'location' in content:
             from receipt.location_settings import validate_location
             validate_location(content['location'])
+    elif name == 'receipt_archive_settings.json':
+        from receipt.archive_policy import validate as validate_archive
+        validate_archive(content)
     elif name == 'receipt_recovery.json':
         from receipt.recovery import validate as validate_recovery
         validate_recovery(content)

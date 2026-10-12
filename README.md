@@ -506,3 +506,6 @@ the one-update-per-squash-commit workflow are in [Contributing](CONTRIBUTING.md)
 
 For background bank retrieval, snapshot freshness, structured logs and Raspberry Pi
 benchmark commands, see [Finance refresh and runtime checks](docs/finance-refresh-and-runtime.md).
+
+For archive pinning/retention, finance edit protection, shared receipt sizing and
+visual/accessibility checks, see [Receipt and interface quality](docs/receipt-interface-quality.md).

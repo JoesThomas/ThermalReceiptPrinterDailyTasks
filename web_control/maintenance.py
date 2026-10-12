@@ -90,6 +90,8 @@ def loop(stop):
             from receipt.lifestyle import prune, prune_explanations
             prune(ROOT)
             prune_explanations(ROOT)
+            from receipt.archive_policy import prune as prune_archive
+            prune_archive(ROOT)
         except (OSError, ValueError): logging.getLogger(__name__).warning('Private backup unavailable; check local data and disk space.')
         stop.wait(60)
 

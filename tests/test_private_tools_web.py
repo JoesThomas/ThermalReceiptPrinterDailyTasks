@@ -54,6 +54,11 @@ with tempfile.TemporaryDirectory() as directory:
   assert client.post('/backup/restore/confirm',data={'csrf_token':'test','token':token}).status_code==302
   assert (root/'data'/'to_buy.json').exists()
   assert client.get('/backup/download').headers['Cache-Control']=='no-store'
+  assert client.post('/receipts/settings',data={'keep_days':'30'}).status_code==403
+  assert client.post('/receipts/prune').status_code==403
+  assert client.post('/receipts/settings',data={'csrf_token':'test','keep_days':'90'}).status_code==302
+  assert client.get('/receipts').status_code==200
+
   assert client.get('/setup').status_code==200
   assert client.post('/setup/printer-check').status_code==403
   with patch('receipt.printer.readiness',return_value=(False,'Printer unreachable')):

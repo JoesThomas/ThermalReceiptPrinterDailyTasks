@@ -350,7 +350,7 @@ MATCH_TRAIN_WINDOW_HOURS = 2
 MATCH_ARRIVAL_BUFFER_MINUTES = 30
 
 # Compact 80mm receipt width.
-RECEIPT_WIDTH = 42
+from receipt.profile import COLUMNS as RECEIPT_WIDTH
 
 # Number of random lines from Google Doc #2.
 RANDOM_LINES = 5
@@ -375,364 +375,29 @@ def cut_receipt_section(printer):
 # ============================================================
 
 def _decode_email_header(value):
-    if not value:
-        return ""
-    try:
-        decoded_parts = email.header.decode_header(value)
-    except Exception:
-        return value
-    output = []
-    for part, charset in decoded_parts:
-        if isinstance(part, bytes):
-            output.append(
-                part.decode(
-                    charset or "utf-8",
-                    errors="replace",
-                )
-            )
-        else:
-            output.append(part)
-    return "".join(output)
+    from services.mail_source import _decode_email_header as parse
+    return parse(value)
 
 def _html_to_plain_text(html_text):
-    if not html_text:
-        return ""
-    text = re.sub(
-        r"<script.*?</script>",
-        " ",
-        html_text,
-        flags=re.IGNORECASE | re.DOTALL,
-    )
-
-    text = re.sub(
-        r"<style.*?</style>",
-        " ",
-        text,
-        flags=re.IGNORECASE | re.DOTALL,
-    )
-
-    text = re.sub(
-        r"<br\\s*/?>",
-        "\\n",
-        text,
-        flags=re.IGNORECASE,
-    )
-
-    text = re.sub(
-        r"</p>",
-        "\\n",
-        text,
-        flags=re.IGNORECASE,
-    )
-
-    text = re.sub(
-        r"<[^>]+>",
-        " ",
-        text,
-    )
-
-    text = unescape(text)
-
-    text = re.sub(
-        r"[ \\t]+",
-        " ",
-        text,
-    )
-
-    text = re.sub(
-        r"\\n\\s*\\n+",
-        "\\n",
-        text,
-    )
-
-    return text.strip()
+    from services.mail_source import _html_to_plain_text as parse
+    return parse(html_text)
 
 def _extract_imap_message_body(message):
-    plain_parts = []
-    html_parts = []
-
-    parts = message.walk() if message.is_multipart() else [message]
-
-    for part in parts:
-        content_type = part.get_content_type()
-        disposition = str(
-            part.get("Content-Disposition", "")
-        ).lower()
-
-        if "attachment" in disposition:
-            continue
-
-        try:
-            payload = part.get_payload(decode=True)
-        except Exception:
-            payload = None
-
-        if not payload:
-            continue
-
-        charset = part.get_content_charset() or "utf-8"
-
-        try:
-            text = payload.decode(
-                charset,
-                errors="replace",
-            )
-        except Exception:
-            text = payload.decode(
-                "utf-8",
-                errors="replace",
-            )
-
-        if content_type == "text/plain":
-            plain_parts.append(text)
-        elif content_type == "text/html":
-            html_parts.append(
-                _html_to_plain_text(text)
-            )
-
-    if plain_parts:
-        return "\n".join(plain_parts)
-
-    if html_parts:
-        return "\n".join(html_parts)
-
-    return ""
+    from services.mail_source import _extract_imap_message_body as parse
+    return parse(message)
 
 
 def _likely_delivery_email(subject, body):
-    text = f"{subject} {body}".lower()
-
-    score = 0
-
-    strong_delivery_terms = (
-        "out for delivery",
-        "due for delivery",
-        "delivery expected",
-        "will be delivered",
-        "has been delivered",
-        "arriving today",
-        "arriving tomorrow",
-        "your parcel",
-        "your package",
-        "track your parcel",
-        "track your package",
-        "tracking number",
-        "dispatched",
-        "despatched",
-        "shipped",
-        "on its way",
-    )
-
-    courier_terms = (
-        "royal mail",
-        "dpd",
-        "evri",
-        "yodel",
-        "dhl",
-        "fedex",
-        "ups",
-        "amazon logistics",
-        "parcelforce",
-    )
-
-    general_terms = (
-        "delivery",
-        "parcel",
-        "package",
-        "tracking",
-        "courier",
-        "arriving",
-        "delivered",
-        "dispatch",
-        "shipment",
-    )
-
-    marketing_terms = (
-        "save £",
-        "save gbp",
-        "discount",
-        "voucher",
-        "promo",
-        "promotion",
-        "first grocery shop",
-        "shop now",
-        "special offer",
-        "newsletter",
-    )
-
-    for term in strong_delivery_terms:
-        if term in text:
-            score += 3
-
-    for term in courier_terms:
-        if term in text:
-            score += 2
-
-    for term in general_terms:
-        if term in text:
-            score += 1
-
-    for term in marketing_terms:
-        if term in text:
-            score -= 4
-
-    return score >= 2
+    from services.mail_source import _likely_delivery_email as parse
+    return parse(subject, body)
 
 
 def get_gmail_delivery_emails():
-    """
-    Read recent Gmail messages via IMAP using a Google App
-    Password. The login details are read only from environment
-    variables and are never written to this script.
-    """
     global _gmail_fetch_failed
-    _gmail_fetch_failed = False
-    if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
-        print(
-            "Gmail IMAP credentials not configured; "
-            "using delivery JSON fallback."
-        )
-        return []
-
-    import time as fetch_clock
-    deadline = fetch_clock.monotonic() + 20
-    mailbox = None
-
-    try:
-        mailbox = imaplib.IMAP4_SSL(GMAIL_IMAP_HOST, timeout=5)
-
-        from services.api_health import record as health_record
-        mailbox.login(
-            GMAIL_ADDRESS,
-            GMAIL_APP_PASSWORD,
-        )
-
-        status, _ = mailbox.select(
-            "INBOX",
-            readonly=True,
-        )
-
-        if status != "OK":
-            health_record("Gmail", "failed", reason="unavailable")
-            _gmail_fetch_failed = True
-            print("Could not open Gmail inbox.")
-            return []
-
-        health_record("Gmail", "healthy")
-        since_date = (
-            datetime.now(
-                ZoneInfo("Europe/London")
-            ).date()
-            - timedelta(days=GMAIL_SEARCH_DAYS)
-        )
-
-        status, data = mailbox.search(
-            None,
-            "SINCE",
-            since_date.strftime("%d-%b-%Y"),
-        )
-
-        if status != "OK" or not data:
-            _gmail_fetch_failed = True
-            health_record("Gmail", "failed", reason="unavailable")
-            return []
-
-        message_ids = data[0].split()
-        message_ids = message_ids[-GMAIL_MAX_MESSAGES:][::-1]
-
-        records = []
-
-        for message_id in message_ids:
-            remaining = deadline - fetch_clock.monotonic()
-            if remaining <= 0:
-                _gmail_fetch_failed = True
-                break
-            if getattr(mailbox, 'sock', None) is not None:
-                mailbox.sock.settimeout(min(5, remaining))
-            status, message_data = mailbox.fetch(
-                message_id,
-                "(BODY.PEEK[]<0.524288>)",
-            )
-
-            if status != "OK":
-                continue
-
-            raw_message = None
-
-            for item in message_data:
-                if isinstance(item, tuple) and len(item) > 1:
-                    raw_message = item[1]
-                    break
-
-            if not raw_message:
-                continue
-
-            try:
-                parsed_message = email.message_from_bytes(
-                    raw_message
-                )
-            except Exception:
-                continue
-
-            subject = _decode_email_header(
-                parsed_message.get("Subject", "")
-            )
-
-            body = _extract_imap_message_body(
-                parsed_message
-            )
-
-            is_delivery = _likely_delivery_email(
-                subject,
-                body,
-            )
-
-            if not is_delivery:
-                continue
-
-            try:
-                received = parsedate_to_datetime(parsed_message.get("Date", ""))
-                if received.tzinfo is None:
-                    received = received.replace(tzinfo=ZoneInfo("Europe/London"))
-                received_date = received.astimezone(ZoneInfo("Europe/London")).date().isoformat()
-            except (TypeError, ValueError, OverflowError):
-                received_date = None
-            records.append({
-                "email_subject": subject,
-                "email_body": body,
-                "email_received_at": received_date,
-            })
-
-        return records
-
-    except imaplib.IMAP4.error as error:
-        _gmail_fetch_failed = True
-        from services.api_health import record as health_record
-        health_record("Gmail", "failed", reason="unavailable")
-        print(
-            "Gmail IMAP login/search failed:",
-            error,
-        )
-        return []
-
-    except OSError as error:
-        _gmail_fetch_failed = True
-        from services.api_health import record as health_record
-        health_record("Gmail", "failed", reason="connection")
-        print(
-            "Could not connect to Gmail IMAP:",
-            error,
-        )
-        return []
-
-    finally:
-        if mailbox is not None:
-            try:
-                if getattr(mailbox, 'sock', None) is not None:
-                    mailbox.sock.settimeout(1)
-                mailbox.logout()
-            except Exception:
-                pass
+    from services.mail_source import GmailConfig, collect
+    records, _gmail_fetch_failed = collect(GmailConfig(
+        GMAIL_ADDRESS, GMAIL_APP_PASSWORD, GMAIL_IMAP_HOST, GMAIL_SEARCH_DAYS, GMAIL_MAX_MESSAGES))
+    return records
 
 def _transportapi_bournville_departures(
     start_time,
@@ -1378,105 +1043,22 @@ LOCAL_NEWS_RSS_URL = (
 # WEATHER
 # ============================================================
 
-WEATHER_CODES = {
-    0: "SUNNY",
-    1: "MAINLY SUNNY",
-    2: "PARTLY CLOUDY",
-    3: "CLOUDY",
-    45: "FOGGY",
-    48: "FOGGY",
-    51: "LIGHT DRIZZLE",
-    53: "DRIZZLE",
-    55: "HEAVY DRIZZLE",
-    56: "FREEZING DRIZZLE",
-    57: "FREEZING DRIZZLE",
-    61: "LIGHT RAIN",
-    63: "RAINY",
-    65: "HEAVY RAIN",
-    66: "FREEZING RAIN",
-    67: "FREEZING RAIN",
-    71: "LIGHT SNOW",
-    73: "SNOWY",
-    75: "HEAVY SNOW",
-    77: "SNOW GRAINS",
-    80: "RAIN SHOWERS",
-    81: "RAIN SHOWERS",
-    82: "HEAVY SHOWERS",
-    85: "SNOW SHOWERS",
-    86: "HEAVY SNOW",
-    95: "THUNDERSTORM",
-    96: "STORM / HAIL",
-    99: "STORM / HAIL",
-}
+from receipt.weather_symbols import WEATHER_CODES
 
 def weather_description(code):
-    return WEATHER_CODES.get(code, "UNKNOWN")
+    from receipt.weather_symbols import weather_description as describe
+    return describe(code)
 
 
 def weather_graphic(code):
-    if code == 0:
-        return [
-            r"       \  |  /",
-            r"     --- ( ) ---",
-            r"       /  |  \ ",
-        ]
-
-    if code in (1, 2):
-        return [
-            r"       \ | /",
-            r"      -- O --",
-            r"     .------.",
-            r"    (  CLOUD  )",
-            r"     '------'",
-        ]
-
-    if code == 3:
-        return [
-            r"     .--------.",
-            r"   .'          '.",
-            r"  (    CLOUD     )",
-            r"   '._        _.'",
-            r"      '------'",
-        ]
-
-    if code in (45, 48):
-        return [
-            "    ~ ~ ~ ~ ~ ~",
-            "      F O G",
-            "    ~ ~ ~ ~ ~ ~",
-        ]
-
-    if code in (51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82):
-        return [
-            "     .--------.",
-            "    (   CLOUD   )",
-            "     '--------'",
-            "      | | | | |",
-        ]
-
-    if code in (71, 73, 75, 77, 85, 86):
-        return [
-            "     .--------.",
-            "    (   CLOUD   )",
-            "     '--------'",
-            "      * * * * *",
-        ]
-
-    if code in (95, 96, 99):
-        return [
-            "     .--------.",
-            "    (   STORM   )",
-            "     '--------'",
-            "         /\\",
-        ]
-
-    return ["    WEATHER UNKNOWN"]
+    from receipt.weather_symbols import weather_graphic as describe
+    return describe(code)
 
 
 
 def print_weather_graphic(printer, code):
-    from receipt.weather_renderers import print_weather_graphic as _render
-    return _render(printer, code, _context=globals())
+    from receipt.weather_renderers import print_weather_graphic as _render, WeatherDependencies
+    return _render(printer, code, deps=WeatherDependencies(centre=centre, weather_graphic=weather_graphic))
 
 def get_weather(latitude=DEFAULT_LOCATION["latitude"], longitude=DEFAULT_LOCATION["longitude"]):
     from services.weather_source import get_weather as collect
@@ -4477,8 +4059,8 @@ def print_wrapped(printer, text, width=40):
 # ============================================================
 
 def print_temperature_graph(printer, readings):
-    from receipt.weather_renderers import print_temperature_graph as _render
-    return _render(printer, readings, _context=globals())
+    from receipt.weather_renderers import print_temperature_graph as _render, WeatherDependencies
+    return _render(printer, readings, deps=WeatherDependencies(printer_text=printer_text, BytesIO=BytesIO, Image=Image, ImageDraw=ImageDraw, math=math))
 
 # ============================================================
 # RECEIPT SECTIONS
@@ -4923,13 +4505,13 @@ def is_definitively_boring_weather(weather):
 
 
 def print_compact_weather(printer, weather, location=DEFAULT_LOCATION):
-    from receipt.weather_renderers import print_compact_weather as _render
-    return _render(printer, weather, location, _context=globals())
+    from receipt.weather_renderers import print_compact_weather as _render, WeatherDependencies
+    return _render(printer, weather, location, deps=WeatherDependencies(left=left, print_line=print_line, weather_description=weather_description))
 
 
 def print_weather(printer, weather, location=DEFAULT_LOCATION, detail='auto'):
-    from receipt.weather_renderers import print_weather as _render
-    return _render(printer, weather, location, detail, _context=globals())
+    from receipt.weather_renderers import print_weather as _render, WeatherDependencies
+    return _render(printer, weather, location, detail, deps=WeatherDependencies(centre=centre, left=left, print_line=print_line, print_wrapped=print_wrapped, weather_description=weather_description, print_weather_graphic=print_weather_graphic, print_temperature_graph=print_temperature_graph, get_hourly_weather=get_hourly_weather))
 
 def should_print_subscriptions():
     """
@@ -4992,9 +4574,8 @@ def run_live_pipeline(
         PRINTER_PRODUCT_ID,
     )
 
-    printer.profile.profile_data[
-        "media"
-    ]["width"]["pixels"] = 576
+    from receipt.profile import PRINTABLE_PIXELS
+    printer.profile.profile_data["media"]["width"]["pixels"] = PRINTABLE_PIXELS
 
     setup_printer(printer)
     from receipt.layout import validate as validate_layout, OrderedPrinter, begin as begin_page, checked_lines

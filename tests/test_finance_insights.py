@@ -20,7 +20,7 @@ class InsightTests(unittest.TestCase):
     def test_lowest_balance_target_and_private_aggregate_snapshot(self):
         today,balances,projection=self.fixture()
         with tempfile.TemporaryDirectory() as folder,patch.object(insights,'FILE',Path(folder)/'history.json'):
-            result=insights.build(projection,balances,{'bank_data_status':'complete','requested_from':'2026-09-05'}, {'total':Decimal(100)}, {'month_total':Decimal(500)},None,{'monthly':{'amount':Decimal(900)}},today)
+            result=insights.build(projection,balances,{'bank_data_status':'complete','requested_from':'2026-09-05'}, {'total':Decimal(100)}, {'month_total':Decimal(500)},None,{'monthly':{'amount':Decimal(900)}},today,persist=True)
             self.assertEqual(result['lowest']['date'],date(2026,10,9))
             self.assertEqual(result['lowest']['cash'],Decimal(800))
             self.assertEqual(result['planning']['gap'],100)
@@ -36,25 +36,34 @@ class InsightTests(unittest.TestCase):
             self.assertIn('Lowest expected cash balance',html)
             self.assertIn('£800.00',html)
             self.assertIn('Observed income £500',html)
-            insights.build(projection,balances,{}, {'total':Decimal(101)}, {'month_total':Decimal(501)},None,None,today)
+            insights.build(projection,balances,{}, {'total':Decimal(101)}, {'month_total':Decimal(501)},None,None,today,persist=True)
             self.assertEqual(len(__import__('json').loads(insights.FILE.read_text())),1)
 
     def test_midmonth_scope_is_preserved_without_whole_month_claim(self):
         today, balances, projection = self.fixture()
         scope = {'monzo': 'first', 'sources': [{'provider': 'MONZO', 'mode': 'first', 'included': 1, 'available': 11}]}
         with tempfile.TemporaryDirectory() as folder, patch.object(insights, 'FILE', Path(folder) / 'history.json'):
-            result = insights.build(projection, balances, {'bank_data_status': 'complete', 'requested_from': '2026-10-01', 'collection_scope': scope}, {'total': Decimal(100)}, {'month_total': Decimal(500)}, None, None, today)
+            result = insights.build(projection, balances, {'bank_data_status': 'complete', 'requested_from': '2026-10-01', 'collection_scope': scope}, {'total': Decimal(100)}, {'month_total': Decimal(500)}, None, None, today, persist=True)
             self.assertFalse(result['history'][0]['whole_month'])
             self.assertEqual(result['history'][0]['collection_scope'], scope)
 
     def test_partial_forecast_withheld_and_unknown_savings(self):
         today,balances,projection=self.fixture('partial')
         with tempfile.TemporaryDirectory() as folder,patch.object(insights,'FILE',Path(folder)/'history.json'):
-            result=insights.build(projection,balances,{'bank_data_status':'partial'}, {'total':Decimal(100)}, {'month_total':Decimal(500)},None,None,today)
+            result=insights.build(projection,balances,{'bank_data_status':'partial'}, {'total':Decimal(100)}, {'month_total':Decimal(500)},None,None,today,persist=True)
             self.assertIsNone(result['lowest'])
             self.assertIsNone(result['planning']['spare'])
             self.assertIsNone(result['history'][0]['savings'])
             self.assertFalse(result['history'][0]['whole_month'])
+
+    def test_read_only_insights_do_not_create_or_update_history(self):
+        today,balances,projection=self.fixture()
+        with tempfile.TemporaryDirectory() as folder,patch.object(insights,'FILE',Path(folder)/'history.json'):
+            result=insights.build(projection,balances,{'bank_data_status':'complete'},
+                {'total':Decimal(100)},{'month_total':Decimal(500)},None,None,today)
+            self.assertFalse(insights.FILE.exists())
+            self.assertEqual(result['history'],[])
+            self.assertEqual(result['observation']['income'],'500')
 
     def test_snapshot_backup_validation_and_missing_values(self):
         from web_control.private_backup import validate

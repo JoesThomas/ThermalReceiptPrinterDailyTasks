@@ -7,6 +7,32 @@
   const stage = document.getElementById('finance-refresh-stage');
   const detail = document.getElementById('finance-refresh-detail');
   const timings = document.getElementById('finance-refresh-timings');
+  let dirty = false;
+  let pending = false;
+  const newData = document.getElementById('finance-new-data');
+  const apply = document.getElementById('finance-apply-data');
+  document.addEventListener('input', event => {
+    if (event.target.closest('form') && !event.target.closest('#finance-refresh-form')) dirty = true;
+  });
+  document.addEventListener('change', event => {
+    if (event.target.closest('form') && !event.target.closest('#finance-refresh-form')) dirty = true;
+  });
+  document.addEventListener('submit', event => {
+    queueMicrotask(() => { if (!event.defaultPrevented) dirty = false; });
+  });
+  const updateReview = (failed=false) => {
+    if (!dirty) { location.reload(); return; }
+    pending = true; active = false; button.disabled = false;
+    newData.querySelector('p').textContent = failed
+      ? 'Bank refresh failed. Your unsaved edits have been kept; reload after saving them.'
+      : 'New bank data is ready. Your unsaved edits have been kept.';
+    apply.textContent = failed ? 'Reload review and discard unsaved edits' : 'Load new data and discard unsaved edits';
+    newData.hidden = false;
+  };
+  apply.addEventListener('click', () => { dirty = false; location.reload(); });
+  window.addEventListener('beforeunload', event => {
+    if (dirty) { event.preventDefault(); event.returnValue = ''; }
+  });
   let busy = false;
   let active = panel.dataset.state === 'running';
   let timer;
@@ -20,14 +46,20 @@
       return li;
     }));
     if (job.state === 'failed') {
-      if (panel.dataset.state !== 'failed') { location.reload(); return; }
+      if (panel.dataset.state !== 'failed') {
+        if (dirty) {
+          detail.textContent = 'Bank refresh failed. Forecasts are withheld while your unsaved edits are kept.';
+          document.querySelectorAll('[data-bank-forecast]').forEach(node => node.hidden = true);
+        }
+        updateReview(true); return;
+      }
       detail.textContent = panel.dataset.snapshot
         ? 'Showing a previous bank check. Forecasts are withheld until fresh, complete bank data is available. You can try again.'
         : 'No successful bank snapshot yet. Check bank connections and try again.';
     }
     if (job.checked_at && job.checked_at !== panel.dataset.snapshot) {
       // Reload only when a new snapshot is available; failed jobs retain the old one.
-      location.reload();
+      updateReview();
     }
   }
   async function poll() {
@@ -48,7 +80,7 @@
     } finally {
       busy = false;
       clearTimeout(timer);
-      if (active) timer = setTimeout(poll, 2000);
+      if (active && !pending) timer = setTimeout(poll, 2000);
     }
   }
   form.addEventListener('submit', async event => {

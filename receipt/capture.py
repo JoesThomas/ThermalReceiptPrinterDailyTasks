@@ -5,6 +5,7 @@ import json
 import base64
 import binascii
 import re
+from receipt.profile import COLUMNS, PRINTABLE_PIXELS
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -42,7 +43,7 @@ class RecordingPrinter:
             return
         self._output('text', (value,), {})
         if self.align == "center":
-            value = "".join(line.rstrip("\r\n").center(42) + ("\n" if line.endswith("\n") else "")
+            value = "".join(line.rstrip("\r\n").center(COLUMNS) + ("\n" if line.endswith("\n") else "")
                             for line in value.splitlines(keepends=True))
         self.lines.append(value)
 
@@ -182,7 +183,7 @@ def receipt_blocks(text, images=()):
                     if header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
                         raise ValueError("Invalid PNG header")
                     width = int.from_bytes(header[16:20], "big")
-                    width_percent = min(100, max(1, width * 100 / 576))
+                    width_percent = min(100, max(1, width * 100 / PRINTABLE_PIXELS))
                 except (ValueError, IndexError, binascii.Error):
                     width_percent = 100
                 result.append({"image": image, "width_percent": width_percent})
