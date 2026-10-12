@@ -237,6 +237,7 @@ process.on('exit', () => child.kill());
   await failedReview;
   await page.getByText('Showing a previous bank check.', {exact:false}).waitFor();
   assert.match(await page.locator('#finance-refresh').innerText(), /Forecasts are withheld/);
+  const accessibilityFailures = [];
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
@@ -257,7 +258,10 @@ process.on('exit', () => child.kill());
         assert.ok(Math.abs(edges.lineLeft-edges.chartLeft)<1, `Chart left edge differs from receipt ruler at ${width}: ${JSON.stringify(edges)}`);
         assert.ok(Math.abs(edges.lineRight-edges.chartRight)<1, `Chart right edge differs from receipt ruler at ${width}: ${JSON.stringify(edges)}`);
       }
-      if (width === 1280) await require('./browser_accessibility.cjs')(page, path);
+      if (width === 1280) {
+        const failure = await require('./browser_accessibility.cjs')(page, path);
+        if (failure) accessibilityFailures.push(failure);
+      }
       checks++;
     }
   }
@@ -266,6 +270,7 @@ process.on('exit', () => child.kill());
   assert.equal(await page.locator('.skip-link').evaluate(node => node === document.activeElement), true);
   await page.keyboard.press('Enter');
   assert.equal(await page.locator('#main-content').evaluate(node => node === document.activeElement), true);
+  assert.deepEqual(accessibilityFailures, [], `Accessibility violations: ${JSON.stringify(accessibilityFailures)}`);
   if (process.env.RECEIPT_BROWSER_SCREENSHOT) {
     await page.setViewportSize({width:390,height:900});
     await page.goto('http://receipt.test/bins');

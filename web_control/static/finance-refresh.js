@@ -20,9 +20,13 @@
   document.addEventListener('submit', event => {
     queueMicrotask(() => { if (!event.defaultPrevented) dirty = false; });
   });
-  const updateReview = () => {
+  const updateReview = (failed=false) => {
     if (!dirty) { location.reload(); return; }
     pending = true; active = false; button.disabled = false;
+    newData.querySelector('p').textContent = failed
+      ? 'Bank refresh failed. Your unsaved edits have been kept; reload after saving them.'
+      : 'New bank data is ready. Your unsaved edits have been kept.';
+    apply.textContent = failed ? 'Reload review and discard unsaved edits' : 'Load new data and discard unsaved edits';
     newData.hidden = false;
   };
   apply.addEventListener('click', () => { dirty = false; location.reload(); });
@@ -47,7 +51,7 @@
           detail.textContent = 'Bank refresh failed. Forecasts are withheld while your unsaved edits are kept.';
           document.querySelectorAll('[data-bank-forecast]').forEach(node => node.hidden = true);
         }
-        updateReview(); return;
+        updateReview(true); return;
       }
       detail.textContent = panel.dataset.snapshot
         ? 'Showing a previous bank check. Forecasts are withheld until fresh, complete bank data is available. You can try again.'
