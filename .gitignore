@@ -199,3 +199,10 @@ data/finance_scenarios.json
 data/finance_scenarios.lock
 data/receipt_settings.last-good.json
 data/receipt_settings.invalid-*.json
+
+data/scheduled_print_history.json
+data/scheduled_print_history.lock
+node_modules/
+
+data/printer_diagnostic_run.lock
+data/pi_acceptance.json

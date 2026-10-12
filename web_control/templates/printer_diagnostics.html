@@ -35,6 +35,28 @@
                 <p class="muted">
                     A reachable socket does not verify paper, cover or successful printing. Address settings come from your local printer environment variables.
                 </p>
+                <dl>
+                    <dt>Cover</dt>
+                    <dd>
+                        {{ state.sensors.cover if state.sensors else 'unknown' }}
+                    </dd>
+                    <dt>Paper</dt>
+                    <dd>
+                        {{ state.sensors.paper if state.sensors else 'unknown' }}
+                    </dd>
+                    <dt>Low paper sensor</dt>
+                    <dd>
+                        {{ state.sensors.paper_low if state.sensors else 'unknown' }}
+                    </dd>
+                    <dt>Printer error sensor</dt>
+                    <dd>
+                        {{ state.sensors.error if state.sensors else 'unknown' }}
+                    </dd>
+                </dl>
+                {% if state.sensors %}<p>{{ state.sensors.message }}</p>{% endif %}
+                <p class="muted">
+                    The explicit check requests sensor replies without feeding or cutting paper. Unsupported, incomplete or ambiguous replies stay unknown. Sensor support must be confirmed on your printer.
+                </p>
                 <form method="post" action="{{ url_for('printer_check') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button>Check connection without printing</button>
@@ -53,6 +75,9 @@
                     <div class="review-row">
                         <strong>{{ row.name }} · {{ '%.1f'|format((row.duration_ms or 0)/1000) }} seconds</strong>
                         <p>{{ row.status }} · Last attempt {{ row.attempted }}</p>
+                        {% if row.next_retry %}
+                            <p>Automatic retry after {{ row.next_retry }}. Refresh sources bypasses this delay.</p>
+                        {% endif %}
                         <small>Original source check: {{ row.checked or 'unavailable' }}</small>
                     </div>
                 {% else %}

@@ -34,9 +34,20 @@ def main():
         if LOCK.exists():
             break
         time.sleep(0.01)
+    daily_on = None
+    job_id = None
+    if scheduled:
+        from receipt.local_time import uk_today
+        daily_on = uk_today()
     try:
+        if scheduled:
+            from web_control.schedule_history import pending_day
+            daily_on = pending_day(ROOT / 'data')
         save_status("running", page)
         job_id = json.loads(STATUS.read_text())['job_id']
+        if scheduled:
+            from web_control.schedule_history import record
+            record(daily_on, 'running', directory=ROOT / 'data', job_id=job_id, worker_pid=os.getpid())
         log_event(job_id, 'print started')
         command = [sys.executable, str(ROOT / "main.py"), *args]
         if args == ['--printer-test']:
@@ -99,6 +110,18 @@ def main():
         save_status("failed", page)
         raise
     finally:
+        if scheduled:
+            try:
+                from web_control.schedule_history import record
+                payload = json.loads(STATUS.read_text())
+                if job_id is None or payload.get('job_id') != job_id: payload = {}
+                state = payload.get('state', 'failed')
+                outcome = 'saved_preview' if state == 'completed' and payload.get('preview_saved') else 'sent' if state == 'completed' else state
+                if outcome not in {'sent','saved_preview','failed','timed_out','cancelled'}: outcome='failed'
+                record(daily_on, outcome, directory=ROOT / 'data', job_id=payload.get('job_id'), preview_saved=bool(payload.get('preview_saved')))
+            except (OSError, ValueError, TypeError):
+                import logging
+                logging.getLogger(__name__).warning('Daily print outcome could not be saved.')
         from web_control.job_runtime import release_owned_lock
         release_owned_lock(LOCK)
 

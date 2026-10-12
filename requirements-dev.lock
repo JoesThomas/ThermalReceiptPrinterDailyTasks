@@ -1,0 +1,18 @@
+# Exact release dependency versions. Refresh with python tools/lock_dependencies.py --write.
+-r requirements.lock
+bandit==1.9.4
+colorama==0.4.6
+cssbeautifier==2.0.3
+djlint==1.36.4
+editorconfig==0.17.1
+jsbeautifier==2.0.3
+json5==0.17.3
+markdown-it-py==4.2.0
+mdurl==0.1.2
+pathspec==1.1.1
+pygments==2.21.0
+regex==2026.9.29
+rich==15.0.0
+ruff==0.17.0
+stevedore==5.9.1
+tqdm==4.70.1

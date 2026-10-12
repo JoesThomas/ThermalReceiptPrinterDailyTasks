@@ -272,6 +272,23 @@
                             <span>Daily routines</span><strong>{{ routines|length }}</strong><small><a href="{{ url_for('index',view='tasks') }}">Manage your routines</a></small>
                         </div>
                     </div>
+                    <div class="status-line" role="status">
+                        <strong>Today's scheduled receipt:</strong> {{ daily_print.today.label }}
+                        {% if daily_print.today.preview_saved %}
+                            <a href="{{ url_for('archive_list',date=daily_print.date) }}">Find saved daily preview</a>
+                        {% endif %}
+                        {% if daily_print.today.state in ['failed','timed_out','cancelled','interrupted','missed'] %}
+                            <span>Review the saved receipt before requesting another print.</span>
+                        {% endif %}
+                    </div>
+                    <details>
+                        <summary>Recent scheduled receipts</summary>
+                        {% for day in daily_print.recent %}
+                            <p>{{ day.date }} · {{ day.label }}{{ ' · Preview saved' if day.preview_saved else '' }}</p>
+                        {% else %}
+                            <p>No daily outcomes recorded yet.</p>
+                        {% endfor %}
+                    </details>
                     <div class="quick-actions">
                         <form method="post" action="{{ url_for('print_now') }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

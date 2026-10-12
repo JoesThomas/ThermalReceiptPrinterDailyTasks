@@ -9,11 +9,11 @@ back into the project.
 Use your project's Python environment and install all application dependencies:
 
 ```sh
-python -m pip install -r requirements.txt
+python -m pip install -r requirements.lock
 ```
 
 The RSS parser uses `defusedxml` to reject entity declarations. For development
-checks, install `requirements-dev.txt` and run `python -m unittest discover -s tests`.
+checks, install `requirements-dev.lock` and run `python -m unittest discover -s tests`.
 GitHub checks run tests, compilation, undefined-name checks and high-severity
 security checks on Python 3.11 and 3.14. Offline `--preview`, `--health` and
 `--validate` commands do not import the live printer/bank pipeline. Missing optional
@@ -511,3 +511,7 @@ For archive pinning/retention, finance edit protection, shared receipt sizing an
 visual/accessibility checks, see [Receipt and interface quality](docs/receipt-interface-quality.md).
 
 Saved finance scenarios, transfer explanations and settings recovery: [planning quality](docs/planning-quality.md).
+
+Daily print outcomes, retry delays, printer sensor diagnostics and exact release dependencies:
+[runtime reliability](docs/runtime-reliability.md). Repeatable Pi checks are described in
+[the deployment guide](deployment/README.md#repeatable-acceptance-reports).
