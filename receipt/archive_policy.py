@@ -14,6 +14,8 @@ DAYS = (30, 90, 180, 365)
 def validate(state):
     if not isinstance(state, dict) or state.get("keep_days") not in (None, *DAYS):
         raise ValueError("Choose keep all, 30, 90, 180 or 365 days.")
+    from storage import validate_schema_version
+    validate_schema_version(state, 1)
     pins = state.get("pins", [])
     if (
         not isinstance(pins, list)
@@ -30,7 +32,7 @@ def store(root=ROOT):
     return PrivateStore(
         Path(root) / "data" / "receipt_archive_settings.json",
         default=lambda: {"keep_days": None, "pins": [], "last_pruned": None},
-        validate=validate,
+        validate=validate, schema_version=1, migrations={0: lambda value: value},
     )
 
 
@@ -110,6 +112,7 @@ def prune(root=ROOT, *, now=None, force=False):
                     deleted += 1
             except (ValueError, OSError, TypeError):
                 continue
+        state["schema_version"] = 1
         state["last_pruned"] = now.isoformat()
         write_json(state_store.path, state)
         archive._entry_summary.cache_clear()

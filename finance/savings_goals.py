@@ -1,7 +1,6 @@
 """Private savings targets and dated ISA subscriptions, separate from valuations."""
 import calendar
 import hashlib
-import json
 import re
 import uuid
 from contextlib import contextmanager
@@ -41,6 +40,8 @@ def infer(name,kind):
 def validate(value):
     if not isinstance(value,dict) or not isinstance(value.get('accounts'),dict) or not isinstance(value.get('entries'),list) or not isinstance(value.get('years'),dict):
         raise ValueError('Invalid savings goals file; restore it before editing.')
+    from storage import validate_schema_version
+    validate_schema_version(value, 1)
     if len(value['accounts'])>500 or len(value['years'])>101: raise ValueError('Savings record limit reached.')
     if sum((amount(row.get('monthly_share',0)) for row in value['accounts'].values() if isinstance(row,dict)),Decimal(0))>100: raise ValueError('Total savings shares cannot exceed 100%.')
     for key,row in value['accounts'].items():
@@ -70,11 +71,17 @@ def validate(value):
             raise ValueError('Cash limit cannot exceed the shared allowance.')
 
 
+def store():
+    from storage import PrivateStore
+    return PrivateStore(FILE, default=lambda: {'accounts': {}, 'entries': [], 'years': {}},
+                        validate=validate, schema_version=1, migrations={0: lambda value: value})
+
+
 def load():
-    if not FILE.exists(): return {'accounts':{},'entries':[],'years':{}}
-    try: value=json.loads(FILE.read_text());validate(value)
-    except (OSError,ValueError,TypeError,KeyError): raise ValueError('Savings goals could not be read; restore the private file.') from None
-    return value
+    try:
+        return store().read()
+    except (OSError, ValueError, TypeError, KeyError):
+        raise ValueError('Savings goals could not be read; restore the private file.') from None
 
 
 @contextmanager
@@ -82,6 +89,7 @@ def edit():
     with file_lock(FILE):
         value = load()
         yield value
+        value["schema_version"] = 1
         validate(value)
         write_json(FILE, value)
 

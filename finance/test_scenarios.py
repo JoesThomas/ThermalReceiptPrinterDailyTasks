@@ -144,7 +144,9 @@ def compare(projection, values, today, *, current=None):
             if months
             else "Amex: same approximate clearance timing"
         )
+    from finance.transfer_explanation import explain
     return {
+        "transfers": explain(current),
         "contribution": contribution_plan(projection, current, today),
         "scenarios": [
             dict(snapshot(result, today), name=name, adjustment=pounds(adjustment))

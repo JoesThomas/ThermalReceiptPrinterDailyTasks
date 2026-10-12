@@ -1,18 +1,23 @@
-document.getElementById('test-finance-form')?.addEventListener('submit', function () {
-    document.getElementById('test-finance-loading').hidden = false;
-    const button = this.querySelector('button[type="submit"]');
-    button.disabled = true;
-    button.textContent = 'Generating test receipt…';
+const scenarioForm = document.getElementById('test-finance-form');
+const scenarioButtons = [...(scenarioForm?.querySelectorAll('button[type="submit"]') || [])];
+const buttonLabels = scenarioButtons.map(button => button.textContent);
+scenarioForm?.addEventListener('submit', function (event) {
+    const saving = event.submitter?.getAttribute('formaction')?.endsWith('/scenarios/save');
+    const status = document.getElementById('test-finance-loading');
+    status.textContent = saving ? 'Saving named scenario inputs…' : 'Checking bank balances and payments, then building your salary simulation…';
+    status.hidden = false;
     this.setAttribute('aria-busy', 'true');
+    // Keep the submitter enabled until its formaction has been processed.
+    setTimeout(() => scenarioButtons.forEach(button => { button.disabled = true; }), 0);
 });
 window.addEventListener('pageshow', () => {
-    const form = document.getElementById('test-finance-form');
-    if (!form) return;
-    form.removeAttribute('aria-busy');
+    if (!scenarioForm) return;
+    scenarioForm.removeAttribute('aria-busy');
     document.getElementById('test-finance-loading').hidden = true;
-    const button = form.querySelector('button[type="submit"]');
-    button.disabled = false;
-    button.textContent = 'Generate test receipt';
+    scenarioButtons.forEach((button, index) => {
+        button.disabled = false;
+        button.textContent = buttonLabels[index];
+    });
 });
 
 function updateScenarioFields() {

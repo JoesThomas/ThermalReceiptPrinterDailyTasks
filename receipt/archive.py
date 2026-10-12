@@ -20,6 +20,10 @@ def load(identifier):
         if any(name not in PAGE_NAMES or not isinstance(text, str) for name, text in value['pages'].items()):
             raise ValueError()
         if 'test_finance' in value and not isinstance(value['test_finance'],dict): raise ValueError()
+        from storage import validate_schema_version
+        validate_schema_version(value, 1)
+        if 'build' in value and not isinstance(value['build'], dict):
+            raise ValueError()
         datetime.fromisoformat(value['captured_at'])
         if value.get('source') not in {'preview', 'printed'} or not isinstance(value.get('page_images', {}), dict) or not isinstance(value.get('freshness', {}), dict):
             raise ValueError()
@@ -36,6 +40,9 @@ def save(pages, images, captured_at, source, freshness, *, test_finance=None):
     identifier = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ-') + uuid.uuid4().hex[:12]
     value = dict(id=identifier, captured_at=captured_at, source=source, pages=pages,
                  page_images=images, freshness=freshness)
+    from receipt.build_info import metadata
+    value["schema_version"] = 1
+    value["build"] = metadata(test_finance.get("values") if test_finance else None, finance="finance" in pages)
     if test_finance is not None: value['test_finance']=test_finance
     target = DIRECTORY / (identifier + '.json')
     from storage import write_json

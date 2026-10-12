@@ -24,6 +24,25 @@
                 {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
             {% endwith %}
             {% if error %}<p class="flash" role="alert">{{ error }}</p>{% endif %}
+            <details class="section-disclosure">
+                <summary>Saved finance scenarios</summary>
+                <p>
+                    Save inputs using a name below. Loading only fills the form; review dates, balances and account destinations, then generate a fresh forecast. Using the same name replaces those saved inputs.
+                </p>
+                {% for preset in presets|default([]) %}
+                    <div>
+                        <a href="{{ url_for('test_finance_page',preset=preset.id) }}">{{ preset.name }}</a>
+                        <span>First payday: {{ preset.start }}</span>
+                        <form method="post"
+                              action="{{ url_for('delete_finance_scenario',identifier=preset.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button aria-label="Delete saved scenario {{ preset.name }}">Delete saved inputs</button>
+                        </form>
+                    </div>
+                {% else %}
+                    <p>No named scenarios saved yet.</p>
+                {% endfor %}
+            </details>
             <section>
                 <h2>Potential salary</h2>
                 <form method="post"
@@ -326,12 +345,66 @@
                     <p class="muted">
                         Existing salary is not automatically added to replacement scenarios. Other income is assumed to arrive on payday, even outside the salary window. Savings and extra Amex repayments recalculate each pay period and are applied to the forecast. Finishing repayments frees income for later savings. Forecasts can extend to five years.
                     </p>
+                    <label for="scenario-name">Scenario name (optional, for saving inputs)</label>
+                    <input id="scenario-name"
+                           name="scenario_name"
+                           maxlength="60"
+                           value="{{ preset_name|default('') }}">
+                    <button type="submit" formaction="{{ url_for('save_finance_scenario') }}">Save named scenario</button>
                     <button class="primary" type="submit">Generate test receipt</button>
                     <p id="test-finance-loading" class="helper" role="status" hidden>
                         Checking bank balances and payments, then building your salary simulation…
                     </p>
                 </form>
             </section>
+            {% if scenario_details and scenario_details.transfers %}
+                <details class="section-disclosure" data-private>
+                    <summary>How the transfers were worked out</summary>
+                    {% set transfers = scenario_details.transfers %}
+                    <p>{{ transfers.date }} to {{ transfers.end }}. {{ transfers.strategy }}</p>
+                    {% if not transfers.funded %}
+                        <p role="alert">
+                            This period has a funding shortfall. These figures are a planning estimate; review income and commitments before using the transfer plan.
+                        </p>
+                    {% endif %}
+                    <dl>
+                        {% for row in transfers.rows %}
+                            <dt>{{ row.label }}</dt>
+                            <dd>
+                                {{ row.amount }}
+                            </dd>
+                        {% endfor %}
+                    </dl>
+                    <h3>Extra transfers in this period</h3>
+                    <dl>
+                        {% for row in transfers.destinations %}
+                            <dt>{{ row.name }}</dt>
+                            <dd>
+                                {{ row.amount }}
+                            </dd>
+                        {% else %}
+                            <dt>Extra transfers</dt>
+                            <dd>
+                                None
+                            </dd>
+                        {% endfor %}
+                    </dl>
+                    <p>
+                        Scheduled savings credited to linked accounts: {{ transfers.scheduled_savings }}. These are already included in bills and scheduled payments; do not send them again.
+                    </p>
+                    <p>
+                        Cash top-up uses its protected reserve and is separate from extra savings. The reserve rows add up to the protected total; they are not additional deductions.
+                    </p>
+                    {% if transfers.spare_cash_enabled and not transfers.salary_active %}
+                        <p>
+                            No salary this period: spare bank cash transfers are paused. Scheduled payments still apply; other income can still fund ordinary allocations.
+                        </p>
+                    {% endif %}
+                    <p>
+                        Cash remaining above commitments is the available cash ceiling. The selected income and strategy rules determine how much is allocated. This breakdown uses the forecast's recorded amounts; no money is moved.
+                    </p>
+                </details>
+            {% endif %}
             {% if scenario_details %}
                 <section data-private id="forecast-comparison">
                     <h2>Forecast comparisons</h2>

@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 MAX_BYTES = 900_000
-OBJECT_FILES = {'receipt_archive_settings.json','finance_reviews.json','assets.json','rental_tax.json','finance_explanations.json','lifestyle.json','transaction_sources.json','finance_planning.json','bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
+OBJECT_FILES = {'finance_scenarios.json', 'receipt_settings.last-good.json','receipt_archive_settings.json','finance_reviews.json','assets.json','rental_tax.json','finance_explanations.json','lifestyle.json','transaction_sources.json','finance_planning.json','bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
                 'investments.json', 'finance_settings.json', 'finance_categories.json',
                 'food_shop_override.json', 'tesco_progress.json', 'meals_eaten.json'}
 LIST_FILES = {'finance_monthly_snapshots.json','routines.json', 'future_tasks.json', 'wealth_history.json'}
@@ -49,34 +49,12 @@ def _validate_file(name, content):
     if name == 'finance_planning.json':
         from finance.planning import validate as validate_planning
         validate_planning(content)
-    if name == 'receipt_settings.json':
-        for key in ('features', 'one_shot', 'display', 'therapy_payment', 'finance', 'location', 'print_schedule', 'layout', 'api_health', 'private_backup'):
-            if key in content and not isinstance(content[key], dict):
-                raise ValueError()
-        for key in ('features', 'one_shot'):
-            if any(not isinstance(value, bool) for value in content.get(key, {}).values()):
-                raise ValueError()
-        if 'print_schedule' in content:
-            import re
-            config = content['print_schedule']
-            if 'enabled' in config and not isinstance(config['enabled'], bool):
-                raise ValueError()
-            if 'time' in config and (not isinstance(config['time'], str) or not re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d', config['time'])):
-                raise ValueError()
-        if 'private_backup' in content:
-            config = content['private_backup']
-            if type(config.get('enabled')) is not bool or type(config.get('keep')) is not int or config['keep'] not in (7, 14, 30):
-                raise ValueError()
-        if 'api_health' in content:
-            from services.api_health import INTERVALS
-            config=content['api_health']
-            if type(config.get('enabled')) is not bool or type(config.get('interval_minutes')) is not int or config['interval_minutes'] not in INTERVALS: raise ValueError()
-        if 'layout' in content:
-            from receipt.layout import validate as validate_layout
-            validate_layout(content['layout'])
-        if 'location' in content:
-            from receipt.location_settings import validate_location
-            validate_location(content['location'])
+    if name in {'receipt_settings.json', 'receipt_settings.last-good.json'}:
+        from receipt_settings import validate_settings
+        validate_settings(content)
+    elif name == 'finance_scenarios.json':
+        from finance.scenario_presets import validate_state
+        validate_state(content)
     elif name == 'receipt_archive_settings.json':
         from receipt.archive_policy import validate as validate_archive
         validate_archive(content)

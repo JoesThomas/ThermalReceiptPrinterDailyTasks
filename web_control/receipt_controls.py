@@ -9,7 +9,8 @@ RETRIES = {'Weather':'information', 'UK news':'information', 'Local news':'infor
 def register(app, login_required, start_print, root):
     @app.context_processor
     def receipt_control_context():
-        return {'receipt_retries': RETRIES}
+        from receipt_settings import settings_state
+        return {'receipt_retries': RETRIES, 'receipt_settings_warning': settings_state()[1]}
 
     @app.get('/print-plan')
     @login_required

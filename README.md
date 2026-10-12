@@ -509,3 +509,5 @@ benchmark commands, see [Finance refresh and runtime checks](docs/finance-refres
 
 For archive pinning/retention, finance edit protection, shared receipt sizing and
 visual/accessibility checks, see [Receipt and interface quality](docs/receipt-interface-quality.md).
+
+Saved finance scenarios, transfer explanations and settings recovery: [planning quality](docs/planning-quality.md).
