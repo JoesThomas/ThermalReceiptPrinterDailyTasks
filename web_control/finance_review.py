@@ -7,7 +7,7 @@ from receipt_settings import load_receipt_settings
 from web_control.finance_refresh import FinanceRefresh
 
 
-def render_review(deps, snapshot, fresh, refresh_status):
+def build_review(deps, snapshot, fresh, refresh_status=None):
     app = deps.app
     PROJECT_ROOT = deps.root
     _wealth_view = deps.wealth_view
@@ -59,13 +59,13 @@ def render_review(deps, snapshot, fresh, refresh_status):
                 used.add(index)
             tx = transactions[index] if index is not None else None
             rows.append({"item": item, "transaction": tx, "method": method})
-        from web_control.reconciliation import save_review
+        from web_control.reconciliation import review_queue as build_queue
 
         has_uncertain_payments = False
         reviewable_payment_ids = set()
         try:
             review_queue = (
-                save_review(transactions, rows, today)
+                build_queue(transactions, rows, today)
                 if fresh
                 else {"payments": [], "unmatched": [], "reviewable": []}
             )
@@ -230,36 +230,14 @@ def render_review(deps, snapshot, fresh, refresh_status):
         update_items = finance_reviews.needs_update(
             projection, net_worth, bank_data_status, forecast_settings, rental_plan
         )
-        try:
-            if fresh:
-                finance_reviews.capture(
-                    salary_plan,
-                    transactions,
-                    rows,
-                    income,
-                    projection,
-                    finance_data[4],
-                    net_worth,
-                    rental_plan,
-                    today,
-                    month["total"],
-                )
-        except (ValueError, OSError):
-            app.logger.warning("Private finance results could not be updated.")
-            update_items.append(
-                {
-                    "message": "Private finance history could not be updated; check or restore your backup",
-                    "url": "/backup",
-                }
-            )
         from finance.credit_limits import summary as credit_summary
         from receipt.lifestyle import load as lifestyle_settings
 
         credit_cards = credit_summary(
             lifestyle_settings().get("credit_cards", []), balances
         )
-        return render_template(
-            "finance_review.html",
+        return dict(
+            observation=dict(transactions=transactions, summary=finance_data[4], rental_plan=rental_plan),
             update_items=update_items,
             net_worth=net_worth,
             credit_cards=credit_cards,
@@ -294,8 +272,8 @@ def render_review(deps, snapshot, fresh, refresh_status):
         )
     except Exception:
         app.logger.exception("Could not load finance review")
-        return render_template(
-            "finance_review.html",
+        return dict(
+            http_status=503,
             rows=[],
             checked_at=today,
             wealth=wealth,
@@ -305,11 +283,40 @@ def render_review(deps, snapshot, fresh, refresh_status):
             snapshot=snapshot,
             snapshot_fresh=False,
             refresh_status=refresh_status,
-        ), 503
+        )
+
+
+def render_review(deps, snapshot, fresh, refresh_status):
+    model = build_review(deps, snapshot, fresh, refresh_status)
+    return render_template('finance_review.html', **model), model.get('http_status', 200)
+
+
+def capture_review(deps, snapshot):
+    "Only successful refreshes record observations; displaying a page never does."
+    from copy import copy
+    from finance.wealth_history import capture_local, review
+    from finance.investments import load_investments
+    from savings_runway import load_savings
+    from web_control.finance_insights import snapshots
+    from web_control.reconciliation import save_review
+    from finance.reviews import capture
+    today = datetime.fromisoformat(snapshot['checked_at']).astimezone(ZoneInfo('Europe/London')).date()
+    capture_local(load_savings(deps.root/'data'/'savings.json'), load_investments(deps.root/'data'/'investments.json'), today)
+    readonly = copy(deps)
+    readonly.wealth_view = lambda: review(today)
+    model = build_review(readonly, snapshot, True)
+    if model.get('http_status'):
+        raise ValueError('Finance observation could not be calculated')
+    observation = model['observation']
+    snapshots(model['insights']['observation'])
+    save_review(observation['transactions'], model['rows'], today)
+    capture(model['salary_plan'], observation['transactions'], model['rows'], model['income'],
+            model['projection'], observation['summary'], model['net_worth'], observation['rental_plan'],
+            today, model['month']['total'])
 
 
 def register(app, login_required, deps):
-    refresh = FinanceRefresh(deps.root)
+    refresh = FinanceRefresh(deps.root, on_success=lambda snapshot:capture_review(deps,snapshot))
     app.extensions["finance_refresh"] = refresh
     _local_today = deps.today
 

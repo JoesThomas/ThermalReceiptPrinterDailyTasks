@@ -1,5 +1,6 @@
 """Live receipt rendering without printer hardware or meal/bill bookkeeping changes."""
 from __future__ import annotations
+from receipt.profile import PRINTABLE_PIXELS
 
 from contextlib import contextmanager
 from pathlib import Path
@@ -13,7 +14,7 @@ class VirtualPrinter:
     def __init__(self, *args, **kwargs):
         # The live pipeline calls Usb(vendor_id, product_id); ignore those
         # hardware identifiers when rendering the receipt in memory.
-        self.profile = SimpleNamespace(profile_data={"media": {"width": {"pixels": 576}}})
+        self.profile = SimpleNamespace(profile_data={"media": {"width": {"pixels": PRINTABLE_PIXELS}}})
 
     def hw(self, *args, **kwargs):
         pass

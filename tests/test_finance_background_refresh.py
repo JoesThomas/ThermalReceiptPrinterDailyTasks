@@ -165,6 +165,19 @@ class FinanceBackgroundTests(TestCase):
             write_json(manager.status_file, status)
             self.assertIsNone(manager.public_status()["checked_at"])
 
+    def test_observations_are_recorded_once_on_success_not_on_views_or_failure(self):
+        from unittest.mock import Mock
+        with TemporaryDirectory() as folder:
+            observe=Mock()
+            manager=FinanceRefresh(folder,lambda progress:snapshot(),on_success=observe)
+            manager.start();manager.worker.join(3)
+            observe.assert_called_once()
+            for _ in range(3):manager.read();manager.public_status()
+            observe.assert_called_once()
+            def fail(progress):raise ValueError('Bank unavailable')
+            manager.collect=fail;manager.start(force=True);manager.worker.join(3)
+            observe.assert_called_once()
+
     def test_snapshot_codec_preserves_money_and_dates_without_credentials(self):
         value = {
             "date": date(2026, 10, 11),

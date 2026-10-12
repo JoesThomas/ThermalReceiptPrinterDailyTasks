@@ -20,6 +20,10 @@
     <ol id="finance-refresh-timings" class="muted">
         {% for timing in refresh_status.timings|default([]) %}<li>{{ timing.stage }} · {{ timing.seconds }}s</li>{% endfor %}
     </ol>
+    <div id="finance-new-data" hidden role="status" aria-live="polite">
+        <p>New bank data is ready. Your unsaved edits have been kept.</p>
+        <button type="button" id="finance-apply-data">Load new data and discard unsaved edits</button>
+    </div>
     <form action="{{ url_for('refresh_finance') }}"
           method="post"
           id="finance-refresh-form">

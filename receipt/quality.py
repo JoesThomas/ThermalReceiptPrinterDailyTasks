@@ -1,5 +1,6 @@
 """Advisory receipt checks; warnings never assert that paper output was verified."""
 import re
+from receipt.profile import COLUMNS
 from datetime import datetime, timezone
 
 
@@ -7,8 +8,8 @@ def check(pages, freshness=None):
     warnings = []
     for name, text in pages.items():
         lines = text.splitlines()
-        wide = [index+1 for index,line in enumerate(lines) if len(line.rstrip()) > 42 and not line.startswith('[[RECEIPT_IMAGE_')]
-        if wide: warnings.append({'page':name,'message':f'{len(wide)} lines exceed 42 columns and may wrap or clip. First line: {wide[0]}.'})
+        wide = [index+1 for index,line in enumerate(lines) if len(line.rstrip()) > COLUMNS and not line.startswith('[[RECEIPT_IMAGE_')]
+        if wide: warnings.append({'page':name,'message':f'{len(wide)} lines exceed {COLUMNS} columns and may wrap or clip. First line: {wide[0]}.'})
         if len(lines) > 180: warnings.append({'page':name,'message':f'Long page: {len(lines)} lines. Consider compact detail or fewer headlines.'})
         if 'UPCOMING DELIVERIES' in text:
             section = text.split('UPCOMING DELIVERIES',1)[1].split('EXERCISES',1)[0]

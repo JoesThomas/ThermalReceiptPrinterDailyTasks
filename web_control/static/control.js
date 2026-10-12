@@ -251,3 +251,13 @@
 })();
 
 (() => { document.querySelectorAll('.undo-toast').forEach(el => { setTimeout(() => el.hidden=true, Math.max(0, Number(el.dataset.expires)*1000-Date.now())); }); })();
+
+// The skip link moves keyboard focus into the page, not just its scroll position.
+(() => {
+  const link = document.querySelector('.skip-link');
+  const main = document.getElementById('main-content');
+  if (link && main) link.addEventListener('click', () => {
+    main.tabIndex = -1;
+    main.focus();
+  });
+})();

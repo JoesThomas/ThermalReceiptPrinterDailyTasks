@@ -57,10 +57,10 @@
                 . No future income is assumed. Values are after the protected buffer and estimated everyday spending.
             </p>
             {% if insights.lowest %}
-                <p class="amount-headline">
+                <p class="amount-headline" data-bank-forecast>
                     £{{ '%.2f'|format(insights.lowest.cash) }} · {{ insights.lowest.date.strftime('%d %b %Y') }}
                 </p>
-                <figure class="chart-figure">
+                <figure class="chart-figure" data-bank-forecast>
                     <svg viewBox="0 0 660 180"
                          role="img"
                          aria-label="Projected cash after buffer over the forecast period"

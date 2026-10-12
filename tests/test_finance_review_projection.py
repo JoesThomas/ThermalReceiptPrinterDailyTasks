@@ -88,7 +88,7 @@ with tempfile.TemporaryDirectory() as directory:
             assert b'Cash runway' in response.data
             assert b'Understand the figures' in response.data
             assert b'Private monthly observations' in response.data
-            assert (Path(directory)/'observations.json').exists()
+            assert json.loads((Path(directory)/'observations.json').read_text()) == [old]
             assert b'Example bill' in response.data
             from finance import reviews
             with patch.object(app.extensions['finance_refresh'], 'fresh', return_value=False), patch.object(reviews, 'capture') as capture:

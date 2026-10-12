@@ -1,4 +1,5 @@
 from __future__ import annotations
+from receipt.profile import PRINTABLE_PIXELS
 
 import os
 
@@ -79,7 +80,7 @@ class DeferredPhysicalPrinter:
         from types import SimpleNamespace
         self.factory = factory
         self.device = None
-        self.profile = SimpleNamespace(profile_data={'media': {'width': {'pixels': 576}}})
+        self.profile = SimpleNamespace(profile_data={'media': {'width': {'pixels': PRINTABLE_PIXELS}}})
 
     def open(self):
         if self.device is None: self.device = self.factory()

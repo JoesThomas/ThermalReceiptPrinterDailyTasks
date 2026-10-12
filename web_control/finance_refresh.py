@@ -44,7 +44,7 @@ def decode(value):
 
 
 class FinanceRefresh:
-    def __init__(self, root, collect=None):
+    def __init__(self, root, collect=None, *, on_success=None):
         self.root = Path(root)
         self.directory = self.root / "cache" / "finance_review"
         self.snapshot_file = self.directory / "snapshot.json"
@@ -52,6 +52,7 @@ class FinanceRefresh:
         self.guard = Lock()
         self.worker = None
         self.collect = collect or self._collect
+        self.on_success = on_success
 
     def scope(self):
         # Invalidate only bank-source choices, not local forecast/display settings.
@@ -215,6 +216,12 @@ class FinanceRefresh:
                         raise ValueError("Bank snapshot size limit reached")
                     write_json(self.snapshot_file, encoded)
                     progress("Bank data retrieved; preparing the review")
+                    if self.on_success:
+                        try:
+                            self.on_success(snapshot)
+                        except Exception as error:
+                            event('finance_observation', status='failed', error=error)
+                            progress('Bank data retrieved; finance history could not be updated.')
                     state.update(
                         state="completed",
                         checked_at=snapshot["checked_at"],

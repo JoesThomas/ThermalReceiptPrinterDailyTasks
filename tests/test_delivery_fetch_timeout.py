@@ -13,7 +13,7 @@ class DeliveryFetchTimeoutTests(unittest.TestCase):
         function = next(node for node in source.body if isinstance(node, ast.FunctionDef)
                         and node.name == 'get_gmail_delivery_emails')
         namespace = {'imaplib': imaplib, 'GMAIL_ADDRESS': 'test@example.invalid',
-                     'GMAIL_APP_PASSWORD': 'test-only', 'GMAIL_IMAP_HOST': 'example.invalid'}
+                     'GMAIL_APP_PASSWORD': 'test-only', 'GMAIL_IMAP_HOST': 'example.invalid', 'GMAIL_SEARCH_DAYS':14, 'GMAIL_MAX_MESSAGES':100}
         exec(compile(ast.Module(body=[function], type_ignores=[]), '<delivery>', 'exec'), namespace)
         mailbox = Mock()
         mailbox.login.side_effect = TimeoutError('test timeout')

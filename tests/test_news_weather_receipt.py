@@ -147,13 +147,13 @@ class NewsWeatherReceiptTests(unittest.TestCase):
                 print_weather(SimpleNamespace(set=lambda **kwargs:None), weather, location, detail, _context=context)
                 self.assertIn('EDINBURGH',text); self.assertIn('SCOTLAND',text)
                 self.assertEqual(text[text.index('SCOTLAND')+1:text.index('SCOTLAND')+5],
-                    ['TODAY','MAX 17.0C  MIN 12.0C','RAIN 0%','SUNSET/SUNRISE 07:00-18:00'])
+                    ['TODAY','MAX 17.0C  MIN 12.0C','RAIN 0%','SUNRISE/SUNSET 07:00-18:00'])
                 self.assertEqual(text.count('TODAY'),1)
                 self.assertIn('HOURLY WEATHER',text); self.assertEqual(drawings,[0])
                 self.assertLess(text.index('TEMPERATURE GRAPH'), text.index('HOURLY WEATHER'))
                 self.assertEqual(len(graphs[0]),24)
                 for hour in range(24):
-                    self.assertTrue(any(line.startswith(f'{hour:02d}:00 ') for line in text))
+                    self.assertTrue(any(line.lstrip('>').startswith(f'{hour:02d}:00 ') for line in text))
 
 
 class WeatherIllustrationTests(unittest.TestCase):

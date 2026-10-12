@@ -35,12 +35,21 @@ def snapshots(row):
     def change(rows):
         rows[:]=sorted([r for r in rows if r['month']!=row['month']]+[row],key=lambda r:r['month'])[-60:]
     rows=store.update(change)
+    return history_rows(rows)
+
+
+def history_rows(rows):
     activity_max=max((max(money(r.get('income'),Decimal(0)),money(r.get('spending'),Decimal(0))) for r in rows),default=Decimal(0))
     maximum=max((money(r.get('savings'),Decimal(0))+money(r.get('investments'),Decimal(0)) for r in rows),default=Decimal(0))
     return [dict(r,income_percent=float(money(r.get('income'),Decimal(0))/activity_max*100) if activity_max else 0,spending_percent=float(money(r.get('spending'),Decimal(0))/activity_max*100) if activity_max else 0,percent=float((money(r.get('savings'),Decimal(0))+money(r.get('investments'),Decimal(0)))/maximum*100) if maximum and r.get('savings') is not None and r.get('investments') is not None else None) for r in rows]
 
 
-def build(projection,balances,summary,month,income,wealth,goals,today):
+def history():
+    from storage import PrivateStore
+    return history_rows(PrivateStore(FILE,default=list,validate=validate).read())
+
+
+def build(projection,balances,summary,month,income,wealth,goals,today, *, persist=False):
     payday=projection.get('payday')
     end=payday-timedelta(days=1) if payday else today+timedelta(days=30)
     events=[e for e in projection['events'] if e['date']<=end]
@@ -73,8 +82,8 @@ def build(projection,balances,summary,month,income,wealth,goals,today):
               'whole_month':bool(start and start<=today.replace(day=1).isoformat() and today.day==monthrange(today.year,today.month)[1] and summary.get('bank_data_status')=='complete'),
               'cash':str(projection['cash']) if projection.get('cash') is not None else None,
               'collection_scope':summary.get('collection_scope')}
-    try: history=snapshots(snapshot);history_error=None
-    except (ValueError,TypeError,OSError): history=[];history_error='Private monthly snapshots could not be updated.'
+    try: saved_history=snapshots(snapshot) if persist else history();history_error=None
+    except (ValueError,TypeError,OSError): saved_history=[];history_error='Private monthly snapshots could not be read.'
     accounts=[{'provider':provider,'value':money(balances.get(provider,{}).get('available',balances.get(provider,{}).get('current'))),
                'scope':balances.get(provider,{}).get('scope','First account (default)'), 'parts':balances.get(provider,{}).get('accounts',[]), 'currency':balances.get(provider,{}).get('currency','GBP')} for provider in ('HSBC','MONZO')]
     growth=[]
@@ -82,6 +91,6 @@ def build(projection,balances,summary,month,income,wealth,goals,today):
         goal=next((a for a in (goals or {}).get('accounts',[]) if a['name'].casefold()==account['name'].casefold() and a['kind']==account['kind']),{})
         growth.append({**account,'interest':goal.get('interest'),'interest_period':(goals or {}).get('label')})
     return {'lowest':lowest,'end':end,'points':points,'line':' '.join(f"{p['x']},{p['y']}" for p in points),
-            'chart_min':lo,'chart_max':hi,'planning':planning,'coverage':coverage,'accounts':accounts,'history':history,'history_error':history_error,'growth':growth,
+            'chart_min':lo,'chart_max':hi,'planning':planning,'coverage':coverage,'accounts':accounts,'observation':snapshot,'history':saved_history,'history_error':history_error,'growth':growth,
             'attempted':summary.get('bank_fetch_attempted'),'succeeded':summary.get('bank_fetch_succeeded'),
             'requested_from':start,'requested_to':summary.get('requested_to')}
