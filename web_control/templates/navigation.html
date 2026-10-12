@@ -7,6 +7,11 @@
         <a class="button" href="{{ url_for('print_plan') }}">Prepare print</a><a class="button" href="{{ url_for('settings_hub') }}">Settings</a>
     </nav>
 {% endif %}
+{% if receipt_settings_warning %}
+    <p class="flash" role="alert">
+        {{ receipt_settings_warning }} <a href="{{ url_for('index',view='settings') }}">Review settings</a>
+    </p>
+{% endif %}
 <div class="app-topbar">
     <a class="app-brand" href="{{ url_for('index') }}"><span aria-hidden="true" class="brand-mark">R</span><span>Receipt Control</span></a><span class="app-subtitle">Your daily workspace</span>
 </div>

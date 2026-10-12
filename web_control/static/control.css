@@ -107,3 +107,6 @@ html[data-reduce-motion="true"],html[data-reduce-motion="true"] *{scroll-behavio
 #archive-keep-days{max-width:100%;width:100%}
 [data-bank-forecast][hidden]{display:none!important}
 #finance-new-data button{max-width:100%;white-space:normal}
+
+/* Long revision and configuration identifiers stay inside their cards. */
+dd code { overflow-wrap: anywhere; }

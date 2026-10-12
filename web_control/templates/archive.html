@@ -63,6 +63,38 @@
                 </form>
                 <a class="button" href="{{ url_for('archive_list') }}">All receipts</a>
                 <p>{{ receipt_delivery_status(receipt.id,receipt.source) }} · generated {{ captured_local }}</p>
+                <details>
+                    <summary>Receipt version and configuration</summary>
+                    {% if receipt.build %}
+                        <dl>
+                            <dt>Application version</dt>
+                            <dd>
+                                <code>{{ receipt.build.application_version }}</code>
+                            </dd>
+                            <dt>Settings fingerprint at archive time</dt>
+                            <dd>
+                                <code>{{ receipt.build.receipt_settings_fingerprint }}</code>
+                            </dd>
+                            {% if receipt.build.finance_settings_fingerprint %}
+                                <dt>Finance configuration fingerprint at archive time</dt>
+                                <dd>
+                                    <code>{{ receipt.build.finance_settings_fingerprint }}</code>
+                                </dd>
+                            {% endif %}
+                            {% if receipt.build.scenario_fingerprint %}
+                                <dt>Scenario fingerprint</dt>
+                                <dd>
+                                    <code>{{ receipt.build.scenario_fingerprint }}</code>
+                                </dd>
+                            {% endif %}
+                        </dl>
+                        <p>
+                            Fingerprints identify configuration at archive time and saved scenario inputs without exposing their contents. They help compare receipts; they are not a complete replay of bank data. {{ 'Recovered settings were used.' if receipt.build.settings_recovered else '' }}
+                        </p>
+                    {% else %}
+                        <p>Version information was not recorded for this older receipt.</p>
+                    {% endif %}
+                </details>
                 {% set delivery_state = receipt_recovery_state().get(receipt.id,{}) %}
                 {% if receipt.source == 'printed' or delivery_state.sent_at %}
                     <form method="post"

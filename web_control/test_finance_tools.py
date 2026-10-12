@@ -48,8 +48,9 @@ def collect(values, today):
                 "Configure bank connections, or enter both starting cash and daily spending for a manual estimate."
             ) from None
         from services.bank_session import collect_snapshot
+
         snapshot = collect_snapshot(pipeline, persist=False, today=lambda: today)
-        data, balances = snapshot['data'], snapshot['balances']
+        data, balances = snapshot["data"], snapshot["balances"]
         transactions = data[0]
         status = pipeline.build_subscription_status(
             transactions,
@@ -261,8 +262,25 @@ def register(app, login_required, start_print):
                     if isinstance(value, str)
                 }
             )
+        from finance import scenario_presets
+
+        preset_error = None
+        preset_name = ""
+        try:
+            presets = scenario_presets.listing()
+            if request.args.get("preset"):
+                preset = scenario_presets.load(request.args["preset"])
+                defaults = dict(preset["values"])
+                preset_name = preset["name"]
+                text, details = None, None
+        except (OSError, ValueError, TypeError, KeyError) as error:
+            presets = []
+            preset_error = str(error)
         return render_template(
             "test_finance.html",
+            presets=presets,
+            preset_name=preset_name,
+            error=preset_error,
             today=uk_today(),
             result_text=text,
             values=defaults,
@@ -270,6 +288,46 @@ def register(app, login_required, start_print):
             payment_options=payment_options(),
             scenario_details=details,
         )
+
+    @app.post("/finance/test/scenarios/save")
+    @login_required
+    def save_finance_scenario():
+        from finance import scenario_presets
+
+        try:
+            identifier = scenario_presets.save(
+                request.form.get("scenario_name", ""),
+                request.form.to_dict(),
+                uk_today(),
+            )
+            flash(
+                "Scenario inputs saved. Loading a scenario does not generate or print a receipt. Review dates before generating."
+            )
+            return redirect(url_for("test_finance_page", preset=identifier))
+        except (OSError, ValueError, TypeError, KeyError) as error:
+            return render_template(
+                "test_finance.html",
+                today=uk_today(),
+                values=request.form.to_dict(),
+                saved_savings=[],
+                payment_options=payment_options(),
+                error=str(error),
+                result_text=None,
+                presets=[],
+                preset_name=request.form.get("scenario_name", ""),
+            ), 400
+
+    @app.post("/finance/test/scenarios/<identifier>/delete")
+    @login_required
+    def delete_finance_scenario(identifier):
+        from finance import scenario_presets
+
+        try:
+            scenario_presets.delete(identifier)
+            flash("Saved scenario removed. Generated receipts are kept in the archive.")
+        except (OSError, ValueError, TypeError, KeyError) as error:
+            flash(str(error))
+        return redirect(url_for("test_finance_page"))
 
     @app.post("/finance/test/generate")
     @login_required
@@ -287,9 +345,9 @@ def register(app, login_required, start_print):
             from finance.test_scenarios import compare
 
             details = compare(projection, values, today, current=result)
-            details["values"] = {
-                key: value for key, value in values.items() if key != "csrf_token"
-            }
+            from finance.scenario_presets import inputs as scenario_inputs
+
+            details["values"] = scenario_inputs(values)
             result["sensitivity"] = details["sensitivity"]
             result["contribution"] = details["contribution"]
             text = receipt(result, today)

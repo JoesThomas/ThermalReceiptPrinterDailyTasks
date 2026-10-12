@@ -194,3 +194,8 @@ data/finance_details.lock
 # Private archive retention and pinned receipt IDs
 data/receipt_archive_settings.json
 data/receipt_archive_settings.lock
+
+data/finance_scenarios.json
+data/finance_scenarios.lock
+data/receipt_settings.last-good.json
+data/receipt_settings.invalid-*.json
