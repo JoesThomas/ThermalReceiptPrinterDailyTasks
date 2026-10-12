@@ -27,7 +27,9 @@ def register(app, login_required, root, start_print, recipes_fn, meal_confirmati
     @login_required
     def printer_diagnostics():
         state = read(diagnostic)
-        rows = [dict(row, checked=uk_receipt_time(row.get('source_checked_at')),
+        from services.retry_policy import retry_epoch, stamp
+        import time
+        rows = [dict(row, next_retry=uk_receipt_time(stamp(retry_epoch(row.get('next_retry_epoch')))) if retry_epoch(row.get('next_retry_epoch')) > time.time() else None, checked=uk_receipt_time(row.get('source_checked_at')),
                      attempted=uk_receipt_time(row.get('attempted_at'))) for row in timings()]
         return render_template('printer_diagnostics.html',connection=os.getenv('RECEIPT_PRINTER_CONNECTION','network'),
                                host=os.getenv('RECEIPT_PRINTER_HOST',DEFAULT_NETWORK_HOST),
@@ -38,7 +40,9 @@ def register(app, login_required, root, start_print, recipes_fn, meal_confirmati
     @login_required
     def printer_check():
         available,message = readiness()
-        try: write_json(diagnostic, {'reachable':available,'message':message,'checked_at':datetime.now(timezone.utc).isoformat()})
+        from receipt.printer_status import sensors
+        sensor_status = sensors(root) if available else {}
+        try: write_json(diagnostic, {'sensors':sensor_status, 'reachable':available,'message':message,'checked_at':datetime.now(timezone.utc).isoformat()})
         except OSError: flash('Connection checked, but diagnostic history could not be saved.')
         flash(message)
         return redirect(url_for('printer_diagnostics'))

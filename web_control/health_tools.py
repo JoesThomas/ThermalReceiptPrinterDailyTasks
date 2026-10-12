@@ -21,7 +21,7 @@ def register(app,login_required):
             status=row.get('status','not checked' if name in (*active,*health.OBSERVED) else 'not configured')
             stale=bool(row.get('checked_at')) and health.age(row.get('checked_at'))>max(7200,config['interval_minutes']*120)
             history=[x for x in row.get('history',[]) if isinstance(x,dict)] if isinstance(row.get('history',[]),list) else []
-            rows.append(dict(name=name,status=status,stale=stale,checked=uk_receipt_time(row.get('checked_at')),
+            rows.append(dict(name=name,status=status,stale=stale, next_retry=uk_receipt_time(row.get('next_retry_at')) if health.retry_pending(row.get('next_retry_at')) else None, checked=uk_receipt_time(row.get('checked_at')),
                              last_success=uk_receipt_time(row.get('last_success')),code=row.get('code'),
                              duration=row.get('duration_ms'),failures=row.get('failures',0),
                              mode='Periodic check' if name in active else 'Observed during normal use',

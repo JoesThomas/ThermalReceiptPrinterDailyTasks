@@ -77,6 +77,11 @@
                         {% endif %}
                         {% if row.duration is not none %}<p class="muted">{{ row.duration }} ms</p>{% endif %}
                         {% if row.failures %}<p>{{ row.failures }} consecutive unsuccessful checks</p>{% endif %}
+                        {% if row.next_retry %}
+                            <p>
+                                Automatic retry after {{ row.next_retry }}. Check now bypasses the delay; manual checks are limited to one per 30 seconds.
+                            </p>
+                        {% endif %}
                         {% if row.history %}
                             <details>
                                 <summary>Recent checks ({{ row.history|length }})</summary>

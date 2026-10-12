@@ -1,0 +1,12 @@
+name: Dependency upgrade checks
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 1'
+permissions:
+  contents: read
+jobs:
+  test-newer-dependencies:
+    uses: ./.github/workflows/checks.yml
+    with:
+      requirements_file: requirements-dev.txt

@@ -46,14 +46,33 @@ def print_once(today, start_print, marker=LAST_PRINT_DATE):
             return True
     except FileNotFoundError:
         pass
-    started, error = start_print(['--scheduled'])
+    from storage import file_lock
+    from web_control.schedule_history import record
+    with file_lock(marker):
+        # A second scheduler must recheck the marker after acquiring the lock.
+        try:
+            if marker.read_text(encoding='ascii').strip() == today.isoformat(): return True
+        except FileNotFoundError: pass
+        from web_control.schedule_history import store
+        previous = store(marker.parent).read()['days'].get(today.isoformat(), {})
+        if previous and previous.get('state') != 'launch_failed':
+            return True
+        record(today, 'starting', directory=marker.parent)
+        try:
+            started, error = start_print(['--scheduled'])
+        except Exception:
+            # Launch result is uncertain: require review instead of risking a duplicate.
+            record(today, 'failed', directory=marker.parent)
+            raise
+        if started:
+            from storage import write_bytes
+            write_bytes(marker, (today.isoformat() + '\n').encode('ascii'))
+            record(today, 'launched', directory=marker.parent)
+        else:
+            record(today, 'launch_failed', directory=marker.parent)
     if not started:
         LOG.warning("Scheduled receipt not started: %s", error)
         return False
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    temporary = marker.with_name(marker.name + ".tmp")
-    temporary.write_text(today.isoformat() + "\n", encoding="ascii")
-    temporary.replace(marker)
     LOG.info("Scheduled receipt started for %s", today)
     return True
 

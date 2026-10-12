@@ -71,6 +71,14 @@ def fixture_preview():
     preview_job.save_status('completed')
     return redirect('/preview?source=live')
 
+@web.app.get('/__fixture_daily_outcome')
+def fixture_daily_outcome():
+    from receipt.local_time import uk_today
+    from web_control.schedule_history import record
+    record(uk_today(), 'failed', directory=copy / 'data', preview_saved=True)
+    return redirect('/')
+
+
 @web.app.get('/__fixture_archive_pages')
 def fixture_archive_pages():
     from receipt import archive

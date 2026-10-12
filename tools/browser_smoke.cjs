@@ -250,11 +250,17 @@ process.on('exit', () => child.kill());
   await failedReview;
   await page.getByText('Showing a previous bank check.', {exact:false}).waitFor();
   assert.match(await page.locator('#finance-refresh').innerText(), /Forecasts are withheld/);
+  await page.goto('http://receipt.test/__fixture_daily_outcome');
+  assert.match(await page.locator('main').innerText(), /Today's scheduled receipt:.*Daily print failed/s);
+  await page.getByRole('link', {name:'Open saved preview',exact:true}).waitFor();
+  await page.goto('http://receipt.test/printer-diagnostics');
+  assert.match(await page.locator('main').innerText(), /Cover/);
+  assert.match(await page.locator('main').innerText(), /unknown/);
   const accessibilityFailures = [];
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
-    for (const path of ['/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/tasks','/finance/test','/savings/goals','/receipts','/finance-review']) {
+    for (const path of ['/','/printer-diagnostics','/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/tasks','/finance/test','/savings/goals','/receipts','/finance-review']) {
       await page.goto('http://receipt.test'+path);
       await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `${path} overflows at ${width}`);

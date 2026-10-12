@@ -368,6 +368,7 @@ def index():
     if active_view not in {"dashboard", "receipt", "tasks", "accounts", "settings"}:
         active_view = "dashboard"
     from web_control.scheduled_print import next_print_time
+    from web_control.schedule_history import summary as daily_summary
     status = load_print_status()
     last_print_local = None
     if status and status.get("updated_at"):
@@ -408,6 +409,7 @@ def index():
         print_status=status,
         today_view=today_view,
         active_view=active_view, scheduled_at=scheduled_at, last_print_local=last_print_local,
+        daily_print=daily_summary(settings, directory=PROJECT_ROOT / 'data'),
         settings=settings,
         routines=routines,
         weekdays=WEEKDAYS,
@@ -878,8 +880,13 @@ def tesco_search():
 
 
 def _start_print_command(command_args):
+    from storage import file_lock
     with _print_start_lock:
-        return _start_print_command_locked(command_args)
+        try:
+            with file_lock(PROJECT_ROOT / 'data' / 'printer_diagnostic_run', blocking=False):
+                return _start_print_command_locked(command_args)
+        except BlockingIOError:
+            return False, 'Printer diagnostics are running. Wait a few seconds before printing.'
 
 
 _print_start_lock = Lock()

@@ -8,6 +8,10 @@ from pathlib import Path
 from contextlib import contextmanager
 from storage import write_json, file_lock
 
+class SourceBackoffError(ValueError):
+    """No valid cached result is available during a source retry delay."""
+
+
 FILE = Path(__file__).resolve().parents[1] / 'data' / 'source_cache.json'
 
 
@@ -61,10 +65,22 @@ def get(name, identity, collect, *, ttl=300, max_age=86400):
         from receipt.freshness import mark
         mark(name, 'unavailable')
         raise ValueError('No valid saved result for this source during a targeted retry')
+    from services.retry_policy import delay, failures, retry_epoch, stamp
+    now = time.time()
+    manual = retry == name or row.get('refresh') is True
+    paused = not manual and now < retry_epoch(row.get('next_retry_epoch'))
+    if paused:
+        from receipt.freshness import mark
+        status = 'cached during retry delay' if has_cache else 'unavailable during retry delay'
+        mark(name, status, source_checked_at=row.get('source_checked_at'), next_retry_at=stamp(retry_epoch(row.get('next_retry_epoch'))))
+        if not has_cache:
+            raise SourceBackoffError('Source temporarily unavailable; automatic retry is delayed. Use Retry to try now.')
+        return cached_result
     if has_cache and ((retry and name != retry) or (not retry and age < ttl and not row.get('refresh'))):
         result, status = cached_result, 'cached'
     else:
         try:
+            row['refresh'] = False
             result = collect()
             status = 'checked'
             if isinstance(result, tuple) and len(result) == 2:
@@ -73,11 +89,16 @@ def get(name, identity, collect, *, ttl=300, max_age=86400):
             if not isinstance(result, list): raise ValueError('Invalid source result')
             packed = encode(result)
             if len(json.dumps(packed).encode()) > 2_000_000: raise ValueError('Source result too large')
-            if status == 'partial' and has_cache:
+            unsuccessful = status == 'partial'
+            if unsuccessful and has_cache:
                 result, status = cached_result, 'cached after partial result'
             else:
-                row = {'result': packed, 'saved_epoch': time.time(), 'source_checked_at': datetime.now(timezone.utc).isoformat()}
+                row = {**row, 'result': packed, 'saved_epoch': time.time(), 'source_checked_at': datetime.now(timezone.utc).isoformat()}
+            row['failures'] = failures(row.get('failures')) + 1 if unsuccessful else 0
+            row['next_retry_epoch'] = time.time() + delay(row['failures']) if unsuccessful else 0
         except Exception:
+            row['failures'] = failures(row.get('failures')) + 1
+            row['next_retry_epoch'] = time.time() + delay(row['failures'])
             if not has_cache:
                 record(identity, {**row, 'name': name, 'status': 'unavailable', 'duration_ms': round((time.monotonic()-start)*1000),
                                   'attempted_at': datetime.now(timezone.utc).isoformat()})
@@ -114,5 +135,5 @@ def timings():
         if isinstance(row, dict) and isinstance(row.get('name'), str):
             old = rows.get(row['name'], {})
             if row.get('attempted_at', '') > old.get('attempted_at', ''):
-                rows[row['name']] = {key: row.get(key) for key in ('name','status','duration_ms','attempted_at','source_checked_at')}
+                rows[row['name']] = {key: row.get(key) for key in ('name','status','duration_ms','attempted_at','source_checked_at','failures','next_retry_epoch')}
     return list(rows.values())

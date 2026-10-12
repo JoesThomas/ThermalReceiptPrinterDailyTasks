@@ -32,6 +32,11 @@ def age(value):
     except (ValueError,TypeError): return float('inf')
 
 
+def retry_pending(value):
+    from services.retry_policy import pending
+    return pending(value, time.time())
+
+
 def options(settings=None):
     from receipt_settings import load_receipt_settings
     value=(settings if settings is not None else load_receipt_settings()).get('api_health',{})
@@ -73,7 +78,18 @@ def record(name,status='healthy',code=None,duration=None,mode='observed',reason=
             history=old.get('history',[])
             if not isinstance(history,list):history=[]
             sample={'checked_at':checked,'status':status,'code':code,'duration_ms':duration,'mode':mode,'reason':reason}
-            value['services'][name]={**sample,'history':(history+[sample])[-30:],
+            from services.retry_policy import delay, failures
+            check_failures = failures(old.get('check_failures'))
+            next_retry_at = old.get('next_retry_at')
+            if status == 'healthy':
+                check_failures, next_retry_at = 0, None
+            elif mode == 'active':
+                check_failures += 1
+                from datetime import timedelta
+                next_retry_at = (datetime.now(timezone.utc) + timedelta(seconds=delay(check_failures, base=options()['interval_minutes'] * 120, maximum=86400))).isoformat()
+            value['services'][name]={**sample, 'check_failures':check_failures,
+                                     'next_retry_at':next_retry_at,
+                                     'last_probe_at':checked if mode == 'active' else old.get('last_probe_at'),'history':(history+[sample])[-30:],
                                      'last_success':checked if status=='healthy' else old.get('last_success'),
                                      'failures':0 if status=='healthy' else int(old.get('failures',0))+1}
     except (OSError,ValueError,TypeError):
@@ -208,6 +224,12 @@ def check_once(force=False, service=None):
                     if not specs: return False
                 for spec in specs:
                     if receipt_busy():completed=False;break
+                    row = load()['services'].get(spec[0], {})
+                    if not isinstance(row, dict): row = {}
+                    if not force and retry_pending(row.get('next_retry_at')):
+                        continue
+                    if force and age(row.get('last_probe_at')) < 30:
+                        continue
                     with transaction() as value:value['current_service']=spec[0]
                     probe(spec)
             finally:
