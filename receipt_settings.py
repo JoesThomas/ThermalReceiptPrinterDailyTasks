@@ -18,6 +18,7 @@ DEFAULT_SETTINGS = {
     "location": DEFAULT_LOCATION,
     "features": {
         "calendar": True,
+        "meals": True,
         "deliveries": True,
         "weather": True,
         "national_news": True,

@@ -451,9 +451,11 @@
                     <section>
 
                         <h2>Daily receipt</h2>
+                        <input type="hidden" name="meals_setting_present" value="1">
 
                         {% for key,label in [
                             ('calendar','Calendar'),
+                            ('meals','Meals on receipt'),
                             ('deliveries','Deliveries'),
                             ('weather','Weather'),
                             ('national_news','National news'),

@@ -473,6 +473,8 @@ def save():
             return redirect(url_for("index", view=return_view))
     for name in ("calendar", "deliveries", "weather", "national_news", "local_news", "sport_news", "villa", "villa_trains"):
         settings["features"][name] = _checked(name)
+    if "meals_setting_present" in request.form:
+        settings["features"]["meals"] = _checked("meals")
     from services.local_gigs import options as gig_options, save_options as save_gig_options
     current_gigs = gig_options()
     save_gig_options(current_gigs["radius_km"],current_gigs["receipt_limit"],_checked("local_gigs"))
@@ -911,6 +913,8 @@ def _job_active(path):
 
 def _start_print_command_locked(command_args):
     from flask import has_request_context
+    if '--only' in command_args and command_args[command_args.index('--only')+1] == 'food' and not load_receipt_settings()['features'].get('meals', True):
+        return False, 'Meals on receipt is turned off. Enable it in Settings before generating a food page.'
     from receipt.repeat_guard import recent, record
     if '--scheduled' not in command_args and recent(PROJECT_ROOT, command_args):
         if not has_request_context() or request.form.get('allow_repeat') != 'on':
@@ -1016,8 +1020,11 @@ def preview():
     capture = (live_capture if source == "live" else printed_capture) or {"pages": {}, "page_times": {}}
     from receipt.build_info import preview_settings_fingerprint
     current_settings = preview_settings_fingerprint()
+    meals_enabled = load_receipt_settings()['features'].get('meals', True)
     examples = example_pages(_local_today())
     selected = (capture.get("page_order") or PAGE_NAMES) if page == "all" else (page,)
+    if source == 'live' and not meals_enabled:
+        selected = [name for name in selected if name != 'food']
     if request.args.get('sections'):
         from receipt.selection import validate as validate_sections
         try: requested=validate_sections(request.args['sections'].split(','))
@@ -1077,6 +1084,9 @@ def _generate_live_preview_locked():
         except ValueError: abort(400)
     if request.form.get("page", "all") not in {"all", *PRINT_PAGES}:
         abort(400)
+    if not load_receipt_settings()['features'].get('meals', True) and (request.form.get('page') == 'food' or (request.form.get('selected_sections') == '1' and request.form.getlist('sections') == ['food'])):
+        flash('Meals on receipt is turned off. Enable it in Settings before generating a food page.')
+        return redirect(url_for('preview', source='live'))
     if _job_active(PROJECT_ROOT / 'data' / '.print_now.lock'):
         flash('A print job is running. Wait before generating a preview.')
         return redirect(url_for('preview', source='live'))

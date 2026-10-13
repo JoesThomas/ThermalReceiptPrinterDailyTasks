@@ -4565,6 +4565,11 @@ def run_live_pipeline(
     settings = (
         load_receipt_settings()
     )
+    from receipt.selection import apply_preferences
+    if selected_pages is not None:
+        selected_pages = apply_preferences(selected_pages, settings)
+    if only_page == 'food' and not feature_enabled(settings, 'meals'):
+        raise ValueError('Meals on receipt is turned off. Enable it in Settings before generating a food page.')
     location = validate_location(settings.get("location", DEFAULT_LOCATION))
 
     clear_route_cache()
@@ -5232,8 +5237,8 @@ def run_live_pipeline(
             printer
         )
 
-    preview_progress("Preparing meals", 2, 5)
-    if print_food_page:
+    if print_food_page and feature_enabled(settings, "meals"):
+        preview_progress("Preparing meals", 2, 5)
         begin_page(printer, "food")
         # ==========================================
         # MEAL PLANNER

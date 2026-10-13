@@ -10,7 +10,8 @@ def register(app, login_required, start_print, root):
     @app.context_processor
     def receipt_control_context():
         from receipt_settings import settings_state
-        return {'receipt_retries': RETRIES, 'receipt_settings_warning': settings_state()[1]}
+        settings, warning = settings_state()
+        return {'receipt_retries': RETRIES, 'receipt_settings_warning': warning, 'meals_on_receipt': settings['features'].get('meals', True)}
 
     @app.get('/print-plan')
     @login_required
@@ -21,19 +22,22 @@ def register(app, login_required, start_print, root):
         settings = load_receipt_settings()
         from meals import legacy_planner as meals
         from receipt.local_time import uk_today
-        try:
-            meal_plan=meals.load_plan_for(uk_today())
-            meal=next((row for row in (meal_plan or {}).get('meals',[]) if row.get('date')==uk_today().isoformat()), {})
-            meal_name=meal.get('recipe',{}).get('name') or meal.get('name') or 'No saved meal plan yet'
-        except (ValueError,OSError,KeyError): meal_name='Meal plan unavailable'
+        meal_name = 'Meals on receipt turned off'
+        if settings['features'].get('meals', True):
+            try:
+                meal_plan=meals.load_plan_for(uk_today())
+                meal=next((row for row in (meal_plan or {}).get('meals',[]) if row.get('date')==uk_today().isoformat()), {})
+                meal_name=meal.get('recipe',{}).get('name') or meal.get('name') or 'No saved meal plan yet'
+            except (ValueError,OSError,KeyError): meal_name='Meal plan unavailable'
         return render_template('print_plan.html', settings=settings, today_view=dashboard(), meal_name=meal_name,
                                installation=installation_checks(root))
 
     @app.post('/print-plan')
     @login_required
     def print_plan_start():
-        from receipt.selection import validate
-        try: pages = validate(request.form.getlist('pages'))
+        from receipt.selection import apply_preferences
+        from receipt_settings import load_receipt_settings
+        try: pages = apply_preferences(request.form.getlist('pages'), load_receipt_settings())
         except ValueError: abort(400)
         started, error = start_print(['--pages', *pages])
         flash('Selected receipt pages queued.' if started else error)
