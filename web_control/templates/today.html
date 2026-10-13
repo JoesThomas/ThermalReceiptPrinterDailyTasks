@@ -5,9 +5,40 @@
         Saved information, without waiting for external services. Generate a live receipt to check for updates.
     </p>
     {% for error in today_view.errors %}<p class="flash">{{ error }}</p>{% endfor %}
+    {% if today_view.assistant.focus or today_view.assistant.appointment %}
+        <div class="today-grid">
+            {% if today_view.assistant.focus %}
+                <article>
+                    <h3>Do first</h3>
+                    {% for item in today_view.assistant.focus %}
+                        <form class="today-item"
+                              method="post"
+                              action="{{ url_for('checklist_update',kind='tasks') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="id" value="{{ item.id }}">
+                            <input type="hidden" name="action" value="toggle">
+                            <input type="hidden" name="return_home" value="1">
+                            <span>{{ item.title }}</span>
+                            <button aria-label="Complete {{ item.title }}">Done</button>
+                        </form>
+                    {% endfor %}
+                </article>
+            {% endif %}
+            {% if today_view.assistant.appointment %}
+                <article>
+                    <h3>Next appointment</h3>
+                    <p class="muted">Saved calendar · checked {{ today_view.calendar_checked or 'not yet' }}</p>
+                    {% for line in today_view.assistant.appointment.lines %}<p>{{ line }}</p>{% endfor %}
+                </article>
+            {% endif %}
+        </div>
+    {% endif %}
+    <p>
+        <a href="{{ url_for('task_list') }}#daily-assistant">Choose priorities and preparation</a>
+    </p>
     <div class="today-grid">
         <article>
-            <h3>Tasks</h3>
+            <h3>{{ 'Other tasks' if today_view.assistant.focus else 'Tasks' }}</h3>
             {% for item in today_view.tasks %}
                 <form class="today-item"
                       method="post"
@@ -22,7 +53,9 @@
                     <button aria-label="Complete {{ item.title }}">Done</button>
                 </form>
             {% else %}
-                <p class="muted">No saved tasks due today.</p>
+                <p class="muted">
+                    {{ 'No other saved tasks due today.' if today_view.assistant.focus else 'No saved tasks due today.' }}
+                </p>
             {% endfor %}
             <a href="{{ url_for('task_list') }}">Manage tasks</a></article>
         <article>
@@ -45,7 +78,7 @@
             {% endfor %}
             <a href="{{ url_for('exercise_list') }}">Choose workout</a></article>
         <article>
-            <h3>Appointments</h3>
+            <h3>{{ 'Other appointments' if today_view.assistant.appointment else 'Appointments' }}</h3>
             <p class="muted">Calendar checked {{ today_view.calendar_checked or 'not yet' }}</p>
             {% for event in today_view.events %}
                 <div class="today-item">
@@ -55,7 +88,9 @@
                     </div>
                 </div>
             {% else %}
-                <p class="muted">No appointments for today in the saved calendar.</p>
+                <p class="muted">
+                    {{ 'No other appointments for today in the saved calendar.' if today_view.assistant.appointment else 'No appointments for today in the saved calendar.' }}
+                </p>
             {% endfor %}
             <a href="{{ url_for('calendar_map') }}">Open calendar</a></article>
         <article>
@@ -76,7 +111,9 @@
             {% endfor %}
             <a href="{{ url_for('delivery_checklist') }}">Delivery history & undo</a></article>
     </div>
-    <h3>Bins for tomorrow</h3>
+    <h3>Before bed</h3>
+    {% for line in today_view.assistant.bedtime %}<p>{{ line }}</p>{% endfor %}
+    <h4>Bins for tomorrow</h4>
     {% for line in today_view.bin_lines %}
         <p>{{ line }}</p>
     {% else %}

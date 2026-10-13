@@ -66,6 +66,9 @@ def validate_state(value):
             date.fromisoformat(day)
         if row.get('skipped_on') is not None and not isinstance(row['skipped_on'], str): raise ValueError('Invalid skip date.')
         if row.get('skipped_on'): date.fromisoformat(row['skipped_on'])
+    if 'assistant' in value:
+        from actions.day_assistant import validate
+        validate(value['assistant'])
     return value
 
 

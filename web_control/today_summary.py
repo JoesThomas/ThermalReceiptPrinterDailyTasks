@@ -14,7 +14,10 @@ from storage import read_json_object as read
 
 
 def save_calendar(events):
-    rows = [{key: str(row.get(key, '')) for key in ('date', 'time', 'title', 'location')} for row in events]
+    rows = [{**{key: str(row.get(key, '')) for key in ('uid', 'date', 'time', 'title', 'location')},
+             'start_dt': row['start_dt'].isoformat() if isinstance(row.get('start_dt'), datetime) else row.get('start_dt'),
+             'end_dt': row['end_dt'].isoformat() if isinstance(row.get('end_dt'), datetime) else row.get('end_dt'),
+             'all_day': bool(row.get('all_day'))} for row in events]
     from receipt.freshness import snapshot
     check = snapshot().get('Calendar', {})
     write_json(CALENDAR, {'checked_at': check.get('source_checked_at') or check.get('checked_at') or datetime.now(timezone.utc).isoformat(),
@@ -53,8 +56,11 @@ def snapshot_changes(pages):
 
 def dashboard():
     errors = []
+    list_state = {'items': []}
     try:
-        tasks = [r for r in checklists.rows('tasks') if not r['completed'] and r.get('skipped_on') != checklists.today() and (not r.get('due') or r['due'] <= checklists.today())]
+        list_state = checklists.load()
+        task_rows = [{**row, 'completed': checklists.is_done(row)} for row in list_state['items'] if row['kind'] == 'tasks']
+        tasks = [r for r in task_rows if not r['completed'] and r.get('skipped_on') != checklists.today() and (not r.get('due') or r['due'] <= checklists.today())]
         from actions.receipt_workout import plan
         exercises = plan()
     except ValueError:
@@ -70,8 +76,16 @@ def dashboard():
     from services import bin_collections
     try: bin_state=bin_collections.load(); bin_lines=bin_collections.reminder_lines(bin_state)
     except ValueError: bin_lines=['Bin schedule unavailable']
-    return dict(bin_lines=bin_lines, tasks=tasks, exercises=exercises, deliveries=deliveries,
-                events=[e for e in calendar.get('events', []) if isinstance(e, dict) and e.get('date') == checklists.today()] if isinstance(calendar.get('events', []), list) else [],
+    from actions.day_assistant import briefing
+    assistant = dict(focus=[], appointment=None, bedtime=[])
+    try:
+        assistant = briefing(list_state, calendar.get('events', []))
+    except (OSError, ValueError):
+        errors.append('Daily assistant settings unavailable.')
+    focus_ids = {row['id'] for row in assistant['focus']}
+    tasks = [row for row in tasks if row['id'] not in focus_ids]
+    return dict(assistant=assistant, bin_lines=bin_lines, tasks=tasks, exercises=exercises, deliveries=deliveries,
+                events=[e for index, e in enumerate(calendar.get('events', [])) if isinstance(e, dict) and e.get('date') == checklists.today() and (not assistant['appointment'] or index != assistant['appointment']['index'])] if isinstance(calendar.get('events', []), list) else [],
                 calendar_checked=uk_receipt_time(calendar.get('checked_at')),
                 checks=[{'name': name, 'status': row['status'], 'local': uk_receipt_time(row.get('source_checked_at') or row['checked_at'])} for name, row in checks.items()],
                 changes=read(CHANGES), errors=errors)
