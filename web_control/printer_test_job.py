@@ -1,5 +1,6 @@
 """Short physical test, run only through the existing supervised print worker."""
 
+import os
 import sys
 from pathlib import Path
 from datetime import datetime
@@ -15,9 +16,17 @@ def main():
     try:
         printer.set(align="left")
         now = datetime.now(ZoneInfo("Europe/London"))
+        connection = os.getenv("RECEIPT_PRINTER_CONNECTION", "network").strip().lower()
+        method = "USB" if connection == "usb" else "Network (TCP)"
+        heading = "PAPER REFILL TEST" if paper_test else "PRINTER CONNECTION TEST"
+        printer.text(
+            f"{heading}\n"
+            + now.strftime("%d %b %Y %H:%M:%S %Z\n")
+            + f"Connection: {method}\n"
+            + "Check print is clear and paper is cut.\n"
+        )
         if paper_test:
             printer.text(
-                "PAPER FEED TEST\n"
                 "      _\n"
                 "     /(|\n"
                 "    (  :\n"
@@ -26,12 +35,6 @@ def main():
                 " (____)|   |\n"
                 " (____).__|\n"
                 "  (___)__.|_____\n"
-            )
-        else:
-            printer.text(
-                "RECEIPT CONTROL\nPRINTER CONNECTION TEST\n"
-                + now.strftime("%d %b %Y %H:%M %Z")
-                + "\n\n"
             )
         printer.cut()
     finally:

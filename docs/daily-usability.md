@@ -18,8 +18,11 @@ printable test receipt. Old dates must be reviewed in the saved plan before
 comparison; differing forecast horizons are shown explicitly.
 
 **Test after refilling paper** is on Home and **Printer & source diagnostics**.
-It prints only `PAPER FEED TEST` and the small ASCII thumbs-up supplied for this
-project, then cuts the paper. It skips the initial separation cut to reduce blank
+It prints `PAPER REFILL TEST`, a London date/time (including seconds and GMT/BST),
+the configured connection method (Network/TCP or USB), a reminder to check the
+print and cut, and the small ASCII thumbs-up supplied for this project. The short
+connection test uses the same details with `PRINTER CONNECTION TEST` and no drawing.
+The refill test skips the initial separation cut to reduce blank
 paper while retaining the printer's normal final feed/cut. It does not generate a
 full receipt, retrieve weather or access banks. The supervised worker still
 handles failures and cancellation. Intentional repeats are allowed after the

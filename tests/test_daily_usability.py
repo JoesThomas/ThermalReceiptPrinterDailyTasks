@@ -43,12 +43,53 @@ class PaperTestTests(TestCase):
         ):
             printer_test_job.main()
         opening.assert_called_once_with(initial_cut=False)
-        text = printer.text.call_args.args[0]
-        self.assertEqual(len(text.splitlines()), 9)
+        text = "".join(call.args[0] for call in printer.text.call_args_list)
+        self.assertEqual(len(text.splitlines()), 12)
+        self.assertIn("PAPER REFILL TEST", text)
         self.assertIn(" (____).__|", text)
         self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
         printer.cut.assert_called_once()
         printer.close.assert_called_once()
+
+    def test_tests_identify_connection_and_london_timestamp(self):
+        for args, heading, connection, method, when, stamp in (
+            (
+                ["--paper-test"],
+                "PAPER REFILL TEST",
+                " NETWORK ",
+                "Network (TCP)",
+                datetime(2026, 10, 13, 20, 30, 46, tzinfo=timezone.utc),
+                "13 Oct 2026 21:30:46 BST",
+            ),
+            (
+                [],
+                "PRINTER CONNECTION TEST",
+                " USB ",
+                "USB",
+                datetime(2026, 1, 13, 20, 30, 46, tzinfo=timezone.utc),
+                "13 Jan 2026 20:30:46 GMT",
+            ),
+        ):
+            with self.subTest(connection=connection):
+                printer = Mock()
+                with (
+                    patch.object(
+                        printer_test_job, "open_printer", return_value=printer
+                    ),
+                    patch.object(printer_test_job.sys, "argv", ["worker", *args]),
+                    patch.dict(os.environ, {"RECEIPT_PRINTER_CONNECTION": connection}),
+                    patch.object(printer_test_job, "datetime") as clock,
+                ):
+                    clock.now.side_effect = lambda zone: when.astimezone(zone)
+                    printer_test_job.main()
+                text = "".join(call.args[0] for call in printer.text.call_args_list)
+                self.assertIn(heading, text)
+                self.assertIn(stamp, text)
+                self.assertIn(f"Connection: {method}", text)
+                self.assertIn("Check print is clear and paper is cut.", text)
+                self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
+                printer.cut.assert_called_once()
+                printer.close.assert_called_once()
 
     def test_paper_test_uses_worker_without_receipt_collection(self):
         with TemporaryDirectory() as folder:
