@@ -1,4 +1,5 @@
 import json
+from datetime import date, timedelta
 import re
 from pathlib import Path
 import requests
@@ -9,13 +10,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def register(app, login_required):
-    def display(kind):
+    def display(kind, prep_draft=None):
         try:
             if kind == 'exercises':
                 from actions.receipt_workout import plan
                 receipt_plan = plan()
             state = checklists.load()
-            items = checklists.rows(kind)
+            items = [{**row, 'completed': checklists.is_done(row)} for row in state['items'] if row['kind'] == kind]
         except ValueError as error:
             flash(str(error))
             items = []
@@ -32,17 +33,58 @@ def register(app, login_required):
         items.sort(key=lambda row: (not row['on_receipt'], row['completed'], not row['overdue'],
                                    {'high': 0, 'normal': 1, 'low': 2}.get(row.get('priority', 'normal'), 1), row.get('due', '')))
         selected = [row for row in items if row['on_receipt'] and not row['skipped']]
+        from actions.day_assistant import eligible_tasks, focus_for
+        tomorrow = (date.fromisoformat(checklists.today())+timedelta(days=1)).isoformat()
+        focus_options = [row for row in items if not row['completed'] and not row['skipped'] and row['group'] == 'Today']
+        tomorrow_options = eligible_tasks(state, date.fromisoformat(tomorrow)) if kind == 'tasks' and 'items' in state else []
         if query: items = [row for row in items if query in row['title'].lower()]
         return render_template('tasks.html', kind=kind, items=items,
                                done=sum(row['completed'] for row in items), selected=selected,
                                additional_workout=checklists.exercise_plan(5) if kind == 'exercises' else [],
                                selected_done=sum(row['completed'] for row in selected),
-                               equipment=checklists.EQUIPMENT, owned=state.get('equipment', []), query=query)
+                               equipment=checklists.EQUIPMENT, owned=state.get('equipment', []), query=query,
+                               assistant=state.get('assistant', {}), assistant_day=checklists.today(),
+                               focus_options=focus_options, prep_draft=prep_draft or {},
+                               tomorrow_day=tomorrow, tomorrow_options=tomorrow_options,
+                               today_focus=focus_for(state.get('assistant', {}), checklists.today()),
+                               tomorrow_focus=focus_for(state.get('assistant', {}), tomorrow))
 
     @app.get('/tasks')
     @login_required
     def task_list():
         return display('tasks')
+
+    @app.post('/tasks/focus')
+    @login_required
+    def task_focus():
+        from actions.day_assistant import choose_focus
+        try:
+            today = date.fromisoformat(checklists.today())
+            selected_day = date.fromisoformat(request.form.get('focus_day', ''))
+            if selected_day not in (today, today+timedelta(days=1)):
+                raise ValueError('The day changed. Refresh before choosing today’s priorities.')
+            choose_focus(request.form.getlist('focus_task'), selected_day)
+            flash(f'Do first choices saved for {selected_day.isoformat()}. Completed and skipped tasks stay off the receipt.')
+        except ValueError as error:
+            flash(str(error))
+        return redirect(url_for('task_list')+'#daily-assistant')
+
+    @app.post('/tasks/preparation')
+    @login_required
+    def task_preparation():
+        from actions.day_assistant import save_preparation
+        try:
+            travel = request.form.get('travel_minutes', '').strip()
+            remove = request.form.get('remove_rule', '')
+            save_preparation(request.form.get('appointment_title', ''), int(travel) if travel and not remove else None,
+                             [row.strip() for row in request.form.get('prep', '').splitlines() if row.strip()],
+                             [row.strip() for row in request.form.get('bedtime', '').splitlines() if row.strip()] if 'bedtime' in request.form else None,
+                             remove)
+            flash('Daily preparation saved. Generate a fresh receipt to see it.')
+        except ValueError as error:
+            flash(str(error))
+            return display('tasks', prep_draft=request.form.to_dict())
+        return redirect(url_for('task_list')+'#daily-assistant')
 
     @app.get('/exercises')
     @login_required

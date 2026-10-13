@@ -117,6 +117,113 @@
                 <button>Search</button>
                 {% if query %}<a href="{{ url_for('exercise_list' if kind == 'exercises' else 'task_list') }}">Clear</a>{% endif %}
             </form>
+            {% if kind == 'tasks' %}
+                <section id="daily-assistant">
+                    <h2>Your daily assistant</h2>
+                    <h3>Do first</h3>
+                    <p class="muted">
+                        Choose up to three pending tasks for today, {{ assistant_day }}. The order below is the receipt order. These choices expire each UK day; completed, skipped and future tasks are excluded.
+                    </p>
+                    {% set focus = today_focus %}
+                    <form method="post" action="{{ url_for('task_focus') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="focus_day" value="{{ assistant_day }}">
+                        {% for item in focus_options %}
+                            <label class="today-item">
+                                <span>{{ item.title }}</span>
+                                <input type="checkbox"
+                                       name="focus_task"
+                                       value="{{ item.id }}"
+                                       {% if focus.get('day') == assistant_day and item.id in focus.get('ids', []) %}checked{% endif %}>
+                            </label>
+                        {% else %}
+                            <p class="muted">Add a task below to choose a priority.</p>
+                        {% endfor %}
+                        <button class="primary">Save Do first choices</button>
+                    </form>
+                    <details>
+                        <summary>Plan Do first for tomorrow ({{ tomorrow_day }})</summary>
+                        <p class="muted">Choose tomorrow’s priorities before the scheduled morning print. This keeps today’s choices.</p>
+                        <form method="post" action="{{ url_for('task_focus') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="focus_day" value="{{ tomorrow_day }}">
+                            {% for item in tomorrow_options %}
+                                <label class="today-item">
+                                    <span>{{ item.title }}</span>
+                                    <input type="checkbox"
+                                           name="focus_task"
+                                           value="{{ item.id }}"
+                                           {% if item.id in tomorrow_focus.get('ids', []) %}checked{% endif %}>
+                                </label>
+                            {% else %}
+                                <p class="muted">No pending tasks available for tomorrow.</p>
+                            {% endfor %}
+                            <button class="primary">Save tomorrow’s priorities</button>
+                        </form>
+                    </details>
+                    <h3>Appointment preparation and before bed</h3>
+                    <p class="muted">
+                        The receipt highlights the next timed appointment today. Use the exact calendar title to add preparation for repeated appointments with that title. Leave-by times appear only when you enter travel time; include any arrival buffer in those minutes.
+                    </p>
+                    <form method="post"
+                          action="{{ url_for('task_preparation') }}"
+                          class="bin-settings-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <label>
+                            Exact calendar title (optional)
+                            <input name="appointment_title"
+                                   maxlength="240"
+                                   value="{{ prep_draft.get('appointment_title', '') }}">
+                        </label>
+                        <label>
+                            Travel time in minutes (optional)
+                            <input type="number"
+                                   name="travel_minutes"
+                                   value="{{ prep_draft.get('travel_minutes', '') }}"
+                                   min="1"
+                                   max="240"
+                                   inputmode="numeric">
+                        </label>
+                        <label>
+                            Preparation checklist (up to five lines) <textarea name="prep" rows="3" maxlength="1000">{{ prep_draft.get('prep', '') }}</textarea>
+                        </label>
+                        <label>
+                            Before bed checklist (up to five lines) <textarea name="bedtime" rows="3" maxlength="1000">{{ prep_draft.get('bedtime', assistant.get('bedtime', [])|join('\n')) }}</textarea>
+                        </label>
+                        <p class="muted">
+                            Before bed also shows tomorrow’s appointments before noon and their preparation, plus bins to put out today. Personal bedtime instructions repeat until you change them. Saving an existing title replaces its preparation.
+                        </p>
+                        <button class="primary">Save daily preparation</button>
+                    </form>
+                    {% for rule in assistant.get('appointments', []) %}
+                        <div class="review-row">
+                            <strong>{{ rule.title }}</strong>
+                            <p>
+                                {{ rule.travel_minutes ~ ' minutes travel / arrival allowance' if rule.travel_minutes else 'No leave-by time configured' }}
+                            </p>
+                            <form method="post"
+                                  action="{{ url_for('task_preparation') }}"
+                                  class="bin-settings-form">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="appointment_title" value="{{ rule.title }}">
+                                <label>
+                                    Travel time for {{ rule.title }}
+                                    <input type="number"
+                                           name="travel_minutes"
+                                           min="1"
+                                           max="240"
+                                           value="{{ rule.travel_minutes if rule.travel_minutes is not none else '' }}">
+                                </label>
+                                <label>
+                                    Preparation for {{ rule.title }} <textarea name="prep" rows="3" maxlength="1000">{{ rule.prep|join('\n') }}</textarea>
+                                </label>
+                                <button class="primary">Update preparation for {{ rule.title }}</button>
+                                <button name="remove_rule" value="{{ rule.title }}" formnovalidate>Remove preparation for {{ rule.title }}</button>
+                            </form>
+                        </div>
+                    {% endfor %}
+                </section>
+            {% endif %}
             <section>
                 <div class="finance-section-heading">
                     <h2>{{ 'Exercise library' if kind == 'exercises' else 'Your tasks' }}</h2>

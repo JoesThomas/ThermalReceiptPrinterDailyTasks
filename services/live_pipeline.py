@@ -4800,14 +4800,8 @@ def run_live_pipeline(
             from services.bin_collections import reminder_lines
             preview_progress("Checking bin collections", 1, 5)
             bin_lines = reminder_lines()
-            if bin_lines:
-                print_line(printer, "=")
-                left(printer, "PUT BINS OUT TODAY" if any(line.startswith('[ ]') for line in bin_lines) else "BIN SCHEDULE CHECK")
-                print_line(printer, "-")
-                for line in bin_lines:
-                    print_wrapped(printer, printer_safe_text(line), width=40)
         except (OSError, ValueError):
-            left(printer, "BIN SCHEDULE UNAVAILABLE")
+            bin_lines = ['BIN SCHEDULE UNAVAILABLE']
         # ==========================================
         # VEHICLE CHECK
         # ==========================================
@@ -4896,11 +4890,6 @@ def run_live_pipeline(
                     left(printer, 'CALENDAR: CACHED DATA')
                 events = [event for event in upcoming_events if event["date"] == today]
 
-                print_calendar(
-                    printer,
-                    events,
-                )
-
             except Exception as error:
                 print(
                     "Calendar error:",
@@ -4937,12 +4926,6 @@ def run_live_pipeline(
 
             from actions.checklists import task_text
             document_1 = task_text(document_1)
-            print_google_doc(
-                printer,
-                document_1,
-                upcoming_events,
-                therapy_paid=therapy_paid,
-            )
 
         except Exception as error:
             print(
@@ -4951,6 +4934,29 @@ def run_live_pipeline(
             )
 
             traceback.print_exc()
+
+        from actions.day_assistant import briefing, print_section
+        assistant_brief = dict(focus=[], appointment=None, bedtime=[])
+        try:
+            from actions.checklists import load as load_lists
+            assistant_brief = briefing(load_lists(), upcoming_events)
+        except (OSError, ValueError):
+            left(printer, "DAILY ASSISTANT SETTINGS UNAVAILABLE")
+        def assistant_section(title, lines):
+            print_section(printer, title, lines, line=print_line, left=left,
+                          wrap=print_wrapped, safe=printer_safe_text)
+        focus_titles = {row['title'] for row in assistant_brief['focus']}
+        assistant_section('DO FIRST', ['[ ] '+row['title'] for row in assistant_brief['focus']])
+        appointment = assistant_brief['appointment']
+        if appointment:
+            assistant_section('NEXT APPOINTMENT', appointment['lines'])
+        remaining_events = [event for event in events if not appointment or event is not upcoming_events[appointment['index']]]
+        if feature_enabled(settings, 'calendar') and (remaining_events or not appointment):
+            print_calendar(printer, remaining_events)
+        remaining_tasks = '\n'.join(value for value in document_1.splitlines()
+                                     if value.rstrip('.').strip() not in focus_titles)
+        if remaining_tasks or (therapy_payment_due(upcoming_events, today) and not therapy_paid):
+            print_google_doc(printer, remaining_tasks, upcoming_events, therapy_paid=therapy_paid)
 
         # ==========================================
         # TRIGGERS
@@ -5210,6 +5216,14 @@ def run_live_pipeline(
         # ==========================================
         # CUT DAILY ACTIONS
         # ==========================================
+
+        if assistant_brief['bedtime'] or bin_lines:
+            assistant_section('BEFORE BED', assistant_brief['bedtime'])
+            if bin_lines:
+                if not assistant_brief['bedtime']:
+                    print_line(printer, '=')
+                    left(printer, 'BEFORE BED')
+                assistant_section('PUT BINS OUT TODAY' if any(value.startswith('[ ]') for value in bin_lines) else 'BIN SCHEDULE CHECK', bin_lines)
 
         for check in checked_lines({'Calendar'}):
             print_wrapped(printer, printer_safe_text(check), width=40)

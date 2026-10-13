@@ -92,5 +92,14 @@ def preview_settings_fingerprint():
     except (OSError, ValueError):
         bin_settings = "unavailable"
     return fingerprint(
-        dict(receipt=settings, bins=bin_settings, finance=finance_fingerprint())
+        dict(receipt=settings, bins=bin_settings, finance=finance_fingerprint(),
+             assistant=assistant_fingerprint())
     )
+
+
+def assistant_fingerprint():
+    from actions import checklists
+    try:
+        return fingerprint(checklists.load().get('assistant', {}))
+    except (OSError, ValueError):
+        return 'unavailable'
