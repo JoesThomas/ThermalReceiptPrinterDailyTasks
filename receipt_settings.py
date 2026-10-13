@@ -101,6 +101,31 @@ def validate_settings(raw):
         raise ValueError("Invalid therapy payment provider.")
 
 
+def settings_diagnosis(raw):
+    """Return a safe validator reason, never a supplied value or traceback."""
+    allowed = {
+        "Receipt settings must be an object.", "Unsupported private schema version",
+        "Choose compact or detailed receipts.", "Choose each receipt page once.",
+        "Invalid daily print time.", "Invalid backup retention.",
+        "Invalid integration check interval.", "Invalid headline count.",
+        "Invalid weather detail.", "Invalid therapy payment provider.",
+        "Enter a valid latitude.", "Enter a valid longitude.",
+        "Use a BBC local RSS URL from feeds.bbci.co.uk/news/.",
+    }
+    for section, defaults in DEFAULT_SETTINGS.items():
+        allowed.add(f"Invalid {section} settings.")
+        allowed.update(f"Invalid {section} {key}." for key in defaults)
+    for key, maximum in (("name", 18), ("region", 19), ("local_news_label", 35)):
+        allowed.add(f"Enter a valid {key.replace('_', ' ')} (up to {maximum} characters).")
+    try:
+        validate_settings(raw)
+    except ValueError as error:
+        return str(error) if str(error) in allowed else "Receipt settings failed validation."
+    except (TypeError, ArithmeticError):
+        return "Receipt settings contain an unsupported value type."
+    return None
+
+
 def _store(path):
     from storage import PrivateStore
 
@@ -183,6 +208,32 @@ def save_receipt_settings(settings):
                 write_bytes(preserved, SETTINGS_FILE.read_bytes())
         write_json(SETTINGS_FILE, value)
         write_json(last_good_file(), value)
+
+
+def repair_weather_detail():
+    """Repair the legacy weather value only, retaining every other stored key."""
+    from datetime import datetime, timezone
+    from uuid import uuid4
+    from storage import file_lock, write_bytes, write_json
+
+    with file_lock(SETTINGS_FILE):
+        with SETTINGS_FILE.open('rb') as stream:
+            original = stream.read(1_000_001)
+        if len(original) > 1_000_000:
+            raise ValueError('Receipt settings exceed the supported size limit.')
+        raw = json.loads(original)
+        if not isinstance(raw, dict) or not isinstance(raw.get('display'), dict):
+            raise ValueError('Review the display settings before repairing weather detail.')
+        candidate = deepcopy(raw)
+        candidate['display']['weather_detail'] = 'full'
+        validate_settings(candidate)  # Reject other errors and newer schemas before writing.
+        if raw['display'].get('weather_detail') == 'full':
+            return None
+        preserved = SETTINGS_FILE.with_name(SETTINGS_FILE.stem+'.invalid-'
+                    +datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-'+uuid4().hex[:8]+'.json')
+        write_bytes(preserved, original)
+        write_json(SETTINGS_FILE, candidate)
+        return preserved
 
 
 def feature_enabled(settings, name, default=True):
