@@ -55,7 +55,15 @@ class OrderedPrinter:
 
 
 def begin(printer, name):
-    if isinstance(printer, OrderedPrinter): printer.begin(name)
+    if isinstance(printer, OrderedPrinter):
+        printer.begin(name)
+    else:
+        from receipt.capture import RecordingPrinter
+        if isinstance(printer, RecordingPrinter):
+            if printer.capture_order is None:
+                printer.capture_order = []
+            if name not in printer.capture_order:
+                printer.capture_order.append(name)
 
 
 def checked_lines(names):

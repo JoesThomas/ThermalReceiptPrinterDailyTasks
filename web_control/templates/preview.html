@@ -65,7 +65,7 @@
                     <label>
                         Pages to generate
                         <select name="page">
-                            {% for key in ['all','information','actions','food','finance'] %}
+                            {% for key in ['all','information','actions','food','finance'] if key != 'food' or meals_on_receipt %}
                                 <option value="{{ key }}">{{ key|title }}</option>
                             {% endfor %}
                         </select>
@@ -130,6 +130,11 @@
                         </p>
                     {% endif %}
                 {% endif %}
+                {% if not meals_on_receipt %}
+                    <p class="muted">
+                        Meals on receipt is turned off. Enable it in Settings to generate a food page. Saved recipes and archived receipts remain available.
+                    </p>
+                {% endif %}
                 <p class="receipt-width-key">
                     80 mm paper · configured 576-dot printable area · 42-column text layout. Width checks flag possible wrapping; physical margins depend on the printer.
                 </p>
@@ -145,7 +150,7 @@
                 </nav>
             </section>
             <nav class="nav" aria-label="Preview pages">
-                {% for key,label in [('all','All pages'),('information','Information'),('actions','Actions'),('food','Food'),('finance','Finance')] %}
+                {% for key,label in [('all','All pages'),('information','Information'),('actions','Actions'),('food','Food'),('finance','Finance')] if key != 'food' or meals_on_receipt or source == 'printed' %}
                     <a href="{{ url_for('preview', page=key, source=source) }}"
                        {% if page == key %}aria-current="page"{% endif %}>{{ label }}</a>
                 {% endfor %}

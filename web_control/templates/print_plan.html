@@ -24,8 +24,12 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     {% for page in settings.layout.order %}
                         <label>
-                            <input type="checkbox" name="pages" value="{{ page }}" checked>
+                            <input type="checkbox"
+                                   name="pages"
+                                   value="{{ page }}"
+                                   {% if page == 'food' and not meals_on_receipt %}disabled{% else %}checked{% endif %}>
                             {{ page|title }}
+                            {% if page == 'food' and not meals_on_receipt %}(meals turned off){% endif %}
                         </label>
                     {% endfor %}
                     <p>
