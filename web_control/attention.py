@@ -42,6 +42,11 @@ def build(root, settings, *, warning=None, daily=None, now=None):
             "Review settings",
             view="settings",
         )
+    backup = read(root / 'data' / 'backup_attempt.json')
+    if backup.get('state') == 'failed':
+        add('private-backup', 'Private backup needs attention',
+            'The latest snapshot could not be saved. Review its safe diagnosis and retry.',
+            'backup_page', 'Review backup')
     daily = daily or summary(settings, now=now, directory=root / "data")
     if daily["today"]["state"] in {
         "failed",

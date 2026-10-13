@@ -158,20 +158,71 @@ def validate(raw):
         raise ValueError('Use a valid Receipt Control backup with supported local data files.') from None
     return value
 
+class BackupExportError(ValueError):
+    """Safe diagnosis; never includes private values or an underlying exception."""
+    def __init__(self, kind, filename=None):
+        self.kind = kind
+        self.filename = filename if filename in FILES else None
+        messages = {
+            'invalid_json': 'is not valid UTF-8 JSON',
+            'invalid_data': 'does not match the supported backup format',
+            'too_large': 'exceeds the 900 KB backup limit',
+            'linked_file': 'is a linked file; use a regular local data file',
+            'no_data': 'No supported local data exists to back up yet',
+        }
+        message = messages[kind]
+        super().__init__(f'data/{self.filename} {message}.' if self.filename else message[0].upper()+message[1:]+'.')
+
+
 def export(root):
     files = {}
     for name in sorted(FILES):
         path = root / 'data' / name
-        if path.exists():
-            files[name] = json.loads(path.read_text(encoding='utf-8'))
+        if path.is_symlink():
+            raise BackupExportError('linked_file', name)
+        try:
+            with path.open('rb') as stream:
+                raw_file = stream.read(MAX_BYTES+1)
+        except FileNotFoundError:
+            continue
+        if len(raw_file) > MAX_BYTES:
+            raise BackupExportError('too_large', name)
+        try:
+            content = json.loads(raw_file.decode('utf-8'))
+        except (ValueError, RecursionError):
+            raise BackupExportError('invalid_json', name) from None
+        try:
+            validate(json.dumps({'version':1, 'files':{name:content}}, ensure_ascii=False, allow_nan=False).encode())
+        except (ValueError, TypeError, ArithmeticError, RecursionError):
+            raise BackupExportError('invalid_data', name) from None
+        files[name] = content
     if not files:
-        raise ValueError('No supported local data exists to back up yet.')
+        raise BackupExportError('no_data')
     value = {'version': 1, 'created_at': datetime.now(timezone.utc).isoformat(), 'files': files}
     raw = json.dumps(value, ensure_ascii=False, allow_nan=False).encode()
     if len(raw) > MAX_BYTES:
-        raise ValueError('Local data exceeds the 900 KB backup limit. Copy your private data folder manually.')
+        raise BackupExportError('too_large')
     validate(raw)
     return raw
+
+
+def failure_message(error):
+    if isinstance(error, BackupExportError):
+        return str(error)
+    import errno
+    if isinstance(error, OSError):
+        filename = Path(str(error.filename)).name if error.filename else None
+        prefix = f'data/{filename}: ' if filename in FILES else ''
+        return prefix + {
+            errno.ENOSPC: 'Not enough free disk space to save the backup.',
+            errno.EACCES: 'Permission denied while reading local data or writing the backup.',
+            errno.EPERM: 'Permission denied while reading local data or writing the backup.',
+            errno.EROFS: 'The backup location is on a read-only filesystem.',
+            errno.EISDIR: 'A supported data file is a directory; check the local data folder.',
+            errno.EDQUOT: 'The filesystem quota is full; the backup could not be saved.',
+        }.get(error.errno, 'A filesystem operation failed while maintaining the backup; check local data access and storage.')
+    return 'Local data could not be validated; run the private backup check to identify the file.'
+
 
 def private_write(path, raw):
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)

@@ -47,6 +47,14 @@ def fixture_login():
     return redirect('/bins')
 
 
+@web.app.get('/__fixture_backup_data')
+def fixture_backup_data():
+    from flask import request
+    target = copy / 'data' / 'to_buy.json'
+    target.write_text('PRIVATE FIXTURE VALUE invalid JSON' if request.args.get('invalid') == '1' else '{"items":[]}')
+    return redirect('/backup')
+
+
 @web.app.get('/__fixture_reviews')
 def fixture_reviews():
     from datetime import timedelta
