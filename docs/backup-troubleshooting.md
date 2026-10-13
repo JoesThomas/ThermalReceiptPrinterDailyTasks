@@ -4,6 +4,10 @@ The older `Private backup unavailable; check local data and disk space` warning 
 
 Open **Private backup & restore** and choose **Save snapshot now**. This retries immediately, even during an automatic retry delay. A failed export names the supported file when JSON or data validation fails, and gives specific guidance for permission, full-disk, quota or read-only filesystem errors. Existing snapshots and source data are retained; invalid files are not skipped to manufacture a successful backup. A restore drill passing for an older snapshot does not mean the latest creation attempt succeeded.
 
+For `receipt_settings.json` and its last-good copy, the diagnosis also includes the safe settings validator reason, such as an invalid daily print time or a duplicated receipt page. Fix only the identified setting; no automatic reset is performed. If the app is using recovered settings, review them before saving: an explicit save preserves the invalid original under its existing `.invalid-...json` name. A file from a newer schema needs the matching application version rather than a downgrade or reset.
+
+For an invalid weather detail value, use `python tools/check_private_backup.py --repair-weather-detail`. This explicitly changes only `display.weather_detail` in the current receipt settings to `full`, retaining all other stored keys and preserving the original bytes in an `.invalid-...json` copy. Other invalid settings or a newer schema block the repair before any settings write. The command then runs the read-only backup check; use **Save snapshot now** to verify that a new backup can be written. The last-good file is not overwritten by this targeted repair.
+
 For a read-only check from the project folder, with the app's Python environment active:
 
 ```sh

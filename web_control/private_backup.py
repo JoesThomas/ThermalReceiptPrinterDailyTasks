@@ -160,7 +160,7 @@ def validate(raw):
 
 class BackupExportError(ValueError):
     """Safe diagnosis; never includes private values or an underlying exception."""
-    def __init__(self, kind, filename=None):
+    def __init__(self, kind, filename=None, detail=None):
         self.kind = kind
         self.filename = filename if filename in FILES else None
         messages = {
@@ -171,7 +171,10 @@ class BackupExportError(ValueError):
             'no_data': 'No supported local data exists to back up yet',
         }
         message = messages[kind]
-        super().__init__(f'data/{self.filename} {message}.' if self.filename else message[0].upper()+message[1:]+'.')
+        result = f'data/{self.filename} {message}.' if self.filename else message[0].upper()+message[1:]+'.'
+        if detail and self.filename in {'receipt_settings.json', 'receipt_settings.last-good.json'}:
+            result += ' '+detail
+        super().__init__(result)
 
 
 def export(root):
@@ -194,7 +197,11 @@ def export(root):
         try:
             validate(json.dumps({'version':1, 'files':{name:content}}, ensure_ascii=False, allow_nan=False).encode())
         except (ValueError, TypeError, ArithmeticError, RecursionError):
-            raise BackupExportError('invalid_data', name) from None
+            detail = None
+            if name in {'receipt_settings.json', 'receipt_settings.last-good.json'}:
+                from receipt_settings import settings_diagnosis
+                detail = settings_diagnosis(content)
+            raise BackupExportError('invalid_data', name, detail) from None
         files[name] = content
     if not files:
         raise BackupExportError('no_data')
