@@ -61,6 +61,14 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button>Check connection without printing</button>
                 </form>
+                <form method="post" action="{{ url_for('printer_paper_test') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="allow_repeat" value="on">
+                    <button>Test after refilling paper</button>
+                </form>
+                <p class="muted">
+                    Prints a small ASCII thumbs-up and cuts the paper. Use this after refilling or reseating the roll; check the physical result before printing a full receipt. Repeated paper tests are allowed once the previous job has finished.
+                </p>
                 <form method="post" action="{{ url_for('printer_test') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button>Print short test receipt</button>

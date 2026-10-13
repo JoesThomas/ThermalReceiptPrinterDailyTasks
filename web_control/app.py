@@ -380,6 +380,9 @@ def index():
         except (ValueError, TypeError):
             pass
     settings = load_receipt_settings()
+    from receipt_settings import settings_state
+    from web_control.attention import build as attention_items
+    attention = attention_items(PROJECT_ROOT, settings, warning=settings_state()[1]) if active_view == "dashboard" else []
     scheduled_at = next_print_time(datetime.now(ZoneInfo("Europe/London")), settings)
     from services.local_gigs import options as gig_options
     settings["features"]["local_gigs"] = gig_options()["enabled"]
@@ -408,6 +411,7 @@ def index():
         "index.html",
         print_status=status,
         today_view=today_view,
+        attention_items=attention,
         active_view=active_view, scheduled_at=scheduled_at, last_print_local=last_print_local,
         daily_print=daily_summary(settings, directory=PROJECT_ROOT / 'data'),
         settings=settings,

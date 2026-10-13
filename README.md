@@ -515,3 +515,7 @@ Saved finance scenarios, transfer explanations and settings recovery: [planning 
 Daily print outcomes, retry delays, printer sensor diagnostics and exact release dependencies:
 [runtime reliability](docs/runtime-reliability.md). Repeatable Pi checks are described in
 [the deployment guide](deployment/README.md#repeatable-acceptance-reports).
+
+For Home attention items, named-plan comparisons and the small refill test, see
+[daily usability](docs/daily-usability.md). The explicit prepared update/rollback
+helper is described in [deployment updates](deployment/updates.md).

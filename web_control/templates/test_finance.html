@@ -43,6 +43,36 @@
                     <p>No named scenarios saved yet.</p>
                 {% endfor %}
             </details>
+            {% if presets|default([])|length >= 2 %}
+                <section>
+                    <h2>Compare saved plans</h2>
+                    <form method="post"
+                          action="{{ url_for('compare_finance_scenarios') }}"
+                          id="scenario-compare-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% for field,label in [('left','First scenario'),('right','Second scenario')] %}
+                            <label>
+                                {{ label }}
+                                <select name="{{ field }}">
+                                    {% for preset in presets %}
+                                        <option value="{{ preset.id }}"
+                                                {% if field == 'right' and loop.index == 2 %}selected{% endif %}>
+                                            {{ preset.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                        {% endfor %}
+                        <button>Compare scenarios</button>
+                        <p id="scenario-compare-status" role="status" hidden>
+                            Retrieving one bank snapshot where needed and comparing the saved plans…
+                        </p>
+                    </form>
+                    <p>
+                        Recalculates both plans using one common collection and their displayed overrides. Review saved dates first. Nothing is printed or moved.
+                    </p>
+                </section>
+            {% endif %}
             <section>
                 <h2>Potential salary</h2>
                 <form method="post"

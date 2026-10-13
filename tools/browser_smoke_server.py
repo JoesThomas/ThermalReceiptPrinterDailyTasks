@@ -24,7 +24,17 @@ from receipt.live_preview import VirtualPrinter
 from web_control import preview_job
 
 # No external integration or hardware calls are allowed in this fixture process.
-web._start_print_command_locked = lambda args: (True, '')
+fixture_print_commands = []
+def fixture_start_print(args):
+    fixture_print_commands.append(args)
+    return True, ''
+web._start_print_command_locked = fixture_start_print
+
+@web.app.get('/__fixture_last_print')
+def fixture_last_print():
+    from flask import jsonify
+    return jsonify(fixture_print_commands[-1] if fixture_print_commands else [])
+
 import requests
 patch.object(requests.sessions.Session, 'request', side_effect=RuntimeError('External requests disabled in browser fixtures')).start()
 write_json(copy / 'data' / 'subscriptions.json', {'monthly': [], 'yearly': [], 'instalments': []})

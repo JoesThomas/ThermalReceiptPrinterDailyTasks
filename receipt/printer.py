@@ -13,7 +13,7 @@ class PrinterConnectionError(RuntimeError):
     """The configured physical printer could not be reached."""
 
 
-def open_printer():
+def open_printer(*, initial_cut=True):
     """Use the local network printer by default; allow USB when requested."""
     from escpos.printer import Network, Usb
     from escpos.exceptions import DeviceNotFoundError
@@ -22,7 +22,7 @@ def open_printer():
     if connection == "usb":
         printer = Usb(USB_VENDOR_ID, USB_PRODUCT_ID)
         try:
-            printer.cut()
+            if initial_cut: printer.cut()
         except Exception:
             printer.close()
             raise
@@ -37,7 +37,7 @@ def open_printer():
             # Connect before receipt generation; Network otherwise connects lazily.
             printer.open()
             # Separate leftover paper before any new receipt is sent.
-            printer.cut()
+            if initial_cut: printer.cut()
         except (OSError, DeviceNotFoundError) as error:
             printer.close()
             raise PrinterConnectionError(
