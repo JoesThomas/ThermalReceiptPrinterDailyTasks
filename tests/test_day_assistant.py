@@ -234,7 +234,9 @@ class DailyAssistantTests(unittest.TestCase):
                     render.call_args.kwargs["prep_draft"]["prep"], "Pack ID"
                 )
 
-    def test_actions_pipeline_no_duplicates_and_preserves_triggers(self):
+    def test_actions_pipeline_no_duplicates_and_preserves_triggers(
+        self, paid_therapy=False
+    ):
         from receipt.location_settings import DEFAULT_LOCATION, validate_location
 
         source = ast.parse(Path("services/live_pipeline.py").read_text())
@@ -249,6 +251,9 @@ class DailyAssistantTests(unittest.TestCase):
         printer.profile.profile_data = {"media": {"width": {"pixels": 0}}}
         output = []
         events = [event("Next appointment", NOW + timedelta(hours=1))]
+        if paid_therapy:
+            with checklists.transaction() as state:
+                state["items"][0]["title"] = "Pay for therapy"
         assistant.choose_focus(["First"], NOW.date())
         assistant.save_preparation(
             "Next appointment", 30, ["Bring ticket"], ["Charge phone"]
@@ -276,7 +281,8 @@ class DailyAssistantTests(unittest.TestCase):
             GOOGLE_DOC_1_URL="",
             get_calendar_events=lambda *args, **kwargs: events,
             get_google_doc_text=lambda *args: "",
-            therapy_payment_due=lambda *args: False,
+            therapy_payment_due=lambda *args: paid_therapy,
+            therapy_paid_recently=lambda *args: paid_therapy,
             print_calendar=lambda p, rows: output.extend(row["title"] for row in rows),
             print_google_doc=lambda p, text, *args, **kwargs: output.extend(
                 text.splitlines()
@@ -317,12 +323,20 @@ class DailyAssistantTests(unittest.TestCase):
         ):
             namespace["run_live_pipeline"](only_page="actions")
         printed = "\n".join(output)
-        self.assertEqual(printed.count("First"), 1)
+        self.assertEqual(printed.count("First"), 0 if paid_therapy else 1)
+        if paid_therapy:
+            self.assertNotIn("Pay for therapy", printed)
         self.assertEqual(printed.count("Next appointment"), 1)
         self.assertEqual(printed.count("Put out General"), 1)
         self.assertIn("BEFORE BED", printed)
         self.assertLess(printed.index("WORKOUT"), printed.index("BEFORE BED"))
         namespace["finance_requested"].assert_called_once_with(
-            "First.\nSecond.\nThird.\nFourth."
+            ("Pay for therapy" if paid_therapy else "First")
+            + ".\nSecond.\nThird.\nFourth."
         )
         self.assertTrue(all(len(line) <= 40 for line in output))
+
+    def test_paid_therapy_task_is_not_reintroduced_as_priority(self):
+        self.test_actions_pipeline_no_duplicates_and_preserves_triggers(
+            paid_therapy=True
+        )

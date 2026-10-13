@@ -4946,7 +4946,8 @@ def run_live_pipeline(
             print_section(printer, title, lines, line=print_line, left=left,
                           wrap=print_wrapped, safe=printer_safe_text)
         focus_titles = {row['title'] for row in assistant_brief['focus']}
-        assistant_section('DO FIRST', ['[ ] '+row['title'] for row in assistant_brief['focus']])
+        assistant_section('DO FIRST', ['[ ] '+row['title'] for row in assistant_brief['focus']
+                                       if not (therapy_paid and row['title'].casefold() == 'pay for therapy')])
         appointment = assistant_brief['appointment']
         if appointment:
             assistant_section('NEXT APPOINTMENT', appointment['lines'])
