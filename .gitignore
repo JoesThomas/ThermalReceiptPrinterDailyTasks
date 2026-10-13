@@ -206,3 +206,9 @@ node_modules/
 
 data/printer_diagnostic_run.lock
 data/pi_acceptance.json
+
+data/updates/
+data/update_guard.lock
+.venv-next-*
+
+data/source_retry_status.json

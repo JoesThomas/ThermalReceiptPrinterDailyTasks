@@ -119,6 +119,12 @@ def record(identity, row):
         state = load(); state[identity] = row
         state = dict(sorted(state.items(), key=lambda x: str(x[1].get('attempted_at', '')), reverse=True)[:32])
         write_json(FILE, state)
+        try:
+            keys=('name','status','failures','next_retry_epoch','attempted_at','source_checked_at')
+            write_json(FILE.with_name('source_retry_status.json'), {'services':{identity:{key:row.get(key) for key in keys} for identity,row in state.items()}})
+        except OSError:
+            import logging
+            logging.getLogger(__name__).warning('Source retry summary could not be saved.')
 
 
 def refresh():

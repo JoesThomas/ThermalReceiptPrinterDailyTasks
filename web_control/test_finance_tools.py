@@ -10,14 +10,16 @@ from finance.scenario_inputs import validate
 from finance.test_forecast import is_amex
 
 
-def collect(values, today):
+def collect(values, today, *, shared_snapshot=None, local=None):
     from finance.receipt import load_finance_settings
     from finance.projection import build_projection, money
     from finance.commitments import repayment_commitments
     from services.subscriptions import load_subscriptions
 
-    settings = load_finance_settings().copy()
-    subscriptions = load_subscriptions()
+    from copy import deepcopy
+
+    settings = deepcopy(local["settings"] if local else load_finance_settings())
+    subscriptions = deepcopy(local["subscriptions"] if local else load_subscriptions())
     daily = values.get("daily_spend", "").strip()
     cash = values.get("opening_cash", "").strip()
     daily_value, cash_value = money(daily), money(cash)
@@ -41,15 +43,13 @@ def collect(values, today):
         }
         coverage = "complete"
     else:
-        try:
-            from services import live_pipeline as pipeline
-        except RuntimeError:
-            raise ValueError(
-                "Configure bank connections, or enter both starting cash and daily spending for a manual estimate."
-            ) from None
-        from services.bank_session import collect_snapshot
+        snapshot = (
+            deepcopy(shared_snapshot)
+            if shared_snapshot is not None
+            else bank_snapshot(today)
+        )
+        from services import live_pipeline as pipeline
 
-        snapshot = collect_snapshot(pipeline, persist=False, today=lambda: today)
         data, balances = snapshot["data"], snapshot["balances"]
         transactions = data[0]
         status = pipeline.build_subscription_status(
@@ -181,7 +181,9 @@ def collect(values, today):
     from finance.savings_targets import load_view
 
     try:
-        projection["savings_accounts"] = load_view(today)
+        projection["savings_accounts"] = (
+            local["accounts"] if local else load_view(today)
+        )
     except (ValueError, OSError, TypeError, KeyError):
         if values.get("use_saved_accounts") == "on":
             raise ValueError(
@@ -192,6 +194,44 @@ def collect(values, today):
             "Recorded savings accounts could not be loaded; excluded from account projections."
         )
     return projection
+
+
+def bank_snapshot(today):
+    try:
+        from services import live_pipeline as pipeline
+    except RuntimeError:
+        raise ValueError(
+            "Configure bank connections, or enter both starting cash and daily spending for a manual estimate."
+        ) from None
+    from services.bank_session import collect_snapshot
+
+    return collect_snapshot(pipeline, persist=False, today=lambda: today)
+
+
+def collect_pair(values, today):
+    from finance.receipt import load_finance_settings
+    from services.subscriptions import load_subscriptions
+    from finance.savings_targets import load_view
+
+    manual = all(
+        row.get("opening_cash", "").strip() and row.get("daily_spend", "").strip()
+        for row in values
+    )
+    shared = None if manual else bank_snapshot(today)
+    try:
+        accounts = load_view(today)
+    except (ValueError, OSError, TypeError, KeyError):
+        if any(row.get("use_saved_accounts") == "on" for row in values):
+            raise ValueError(
+                "Recorded savings could not be loaded. Review Savings goals before comparing."
+            ) from None
+        accounts = []
+    local = {
+        "settings": load_finance_settings(),
+        "subscriptions": load_subscriptions(),
+        "accounts": accounts,
+    }
+    return [collect(row, today, shared_snapshot=shared, local=local) for row in values]
 
 
 def payment_options():
@@ -288,6 +328,37 @@ def register(app, login_required, start_print):
             payment_options=payment_options(),
             scenario_details=details,
         )
+
+    @app.post("/finance/test/scenarios/compare")
+    @login_required
+    def compare_finance_scenarios():
+        from finance.scenario_presets import load, listing
+        from finance.named_comparison import compare
+
+        try:
+            left_id, right_id = (
+                request.form.get("left", ""),
+                request.form.get("right", ""),
+            )
+            if not left_id or left_id == right_id:
+                raise ValueError("Choose two different saved scenarios.")
+            comparison = compare(
+                load(left_id), load(right_id), uk_today(), collect_pair
+            )
+            return render_template(
+                "scenario_comparison.html",
+                comparison=comparison,
+                presets=listing(),
+                left_id=left_id,
+                right_id=right_id,
+            )
+        except (ValueError, OSError, TypeError, KeyError) as error:
+            return render_template(
+                "scenario_comparison.html",
+                comparison=None,
+                presets=[],
+                error=str(error),
+            ), 400
 
     @app.post("/finance/test/scenarios/save")
     @login_required

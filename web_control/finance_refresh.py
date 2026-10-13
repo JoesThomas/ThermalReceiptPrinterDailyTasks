@@ -225,6 +225,7 @@ class FinanceRefresh:
                     state.update(
                         state="completed",
                         checked_at=snapshot["checked_at"],
+                        coverage=snapshot["data"][4].get("bank_data_status"),
                         seconds=round(monotonic() - started, 2),
                     )
                     write_json(self.status_file, state)

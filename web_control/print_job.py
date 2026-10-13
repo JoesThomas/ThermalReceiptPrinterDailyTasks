@@ -28,6 +28,8 @@ def main():
     if scheduled:
         args = args[1:]
     page = " + ".join(args[1:]) if args and args[0] == "--pages" else args[1] if len(args) == 2 and args[0] == "--only" else "full receipt"
+    if args == ['--paper-test']: page = 'paper test'
+    elif args == ['--printer-test']: page = 'printer test'
     # The parent writes the lock immediately after starting this process.
     # Wait for that write so a quick job cannot leave a stale lock behind.
     for _ in range(100):
@@ -50,8 +52,9 @@ def main():
             record(daily_on, 'running', directory=ROOT / 'data', job_id=job_id, worker_pid=os.getpid())
         log_event(job_id, 'print started')
         command = [sys.executable, str(ROOT / "main.py"), *args]
-        if args == ['--printer-test']:
+        if args in (['--printer-test'], ['--paper-test']):
             command = [sys.executable, str(ROOT / 'web_control' / 'printer_test_job.py')]
+            if args == ['--paper-test']: command.append('--paper-test')
         if args and args[0] == '--archive':
             if len(args) != 3:
                 raise ValueError('Invalid archive command')

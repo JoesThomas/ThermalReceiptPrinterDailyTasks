@@ -44,3 +44,16 @@ updateScenarioFields();
 document.querySelector('#test-finance-form select[name="strategy"]')?.addEventListener('change', updateScenarioFields);
 
 document.querySelector('#test-finance-form input[name="use_saved_accounts"]')?.addEventListener('change', updateScenarioFields);
+
+const compareForm = document.getElementById('scenario-compare-form');
+compareForm?.addEventListener('submit', () => {
+    document.getElementById('scenario-compare-status').hidden = false;
+    compareForm.setAttribute('aria-busy', 'true');
+    setTimeout(() => { compareForm.querySelector('button').disabled = true; }, 0);
+});
+window.addEventListener('pageshow', () => {
+    if (!compareForm) return;
+    compareForm.querySelector('button').disabled = false;
+    compareForm.removeAttribute('aria-busy');
+    document.getElementById('scenario-compare-status').hidden = true;
+});

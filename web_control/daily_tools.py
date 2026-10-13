@@ -54,6 +54,13 @@ def register(app, login_required, root, start_print, recipes_fn, meal_confirmati
         flash('Short test receipt queued.' if ok else error)
         return redirect(url_for('printer_diagnostics'))
 
+    @app.post('/printer-diagnostics/paper-test')
+    @login_required
+    def printer_paper_test():
+        ok,error = start_print(['--paper-test'])
+        flash('Tiny paper test queued: a small ASCII thumbs-up and a cut.' if ok else error)
+        return redirect(url_for('printer_diagnostics'))
+
     @app.post('/sources/refresh')
     @login_required
     def source_refresh():

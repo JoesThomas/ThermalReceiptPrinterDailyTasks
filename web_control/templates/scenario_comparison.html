@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Compare finance scenarios</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content" class="finance-page" data-private>
+            <header>
+                <h1>Compare finance scenarios</h1>
+                <a href="{{ url_for('test_finance_page') }}">Back to saved scenarios</a>
+            </header>
+            {% if error %}<p class="flash" role="alert">{{ error }}</p>{% endif %}
+            {% if comparison %}
+                <p>
+                    Calculated {{ comparison.generated_on }}. {{ 'Both plans use manual starting cash and spending; no bank lookup was needed.' if comparison.manual else 'Both plans use one bank collection; explicit manual overrides are listed below.' }} This is a planning estimate. No transfers or prints are made.
+                </p>
+                <div class="grid">
+                    {% for result in comparison.results %}
+                        <section class="card">
+                            <h2>{{ result.name }}</h2>
+                            <dl>
+                                <dt>Forecast end</dt>
+                                <dd>
+                                    {{ result.end }}
+                                </dd>
+                                <dt>Amex clearance</dt>
+                                <dd>
+                                    {{ result.payoff or 'Not cleared within forecast / balance unavailable' }}
+                                </dd>
+                                <dt>Amex at forecast end</dt>
+                                <dd>
+                                    {{ result.amex_end }}
+                                </dd>
+                                <dt>Savings at forecast end</dt>
+                                <dd>
+                                    {{ result.savings_end }}
+                                </dd>
+                                <dt>Overall savings goal date</dt>
+                                <dd>
+                                    {{ result.goal_date or ('Not reached in planning horizon' if result.has_goal else 'No overall goal set') }}{{ ' (extended estimate)' if result.goal_extended else '' }}
+                                </dd>
+                                <dt>Lowest bank balance</dt>
+                                <dd>
+                                    {{ result.minimum_bank }} on {{ result.minimum_date }}
+                                </dd>
+                                <dt>Bank reserve</dt>
+                                <dd>
+                                    {{ result.bank_reserve }}
+                                </dd>
+                                <dt>Protected reserves</dt>
+                                <dd>
+                                    {{ 'Hold throughout forecast' if result.reserves_hold else 'Shortfall: ' ~ result.shortfall_date }}
+                                </dd>
+                            </dl>
+                            <h3>First-period extra transfers</h3>
+                            <p>{{ result.transfers.strategy }}</p>
+                            <dl>
+                                {% for transfer in result.transfers.destinations %}
+                                    <dt>{{ transfer.name }}</dt>
+                                    <dd>
+                                        {{ transfer.amount }}
+                                    </dd>
+                                {% else %}
+                                    <dt>Transfers</dt>
+                                    <dd>
+                                        None
+                                    </dd>
+                                {% endfor %}
+                            </dl>
+                            <p>Scheduled savings: {{ result.transfers.scheduled_savings }}. Already included in bills; do not send again.</p>
+                            {% for account in result.accounts %}
+                                <h3>{{ account.name }}</h3>
+                                <p>
+                                    Projected {{ account.projected }} / target {{ account.target }}. Goal date: {{ account.goal_date or 'No funded date within planning horizon' }}{{ ' (extended)' if account.extended else '' }}.
+                                </p>
+                            {% endfor %}
+                            {% for warning in result.warnings %}<p>{{ warning }}</p>{% endfor %}
+                        </section>
+                    {% endfor %}
+                </div>
+                <section>
+                    <h2>Assumptions that differ</h2>
+                    {% for row in comparison.differences %}
+                        <dl>
+                            <dt>{{ row.label }}</dt>
+                            <dd>
+                                {{ comparison.results[0].name }}: {{ row.left }}
+                            </dd>
+                            <dd>
+                                {{ comparison.results[1].name }}: {{ row.right }}
+                            </dd>
+                        </dl>
+                    {% else %}
+                        <p>The saved inputs are identical.</p>
+                    {% endfor %}
+                    <p>
+                        Different dates, forecast lengths and starting-balance overrides affect comparability. Update saved scenarios before comparing like-for-like plans.
+                    </p>
+                </section>
+            {% endif %}
+        </main>
+    </body>
+</html>

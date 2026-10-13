@@ -131,6 +131,16 @@ process.on('exit', () => child.kill());
   assert.equal(await page.locator('textarea[name=one_off_expenses]').inputValue(), new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'})+' | 30 | One-off test cost');
   await Promise.all([page.waitForResponse(r => r.url().endsWith('/finance/test/print') && r.request().method()==='POST'), page.getByRole('button',{name:'Print test receipt'}).click()]);
   assert.match(await page.locator('main').innerText(), /Test finance receipt queued/);
+  await page.goto('http://receipt.test/finance/test');
+  await testFinance.locator('input[name=salary]').fill('4000');
+  await testFinance.locator('input[name=scenario_name]').fill('Lower salary browser plan');
+  await Promise.all([page.waitForURL('**/finance/test?preset=*'), testFinance.getByRole('button',{name:'Save named scenario'}).click()]);
+  assert.equal(await page.evaluate(async () => (await fetch('/finance/test/scenarios/compare', {method:'POST',body:new URLSearchParams({left:'x',right:'y'})})).status),403);
+  await Promise.all([page.waitForURL('**/finance/test/scenarios/compare'), page.getByRole('button',{name:'Compare scenarios',exact:true}).click()]);
+  await page.getByRole('heading',{name:'Compare finance scenarios',exact:true}).waitFor();
+  assert.match(await page.locator('main').innerText(), /Both plans use manual starting cash/);
+  assert.match(await page.locator('main').innerText(), /Assumptions that differ/);
+  assert.match(await page.locator('main').innerText(), /Lower salary browser plan/);
   await page.goto('http://receipt.test/finance/assets');
   let mortgage = page.locator('form[action$="/finance/assets"]').filter({has:page.locator('input[name=kind][value=mortgages]')}).last();
   await mortgage.locator('input[name=name]').fill('Test mortgage');
@@ -252,10 +262,16 @@ process.on('exit', () => child.kill());
   assert.match(await page.locator('#finance-refresh').innerText(), /Forecasts are withheld/);
   await page.goto('http://receipt.test/__fixture_daily_outcome');
   assert.match(await page.locator('main').innerText(), /Today's scheduled receipt:.*Daily print failed/s);
+  await page.locator('#needs-attention').getByRole('heading',{name:'Daily receipt needs review',exact:true}).waitFor();
   await page.locator('#overview').getByRole('link', {name:'Find saved daily preview',exact:true}).waitFor();
   await page.goto('http://receipt.test/printer-diagnostics');
   assert.match(await page.locator('main').innerText(), /Cover/);
   assert.match(await page.locator('main').innerText(), /unknown/);
+  assert.equal(await page.evaluate(async () => (await fetch('/printer-diagnostics/paper-test', {method:'POST'})).status),403);
+  await Promise.all([page.waitForResponse(r => r.url().endsWith('/printer-diagnostics/paper-test') && r.request().method()==='POST'), page.getByRole('button',{name:'Test after refilling paper',exact:true}).click()]);
+  assert.match(await page.locator('main').innerText(), /Tiny paper test queued/);
+  assert.deepEqual(await page.evaluate(async () => (await fetch('/__fixture_last_print')).json()), ['--paper-test']);
+
   const accessibilityFailures = [];
   let checks = 0;
   for (const width of [360,390,768,1280]) {
@@ -283,6 +299,17 @@ process.on('exit', () => child.kill());
       }
       checks++;
     }
+  }
+  for (const width of [360,390,768,1280]) {
+    await page.setViewportSize({width,height:900});
+    await page.goto('http://receipt.test/finance/test');
+    await Promise.all([page.waitForURL('**/finance/test/scenarios/compare'), page.getByRole('button',{name:'Compare scenarios',exact:true}).click()]);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `Named comparison overflows at ${width}`);
+    if (width === 1280) {
+      const failure = await require('./browser_accessibility.cjs')(page, '/finance/test/scenarios/compare');
+      if (failure) accessibilityFailures.push(failure);
+    }
+    checks++;
   }
   await page.goto('http://receipt.test/bins');
   await page.keyboard.press('Tab');
