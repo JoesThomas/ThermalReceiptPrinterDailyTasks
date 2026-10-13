@@ -4802,7 +4802,7 @@ def run_live_pipeline(
             bin_lines = reminder_lines()
             if bin_lines:
                 print_line(printer, "=")
-                left(printer, "BINS FOR TOMORROW")
+                left(printer, "PUT BINS OUT TODAY" if any(line.startswith('[ ]') for line in bin_lines) else "BIN SCHEDULE CHECK")
                 print_line(printer, "-")
                 for line in bin_lines:
                     print_wrapped(printer, printer_safe_text(line), width=40)

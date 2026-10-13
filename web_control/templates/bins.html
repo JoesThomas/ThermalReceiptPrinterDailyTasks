@@ -36,12 +36,25 @@
                     </p>
                 {% endif %}
                 {% if bins.error and bins.provider == 'birmingham' %}<p class="flash">{{ bins.error }}</p>{% endif %}
-                <h3>Bins for tomorrow</h3>
-                {% for name in tomorrow %}
-                    <p>{{ name }}</p>
-                {% else %}
-                    <p class="muted">No confirmed collections for tomorrow in the available schedule.</p>
-                {% endfor %}
+                <h3>What to do today</h3>
+                <p role="status">{{ summary.status }}</p>
+                {% for warning in summary.warnings %}<p class="flash">{{ warning }}</p>{% endfor %}
+                {% if summary.upcoming %}
+                    <h3>Next collection dates</h3>
+                    {% for item in summary.upcoming %}
+                        <div class="review-row">
+                            <strong>{{ item.bin }} · {{ item.collection }}</strong>
+                            <p>
+                                {% if item.today and bins.enabled %}
+                                    Put out today
+                                {% else %}
+                                    Put out {{ item.put_out }}
+                                {% endif %}
+                                {% if not bins.enabled %}· Reminder disabled{% endif %}
+                            </p>
+                        </div>
+                    {% endfor %}
+                {% endif %}
                 {% if bins.provider == 'birmingham' %}
                     <form method="post" action="{{ url_for('bin_schedule_refresh') }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -58,26 +71,77 @@
             <section id="manual-schedule">
                 <h2>Use your own collection dates</h2>
                 <p class="muted">
-                    Enter date | bin name | repeat days, one per line. Use 0 for a single collection, or 7, 14 or 28 for repeating dates. No council lookup or property reference is needed. Update bank-holiday changes yourself.
+                    Choose a collection date, bin name and repeat interval. Reminders appear the day before collection. Update bank-holiday changes yourself.
                 </p>
-                <form method="post" action="{{ url_for('bin_manual_save') }}">
+                <form method="post"
+                      action="{{ url_for('bin_manual_save') }}"
+                      class="bin-settings-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <label for="manual-collections">Manual collections</label>
-                    <textarea id="manual-collections"
-                              name="manual"
-                              rows="7"
-                              maxlength="50000"
-                              placeholder="YYYY-MM-DD | bin name | 7"
-                              required>{{ manual }}</textarea>
+                    <input type="hidden" name="editor" value="rows">
+                    {% for item in editor_rows + [{'date':'','bin':'','repeat':7}] %}
+                        <fieldset>
+                            <legend>{{ 'New collection' if loop.last else 'Collection ' ~ loop.index }}</legend>
+                            <label>
+                                Collection date
+                                <input type="date" name="collection_date" value="{{ item.date }}">
+                            </label>
+                            <label>
+                                Bin name
+                                <input name="bin_name" maxlength="100" value="{{ item.bin }}">
+                            </label>
+                            <label>
+                                Repeat
+                                <select name="repeat_days">
+                                    {% for days, title in [(0,'Once'),(7,'Weekly'),(14,'Every two weeks'),(28,'Every four weeks')] %}
+                                        <option value="{{ days }}"
+                                                {% if item.repeat|string == days|string %}selected{% endif %}>
+                                            {{ title }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            {% if not loop.last %}
+                                <label>
+                                    <input type="checkbox" name="remove_row" value="{{ loop.index0 }}">
+                                    Remove this collection
+                                </label>
+                            {% endif %}
+                        </fieldset>
+                    {% endfor %}
                     <label>
                         <input type="checkbox"
                                name="enabled"
                                {% if bins.enabled or not bins.manual %}checked{% endif %}>
                         Include day-before reminders
                     </label>
-                    <p class="muted">Saving here switches the schedule source to Manual and keeps your saved address.</p>
-                    <button class="primary">Use manual schedule</button>
+                    <p class="muted">
+                        Saving selects Manual and keeps your saved address. Add another collection using the new row after saving.
+                    </p>
+                    <button class="primary">Save collection dates</button>
                 </form>
+                <details {% if advanced_draft %}open{% endif %}>
+                    <summary>Advanced: edit schedule as text</summary>
+                    <p class="muted">
+                        Enter date | bin name | repeat days, one per line. Use 0 for a single collection, or 7, 14 or 28 for repeating dates.
+                    </p>
+                    <form method="post" action="{{ url_for('bin_manual_save') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <label for="manual-collections">Manual collections</label>
+                        <textarea id="manual-collections"
+                                  name="manual"
+                                  rows="7"
+                                  maxlength="50000"
+                                  placeholder="YYYY-MM-DD | bin name | 7"
+                                  required>{{ manual }}</textarea>
+                        <label>
+                            <input type="checkbox"
+                                   name="enabled"
+                                   {% if bins.enabled or not bins.manual %}checked{% endif %}>
+                            Include day-before reminders
+                        </label>
+                        <button class="primary">Use manual schedule</button>
+                    </form>
+                </details>
             </section>
             <section>
                 <h2>Find a Birmingham address</h2>

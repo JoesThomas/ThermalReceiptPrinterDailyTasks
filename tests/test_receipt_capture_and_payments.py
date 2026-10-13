@@ -6,6 +6,7 @@ from PIL import Image
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
+from unittest.mock import patch
 
 from receipt.capture import RecordingPrinter, load_capture, receipt_blocks
 from receipt.visual_sample import example_pages
@@ -84,6 +85,35 @@ class ReceiptCaptureTests(unittest.TestCase):
             other.cut()
             other.save('information', path=path)
             self.assertEqual(set(load_capture(path)['pages']), {'information', 'finance'})
+
+    def test_settings_recorded_at_generation_and_retained_per_page(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'capture.json'
+            with patch('receipt.build_info.preview_settings_fingerprint', return_value='before'):
+                old = RecordingPrinter(FakePrinter())
+            with patch('receipt.build_info.preview_settings_fingerprint', return_value='after'):
+                old.text('Old actions')
+                old.save('actions', path=path)
+                new = RecordingPrinter(FakePrinter())
+                new.text('New weather')
+                new.save('information', path=path)
+            saved = load_capture(path)
+            self.assertEqual(saved['page_settings'], {'actions':'before','information':'after'})
+            self.assertNotIn('bin_name', path.read_text())
+            path.write_text('{"pages":{"actions":"legacy"}}')
+            self.assertEqual(load_capture(path)['page_settings'], {})
+
+    def test_bin_refresh_is_not_settings_change_but_manual_edit_is(self):
+        from receipt.build_info import preview_settings_fingerprint
+        from services import bin_collections
+        state = {**bin_collections.DEFAULT, 'enabled':True, 'provider':'manual',
+                 'manual':[{'date':'2026-10-07','bin':'General','repeat':7}]}
+        with patch.object(bin_collections,'load',return_value=state):
+            original = preview_settings_fingerprint()
+            state.update(last_success='2026-10-13T12:00:00+00:00', error='Check failed')
+            self.assertEqual(preview_settings_fingerprint(), original)
+            state['manual'][0]['date'] = '2027-10-07'
+            self.assertNotEqual(preview_settings_fingerprint(), original)
 
     def test_example_has_four_paper_pages(self):
         pages = example_pages(date(2026, 9, 28))

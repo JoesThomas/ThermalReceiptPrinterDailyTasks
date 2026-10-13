@@ -185,6 +185,11 @@
                                 <span class="badge">{{ 'Generated' if source == 'live' else 'Sent to printer' }} <time datetime="{{ receipt.captured_at }}">{{ receipt.captured_local or 'time unavailable' }}</time></span>
                             {% endif %}
                         </div>
+                        {% if receipt.settings_changed %}
+                            <p class="flash" role="status">
+                                Settings changed since this receipt was generated. Generate a fresh preview to include your current settings.
+                            </p>
+                        {% endif %}
                         <div class="paper-roll">
                             {% for block in receipt.blocks %}
                                 {% if block.image %}

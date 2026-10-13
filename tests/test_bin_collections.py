@@ -26,7 +26,8 @@ class BinCollectionTests(unittest.TestCase):
         state=bins.load()
         self.assertEqual(bins.due_on(state,date(2026,10,5)),['General waste','Recycling'])
         self.assertEqual(bins.due_on(state,date(2026,10,12)),['General waste'])
-        self.assertEqual(len(bins.reminder_lines(state,date(2026,10,4))),2)
+        self.assertEqual(bins.reminder_lines(state,date(2026,10,4)),
+                         ['[ ] Put out General waste today', '[ ] Put out Recycling today', 'Collection: Mon 05 Oct'])
         self.assertEqual(bins.reminder_lines(state,date(2026,10,5)),[])
         self.assertEqual(bins.due_on(state,date(2026,9,28)),[])
 
@@ -111,3 +112,70 @@ class BinCollectionTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(render.call_args.kwargs['manual'], 'bad date')
             self.assertEqual(bins.load()['manual'], state['manual'])
+
+
+class BinGuidanceTests(unittest.TestCase):
+    def state(self, **changes):
+        return {**bins.DEFAULT, 'enabled': True, 'provider': 'manual',
+                'manual': [{'date':'2026-10-07','bin':'General','repeat':7}], **changes}
+
+    def test_next_collection_and_today_action(self):
+        result = bins.schedule_summary(self.state(), date(2026,10,13))
+        self.assertEqual(result['upcoming'][0]['date'], '2026-10-14')
+        self.assertEqual(result['upcoming'][0]['put_out'], 'Tue 13 Oct 2026')
+        self.assertIn('Put General out today', result['status'])
+        result = bins.schedule_summary(self.state(), date(2026,10,14))
+        self.assertIn('No bins to put out today', result['status'])
+        self.assertEqual(result['upcoming'][0]['date'], '2026-10-14')
+
+    def test_future_year_warning_does_not_change_anchor(self):
+        state = self.state(manual=[{'date':'2027-10-07','bin':'General','repeat':7}])
+        result = bins.schedule_summary(state,date(2026,10,13))
+        self.assertIn('Check the year',result['warnings'][0])
+        self.assertEqual(result['upcoming'][0]['date'],'2027-10-07')
+        self.assertEqual(bins.reminder_lines(state,date(2026,10,13)),[])
+
+    def test_disabled_stale_and_empty_have_distinct_explanations(self):
+        disabled = bins.schedule_summary(self.state(enabled=False),date(2026,10,13))
+        self.assertIn('Reminders disabled', disabled['status'])
+        self.assertTrue(disabled['upcoming'])
+        stale = bins.schedule_summary(self.state(provider='birmingham'),date(2026,10,13))
+        self.assertIn('48 hours',stale['status'])
+        self.assertEqual(stale['upcoming'],[])
+        empty = bins.schedule_summary(self.state(manual=[]),date(2026,10,13))
+        self.assertIn('No upcoming',empty['status'])
+
+    def test_recurrence_and_day_before_cross_year(self):
+        state=self.state(manual=[{'date':'2026-12-18','bin':'Recycling','repeat':14}])
+        result=bins.schedule_summary(state,date(2026,12,31))
+        self.assertEqual(result['upcoming'][0]['date'],'2027-01-01')
+        self.assertIn('Collection: Fri 01 Jan',bins.reminder_lines(state,date(2026,12,31)))
+
+    def test_structured_edit_add_remove_and_invalid_draft(self):
+        from flask import Flask
+        from werkzeug.datastructures import MultiDict
+        from web_control.bin_tools import register
+        app=Flask(__name__,template_folder=str(Path('web_control/templates').resolve()))
+        app.secret_key='test-only'
+        register(app,lambda view:view)
+        with tempfile.TemporaryDirectory() as folder, patch.object(bins,'FILE',Path(folder)/'bins.json'), patch.object(bins,'today',return_value=date(2026,10,13)):
+            data=MultiDict([('editor','rows'),('enabled','on'),
+                            ('collection_date','2026-10-07'),('bin_name','General'),('repeat_days','7'),
+                            ('collection_date','2026-10-08'),('bin_name','Recycling'),('repeat_days','14'),
+                            ('collection_date',''),('bin_name',''),('repeat_days','7')])
+            with app.test_client() as client:
+                response=client.post('/bins/manual',data=data)
+                self.assertEqual(response.status_code,302)
+                self.assertEqual(len(bins.load()['manual']),2)
+                with client.session_transaction() as session:
+                    self.assertTrue(any('Put General out today' in message for _,message in session['_flashes']))
+                data.add('remove_row','0')
+                client.post('/bins/manual',data=data)
+                self.assertEqual(bins.load()['manual'][0]['bin'],'Recycling')
+                data.setlist('collection_date',['bad','2026-10-08',''])
+                data.pop('remove_row')
+                with patch('web_control.bin_tools.render_template',return_value='draft') as render:
+                    response=client.post('/bins/manual',data=data)
+                    self.assertEqual(response.status_code,200)
+                    self.assertEqual(render.call_args.kwargs['editor_rows'][0]['date'],'bad')
+                self.assertEqual(len(bins.load()['manual']),1)
