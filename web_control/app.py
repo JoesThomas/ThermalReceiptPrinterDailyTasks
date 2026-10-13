@@ -1293,6 +1293,9 @@ register_job_controls(app, login_required, PROJECT_ROOT, load_print_status, load
 from web_control.task_tools import register as register_task_tools
 register_task_tools(app, login_required)
 
+from web_control.birthday_tools import register as register_birthdays
+register_birthdays(app, login_required)
+
 from web_control.bin_tools import register as register_bin_tools
 register_bin_tools(app, login_required)
 

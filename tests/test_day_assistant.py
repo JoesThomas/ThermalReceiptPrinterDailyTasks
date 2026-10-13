@@ -319,6 +319,10 @@ class DailyAssistantTests(unittest.TestCase):
                 return_value=["[ ] Put out General today", "Collection: Wed 14 Oct"],
             ),
             patch("web_control.today_summary.save_calendar"),
+            patch(
+                "actions.birthdays.receipt_lines",
+                return_value=["Today: Example birthday (36)"],
+            ),
             patch("builtins.print"),
         ):
             namespace["run_live_pipeline"](only_page="actions")
@@ -328,6 +332,8 @@ class DailyAssistantTests(unittest.TestCase):
             self.assertNotIn("Pay for therapy", printed)
         self.assertEqual(printed.count("Next appointment"), 1)
         self.assertEqual(printed.count("Put out General"), 1)
+        self.assertEqual(printed.count("BIRTHDAYS"), 1)
+        self.assertEqual(printed.count("Today: Example birthday (36)"), 1)
         self.assertIn("BEFORE BED", printed)
         self.assertLess(printed.index("WORKOUT"), printed.index("BEFORE BED"))
         namespace["finance_requested"].assert_called_once_with(

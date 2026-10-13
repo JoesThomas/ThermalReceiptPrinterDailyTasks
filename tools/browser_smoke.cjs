@@ -37,6 +37,20 @@ process.on('exit', () => child.kill());
   assert.equal(await page.locator('input[name=bin_name]').first().inputValue(), 'Recycling');
   assert.equal(await page.locator('input[name=bin_name]').nth(1).inputValue(), 'General');
   await page.getByRole('heading', {name:'Next collection dates', exact:true}).waitFor();
+  await page.goto('http://receipt.test/birthdays');
+  const birthdayForm=page.locator('form[action$="/birthdays/save"]').first();
+  const deniedBirthday=await request({path:'/birthdays/save',method:'POST',body:'name=Blocked&month=1&day=1',headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+  assert.equal(deniedBirthday.status,403);
+  await birthdayForm.locator('input[name=name]').fill('Browser Birthday');
+  await birthdayForm.locator('input[name=month]').fill('10');
+  await birthdayForm.locator('input[name=day]').fill('13');
+  await Promise.all([page.waitForURL('**/birthdays'),page.getByRole('button',{name:'Save birthday',exact:true}).click()]);
+  await page.getByRole('heading',{name:'Saved birthdays (1)',exact:true}).waitFor();
+  await page.locator('details').filter({has:page.locator('summary').filter({hasText:'Browser Birthday'})}).locator('summary').click();
+  const savedBirthday=page.locator('form[action$="/birthdays/save"]').last();
+  await savedBirthday.locator('input[name=year]').fill('1990');
+  await Promise.all([page.waitForURL('**/birthdays'),page.getByRole('button',{name:'Update birthday for Browser Birthday',exact:true}).click()]);
+  assert.match((await request({path:'/birthdays/export',method:'GET',headers:{}})).headers['Content-Disposition'],/birthdays.csv/);
   await page.goto('http://receipt.test/tasks');
   await page.locator('#new-list-item').fill('Assistant priority');
   await Promise.all([page.waitForURL('**/tasks'), page.getByRole('button',{name:'Add',exact:true}).click()]);
@@ -342,7 +356,7 @@ process.on('exit', () => child.kill());
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
-    for (const path of ['/','/printer-diagnostics','/backup','/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/tasks','/finance/test','/savings/goals','/receipts','/finance-review']) {
+    for (const path of ['/','/printer-diagnostics','/backup','/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/birthdays','/tasks','/finance/test','/savings/goals','/receipts','/finance-review']) {
       await page.goto('http://receipt.test'+path);
       await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `${path} overflows at ${width}`);

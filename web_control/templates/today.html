@@ -36,6 +36,17 @@
     <p>
         <a href="{{ url_for('task_list') }}#daily-assistant">Choose priorities and preparation</a>
     </p>
+    {% if today_view.birthdays %}
+        <article>
+            <h3>Birthdays</h3>
+            {% for item in today_view.birthdays %}
+                <p>
+                    {{ item.when }} · {{ item.name }}
+                    {% if item.age is not none %}· Turns {{ item.age }}{% endif %}
+                </p>
+            {% endfor %}
+            <a href="{{ url_for('birthday_list') }}">Manage birthdays</a></article>
+    {% endif %}
     <div class="today-grid">
         <article>
             <h3>{{ 'Other tasks' if today_view.assistant.focus else 'Tasks' }}</h3>
