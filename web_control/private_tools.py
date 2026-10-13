@@ -85,11 +85,12 @@ def register(app, login_required, start_print, root, print_lock):
     @app.get('/backup')
     @login_required
     def backup_page():
-        from web_control.maintenance import saved, options
+        from web_control.maintenance import saved, options, attempt_state
         from web_control.backup_health import state
         from receipt.local_time import uk_receipt_time
         health=state(root)
-        return render_template('backup.html', pending=None, saved_backups=saved(root), backup_options=options(), backup_health=health, backup_health_time=uk_receipt_time(health.get('checked_at')), backup_verified_time=uk_receipt_time(health.get('backup_created_at')))
+        attempt=attempt_state(root)
+        return render_template('backup.html', pending=None, saved_backups=saved(root), backup_options=options(), backup_health=health, backup_health_time=uk_receipt_time(health.get('checked_at')), backup_verified_time=uk_receipt_time(health.get('backup_created_at')), backup_attempt=attempt, backup_retry_time=uk_receipt_time(attempt.get('next_retry')))
 
     @app.post('/backup/check')
     @login_required
@@ -126,7 +127,7 @@ def register(app, login_required, start_print, root, print_lock):
                     from web_control.backup_health import check
                     check(root,force=True)
             flash('Private snapshot saved.' if ok else 'Wait for the receipt job or backup to finish, then try again.')
-        except (OSError, ValueError): flash('Backup could not be saved. Check your local files and disk space.')
+        except (OSError, ValueError) as error: flash('Backup could not be saved: '+backup.failure_message(error))
         return redirect(url_for('backup_page'))
 
     @app.get('/backup/saved/<name>')

@@ -24,6 +24,14 @@
             {% if not pending %}
                 <section>
                     <h2>Automatic snapshots</h2>
+                    {% if backup_attempt and backup_attempt.state == 'failed' %}
+                        <p class="flash" role="status">Latest snapshot attempt failed: {{ backup_attempt.message }}</p>
+                        <p class="muted">
+                            Automatic retry after {{ backup_retry_time or 'the retry delay' }}. Save snapshot now retries immediately. Existing snapshots and source data have been kept.
+                        </p>
+                    {% elif backup_attempt and backup_attempt.state == 'idle' %}
+                        <p class="muted">{{ backup_attempt.message }}</p>
+                    {% endif %}
                     {% if backup_health %}
                         <p>
                             Latest restore drill: <strong>{{ backup_health.status }}</strong> · {{ backup_health_time }}.

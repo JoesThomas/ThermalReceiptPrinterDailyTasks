@@ -230,6 +230,17 @@ process.on('exit', () => child.kill());
   await savedCopy.locator('input[name=confirm_saved]').check();
   await Promise.all([page.waitForURL('**/preview'),savedCopy.getByRole('button',{name:'Print saved preview'}).click()]);
   assert.match(await page.locator('main').innerText(),/Saved copy queued/);
+  await page.goto('http://receipt.test/__fixture_backup_data');
+  await Promise.all([page.waitForURL('**/backup'), page.getByRole('button',{name:'Save snapshot now',exact:true}).click()]);
+  await page.locator('main').getByText('Private snapshot saved.',{exact:true}).waitFor();
+  await page.goto('http://receipt.test/__fixture_backup_data?invalid=1');
+  await Promise.all([page.waitForURL('**/backup'), page.getByRole('button',{name:'Save snapshot now',exact:true}).click()]);
+  assert.match(await page.locator('main').innerText(),/data\/to_buy.json is not valid UTF-8 JSON/);
+  assert.doesNotMatch(await page.locator('main').innerText(),/PRIVATE FIXTURE VALUE/);
+  await page.getByText('Latest valid snapshot:',{exact:false}).waitFor();
+  await page.goto('http://receipt.test/__fixture_backup_data');
+  await Promise.all([page.waitForURL('**/backup'), page.getByRole('button',{name:'Save snapshot now',exact:true}).click()]);
+  await page.locator('main').getByText('Private snapshot saved.',{exact:true}).waitFor();
   await page.goto('http://receipt.test/print-plan');
   await Promise.all([page.waitForURL('**/preview'),page.getByRole('button',{name:'Generate and print selected pages'}).click()]);
   assert.match(await page.locator('main').innerText(),/Selected receipt pages queued/);
@@ -317,7 +328,7 @@ process.on('exit', () => child.kill());
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
-    for (const path of ['/','/printer-diagnostics','/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/tasks','/finance/test','/savings/goals','/receipts','/finance-review']) {
+    for (const path of ['/','/printer-diagnostics','/backup','/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/tasks','/finance/test','/savings/goals','/receipts','/finance-review']) {
       await page.goto('http://receipt.test'+path);
       await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `${path} overflows at ${width}`);

@@ -212,3 +212,5 @@ data/update_guard.lock
 .venv-next-*
 
 data/source_retry_status.json
+
+data/backup_attempt.json
