@@ -75,3 +75,22 @@ def metadata(values=None, *, finance=False):
         "settings_recovered": warning is not None,
         "scenario_fingerprint": fingerprint(values) if values is not None else None,
     }
+
+
+def preview_settings_fingerprint():
+    """Track local receipt configuration; council refresh timestamps aren't edits."""
+    from receipt_settings import settings_state
+    from services import bin_collections
+
+    settings, _ = settings_state()
+    try:
+        bins = bin_collections.load()
+        bin_settings = {
+            key: bins[key]
+            for key in ("enabled", "provider", "address", "postcode", "uprn", "manual")
+        }
+    except (OSError, ValueError):
+        bin_settings = "unavailable"
+    return fingerprint(
+        dict(receipt=settings, bins=bin_settings, finance=finance_fingerprint())
+    )

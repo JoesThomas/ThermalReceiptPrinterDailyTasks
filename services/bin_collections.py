@@ -195,12 +195,80 @@ def due_on(state, day):
 
 
 def reminder_lines(state=None, day=None):
-    state=state if state is not None else refresh(); day=day or today()
-    names=due_on(state,day+timedelta(days=1))
-    lines=['[ ] Put out '+name+' for tomorrow' for name in names]
-    if state['enabled'] and state['provider']=='birmingham' and state.get('error'):
-        lines.append('BIN CHECK FAILED - verify with council' if not names else 'Bin dates cached - check council changes')
+    state = state if state is not None else refresh()
+    day = day or today()
+    names = due_on(state, day + timedelta(days=1))
+    lines = ["[ ] Put out " + name + " today" for name in names]
+    if names:
+        lines.append("Collection: " + (day + timedelta(days=1)).strftime("%a %d %b"))
+    if state["enabled"] and state["provider"] == "birmingham" and state.get("error"):
+        lines.append(
+            "BIN CHECK FAILED - verify with council"
+            if not names
+            else "Bin dates cached - check council changes"
+        )
     return lines
+
+
+def schedule_summary(state, day=None):
+    """Explain saved dates without fetching council data or guessing recurrence."""
+    day = day or today()
+    warnings = []
+    for row in state["manual"] if state["provider"] == "manual" else []:
+        anchor = date.fromisoformat(row["date"])
+        if (anchor - day).days > 90:
+            warnings.append(
+                f"{row['bin']}: schedule starts {anchor.strftime('%a %d %b %Y')}. Check the year if you expected a reminder now."
+            )
+    stale = (
+        state["provider"] == "birmingham"
+        and age(state.get("last_success", "")) > 172800
+    )
+    rows = []
+    if not stale:
+        source = (
+            state["manual"] if state["provider"] == "manual" else state["collections"]
+        )
+        for row in source:
+            collection = date.fromisoformat(row["date"])
+            repeat = row.get("repeat", 0) if state["provider"] == "manual" else 0
+            if collection < day:
+                if not repeat:
+                    continue
+                elapsed = (day - collection).days
+                collection += timedelta(
+                    days=((elapsed + repeat - 1) // repeat) * repeat
+                )
+            rows.append((collection, row["bin"]))
+    upcoming = [
+        dict(
+            bin=name,
+            date=stamp.isoformat(),
+            collection=stamp.strftime("%a %d %b %Y"),
+            put_out=(stamp - timedelta(days=1)).strftime("%a %d %b %Y"),
+            today=stamp == day + timedelta(days=1),
+        )
+        for stamp, name in sorted(set(rows))
+    ]
+    tomorrow = due_on(state, day + timedelta(days=1))
+    if not state["enabled"]:
+        status = "Reminders disabled. Enable day-before reminders to include them on the receipt."
+    elif stale:
+        status = "Council dates are unavailable or more than 48 hours old. Check council now or use a manual schedule."
+    elif tomorrow:
+        names = ", ".join(tomorrow[:5])
+        if len(tomorrow) > 5:
+            names += f" and {len(tomorrow)-5} other bins"
+        status = "Put " + names + " out today for collection tomorrow."
+    elif upcoming:
+        status = (
+            "No bins to put out today. Next collection: "
+            + upcoming[0]["collection"]
+            + "."
+        )
+    else:
+        status = "No upcoming collection dates saved. Add a date or check the council schedule."
+    return dict(status=status, upcoming=upcoming, warnings=warnings)
 
 
 def manual_text(rows):

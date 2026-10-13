@@ -24,6 +24,8 @@ class RecordingPrinter:
         self.images = []
         self.align = "left"
         self.capture_order = None
+        from receipt.build_info import preview_settings_fingerprint
+        self.settings_fingerprint = preview_settings_fingerprint()
 
     def __getattr__(self, name):
         return getattr(self.printer, name)
@@ -96,6 +98,7 @@ class RecordingPrinter:
         pages = existing['pages'] if existing else {}
         page_times = existing['page_times'] if existing else {}
         page_images = existing['page_images'] if existing else {}
+        page_settings = existing.get('page_settings', {}) if existing else {}
 
         def store_section(name, section):
             images = []
@@ -108,6 +111,7 @@ class RecordingPrinter:
             pages[name] = IMAGE_MARKER.sub(local_marker, section)
             page_images[name] = images
             page_times[name] = captured_at
+            page_settings[name] = self.settings_fingerprint
 
         if only_page is None:
             names = self.capture_order or PAGE_NAMES[:3] + (("finance",) if len(sections) > 3 else ())
@@ -123,7 +127,7 @@ class RecordingPrinter:
             order = list(existing.get('page_order') or PAGE_NAMES)
             order += [name for name in (self.capture_order or PAGE_NAMES) if name not in order]
         write_json(path, {"page_order": list(order), "freshness": {**((existing or {}).get("freshness", {})), **snapshot()}, "page_times": page_times, "pages": pages,
-                          "page_images": page_images})
+                          "page_images": page_images, "page_settings": page_settings})
         from receipt.archive import save as archive_save
         from receipt.freshness import snapshot
         fresh = {name: pages[name] for name in order if name in pages and page_times.get(name) == captured_at}
@@ -165,7 +169,11 @@ def load_capture(path=CAPTURE_FILE):
         if not isinstance(order, list) or not order or any(not isinstance(name, str) or name not in PAGE_NAMES for name in order) or len(order) != len(set(order)):
             order = list(PAGE_NAMES)
         order += [name for name in PAGE_NAMES if name not in order]
-        return dict(page_order=order, pages=pages, page_times=times, page_images=images, freshness=checks)
+        raw_settings = data.get('page_settings', {})
+        settings = {key: value for key, value in raw_settings.items()
+                    if key in pages and isinstance(value, str)} if isinstance(raw_settings, dict) else {}
+        return dict(page_order=order, pages=pages, page_times=times, page_images=images, freshness=checks,
+                    page_settings=settings)
     except (OSError, ValueError, TypeError, RecursionError):
         return None
 

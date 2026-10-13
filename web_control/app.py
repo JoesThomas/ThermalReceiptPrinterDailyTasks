@@ -1014,6 +1014,8 @@ def preview():
     live_capture = load_capture(LIVE_PREVIEW_FILE)
     printed_capture = load_capture()
     capture = (live_capture if source == "live" else printed_capture) or {"pages": {}, "page_times": {}}
+    from receipt.build_info import preview_settings_fingerprint
+    current_settings = preview_settings_fingerprint()
     examples = example_pages(_local_today())
     selected = (capture.get("page_order") or PAGE_NAMES) if page == "all" else (page,)
     if request.args.get('sections'):
@@ -1026,6 +1028,7 @@ def preview():
                                        capture.get("page_images", {}).get(name, [])),
               "captured_at": capture.get("page_times", {}).get(name),
               "captured_local": uk_receipt_time(capture.get("page_times", {}).get(name)),
+              "settings_changed": bool(capture.get('page_settings', {}).get(name)) and capture['page_settings'][name] != current_settings,
               "sample": not bool(capture["pages"].get(name))}
              for name in selected]
     from receipt.quality import check
