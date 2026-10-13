@@ -106,7 +106,7 @@ def snapshot(root):
 
 def config_payload(snapshot):
     files = {
-        name: json.loads(base64.b64decode(raw, validate=True))
+        name: private_backup.file_content(name, base64.b64decode(raw, validate=True))
         for name, raw in snapshot["files"].items()
         if raw is not None
     }

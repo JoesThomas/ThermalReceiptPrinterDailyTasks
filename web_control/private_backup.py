@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 MAX_BYTES = 900_000
-OBJECT_FILES = {'finance_scenarios.json', 'receipt_settings.last-good.json','receipt_archive_settings.json','finance_reviews.json','assets.json','rental_tax.json','finance_explanations.json','lifestyle.json','transaction_sources.json','finance_planning.json','bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
+OBJECT_FILES = {'birthdays.csv','finance_scenarios.json', 'receipt_settings.last-good.json','receipt_archive_settings.json','finance_reviews.json','assets.json','rental_tax.json','finance_explanations.json','lifestyle.json','transaction_sources.json','finance_planning.json','bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
                 'investments.json', 'finance_settings.json', 'finance_categories.json',
                 'food_shop_override.json', 'tesco_progress.json', 'meals_eaten.json'}
 LIST_FILES = {'finance_monthly_snapshots.json','routines.json', 'future_tasks.json', 'wealth_history.json'}
@@ -34,6 +34,10 @@ def _amount(value):
 
 def _validate_file(name, content):
     from datetime import date
+    if name == 'birthdays.csv':
+        from actions.birthdays import validate_rows
+        if set(content) != {'rows'}: raise ValueError('Invalid birthday backup.')
+        validate_rows(content['rows'])
     if name == 'finance_reviews.json':
         from finance.reviews import validate as validate_reviews
         validate_reviews(content)
@@ -177,6 +181,14 @@ class BackupExportError(ValueError):
         super().__init__(result)
 
 
+def file_content(name, raw):
+    if name == 'birthdays.csv':
+        from actions.birthdays import parse_csv
+        rows, _ = parse_csv(raw)
+        return {'rows': rows}
+    return json.loads(raw.decode('utf-8'))
+
+
 def export(root):
     files = {}
     for name in sorted(FILES):
@@ -191,7 +203,7 @@ def export(root):
         if len(raw_file) > MAX_BYTES:
             raise BackupExportError('too_large', name)
         try:
-            content = json.loads(raw_file.decode('utf-8'))
+            content = file_content(name, raw_file)
         except (ValueError, RecursionError):
             raise BackupExportError('invalid_json', name) from None
         try:
@@ -253,7 +265,12 @@ def restore(root, value):
     private_write(target, json.dumps(rollback).encode())
     try:
         for name, content in value['files'].items():
-            private_write(root / 'data' / name, json.dumps(content, ensure_ascii=False, allow_nan=False).encode())
+            if name == 'birthdays.csv':
+                from actions.birthdays import csv_bytes
+                raw = csv_bytes(content['rows'])
+            else:
+                raw = json.dumps(content, ensure_ascii=False, allow_nan=False).encode()
+            private_write(root / 'data' / name, raw)
     except Exception as cause:
         rollback_failed = False
         for name, raw in originals.items():

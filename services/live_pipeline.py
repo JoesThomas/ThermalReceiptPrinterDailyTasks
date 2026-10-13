@@ -4951,6 +4951,11 @@ def run_live_pipeline(
             print_section(printer, title, lines, line=print_line, left=left,
                           wrap=print_wrapped, safe=printer_safe_text)
         focus_titles = {row['title'] for row in assistant_brief['focus']}
+        try:
+            from actions.birthdays import receipt_lines as birthday_lines
+            assistant_section('BIRTHDAYS', birthday_lines())
+        except (OSError, ValueError):
+            left(printer, 'BIRTHDAY DATA UNAVAILABLE - CHECK WEB LIST')
         assistant_section('DO FIRST', ['[ ] '+row['title'] for row in assistant_brief['focus']
                                        if not (therapy_paid and row['title'].casefold() == 'pay for therapy')])
         appointment = assistant_brief['appointment']

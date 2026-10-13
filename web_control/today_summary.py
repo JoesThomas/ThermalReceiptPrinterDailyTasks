@@ -84,7 +84,12 @@ def dashboard():
         errors.append('Daily assistant settings unavailable.')
     focus_ids = {row['id'] for row in assistant['focus']}
     tasks = [row for row in tasks if row['id'] not in focus_ids]
-    return dict(assistant=assistant, bin_lines=bin_lines, tasks=tasks, exercises=exercises, deliveries=deliveries,
+    from actions import birthdays
+    try: birthday_rows = birthdays.upcoming()
+    except (OSError, ValueError):
+        birthday_rows = []
+        errors.append('Birthday data unavailable; review the birthday list.')
+    return dict(birthdays=birthday_rows, assistant=assistant, bin_lines=bin_lines, tasks=tasks, exercises=exercises, deliveries=deliveries,
                 events=[e for index, e in enumerate(calendar.get('events', [])) if isinstance(e, dict) and e.get('date') == checklists.today() and (not assistant['appointment'] or index != assistant['appointment']['index'])] if isinstance(calendar.get('events', []), list) else [],
                 calendar_checked=uk_receipt_time(calendar.get('checked_at')),
                 checks=[{'name': name, 'status': row['status'], 'local': uk_receipt_time(row.get('source_checked_at') or row['checked_at'])} for name, row in checks.items()],

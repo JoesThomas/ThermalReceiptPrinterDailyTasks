@@ -100,6 +100,7 @@ def preview_settings_fingerprint():
 def assistant_fingerprint():
     from actions import checklists
     try:
-        return fingerprint(checklists.load().get('assistant', {}))
+        from actions.birthdays import load as birthday_rows
+        return fingerprint(dict(assistant=checklists.load().get('assistant', {}), birthdays=birthday_rows()))
     except (OSError, ValueError):
         return 'unavailable'

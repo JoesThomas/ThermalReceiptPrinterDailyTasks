@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Birthdays · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <header>
+                <h1>Birthdays</h1>
+                <p class="muted">
+                    Private birthday records. Today's and the next seven days' birthdays appear on the Actions receipt. Unknown years stay blank; ages appear only when a year is known. Check the source dates with the people concerned.
+                </p>
+            </header>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            <section>
+                <h2>Coming up</h2>
+                {% for item in upcoming %}
+                    <p>
+                        <strong>{{ item.when }} · {{ item.name }}</strong>
+                        {% if item.age is not none %}· Turns {{ item.age }}{% endif %}
+                    </p>
+                {% else %}
+                    <p>No saved birthdays in the next seven days.</p>
+                {% endfor %}
+            </section>
+            <section>
+                <h2>Add or correct a birthday</h2>
+                <form method="post"
+                      action="{{ url_for('birthday_save') }}"
+                      class="bin-settings-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="id" value="{{ draft.get('id','') }}">
+                    <label>
+                        Name
+                        <input name="name"
+                               maxlength="120"
+                               required
+                               value="{{ draft.get('name','') }}">
+                    </label>
+                    <label>
+                        Birth year (optional)
+                        <input type="number"
+                               name="year"
+                               min="1"
+                               max="{{ current_year }}"
+                               value="{{ draft.get('year','') }}">
+                    </label>
+                    <label>
+                        Month
+                        <input type="number"
+                               name="month"
+                               min="1"
+                               max="12"
+                               required
+                               value="{{ draft.get('month','') }}">
+                    </label>
+                    <label>
+                        Day
+                        <input type="number"
+                               name="day"
+                               min="1"
+                               max="31"
+                               required
+                               value="{{ draft.get('day','') }}">
+                    </label>
+                    <label>
+                        Facebook profile (optional)
+                        <input type="url"
+                               name="profile"
+                               maxlength="250"
+                               value="{{ draft.get('profile','') }}">
+                    </label>
+                    <button class="primary">Save birthday</button>
+                </form>
+            </section>
+            <section>
+                <h2>Import and export</h2>
+                <p class="muted">
+                    CSV columns: Name, Year, Month, Day, Link to Profile. The saved CSV also includes a stable ID so edits remain attached to the same record. Blank rows and identical duplicates are removed; conflicting duplicates or invalid dates reject the import without replacing saved entries.
+                </p>
+                <form method="post"
+                      action="{{ url_for('birthday_import') }}"
+                      enctype="multipart/form-data"
+                      class="bin-settings-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label>
+                        Birthday CSV
+                        <input type="file" name="file" accept=".csv,text/csv" required>
+                    </label>
+                    <button>Import birthday CSV</button>
+                </form>
+                <p>
+                    <a class="button" href="{{ url_for('birthday_export') }}">Download birthdays.csv</a>
+                </p>
+            </section>
+            <section>
+                <h2>Saved birthdays ({{ birthdays|length }})</h2>
+                {% for item in birthdays %}
+                    <details>
+                        <summary>
+                            {{ item.name }} · {{ '%02d'|format(item.day) }}/{{ '%02d'|format(item.month) }}
+                            {% if item.year %}/{{ item.year }}{% endif %}
+                        </summary>
+                        <form method="post"
+                              action="{{ url_for('birthday_save') }}"
+                              class="bin-settings-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="id" value="{{ item.id }}">
+                            <label>
+                                Name
+                                <input name="name" maxlength="120" required value="{{ item.name }}">
+                            </label>
+                            <label>
+                                Birth year (optional)
+                                <input type="number"
+                                       name="year"
+                                       min="1"
+                                       max="{{ current_year }}"
+                                       value="{{ item.year if item.year is not none else '' }}">
+                            </label>
+                            <label>
+                                Month
+                                <input type="number"
+                                       name="month"
+                                       min="1"
+                                       max="12"
+                                       required
+                                       value="{{ item.month }}">
+                            </label>
+                            <label>
+                                Day
+                                <input type="number"
+                                       name="day"
+                                       min="1"
+                                       max="31"
+                                       required
+                                       value="{{ item.day }}">
+                            </label>
+                            <label>
+                                Facebook profile (optional)
+                                <input type="url" name="profile" maxlength="250" value="{{ item.profile }}">
+                            </label>
+                            <button>Update birthday for {{ item.name }}</button>
+                            <button name="action" value="remove" formnovalidate>Remove birthday for {{ item.name }}</button>
+                        </form>
+                    </details>
+                {% else %}
+                    <p>Import your CSV or add a birthday above.</p>
+                {% endfor %}
+            </section>
+        </main>
+    </body>
+</html>
