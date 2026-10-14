@@ -108,6 +108,16 @@
                                        value="{{ account.target or '' }}">
                             </label>
                             <label>
+                                Maximum balance (£, optional)
+                                <input name="balance_limit"
+                                       type="number"
+                                       min="0"
+                                       max="{{ 50000 if account.type == 'premium_bonds' else 10000000 }}"
+                                       step="0.01"
+                                       value="{{ account.balance_limit if account.balance_limit is defined and account.balance_limit is not none else '' }}">
+                                <small>Stops further forecast contributions at this balance. Leave blank for no limit; Premium Bonds always stop at £50,000. A balance goal is a progress milestone, not a limit.</small>
+                            </label>
+                            <label>
                                 Share of new savings (%)
                                 <input name="monthly_share"
                                        type="number"
@@ -115,7 +125,7 @@
                                        max="100"
                                        step="0.01"
                                        value="{{ account.monthly_share or '0' }}">
-                                <small>Total shares must be at most 100%. Leave all at zero for equal automatic allocation between unfinished goals.</small>
+                                <small>Total shares must be at most 100%. Leave all at zero for equal automatic allocation between eligible accounts.</small>
                             </label>
                             <button>Save account settings</button>
                         </form>

@@ -19,6 +19,7 @@ def account(name, balance, target, kind="savings", share="50"):
         target=D(target) if target is not None else None,
         share=D(share),
         isa_contributions=None,
+        balance_limit=D(target) if target is not None else None,
     )
 
 
@@ -153,7 +154,7 @@ class SavingsOverflowTests(TestCase):
         text = receipt(result, TODAY)
         section = text.split("BALANCES AT FORECAST END")[1]
         for label, amount in [
-            ("HSBC (excludes Monzo)", "£2,000.00"),
+            ("HSBC", "£2,000.00"),
             ("Monzo", "£500.00"),
             ("Amex - balance owed", "£0.00"),
             ("NS and I", "£50,000.00"),

@@ -9,7 +9,7 @@ TODAY=date(2026,10,11)
 
 def account(name,share=0,balance=D(0),target=D(1000)):
     return {'id':name,'name':name,'kind':'investment','type':'stocks_isa','balance':balance,
-            'date':str(TODAY),'target':target,'share':D(share),'isa_contributions':D(0)}
+            'date':str(TODAY),'target':target,'balance_limit':target,'share':D(share),'isa_contributions':D(0)}
 
 
 def source():

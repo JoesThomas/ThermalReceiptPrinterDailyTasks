@@ -55,6 +55,7 @@ def load_view(today):
                 "balance": money(account.get("balance")),
                 "date": account.get("balance_date"),
                 "target": target,
+                "balance_limit": money(account.get("balance_limit")),
                 "share": money(account.get("monthly_share"), ZERO),
                 "isa_contributions": account.get("contributions", ZERO)
                 if account["type"] in {"cash_isa", "stocks_isa", "other_isa"}
@@ -137,6 +138,12 @@ def prepare_cash_topup(base, accounts, today, start):
     if len(candidates) != 1:
         return
     account = candidates[0]
+    account["cash_reserve_limit"] = money(reserve["target"])
+    explicit_limit = money(account.get("balance_limit"))
+    if explicit_limit is not None and explicit_limit < account["cash_reserve_limit"]:
+        raise ValueError(
+            "Cash account maximum is below its protected cash reserve target. Adjust those settings first."
+        )
     account_date = day(account.get("date"))
     reserve_date = day(reserve.get("date"))
     held = money(reserve.get("held"))
@@ -164,7 +171,17 @@ def prepare_cash_topup(base, accounts, today, start):
         }
 
 
-def allocate(accounts, periods, automatic_events=(), *, equal=False):
+def contribution_limit(row):
+    limit = money(row.get("balance_limit"))
+    if row["type"] == "premium_bonds":
+        limit = min(limit, Decimal(50000)) if limit is not None else Decimal(50000)
+    cash_limit = money(row.get("cash_reserve_limit"))
+    if cash_limit is not None:
+        limit = min(limit, cash_limit) if limit is not None else cash_limit
+    return limit
+
+
+def allocate(accounts, periods, automatic_events=(), *, equal=False, isa_limits=None):
     rows = deepcopy(accounts)
     for row in rows:
         if row["type"] == "premium_bonds":
@@ -198,7 +215,15 @@ def allocate(accounts, periods, automatic_events=(), *, equal=False):
         if explicit
         else Decimal(1)
     )
+    from finance.isa_forecast import Headroom, is_isa
+
+    headroom = Headroom(isa_limits)
     by_id = {row["id"]: row for row in rows}
+    scheduled = [
+        (event, by_id[event["savings_account"]])
+        for event in automatic_events
+        if event.get("savings_account") in by_id
+    ]
     unallocated = ZERO
     timeline = [
         (period["date"], 1, index, period) for index, period in enumerate(periods)
@@ -216,6 +241,13 @@ def allocate(accounts, periods, automatic_events=(), *, equal=False):
             if row is None or row["projected"] is None:
                 continue
             part = period["amount"]
+            cap = contribution_limit(row)
+            if cap is not None:
+                part = min(part, max(ZERO, cap - row["projected"]))
+            isa_room = headroom.room(row, on)
+            if isa_room is not None:
+                part = min(part, isa_room)
+            headroom.use(row, on, part)
             row["projected"] += part
             row["added"] += part
             if period.get("reserved_cash_topup"):
@@ -237,14 +269,40 @@ def allocate(accounts, periods, automatic_events=(), *, equal=False):
         budget = period.get("savings_budget", amount)
         remaining = rounded(budget * fraction, rounding=ROUND_DOWN)
         assigned = ZERO
-        # Reserve room for already scheduled Premium Bonds payments. Their hard
-        # holding cap applies even when a balance goal was set higher.
-        room = {
-            row["id"]: max(
-                ZERO,
-                row["target"]
-                - row["projected"]
-                - sum(
+        fixed = period.get("account_allocations")
+        if fixed is not None:
+            if (
+                not isinstance(fixed, dict)
+                or sum((money(value, ZERO) for value in fixed.values()), ZERO) != amount
+            ):
+                raise ValueError(
+                    "Planned account transfers must match the savings cash flow."
+                )
+            for row in rows:
+                part = money(fixed.get(row["id"]), ZERO)
+                if part <= ZERO or row["projected"] is None:
+                    continue
+                headroom.use(row, on, part)
+                row["projected"] += part
+                row["added"] += part
+                if index == 0:
+                    row["first"] += part
+                assigned += part
+                if (
+                    row["target"]
+                    and row["projected"] >= row["target"]
+                    and row["goal_date"] is None
+                ):
+                    row["goal_date"] = on if period.get("funded", True) else None
+        else:
+            # Reserve room for already scheduled Premium Bonds payments. Their hard
+            # holding cap applies even when a balance goal was set higher.
+            room = {}
+            for row in rows:
+                if row["projected"] is None:
+                    continue
+                limit = contribution_limit(row)
+                reserved_amount = sum(
                     (
                         event["amount"]
                         for event in automatic_events
@@ -253,56 +311,120 @@ def allocate(accounts, periods, automatic_events=(), *, equal=False):
                     ),
                     ZERO,
                 )
-                if row["type"] == "premium_bonds"
-                else row["target"] - row["projected"]
-                if row["target"]
-                else remaining,
-            )
-            for row in rows
-            if row["projected"] is not None
-        }
-        while remaining >= CENT:
-            eligible = [
-                row
-                for row in rows
-                if row["projected"] is not None
-                and room.get(row["id"], ZERO) > ZERO
-                and (not explicit or row["share"] > 0)
-            ]
-            if not eligible:
-                break
-            weights = sum(
-                (row["share"] if explicit else Decimal(1) for row in eligible), ZERO
-            )
-            available = remaining
-            progressed = ZERO
-            for row in eligible:
-                part = rounded(
-                    available * (row["share"] if explicit else Decimal(1)) / weights,
-                    rounding=ROUND_DOWN,
+                room[row["id"]] = (
+                    max(ZERO, limit - row["projected"] - reserved_amount)
+                    if limit is not None
+                    else remaining
                 )
-                part = min(part, room[row["id"]])
-                if not part and remaining >= CENT:
-                    part = min(CENT, room[row["id"]])
-                part = min(part, remaining)
-                row["projected"] += part
-                row["added"] += part
-                if index == 0:
-                    row["first"] += part
-                remaining -= part
-                room[row["id"]] -= part
-                assigned += part
-                progressed += part
-                if (
-                    row["target"]
-                    and row["projected"] >= row["target"]
-                    and row["goal_date"] is None
-                ):
-                    row["goal_date"] = (
-                        period["date"] if period.get("funded", True) else None
+            while remaining >= CENT:
+                eligible = [
+                    row
+                    for row in rows
+                    if row["projected"] is not None
+                    and room.get(row["id"], ZERO) > ZERO
+                    and (
+                        headroom.room(row, on, scheduled) is None
+                        or headroom.room(row, on, scheduled) > ZERO
                     )
-            if progressed == 0:
-                break
+                    and (not explicit or row["share"] > 0)
+                ]
+                fallback = False
+                if not eligible and isa_limits is not None:
+                    eligible = [
+                        row
+                        for row in rows
+                        if row["projected"] is not None
+                        and row["kind"] == "savings"
+                        and not is_isa(row)
+                        and not row.get("cash_reserve_limit")
+                        and room.get(row["id"], ZERO) > ZERO
+                    ]
+                    fallback = bool(eligible)
+                if not eligible:
+                    break
+                weights = sum(
+                    (
+                        row["share"] if explicit and not fallback else Decimal(1)
+                        for row in eligible
+                    ),
+                    ZERO,
+                )
+                available = remaining
+                isa_weights = sum(
+                    (
+                        row["share"] if explicit and not fallback else Decimal(1)
+                        for row in eligible
+                        if is_isa(row)
+                    ),
+                    ZERO,
+                )
+                shared_room = headroom.shared_room(on, scheduled)
+                isa_budget = (
+                    min(available * isa_weights / weights, shared_room)
+                    if shared_room is not None and isa_weights
+                    else None
+                )
+                cash_weights = sum(
+                    (
+                        row["share"] if explicit and not fallback else Decimal(1)
+                        for row in eligible
+                        if row["type"] == "cash_isa"
+                    ),
+                    ZERO,
+                )
+                cash_budget = (
+                    min(
+                        isa_budget * cash_weights / isa_weights,
+                        headroom.cash_room(on, scheduled),
+                    )
+                    if isa_budget is not None and cash_weights
+                    else None
+                )
+                progressed = ZERO
+                for row in eligible:
+                    weight = row["share"] if explicit and not fallback else Decimal(1)
+                    part = rounded(
+                        cash_budget * weight / cash_weights
+                        if cash_budget is not None and row["type"] == "cash_isa"
+                        else isa_budget * weight / isa_weights
+                        if isa_budget is not None and is_isa(row)
+                        else available * weight / weights,
+                        rounding=ROUND_DOWN,
+                    )
+                    isa_room = headroom.room(row, on, scheduled)
+                    if isa_room is not None and isa_room <= ZERO:
+                        continue
+                    part = min(
+                        part,
+                        room[row["id"]],
+                        isa_room if isa_room is not None else part,
+                    )
+                    if not part and remaining >= CENT:
+                        part = min(
+                            CENT,
+                            room[row["id"]],
+                            isa_room if isa_room is not None else CENT,
+                        )
+                    part = min(part, remaining)
+                    headroom.use(row, on, part)
+                    row["projected"] += part
+                    row["added"] += part
+                    if index == 0:
+                        row["first"] += part
+                    remaining -= part
+                    room[row["id"]] -= part
+                    assigned += part
+                    progressed += part
+                    if (
+                        row["target"]
+                        and row["projected"] >= row["target"]
+                        and row["goal_date"] is None
+                    ):
+                        row["goal_date"] = (
+                            period["date"] if period.get("funded", True) else None
+                        )
+                if progressed == 0:
+                    break
         for row in rows:
             part = row["added"] - before[row["id"]]
             income = (
@@ -322,6 +444,7 @@ def allocate(accounts, periods, automatic_events=(), *, equal=False):
         unallocated += max(ZERO, amount - assigned)
     return {
         "accounts": rows,
+        "isa_years": headroom.years,
         "unallocated": unallocated,
         "current_total": sum(
             (row["balance"] for row in rows if row["balance"] is not None), ZERO

@@ -142,10 +142,14 @@ def receipt(result, today):
             if data["equal_savings"]
             else "Savings split: saved contribution shares."
         )
+    if data.get("respect_isa_allowance"):
+        text(
+            "ISA tax-year contribution limits enabled; based on recorded subscriptions. Transfers and existing balances are separate."
+        )
     text("Extra transfers to make:")
     if data["use_accounts"]:
         text(
-            "Full goals redirect to other eligible accounts; unplaced savings stay in bank."
+            "Account limits redirect to other eligible accounts; savings goals do not stop contributions."
         )
     moved = Decimal(0)
     if data["use_accounts"]:
@@ -189,6 +193,8 @@ def receipt(result, today):
         or "hargreaves" in bill["name"].casefold()
         or bill["name"].casefold().strip() == "hlam regular saving"
     ]
+    if forecast.get("capped_savings_events"):
+        text("Some scheduled savings are capped in this plan; adjust standing orders to match.")
     if regular:
         text("Already scheduled - do not send again:")
         for bill in regular:
@@ -360,6 +366,13 @@ def receipt(result, today):
             if index:
                 rule()
             text(account["name"].upper())
+            from finance.savings_targets import contribution_limit
+
+            limit = contribution_limit(account)
+            if limit is not None:
+                amount("Maximum balance", limit)
+            elif account["target"]:
+                text("Goal is a milestone; contributions continue.")
             if account["balance"] is None:
                 text(
                     "Balance unavailable; excluded from totals and contribution allocation."
@@ -443,8 +456,7 @@ def receipt(result, today):
     bank_total = forecast["end_cash"] + base["buffer"] - forecast["reserved_total"]
     monzo_end = min(data.get("monzo_target", Decimal(0)), max(Decimal(0), bank_total))
     amount(
-        base.get("primary_bank", "Bank cash")
-        + (" (excludes Monzo)" if data.get("monzo_target") else ""),
+        base.get("primary_bank", "Bank cash"),
         bank_total - monzo_end,
     )
     if data.get("monzo_target"):
