@@ -4816,18 +4816,19 @@ def run_live_pipeline(
         )
 
         preview_progress("Checking vehicle MOT/tax", 1, 5)
-        # Saved dates are available daily without an API key. Keep legacy DVLA
+        # Saved dates appear on Sundays and milestone reminder days. Keep legacy DVLA
         # checks only for registrations that are not already maintained locally.
         from services import vehicle_records
         try:
             local_vehicles = vehicle_records.load()['vehicles']
             local_registrations = {row['registration'] for row in local_vehicles}
-            if local_vehicles:
+            vehicle_lines = vehicle_records.receipt_lines(local_vehicles)
+            if vehicle_lines:
                 print_line(printer, '=')
                 printer.set(bold=True)
                 left(printer, 'VEHICLES - SAVED DATES')
                 printer.set(bold=False)
-                for line in vehicle_records.receipt_lines(local_vehicles):
+                for line in vehicle_lines:
                     print_wrapped(printer, printer_safe_text(line), width=40)
                 print_wrapped(printer, 'Manually recorded; confirm current cover.', width=40)
         except (OSError, ValueError):

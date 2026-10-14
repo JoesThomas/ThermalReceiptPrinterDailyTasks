@@ -78,7 +78,7 @@ class VehicleRecordsTests(unittest.TestCase):
                 "registration": "AB12CDE",
                 "name": "Car",
                 "mot_expiry": "2026-10-14",
-                "tax_due": "2026-11-01",
+                "tax_due": "2026-10-21",
                 "insurance_expiry": "2027-02-01",
                 "breakdown_expiry": "2027-03-01",
                 "insurance_provider": "Example insurer",
@@ -151,3 +151,49 @@ class VehicleRecordsTests(unittest.TestCase):
                 302,
             )
             self.assertEqual(records.load()["vehicles"], [])
+
+    def test_sunday_prints_all_vehicles_even_without_dates(self):
+        rows = [
+            records.record({"registration": "AB12CDE"}),
+            records.record({"registration": "XY34XYZ", "mot_expiry": "2027-01-01"}),
+        ]
+        lines = "\n".join(records.receipt_lines(rows, date(2026, 10, 18)))
+        self.assertIn("AB12CDE", lines)
+        self.assertIn("XY34XYZ", lines)
+
+    def test_weekday_exact_milestones_for_every_date_field(self):
+        from datetime import timedelta
+
+        today = date(2026, 10, 14)
+        for field in records.DATES:
+            for days in (30, 14, 7, 31, 29, 15, 13, 8, 6, 0, -1):
+                with self.subTest(field=field, days=days):
+                    row = records.record(
+                        {
+                            "registration": "AB12CDE",
+                            field: (today + timedelta(days=days)).isoformat(),
+                        }
+                    )
+                    self.assertEqual(
+                        bool(records.receipt_lines([row], today)), days in {30, 14, 7}
+                    )
+
+    def test_weekday_prints_only_qualifying_vehicle_and_only_once(self):
+        rows = [
+            records.record(
+                {
+                    "registration": "AB12CDE",
+                    "mot_expiry": "2026-10-21",
+                    "tax_due": "2026-10-28",
+                }
+            ),
+            records.record({"registration": "XY34XYZ", "mot_expiry": "2026-10-22"}),
+        ]
+        lines = "\n".join(records.receipt_lines(rows, date(2026, 10, 14)))
+        self.assertEqual(lines.count("AB12CDE"), 1)
+        self.assertNotIn("XY34XYZ", lines)
+        with patch.object(records, "uk_today", return_value=date(2026, 10, 14)):
+            self.assertEqual(
+                records.receipt_lines(rows),
+                records.receipt_lines(rows, date(2026, 10, 14)),
+            )

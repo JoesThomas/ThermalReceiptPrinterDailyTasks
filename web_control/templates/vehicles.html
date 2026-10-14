@@ -14,7 +14,7 @@
         <main id="main-content">
             <h1>Vehicles</h1>
             <p class="muted">
-                Save MOT, tax, insurance and breakdown dates for each vehicle locally. These manually entered records appear on the Actions receipt; dates are reminders and do not verify current cover. Leave unknown dates blank.
+                Save MOT, tax, insurance and breakdown dates for each vehicle locally. The Actions receipt shows all vehicles on Sundays, and otherwise only vehicles with a date exactly 30, 14 or 7 days away; dates are reminders and do not verify current cover. Leave unknown dates blank.
             </p>
             {% with messages=get_flashed_messages() %}
                 {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
