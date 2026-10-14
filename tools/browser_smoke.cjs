@@ -345,6 +345,8 @@ process.on('exit', () => child.kill());
   await page.evaluate(async () => { await fetch('/__fixture_finance_release'); });
   await completedReview;
   await page.getByText('Cash at last bank check', {exact:true}).waitFor();
+  // Navigation responses precede loading the new document's refresh handlers.
+  await page.waitForLoadState('load');
   assert.match(await page.locator('#finance-refresh').innerText(), /cached for up to 30 minutes/);
   await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
   const unsavedField = page.locator('input[name="emergency_buffer"]');
@@ -355,6 +357,7 @@ process.on('exit', () => child.kill());
   const refreshReview = page.waitForResponse(r => new URL(r.url()).pathname === '/finance-review' && r.request().isNavigationRequest());
   await page.locator('#finance-apply-data').click();
   await refreshReview;
+  await page.waitForLoadState('load');
   await page.locator('#finance-refresh-form button:not([disabled])').waitFor();
   await page.evaluate(async () => { await fetch('/__fixture_finance_fail'); });
   const failedReview = page.waitForResponse(r => new URL(r.url()).pathname === '/finance-review' && r.request().isNavigationRequest());
