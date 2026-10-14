@@ -42,7 +42,7 @@ class ForecastScenariosTests(TestCase):
         self.assertEqual(result['forecast']['payments'][1]['cash_invested'],0)
 
     def test_one_off_cost_occurs_once_and_reduces_available_allocation(self):
-        base=source();before=deepcopy(base)
+        base=source();base["savings_accounts"][0]["target"]=D(10000);before=deepcopy(base)
         baseline=build(base,values(),TODAY)
         result=build(base,values(one_off_expenses='2026-10-20 | 300 | Holiday'),TODAY)
         self.assertEqual(sum(e['amount'] for e in result['forecast']['events'] if e.get('scenario_expense')),300)
@@ -80,7 +80,8 @@ class ForecastScenariosTests(TestCase):
         self.assertEqual(base,before)
         self.assertEqual(details['scenarios'][1]['savings_end'],f"£{result['forecast']['savings_end']:,.2f}")
         self.assertEqual(details['scenarios'][1]['accounts'][0]['goal_date'],(result['account_plan']['accounts'][0]['goal_date'] or result['account_plan']['accounts'][0].get('extended_goal_date')).isoformat())
-        self.assertEqual(details['sensitivity']['savings_change'],'£300.00')
+        self.assertEqual(details['sensitivity']['savings_change'],'£0.00')
+        # All compared plans reach the account cap; surplus now stays in bank.
         result['sensitivity']=details['sensitivity']
         text=receipt(result,TODAY)
         self.assertIn('Lowest projected bank balance',text)
@@ -97,7 +98,7 @@ class ForecastScenariosTests(TestCase):
         base['savings_accounts']=[dict(base['savings_accounts'][0],id='cash',name='Cash',kind='savings',type='savings',balance=D(220),target=D(500))]
         result=build(base,values(),TODAY)
         self.assertEqual(result['forecast']['reserved_total'],280)
-        self.assertEqual(result['forecast']['minimum_bank'],1000)
+        self.assertEqual(result['forecast']['minimum_bank'],1720)
 
     def test_details_are_saved_with_receipt_and_survive_reload_without_bank_calls(self):
         app=Flask(__name__);app.secret_key='test';register(app,lambda f:f,Mock())
@@ -109,6 +110,10 @@ class ForecastScenariosTests(TestCase):
             item=archive.load(identifier)
             self.assertNotIn('csrf_token',item['test_finance']['values'])
             client.get('/finance/test')
+            with patch("web_control.test_finance_tools.uk_today", return_value=date(2026,10,14)):
+                client.get("/finance/test")
+            self.assertEqual(render.call_args.kwargs["values"]["start"], "2026-10-14")
+            self.assertEqual(render.call_args.kwargs["values"]["monzo_target"], "500")
             self.assertEqual(collect.call_count,1)
             self.assertEqual(len(render.call_args.kwargs['scenario_details']['scenarios']),3)
             self.assertEqual(render.call_args.kwargs['values']['one_off_expenses'],'2026-10-20 | 10 | Test')

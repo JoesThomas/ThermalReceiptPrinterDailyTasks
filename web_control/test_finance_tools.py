@@ -124,6 +124,8 @@ def collect(values, today, *, shared_snapshot=None, local=None):
         today,
         bank_status=coverage,
     )
+    projection["primary_bank"] = "HSBC"
+    projection["monzo_balance"] = money(balances.get("MONZO", {}).get("available", balances.get("MONZO", {}).get("current")), Decimal(0))
     if cash:
         projection["warnings"].append(
             "Starting cash is a manual scenario input, not a bank balance update."
@@ -316,6 +318,8 @@ def register(app, login_required, start_print):
         except (OSError, ValueError, TypeError, KeyError) as error:
             presets = []
             preset_error = str(error)
+        defaults["start"] = uk_today().isoformat()
+        defaults.setdefault("monzo_target", "500")
         return render_template(
             "test_finance.html",
             presets=presets,

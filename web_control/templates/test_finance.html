@@ -138,7 +138,25 @@
                                    value="{{ values.get('other_income', '0') }}">
                         </label>
                         <label>
-                            First payday / lump sum receipt date
+                            Monzo balance target (£)
+                            <input type="number"
+                                   name="monzo_target"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('monzo_target','500') }}">
+                        </label>
+                        <label>
+                            Starting Monzo balance (£, optional; part of combined bank cash)
+                            <input type="number"
+                                   name="monzo_balance"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   value="{{ values.get('monzo_balance','') }}">
+                        </label>
+                        <label>
+                            First payday / lump sum receipt date (defaults to today)
                             <input type="date"
                                    name="start"
                                    min="{{ today }}"
@@ -236,7 +254,7 @@
                                    name="equal_savings"
                                    {% if values.get('equal_savings') == 'on' %}checked{% endif %}>
                             Split extra savings equally
-                            <small>When using recorded accounts, divide extra savings between accounts with known balances and unmet targets. No percentages needed; new accounts join automatically once their balance and target are set. Completed goals give their share to the remaining goals. Scheduled savings payments stay separate. Untick to use saved contribution shares.</small>
+                            <small>When using recorded accounts, divide extra savings between accounts with known balances and available room. Accounts without a balance target can keep receiving savings. Premium Bonds stop at £50,000. Completed goals give their share to other eligible accounts; if none can receive money, it stays in bank cash. Scheduled savings payments stay separate. Untick to use saved contribution shares.</small>
                         </label>
                         <label>
                             Existing savings towards goal (£)
@@ -354,7 +372,7 @@
                             Leave these blank to use bank balances and your existing spending forecast. With incomplete bank data, supplying both makes this an explicitly manual estimate.
                         </p>
                         <label>
-                            Starting bank cash (£, optional)
+                            Combined HSBC and Monzo starting cash (£, optional)
                             <input type="number"
                                    name="opening_cash"
                                    min="0"

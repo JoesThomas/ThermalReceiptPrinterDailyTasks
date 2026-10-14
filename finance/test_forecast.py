@@ -28,9 +28,22 @@ def simulate(base, inputs, today):
     end = occurs(inputs["start"], inputs["months"])
     base = (
         dict(base, events=deepcopy(base["events"]))
-        if inputs.get("regular_override")
+        if inputs.get("regular_override") or inputs.get("use_accounts")
         else base
     )
+    accounts = base.get("savings_accounts", [])
+    if inputs.get("use_accounts"):
+        # Scheduled bond payments cannot take projected holdings over £50,000.
+        bond_room = {
+            row["id"]: max(ZERO, Decimal(50000) - row["balance"])
+            for row in accounts
+            if row["type"] == "premium_bonds" and row["balance"] is not None
+        }
+        for event in sorted(base["events"], key=lambda row: row["date"]):
+            key = event.get("savings_account")
+            if key in bond_room and today <= event["date"] < end:
+                event["amount"] = min(event["amount"], bond_room[key])
+                bond_room[key] -= event["amount"]
     daily = base.get("daily_cost", base["daily"])
     salary_amount = inputs["salary"] + inputs["existing"]
     daily_base = daily
@@ -200,7 +213,56 @@ def simulate(base, inputs, today):
                 if use_spare_cash
                 else ZERO
             )
-            cash_invested = saving - income_savings + remaining_cash
+            proposed = saving + remaining_cash
+            savings_budget = proposed
+            retained = ZERO
+            if inputs.get("use_accounts"):
+                from finance.savings_targets import allocate
+
+                planned = [
+                    dict(p, savings_budget=p.get("savings_budget", p["savings"]))
+                    for p in periods
+                ]
+                planned.append(
+                    dict(
+                        date=on,
+                        end=next_pay - timedelta(days=1),
+                        savings=proposed,
+                        income_savings=income_savings,
+                        funded=run_out is None,
+                    )
+                )
+                scheduled_savings = [
+                    e
+                    for e in base["events"]
+                    if today <= e["date"] < end and e.get("savings_account")
+                ]
+                if topup:
+                    scheduled_savings.append(topup)
+                allocation = allocate(
+                    accounts, planned, scheduled_savings, equal=inputs["equal_savings"]
+                )
+                accepted = sum(
+                    (
+                        row["allocations"][-1]["total"]
+                        for row in allocation["accounts"]
+                        if row["allocations"]
+                    ),
+                    ZERO,
+                )
+                retained = proposed - accepted
+                # Restore money that has no eligible destination to bank cash.
+                cash += retained
+                if strategy == "savings_first":
+                    redirected = min(retained, max(ZERO, debt_budget - extra))
+                    extra += redirected
+                    balance = max(ZERO, balance - redirected)
+                    cash -= redirected
+                    retained -= redirected
+                    cash_repaid = max(ZERO, extra - income_budget)
+                saving = accepted - remaining_cash
+                income_savings = min(accepted, income_savings)
+            cash_invested = max(ZERO, saving + remaining_cash - income_savings)
             cash -= remaining_cash
             saving += remaining_cash
             cash_invested_total += cash_invested
@@ -241,6 +303,8 @@ def simulate(base, inputs, today):
                     income_budget=income_budget,
                     cash_repaid=cash_repaid,
                     savings=saving,
+                    savings_budget=savings_budget,
+                    retained_in_bank=retained,
                     income_savings=income_savings,
                     cash_invested=cash_invested,
                     automatic_savings=automatic,

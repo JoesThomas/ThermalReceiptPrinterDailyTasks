@@ -44,8 +44,8 @@ def load_view(today):
     rows = []
     for account in view["accounts"]:
         target = money(account.get("target"))
-        if target is None and account["type"] == "premium_bonds":
-            target = Decimal(50000)
+        if account["type"] == "premium_bonds":
+            target = min(target or Decimal(50000), Decimal(50000))
         rows.append(
             {
                 "id": account["id"],
@@ -167,6 +167,8 @@ def prepare_cash_topup(base, accounts, today, start):
 def allocate(accounts, periods, automatic_events=(), *, equal=False):
     rows = deepcopy(accounts)
     for row in rows:
+        if row["type"] == "premium_bonds":
+            row["target"] = min(row["target"] or Decimal(50000), Decimal(50000))
         row.update(
             allocations=[],
             projected=row["balance"],
@@ -188,11 +190,7 @@ def allocate(accounts, periods, automatic_events=(), *, equal=False):
         min(
             Decimal(100),
             sum(
-                (
-                    row["share"]
-                    for row in rows
-                    if row["balance"] is not None and row["target"]
-                ),
+                (row["share"] for row in rows if row["balance"] is not None),
                 ZERO,
             ),
         )
@@ -236,15 +234,39 @@ def allocate(accounts, periods, automatic_events=(), *, equal=False):
             continue
         before = {row["id"]: row["added"] for row in rows}
         amount = period["savings"]
-        remaining = rounded(amount * fraction, rounding=ROUND_DOWN)
+        budget = period.get("savings_budget", amount)
+        remaining = rounded(budget * fraction, rounding=ROUND_DOWN)
         assigned = ZERO
+        # Reserve room for already scheduled Premium Bonds payments. Their hard
+        # holding cap applies even when a balance goal was set higher.
+        room = {
+            row["id"]: max(
+                ZERO,
+                row["target"]
+                - row["projected"]
+                - sum(
+                    (
+                        event["amount"]
+                        for event in automatic_events
+                        if event.get("savings_account") == row["id"]
+                        and event["date"] > on
+                    ),
+                    ZERO,
+                )
+                if row["type"] == "premium_bonds"
+                else row["target"] - row["projected"]
+                if row["target"]
+                else remaining,
+            )
+            for row in rows
+            if row["projected"] is not None
+        }
         while remaining >= CENT:
             eligible = [
                 row
                 for row in rows
                 if row["projected"] is not None
-                and row["target"]
-                and row["projected"] < row["target"]
+                and room.get(row["id"], ZERO) > ZERO
                 and (not explicit or row["share"] > 0)
             ]
             if not eligible:
@@ -259,18 +281,23 @@ def allocate(accounts, periods, automatic_events=(), *, equal=False):
                     available * (row["share"] if explicit else Decimal(1)) / weights,
                     rounding=ROUND_DOWN,
                 )
-                part = min(part, row["target"] - row["projected"])
+                part = min(part, room[row["id"]])
                 if not part and remaining >= CENT:
-                    part = min(CENT, row["target"] - row["projected"])
+                    part = min(CENT, room[row["id"]])
                 part = min(part, remaining)
                 row["projected"] += part
                 row["added"] += part
                 if index == 0:
                     row["first"] += part
                 remaining -= part
+                room[row["id"]] -= part
                 assigned += part
                 progressed += part
-                if row["projected"] >= row["target"] and row["goal_date"] is None:
+                if (
+                    row["target"]
+                    and row["projected"] >= row["target"]
+                    and row["goal_date"] is None
+                ):
                     row["goal_date"] = (
                         period["date"] if period.get("funded", True) else None
                     )
@@ -292,7 +319,7 @@ def allocate(accounts, periods, automatic_events=(), *, equal=False):
             row["allocations"].append(
                 {"date": on, "total": part, "income": income, "cash": part - income}
             )
-        unallocated += amount - assigned
+        unallocated += max(ZERO, amount - assigned)
     return {
         "accounts": rows,
         "unallocated": unallocated,

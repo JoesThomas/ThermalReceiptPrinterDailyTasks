@@ -138,11 +138,15 @@ def receipt(result, today):
     section("WHERE TO MOVE THIS PAYDAY")
     if data["use_accounts"]:
         text(
-            "Savings split: equal between active goals."
+            "Savings split: equal between eligible accounts."
             if data["equal_savings"]
             else "Savings split: saved contribution shares."
         )
     text("Extra transfers to make:")
+    if data["use_accounts"]:
+        text(
+            "Full goals redirect to other eligible accounts; unplaced savings stay in bank."
+        )
     moved = Decimal(0)
     if data["use_accounts"]:
         for account in result["account_plan"]["accounts"]:
@@ -152,6 +156,8 @@ def receipt(result, today):
     unassigned = first["savings"] - moved
     if unassigned:
         amount("Savings - choose an account", unassigned)
+    if first.get("retained_in_bank"):
+        amount("No eligible savings room - keep in bank", first["retained_in_bank"])
     if first["extra"]:
         amount("Amex - extra repayment", first["extra"])
     if first["cash_repaid"]:
@@ -200,6 +206,19 @@ def receipt(result, today):
     )
     if reserve.get("gap"):
         text("Cash top-up uses protected reserves; do not deduct it again.")
+    if data.get("monzo_target"):
+        monzo_gap = max(
+            Decimal(0), data["monzo_target"] - base.get("monzo_balance", Decimal(0))
+        )
+        amount("Monzo target (within bank reserves)", data["monzo_target"])
+        if monzo_gap:
+            amount(
+                "Move to Monzo from bank reserves"
+                if first["opening"] >= base["buffer"]
+                else "Monzo top-up - funding needed",
+                monzo_gap,
+            )
+        text("Internal bank transfer; do not deduct it from total bank cash again.")
     contribution = result.get("contribution") or {}
     if contribution.get("available"):
         section("HARGREAVES LANSDOWN PLAN")
@@ -420,6 +439,29 @@ def receipt(result, today):
         amount("Scheduled savings over forecast", forecast["automatic_total"])
     if forecast["reserved_total"]:
         amount("One-off cash top-up from reserves", forecast["reserved_total"])
+    section("BALANCES AT FORECAST END")
+    bank_total = forecast["end_cash"] + base["buffer"] - forecast["reserved_total"]
+    monzo_end = min(data.get("monzo_target", Decimal(0)), max(Decimal(0), bank_total))
+    amount(
+        base.get("primary_bank", "Bank cash")
+        + (" (excludes Monzo)" if data.get("monzo_target") else ""),
+        bank_total - monzo_end,
+    )
+    if data.get("monzo_target"):
+        amount("Monzo", monzo_end)
+        if monzo_end < data["monzo_target"]:
+            text("Monzo target is not funded at forecast end.")
+    if forecast["card_end"] is None:
+        text("Amex balance owed: unavailable")
+    else:
+        amount("Amex - balance owed", forecast["card_end"])
+    if data["use_accounts"]:
+        for account in result["account_plan"]["accounts"]:
+            if account["projected"] is not None:
+                amount(account["name"], account["projected"])
+            else:
+                text(account["name"] + ": balance unavailable")
+    text("Projected balances only; no money is moved.")
     amount("Projected savings at forecast end", forecast["savings_end"])
     if not forecast["savings_total"]:
         text(
