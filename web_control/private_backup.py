@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 MAX_BYTES = 900_000
-OBJECT_FILES = {'birthdays.csv','finance_scenarios.json', 'receipt_settings.last-good.json','receipt_archive_settings.json','finance_reviews.json','assets.json','rental_tax.json','finance_explanations.json','lifestyle.json','transaction_sources.json','finance_planning.json','bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
+OBJECT_FILES = {'vehicles.json','birthdays.csv','finance_scenarios.json', 'receipt_settings.last-good.json','receipt_archive_settings.json','finance_reviews.json','assets.json','rental_tax.json','finance_explanations.json','lifestyle.json','transaction_sources.json','finance_planning.json','bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
                 'investments.json', 'finance_settings.json', 'finance_categories.json',
                 'food_shop_override.json', 'tesco_progress.json', 'meals_eaten.json'}
 LIST_FILES = {'finance_monthly_snapshots.json','routines.json', 'future_tasks.json', 'wealth_history.json'}
@@ -37,7 +37,15 @@ def _validate_file(name, content):
     if name == 'birthdays.csv':
         from actions.birthdays import validate_rows
         if set(content) != {'rows'}: raise ValueError('Invalid birthday backup.')
-        validate_rows(content['rows'])
+        rows = content['rows']
+        if not isinstance(rows, list): raise ValueError('Invalid birthday backup.')
+        # Older backups included profile links; discard them when restoring.
+        rows = [{key: value for key, value in row.items() if key != 'profile'} if isinstance(row, dict) else row for row in rows]
+        validate_rows(rows)
+        content['rows'] = rows
+    if name == 'vehicles.json':
+        from services.vehicle_records import validate as validate_vehicles
+        validate_vehicles(content)
     if name == 'finance_reviews.json':
         from finance.reviews import validate as validate_reviews
         validate_reviews(content)

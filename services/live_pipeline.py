@@ -4816,9 +4816,26 @@ def run_live_pipeline(
         )
 
         preview_progress("Checking vehicle MOT/tax", 1, 5)
+        # Saved dates are available daily without an API key. Keep legacy DVLA
+        # checks only for registrations that are not already maintained locally.
+        from services import vehicle_records
+        try:
+            local_vehicles = vehicle_records.load()['vehicles']
+            local_registrations = {row['registration'] for row in local_vehicles}
+            if local_vehicles:
+                print_line(printer, '=')
+                printer.set(bold=True)
+                left(printer, 'VEHICLES - SAVED DATES')
+                printer.set(bold=False)
+                for line in vehicle_records.receipt_lines(local_vehicles):
+                    print_wrapped(printer, printer_safe_text(line), width=40)
+                print_wrapped(printer, 'Manually recorded; confirm current cover.', width=40)
+        except (OSError, ValueError):
+            local_registrations = set()
+            left(printer, 'VEHICLE DATA UNAVAILABLE - CHECK WEB LIST')
         print_vehicle_expiry_checks(
             printer,
-            vehicles,
+            [row for row in vehicles if str(row.get('registration', '')).upper().replace(' ', '') not in local_registrations],
             dvla_api_key,
         )
 

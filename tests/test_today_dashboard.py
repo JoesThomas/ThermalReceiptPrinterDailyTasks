@@ -69,8 +69,8 @@ class TodayDashboardTests(unittest.TestCase):
         self.assertIn('New bank match: Water £5.00',changes)
 
     def test_calendar_dashboard_filters_today_without_network(self):
-        from datetime import date
-        today_summary.save_calendar([{'date':date.fromisoformat(checklists.today()),'title':'Meeting','time':'10:00','location':'Room'},
+        from receipt.local_time import uk_today
+        today_summary.save_calendar([{'date':uk_today(),'title':'Meeting','time':'ALL DAY','all_day':True,'location':'Room'},
                                      {'date':'2000-01-01','title':'Old'}])
         with patch('requests.get', side_effect=AssertionError('dashboard fetched external data')):
             view=today_summary.dashboard()

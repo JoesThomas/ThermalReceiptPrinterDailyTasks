@@ -55,18 +55,21 @@ class BirthdayTests(unittest.TestCase):
             birthdays.import_csv(HEADER + b"Valid Person,,1,1,\nBad Person,,2,30,\n")
         self.assertEqual(self.file.read_bytes(), before)
 
-    def test_same_name_distinct_profiles_are_distinct_people(self):
+    def test_old_profile_columns_are_discarded_and_conflicting_names_rejected(self):
         raw = (
             HEADER
             + b"Example Person,1990,10,13,https://facebook.com/123\nExample Person,1980,11,13,https://facebook.com/456\n"
         )
-        birthdays.import_csv(raw)
-        self.assertEqual(len(birthdays.load()), 2)
+        with self.assertRaises(ValueError):
+            birthdays.import_csv(raw)
+        birthdays.import_csv(DATA)
+        self.assertNotIn("profile", birthdays.load()[0])
+        self.assertNotIn(b"Link to Profile", self.file.read_bytes())
 
     def test_edit_and_remove_keep_identity_and_reimport_does_not_undo_edits(self):
         birthdays.import_csv(DATA)
         first = birthdays.load()[0]
-        birthdays.update("Renamed Person", 1989, 10, 13, first["profile"], first["id"])
+        birthdays.update("Renamed Person", 1989, 10, 13, first["id"])
         self.assertEqual(birthdays.load()[0]["id"], first["id"])
         before = self.file.read_bytes()
         with self.assertRaises(ValueError):
@@ -104,7 +107,7 @@ class BirthdayTests(unittest.TestCase):
         self.assertEqual(result["age"], 27)
         self.assertEqual(result["when"], "Tomorrow")
 
-    def test_csv_limits_bad_columns_formula_names_and_profile_urls(self):
+    def test_csv_limits_bad_columns_and_formula_names(self):
         for data in (
             b"Bad,Columns\nfoo,bar\n",
             DATA + b"Broken,,1,1,,EXTRA\n",
@@ -113,18 +116,6 @@ class BirthdayTests(unittest.TestCase):
         ):
             with self.assertRaises(ValueError):
                 birthdays.parse_csv(data)
-        for link in (
-            "javascript:alert(1)",
-            "https://facebook.com@evil.example/123",
-            "https://evil.example/123",
-            "https://facebook.com/123?tracking=1",
-        ):
-            with self.assertRaises(ValueError):
-                birthdays.record("Example", "", 1, 1, link)
-        self.assertEqual(
-            birthdays.profile_url("https://www.facebook.com/profile.php?id=123"),
-            "https://facebook.com/profile.php?id=123",
-        )
 
     def test_backup_restore_and_update_checkpoint_preserve_csv_records(self):
         birthdays.import_csv(DATA)
@@ -170,7 +161,6 @@ class BirthdayTests(unittest.TestCase):
                     "year": "1991",
                     "month": "10",
                     "day": "13",
-                    "profile": first["profile"],
                 },
             )
             self.assertEqual(response.status_code, 302)
@@ -187,3 +177,24 @@ class BirthdayTests(unittest.TestCase):
             self.assertIn("birthdays.csv", exported.headers["Content-Disposition"])
             rows, _ = birthdays.parse_csv(exported.data)
             self.assertEqual(rows, birthdays.load())
+
+    def test_four_column_import_keeps_legacy_ids_and_backup_restore_drops_links(self):
+        old_id = "a" * 32
+        legacy = (
+            b"Name,Year,Month,Day,Link to Profile,ID\nExample Person,1990,10,13,https://facebook.com/123,"
+            + old_id.encode()
+            + b"\n"
+        )
+        birthdays.import_csv(legacy)
+        birthdays.import_csv(b"Name,Year,Month,Day\nExample Person,1990,10,13\n")
+        self.assertEqual(len(birthdays.load()), 1)
+        self.assertEqual(birthdays.load()[0]["id"], old_id)
+        old_row = dict(birthdays.load()[0], profile="https://facebook.com/123")
+        value = backup.validate(
+            json.dumps(
+                {"version": 1, "files": {"birthdays.csv": {"rows": [old_row]}}}
+            ).encode()
+        )
+        self.assertNotIn("profile", value["files"]["birthdays.csv"]["rows"][0])
+        backup.restore(self.root, value)
+        self.assertNotIn(b"facebook", self.file.read_bytes())

@@ -46,7 +46,6 @@ def register(app, login_required):
                 request.form.get("year", ""),
                 request.form.get("month", ""),
                 request.form.get("day", ""),
-                request.form.get("profile", ""),
                 request.form.get("id", ""),
                 request.form.get("action") == "remove",
             )

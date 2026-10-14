@@ -6,12 +6,12 @@ import io
 import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from urllib.parse import urlsplit, parse_qs
 from zoneinfo import ZoneInfo
 from storage import file_lock, write_bytes
 
 FILE = Path(__file__).resolve().parents[1] / "data" / "birthdays.csv"
-FIELDS = ["Name", "Year", "Month", "Day", "Link to Profile", "ID"]
+FIELDS = ["Name", "Year", "Month", "Day", "ID"]
+LEGACY_PROFILE_COLUMN = "Link to Profile"
 MAX_BYTES = 900_000
 MAX_ROWS = 5000
 
@@ -20,40 +20,7 @@ def today():
     return datetime.now(ZoneInfo("Europe/London")).date()
 
 
-def profile_url(value):
-    if not isinstance(value, str):
-        raise ValueError("Enter a valid Facebook profile URL or leave it blank.")
-    value = value.strip()
-    if not value:
-        return ""
-    url = urlsplit(value)
-    if (
-        url.scheme != "https"
-        or url.netloc.lower() not in ("facebook.com", "www.facebook.com")
-        or url.fragment
-        or len(value) > 250
-    ):
-        raise ValueError(
-            "Use an HTTPS Facebook profile URL without credentials or fragments."
-        )
-    path = url.path.strip("/")
-    if path == "profile.php":
-        query = parse_qs(url.query)
-        if (
-            set(query) != {"id"}
-            or len(query["id"]) != 1
-            or not query["id"][0].isdigit()
-        ):
-            raise ValueError("Use a Facebook profile.php URL with one numeric id.")
-        return "https://facebook.com/profile.php?id=" + query["id"][0]
-    if url.query or not re.fullmatch(r"[A-Za-z0-9._-]+", path):
-        raise ValueError(
-            "Use a direct Facebook profile URL without tracking parameters."
-        )
-    return "https://facebook.com/" + path
-
-
-def record(name, year, month, day, profile="", key=""):
+def record(name, year, month, day, key=""):
     if (
         not isinstance(name, str)
         or not name.strip()
@@ -79,19 +46,16 @@ def record(name, year, month, day, profile="", key=""):
         not 1 <= year <= today().year or date(year, month, day) > today()
     ):
         raise ValueError("A date of birth cannot be in the future.")
-    profile = profile_url(profile)
-    key = key or hashlib.sha256((profile or name.casefold()).encode()).hexdigest()[:32]
+    key = key or hashlib.sha256(name.casefold().encode()).hexdigest()[:32]
     if not isinstance(key, str) or not re.fullmatch(r"[a-f0-9]{32}", key):
         raise ValueError("Invalid birthday record ID.")
-    return dict(id=key, name=name, year=year, month=month, day=day, profile=profile)
+    return dict(id=key, name=name, year=year, month=month, day=day)
 
 
 def validate_rows(rows):
     if not isinstance(rows, list) or len(rows) > MAX_ROWS:
         raise ValueError("Store no more than 5,000 birthdays.")
     ids = set()
-    identities = set()
-    name_profiles = {}
     for row in rows:
         if not isinstance(row, dict):
             raise ValueError("Invalid birthday record.")
@@ -108,26 +72,13 @@ def validate_rows(rows):
             row.get("year"),
             row.get("month"),
             row.get("day"),
-            row.get("profile", ""),
             row.get("id", ""),
         )
         if row != expected:
             raise ValueError("Birthday record fields need normalization.")
-        identity = (
-            ("profile", row["profile"])
-            if row["profile"]
-            else ("name", row["name"].casefold())
-        )
-        if row["id"] in ids or identity in identities:
+        if row["id"] in ids:
             raise ValueError("Duplicate birthday identity; edit the existing entry.")
-        matches = name_profiles.get(row["name"].casefold(), set())
-        if matches and (not row["profile"] or "" in matches):
-            raise ValueError(
-                "A matching name without a distinct profile already exists. Review it before adding a duplicate."
-            )
-        name_profiles.setdefault(row["name"].casefold(), set()).add(row["profile"])
         ids.add(row["id"])
-        identities.add(identity)
     return rows
 
 
@@ -138,13 +89,11 @@ def parse_csv(raw):
         reader = csv.DictReader(io.StringIO(raw.decode("utf-8-sig"), newline=""))
         if (
             not reader.fieldnames
-            or not set(FIELDS[:5]) <= set(reader.fieldnames)
+            or not set(FIELDS[:4]) <= set(reader.fieldnames)
             or len(reader.fieldnames) != len(set(reader.fieldnames))
-            or set(reader.fieldnames) - set(FIELDS)
+            or set(reader.fieldnames) - (set(FIELDS) | {LEGACY_PROFILE_COLUMN})
         ):
-            raise ValueError(
-                "Use Name, Year, Month, Day, Link to Profile and optional ID columns."
-            )
+            raise ValueError("Use Name, Year, Month, Day and optional ID columns.")
         rows = []
         blank = 0
         duplicates = 0
@@ -163,12 +112,11 @@ def parse_csv(raw):
                     item["Year"],
                     item["Month"],
                     item["Day"],
-                    item["Link to Profile"],
                     item.get("ID", ""),
                 )
             except ValueError as error:
                 raise ValueError(f"CSV row {number}: {error}") from None
-            identity = row["profile"] or row["name"].casefold()
+            identity = row["id"]
             previous = identities.get(identity)
             if previous is not None:
                 if previous == row:
@@ -208,7 +156,6 @@ def csv_bytes(rows):
                         row["year"] or "",
                         row["month"],
                         row["day"],
-                        row["profile"],
                         row["id"],
                     ],
                 )
@@ -236,15 +183,13 @@ def import_csv(raw):
         existing = load()
         by_id = {row["id"]: row for row in existing}
         # Re-imports never overwrite a person's web edits. Conflicts need review.
-        existing_identity = {
-            (row["profile"] or row["name"].casefold()): row for row in existing
-        }
+        existing_identity = {row["name"].casefold(): row for row in existing}
         added = 0
         for row in incoming:
-            old = by_id.get(row["id"]) or existing_identity.get(
-                row["profile"] or row["name"].casefold()
-            )
+            old = by_id.get(row["id"]) or existing_identity.get(row["name"].casefold())
             if old:
+                # Four-column imports match an existing name without changing its ID.
+                row = dict(row, id=old["id"])
                 if old != row:
                     raise ValueError(
                         "An imported birthday differs from a saved entry. Edit the saved record or review the CSV first."
@@ -256,7 +201,7 @@ def import_csv(raw):
     return dict(report, added=added, total=len(by_id))
 
 
-def update(name="", year="", month="", day="", profile="", key="", remove=False):
+def update(name="", year="", month="", day="", key="", remove=False):
     with file_lock(FILE):
         rows = load()
         if key and key not in {row["id"] for row in rows}:
@@ -266,7 +211,11 @@ def update(name="", year="", month="", day="", profile="", key="", remove=False)
                 raise ValueError("Choose a birthday to remove.")
             result = [row for row in rows if row["id"] != key]
         else:
-            value = record(name, year, month, day, profile, key)
+            value = record(name, year, month, day, key)
+            if not key and any(
+                row["name"].casefold() == value["name"].casefold() for row in rows
+            ):
+                raise ValueError("Birthday already exists; use its edit form.")
             result = [row for row in rows if row["id"] != value["id"]] + [value]
             if not key and len(result) == len(rows):
                 raise ValueError("Birthday already exists; use its edit form.")
