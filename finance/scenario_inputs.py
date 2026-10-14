@@ -6,6 +6,19 @@ from finance.projection import day, money, occurs
 
 
 def validate(values, today):
+    monzo_target = money(values.get("monzo_target", "0") or "0")
+    monzo_balance = (
+        money(values["monzo_balance"])
+        if values.get("monzo_balance", "").strip()
+        else None
+    )
+    if (
+        monzo_target is None
+        or not 0 <= monzo_target <= 10000000
+        or (monzo_balance is not None and not 0 <= monzo_balance <= 10000000)
+        or (values.get("monzo_balance", "").strip() and monzo_balance is None)
+    ):
+        raise ValueError("Enter valid Monzo amounts.")
     goal = money(values.get("savings_goal", "0") or "0")
     starting_savings = money(values.get("starting_savings", "0") or "0")
     mode = values.get("mode", "replace")
@@ -137,6 +150,8 @@ def validate(values, today):
     ):
         raise ValueError("Choose valid scheduled savings destinations.")
     return dict(
+        monzo_target=monzo_target,
+        monzo_balance=monzo_balance,
         hl_monthly=regular,
         hl_account=values.get("hl_account", ""),
         payment_accounts=mappings,

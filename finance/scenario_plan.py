@@ -36,6 +36,24 @@ def build_validated(
             reserve.get("tax_reserve"), Decimal(0)
         )
         base["buffer"] = max(base["buffer"], Decimal(1000) + separate)
+    if inputs.get("monzo_target"):
+        reserve = base.get("reserve_details") or {}
+        separate = money(reserve.get("gap"), Decimal(0)) + money(
+            reserve.get("tax_reserve"), Decimal(0)
+        )
+        base["buffer"] = (
+            max(base["buffer"], Decimal(1000) + separate) + inputs["monzo_target"]
+        )
+        base["monzo_target"] = inputs["monzo_target"]
+        base["monzo_balance"] = (
+            inputs["monzo_balance"]
+            if inputs["monzo_balance"] is not None
+            else base.get("monzo_balance", Decimal(0))
+        )
+        if base["monzo_balance"] > base["cash"]:
+            raise ValueError(
+                "Starting Monzo balance is part of combined bank cash and cannot exceed it."
+            )
     base["events"].extend(inputs["one_off_expenses"])
     accounts = base.get("savings_accounts", [])
     from finance.savings_targets import (

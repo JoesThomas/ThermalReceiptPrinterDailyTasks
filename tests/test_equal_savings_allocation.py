@@ -31,19 +31,19 @@ class EqualSavingsTests(TestCase):
         self.assertEqual(base,before)
         self.assertEqual([r['share'] for r in result['account_plan']['accounts']],[D(50),D(50),D(0),D(0)])
         text=receipt(result,TODAY)
-        self.assertIn('Savings split: equal between active goals.',text)
+        self.assertIn('Savings split: equal between eligible accounts.',' '.join(text.split()))
         self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
 
     def test_custom_shares_remain_available(self):
         result=build(source(),values(equal_savings=''),TODAY)
         self.assertEqual([r['first'] for r in result['account_plan']['accounts']],[50,50,0,0])
 
-    def test_completed_missing_or_untargeted_accounts_do_not_take_a_share(self):
+    def test_completed_and_missing_accounts_are_skipped_unlimited_accounts_receive_savings(self):
         base=source()
         base['savings_accounts']=[account('Done',50,balance=D(1000)),account('Missing',50,balance=None),
                                  account('No target',target=None),account('Active')]
         result=build(base,values(),TODAY)
-        self.assertEqual([r['first'] for r in result['account_plan']['accounts']],[0,0,0,100])
+        self.assertEqual([r['first'] for r in result['account_plan']['accounts']],[0,0,50,50])
         self.assertEqual(result['account_plan']['unallocated'],0)
 
     def test_a_nearly_complete_goal_redistributes_its_excess(self):
