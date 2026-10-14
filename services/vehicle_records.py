@@ -136,6 +136,7 @@ def expiry_label(value, today=None):
 
 
 def receipt_lines(rows=None, today=None):
+    today = today or uk_today()
     rows = (
         load()["vehicles"]
         if rows is None
@@ -143,6 +144,11 @@ def receipt_lines(rows=None, today=None):
     )
     lines = []
     for row in rows:
+        if today.weekday() != 6 and not any(
+            row[field] and (date.fromisoformat(row[field]) - today).days in {30, 14, 7}
+            for field in DATES
+        ):
+            continue
         if lines:
             lines.append("")
         lines.append((row["name"] + " - " if row["name"] else "") + row["registration"])

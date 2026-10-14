@@ -235,7 +235,7 @@ class DailyAssistantTests(unittest.TestCase):
                 )
 
     def test_actions_pipeline_no_duplicates_and_preserves_triggers(
-        self, paid_therapy=False
+        self, paid_therapy=False, vehicle_reminders=True
     ):
         from receipt.location_settings import DEFAULT_LOCATION, validate_location
         from services import vehicle_records
@@ -331,6 +331,13 @@ class DailyAssistantTests(unittest.TestCase):
             patch("web_control.today_summary.save_calendar"),
             patch.object(
                 vehicle_records,
+                "uk_today",
+                return_value=date(2026, 10, 18)
+                if vehicle_reminders
+                else date(2026, 10, 14),
+            ),
+            patch.object(
+                vehicle_records,
                 "load",
                 return_value={"version": 1, "vehicles": saved_vehicles},
             ),
@@ -349,9 +356,11 @@ class DailyAssistantTests(unittest.TestCase):
         self.assertEqual(printed.count("Put out General"), 1)
         self.assertEqual(printed.count("BIRTHDAYS"), 1)
         self.assertEqual(printed.count("Today: Example birthday (36)"), 1)
-        self.assertEqual(printed.count("VEHICLES - SAVED DATES"), 1)
-        self.assertEqual(printed.count("AB12CDE"), 1)
-        self.assertEqual(printed.count("XY34XYZ"), 1)
+        self.assertEqual(
+            printed.count("VEHICLES - SAVED DATES"), 1 if vehicle_reminders else 0
+        )
+        self.assertEqual(printed.count("AB12CDE"), 1 if vehicle_reminders else 0)
+        self.assertEqual(printed.count("XY34XYZ"), 1 if vehicle_reminders else 0)
         namespace["print_vehicle_expiry_checks"].assert_called_once_with(
             printer, [], ""
         )
@@ -366,4 +375,9 @@ class DailyAssistantTests(unittest.TestCase):
     def test_paid_therapy_task_is_not_reintroduced_as_priority(self):
         self.test_actions_pipeline_no_duplicates_and_preserves_triggers(
             paid_therapy=True
+        )
+
+    def test_vehicle_section_omitted_between_reminder_days(self):
+        self.test_actions_pipeline_no_duplicates_and_preserves_triggers(
+            vehicle_reminders=False
         )
