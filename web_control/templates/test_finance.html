@@ -251,10 +251,24 @@
                         </label>
                         <label>
                             <input type="checkbox"
+                                   name="respect_isa_allowance"
+                                   {% if values.get('respect_isa_allowance','on') == 'on' %}checked{% endif %}>
+                            Respect ISA tax-year contribution limits
+                            <small>Applies when using recorded accounts. Uses one shared adult ISA allowance, recorded contributions and the 6 April reset. Redirects overflow to eligible ordinary savings; otherwise keeps it in bank. This limits new contributions, not the ISA's total balance.</small>
+                        </label>
+                        <label>
+                            <input type="checkbox"
+                                   name="isa_over_65"
+                                   {% if values.get('isa_over_65') == 'on' %}checked{% endif %}>
+                            Aged 65 or over for the cash ISA limit in this forecast
+                            <small>For under-65s, the cash ISA limit becomes £12,000 from 6 April 2027 within the shared £20,000 allowance. Leave unticked for the under-65 calculation.</small>
+                        </label>
+                        <label>
+                            <input type="checkbox"
                                    name="equal_savings"
                                    {% if values.get('equal_savings') == 'on' %}checked{% endif %}>
                             Split extra savings equally
-                            <small>When using recorded accounts, divide extra savings between accounts with known balances and available room. Accounts without a balance target can keep receiving savings. Premium Bonds stop at £50,000. Completed goals give their share to other eligible accounts; if none can receive money, it stays in bank cash. Scheduled savings payments stay separate. Untick to use saved contribution shares.</small>
+                            <small>When using recorded accounts, divide extra savings between accounts with known balances and available room. Accounts without a balance target can keep receiving savings. Premium Bonds stop at £50,000. Reaching a balance goal does not stop contributions. Optional maximum balances stop contributions and redirect them to other eligible accounts; if none can receive money, it stays in bank cash. Scheduled savings payments stay separate. Untick to use saved contribution shares.</small>
                         </label>
                         <label>
                             Existing savings towards goal (£)

@@ -73,6 +73,19 @@ def build_validated(
             [row for row in accounts if row["balance"] is not None],
             inputs.get("payment_accounts", {}),
         )
+    from finance.isa_forecast import allowance_snapshot
+
+    isa_limits = (
+        allowance_snapshot(
+            accounts,
+            today,
+            base.get("isa_records"),
+            over_65=inputs.get("isa_over_65", False),
+        )
+        if inputs.get("respect_isa_allowance") and inputs["use_accounts"]
+        else None
+    )
+    inputs["isa_limits"] = isa_limits
     forecast = simulate(base, inputs, today)
     account_plan = allocate(
         accounts,
@@ -81,6 +94,7 @@ def build_validated(
         if inputs["use_accounts"]
         else [],
         equal=inputs["equal_savings"],
+        isa_limits=isa_limits,
     )
     if (
         inputs["goal"]
@@ -108,6 +122,7 @@ def build_validated(
             if inputs["use_accounts"]
             else [],
             equal=inputs["equal_savings"],
+            isa_limits=isa_limits,
         )
         for row, full in zip(account_plan["accounts"], extended_accounts["accounts"]):
             row["extended_goal_date"] = full["goal_date"]

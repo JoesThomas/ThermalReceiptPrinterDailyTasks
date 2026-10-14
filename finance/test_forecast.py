@@ -32,18 +32,37 @@ def simulate(base, inputs, today):
         else base
     )
     accounts = base.get("savings_accounts", [])
+    capped_savings_events = False
     if inputs.get("use_accounts"):
+        from finance.isa_forecast import Headroom
+
+        scheduled_headroom = Headroom(inputs.get("isa_limits"))
+        account_by_id = {row["id"]: row for row in accounts}
         # Scheduled bond payments cannot take projected holdings over £50,000.
+        from finance.savings_targets import contribution_limit
+
         bond_room = {
-            row["id"]: max(ZERO, Decimal(50000) - row["balance"])
+            row["id"]: max(ZERO, contribution_limit(row) - row["balance"])
             for row in accounts
-            if row["type"] == "premium_bonds" and row["balance"] is not None
+            if contribution_limit(row) is not None and row["balance"] is not None
         }
         for event in sorted(base["events"], key=lambda row: row["date"]):
+            requested_amount = event["amount"]
             key = event.get("savings_account")
+            if key in account_by_id and today <= event["date"] < end:
+                row = account_by_id[key]
+                isa_room = scheduled_headroom.room(row, event["date"])
+                if isa_room is not None:
+                    event["amount"] = min(event["amount"], isa_room)
             if key in bond_room and today <= event["date"] < end:
                 event["amount"] = min(event["amount"], bond_room[key])
                 bond_room[key] -= event["amount"]
+            if key in account_by_id and today <= event["date"] < end:
+                scheduled_headroom.use(
+                    account_by_id[key], event["date"], event["amount"]
+                )
+            if event["amount"] < requested_amount:
+                capped_savings_events = True
     daily = base.get("daily_cost", base["daily"])
     salary_amount = inputs["salary"] + inputs["existing"]
     daily_base = daily
@@ -172,6 +191,41 @@ def simulate(base, inputs, today):
                         event["amount"] = part
                         remainder -= part
                     costs += desired - original
+            if inputs.get("use_accounts") and current_events:
+                from finance.savings_targets import allocate, contribution_limit
+                from finance.isa_forecast import Headroom
+
+                previous = allocate(
+                    accounts,
+                    periods,
+                    actual + reserve_transfers,
+                    equal=inputs["equal_savings"],
+                    isa_limits=inputs.get("isa_limits"),
+                )
+                caps = Headroom(previous["isa_years"])
+                projected = {
+                    row["id"]: row["projected"] for row in previous["accounts"]
+                }
+                for event in sorted(current_events, key=lambda row: row["date"]):
+                    key = event.get("savings_account")
+                    if key not in account_by_id:
+                        continue
+                    row = account_by_id[key]
+                    original = event["amount"]
+                    room = caps.room(row, event["date"])
+                    if room is not None:
+                        event["amount"] = min(event["amount"], room)
+                    maximum = contribution_limit(row)
+                    if maximum is not None and projected[key] is not None:
+                        event["amount"] = min(
+                            event["amount"], max(ZERO, maximum - projected[key])
+                        )
+                    caps.use(row, event["date"], event["amount"])
+                    if projected[key] is not None:
+                        projected[key] += event["amount"]
+                    costs += event["amount"] - original
+                    if event["amount"] < original:
+                        capped_savings_events = True
             automatic = sum(
                 (e["amount"] for e in current_events if e.get("savings_account")), ZERO
             )
@@ -216,6 +270,7 @@ def simulate(base, inputs, today):
             proposed = saving + remaining_cash
             savings_budget = proposed
             retained = ZERO
+            account_allocations = None
             if inputs.get("use_accounts"):
                 from finance.savings_targets import allocate
 
@@ -240,7 +295,11 @@ def simulate(base, inputs, today):
                 if topup:
                     scheduled_savings.append(topup)
                 allocation = allocate(
-                    accounts, planned, scheduled_savings, equal=inputs["equal_savings"]
+                    accounts,
+                    planned,
+                    scheduled_savings,
+                    equal=inputs["equal_savings"],
+                    isa_limits=inputs.get("isa_limits"),
                 )
                 accepted = sum(
                     (
@@ -250,6 +309,11 @@ def simulate(base, inputs, today):
                     ),
                     ZERO,
                 )
+                account_allocations = {
+                    row["id"]: row["allocations"][-1]["total"]
+                    for row in allocation["accounts"]
+                    if row["allocations"]
+                }
                 retained = proposed - accepted
                 # Restore money that has no eligible destination to bank cash.
                 cash += retained
@@ -304,6 +368,7 @@ def simulate(base, inputs, today):
                     cash_repaid=cash_repaid,
                     savings=saving,
                     savings_budget=savings_budget,
+                    account_allocations=account_allocations,
                     retained_in_bank=retained,
                     income_savings=income_savings,
                     cash_invested=cash_invested,
@@ -381,6 +446,7 @@ def simulate(base, inputs, today):
         if on in checkpoint_dates:
             checkpoints.append((checkpoint_dates[on], cash))
     return dict(
+        capped_savings_events=capped_savings_events,
         minimum_bank=minimum_bank,
         minimum_cash=minimum_cash,
         minimum_date=minimum_date,

@@ -18,7 +18,7 @@ def source():
     return {'valid':True,'cash':D(3000),'buffer':D(1000),'daily':D(10),'warnings':[],
             'events':[],'amex':{'balance':D(1000),'full_reserved':False,'apr':D(0)},
             'savings_accounts':[{'id':'isa','name':'ISA','kind':'investment','type':'stocks_isa','balance':D(0),
-                                'date':str(TODAY),'target':D(3000),'share':D(100),'isa_contributions':D(0)}]}
+                                'date':str(TODAY),'target':D(3000),'balance_limit':D(3000),'share':D(100),'isa_contributions':D(0)}]}
 
 
 def values(**changes):
@@ -42,7 +42,7 @@ class ForecastScenariosTests(TestCase):
         self.assertEqual(result['forecast']['payments'][1]['cash_invested'],0)
 
     def test_one_off_cost_occurs_once_and_reduces_available_allocation(self):
-        base=source();base["savings_accounts"][0]["target"]=D(10000);before=deepcopy(base)
+        base=source();base["savings_accounts"][0]["target"]=D(10000);base["savings_accounts"][0]["balance_limit"]=D(10000);before=deepcopy(base)
         baseline=build(base,values(),TODAY)
         result=build(base,values(one_off_expenses='2026-10-20 | 300 | Holiday'),TODAY)
         self.assertEqual(sum(e['amount'] for e in result['forecast']['events'] if e.get('scenario_expense')),300)

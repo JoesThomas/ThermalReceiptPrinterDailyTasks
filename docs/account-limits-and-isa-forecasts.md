@@ -1,0 +1,15 @@
+# Goals, maximum balances and ISA allowance planning
+
+In **Savings goals**, a balance goal is a progress milestone. Reaching it does not stop extra forecast contributions. The separate **Maximum balance (£, optional)** field stops further contributions; leave it blank for an unrestricted account. Limits persist in private savings settings and backups. Changing or removing a limit does not change a recorded balance. Premium Bonds always have a maximum of £50,000, even without an explicit limit.
+
+The physical cash reserve remains at its configured reserve target, and HSBC and Monzo retain their protected bank reserves. Extra money can continue to Hargreaves Lansdown after its balance goal is reached unless an explicit maximum or an enabled ISA subscription allowance stops it. The end-balance summary uses the plain **HSBC** label.
+
+The test finance form has a **Respect ISA tax-year contribution limits** checkbox, enabled by default for recorded-account allocation. It limits new subscriptions, not total ISA balances. The £20,000 adult ISA allowance is shared across accounts, using recorded subscriptions and resetting on 6 April. Existing balances, interest and ordinary provider ISA transfers do not use this shared subscription allowance again. Keep account types and dated contribution records accurate; unrecorded subscriptions elsewhere can reduce actual headroom.
+
+For cash ISAs, the forecast uses £20,000 through 2026/27 and £12,000 from 2027/28 for the under-65 age band, within the shared £20,000 allowance. The separate over-65 checkbox uses the £20,000 cash allowance. The chosen age band applies to the whole scenario; use separate scenarios if it changes. Future years assume these published rules continue. Saved lower allowance overrides are respected. Junior, Lifetime and Help to Buy ISAs require manual eligibility/special-rule planning and are excluded from automatic subscriptions when this checkbox is enabled.
+
+Scheduled ISA payments and extra transfers share the same allowance. The receipt identifies scheduled amounts capped by the model; any corresponding standing-order changes must be made separately. No bank payments or standing orders are changed by a forecast.
+
+When an ISA allowance or maximum balance is full, extra planned savings go to eligible non-ISA savings accounts, including accounts with zero regular shares when they are needed as an ISA overflow destination. If none is available with a recorded balance and room, money stays in HSBC rather than being assigned to an invented account. Add an ordinary savings account with its balance in the web interface to make it available for overflow. Unticking the ISA checkbox disables annual subscription modelling; explicit maximum balances and the Premium Bonds cap still apply.
+
+Rules checked on 14 October 2026 against [GOV.UK ISA guidance](https://www.gov.uk/individual-savings-accounts/how-isas-work) and [HMRC's cash ISA limit change](https://www.gov.uk/government/publications/reduction-in-the-cash-individual-savings-account-isa-limit/cash-individual-savings-account-isa-limit-reduction).

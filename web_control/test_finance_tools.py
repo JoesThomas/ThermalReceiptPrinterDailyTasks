@@ -124,6 +124,9 @@ def collect(values, today, *, shared_snapshot=None, local=None):
         today,
         bank_status=coverage,
     )
+    from finance.savings_goals import load as load_goals
+    if values.get("respect_isa_allowance") == "on" and values.get("use_saved_accounts") == "on":
+        projection["isa_records"] = deepcopy(local["isa_records"] if local and "isa_records" in local else load_goals())
     projection["primary_bank"] = "HSBC"
     projection["monzo_balance"] = money(balances.get("MONZO", {}).get("available", balances.get("MONZO", {}).get("current")), Decimal(0))
     if cash:
@@ -214,6 +217,7 @@ def collect_pair(values, today):
     from finance.receipt import load_finance_settings
     from services.subscriptions import load_subscriptions
     from finance.savings_targets import load_view
+    from finance.savings_goals import load as load_goals
 
     manual = all(
         row.get("opening_cash", "").strip() and row.get("daily_spend", "").strip()
@@ -233,6 +237,8 @@ def collect_pair(values, today):
         "subscriptions": load_subscriptions(),
         "accounts": accounts,
     }
+    if any(row.get("respect_isa_allowance") == "on" and row.get("use_saved_accounts") == "on" for row in values):
+        local["isa_records"] = load_goals()
     return [collect(row, today, shared_snapshot=shared, local=local) for row in values]
 
 
@@ -320,6 +326,7 @@ def register(app, login_required, start_print):
             preset_error = str(error)
         defaults["start"] = uk_today().isoformat()
         defaults.setdefault("monzo_target", "500")
+        defaults.setdefault("respect_isa_allowance", "on")
         return render_template(
             "test_finance.html",
             presets=presets,
@@ -409,6 +416,8 @@ def register(app, login_required, start_print):
     def generate_test_finance():
         today = uk_today()
         values = request.form.to_dict()
+        values.setdefault("respect_isa_allowance", "")
+        values.setdefault("isa_over_65", "")
         values.setdefault("save_all", "")
         values.setdefault("invest_spare_cash", "")
         values.setdefault("equal_savings", "")

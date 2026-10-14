@@ -48,6 +48,9 @@ def validate(value):
         if not isinstance(row,dict) or not isinstance(row.get('name'),str) or not 1 <= len(row['name']) <= 90 or any(ord(c)<32 for c in row['name']) or row.get('kind') not in {'savings','investment'} or key != identity(row['name'],row['kind']) or row.get('type') not in TYPES:
             raise ValueError('Invalid savings account settings.')
         if row.get('target') is not None: amount(row['target'])
+        if row.get('balance_limit') is not None:
+            limit = amount(row['balance_limit'])
+            if limit > 10000000 or (row['type'] == 'premium_bonds' and limit > 50000): raise ValueError('Invalid account balance limit.')
         if row.get('monthly_share') is not None and amount(row['monthly_share'])>100: raise ValueError('Savings shares must be between 0 and 100%.')
         if row.get('interest_rate') is not None:
             if amount(row['interest_rate'])>100 or row.get('type')!='cash_isa': raise ValueError('Use a cash ISA interest rate between 0 and 100%.')
@@ -94,7 +97,7 @@ def edit():
         write_json(FILE, value)
 
 
-def account_settings(name,kind,account_type,target=None,monthly_share=None):
+def account_settings(name,kind,account_type,target=None,monthly_share=None,balance_limit=None):
     name=name.strip()
     if not name or len(name)>90 or any(ord(c)<32 for c in name) or kind not in {'savings','investment'} or account_type not in TYPES:
         raise ValueError('Choose a valid account and type.')
@@ -103,11 +106,16 @@ def account_settings(name,kind,account_type,target=None,monthly_share=None):
     if account_type=='premium_bonds' and target is not None and target>50000: raise ValueError('Premium Bonds target cannot exceed 50000.')
     share=amount(monthly_share) if monthly_share not in (None,'') else None
     if share is not None and share>100: raise ValueError('Share must be between 0 and 100%.')
-    if share and not target and account_type!='premium_bonds': raise ValueError('Set a balance target before assigning a contribution share.')
+    limit = amount(balance_limit) if balance_limit not in (None, '') else None
+    if limit is not None and (limit > 10000000 or (account_type == 'premium_bonds' and limit > 50000)): raise ValueError('Balance limit exceeds the supported account limit.')
     with edit() as value:
         key=identity(name,kind)
         old=value['accounts'].get(key,{})
         value['accounts'][key]={**{k:v for k,v in old.items() if k in {'interest_rate','rate_date'} and account_type=='cash_isa'},'name':name,'kind':kind,'type':account_type,'target':str(target) if target is not None else None,'monthly_share':str(share) if share is not None else old.get('monthly_share','0')}
+        if balance_limit is not None:
+            value['accounts'][key]['balance_limit'] = str(limit) if limit is not None else None
+        elif 'balance_limit' in old:
+            value['accounts'][key]['balance_limit'] = old['balance_limit']
         if old.get('type') != account_type:
             for row in value['years'].values(): row['complete']=False
 

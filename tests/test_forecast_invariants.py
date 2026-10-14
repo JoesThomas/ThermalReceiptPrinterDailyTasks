@@ -107,7 +107,7 @@ class ForecastInvariantTests(TestCase):
                 self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
                 self.assertEqual(base, before)
 
-    def test_equal_account_allocation_conserves_every_penny_and_caps_targets(self):
+    def test_equal_account_allocation_conserves_every_penny_and_caps_explicit_limits(self):
         for count, budget in product((1, 2, 3, 7), ("0", "0.01", "100", "9999.99")):
             with self.subTest(count=count, budget=budget):
                 accounts = [
@@ -119,6 +119,7 @@ class ForecastInvariantTests(TestCase):
                         "balance": D(0),
                         "date": str(TODAY),
                         "target": D(100) * (i + 1),
+                        "balance_limit": D(100) * (i + 1),
                         "share": D(0),
                         "isa_contributions": D(0),
                     }

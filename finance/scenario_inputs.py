@@ -150,6 +150,9 @@ def validate(values, today):
     ):
         raise ValueError("Choose valid scheduled savings destinations.")
     return dict(
+        respect_isa_allowance=values.get("respect_isa_allowance") == "on"
+        and values.get("use_saved_accounts") == "on",
+        isa_over_65=values.get("isa_over_65") == "on",
         monzo_target=monzo_target,
         monzo_balance=monzo_balance,
         hl_monthly=regular,

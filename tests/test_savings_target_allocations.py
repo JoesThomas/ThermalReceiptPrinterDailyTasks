@@ -14,7 +14,7 @@ TODAY=date(2026,10,10)
 
 def account(name,balance,target,share='0',kind='savings'):
     return {'id':name,'name':name,'kind':kind,'type':'savings','balance':D(balance) if balance is not None else None,
-            'date':'2026-10-10','target':D(target) if target is not None else None,'share':D(share),'isa_contributions':None}
+            'date':'2026-10-10','target':D(target) if target is not None else None,'share':D(share),'isa_contributions':None,'balance_limit':D(target) if target is not None else None}
 
 
 class AccountGoalTests(TestCase):
