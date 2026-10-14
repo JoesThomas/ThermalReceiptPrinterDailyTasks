@@ -56,6 +56,11 @@ def snapshot_changes(pages):
 
 def dashboard():
     errors = []
+    try:
+        from services.vehicle_records import sync_mot_tasks
+        sync_mot_tasks()
+    except (OSError, ValueError):
+        errors.append('MOT tasks could not be updated; check saved vehicle dates and task data.')
     list_state = {'items': []}
     try:
         list_state = checklists.load()

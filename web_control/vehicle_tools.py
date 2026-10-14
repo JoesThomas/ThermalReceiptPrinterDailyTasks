@@ -50,4 +50,8 @@ def register(app, login_required):
                 else "Vehicle changes could not be saved."
             )
             return display(request.form.to_dict())
+        try:
+            records.sync_mot_tasks()
+        except (OSError, ValueError):
+            flash("Vehicle saved, but MOT tasks could not be updated. Check task data.")
         return redirect(url_for("vehicle_list"))

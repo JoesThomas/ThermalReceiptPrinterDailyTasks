@@ -100,7 +100,7 @@ class BirthdayTests(unittest.TestCase):
         birthdays.import_csv(DATA)
         self.assertEqual(
             birthdays.receipt_lines(date(2026, 10, 13)),
-            ["Today: Example Person (36)", "Tomorrow: Other Person"],
+            ["Today: Example Person (36)"],
         )
         row = birthdays.record("New Year", 2000, 1, 1)
         result = birthdays.upcoming([row], date(2026, 12, 31), 1)[0]
@@ -198,3 +198,16 @@ class BirthdayTests(unittest.TestCase):
         self.assertNotIn("profile", value["files"]["birthdays.csv"]["rows"][0])
         backup.restore(self.root, value)
         self.assertNotIn(b"facebook", self.file.read_bytes())
+
+    def test_sunday_ten_day_receipt_and_weekday_birthday_only(self):
+        birthdays.import_csv(
+            b"Name,Year,Month,Day\nToday person,1990,10,18\nTen days,,10,28\nEleven days,,10,29\n"
+        )
+        lines = birthdays.receipt_lines(date(2026, 10, 18))
+        self.assertIn("Today: Today person (36)", lines)
+        self.assertTrue(any("Ten days" in line for line in lines))
+        self.assertFalse(any("Eleven days" in line for line in lines))
+        self.assertEqual(birthdays.receipt_lines(date(2026, 10, 19)), [])
+        self.assertEqual(
+            birthdays.receipt_lines(date(2026, 10, 28)), ["Today: Ten days"]
+        )

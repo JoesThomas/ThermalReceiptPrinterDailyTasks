@@ -4820,6 +4820,7 @@ def run_live_pipeline(
         # checks only for registrations that are not already maintained locally.
         from services import vehicle_records
         try:
+            vehicle_records.sync_mot_tasks()
             local_vehicles = vehicle_records.load()['vehicles']
             local_registrations = {row['registration'] for row in local_vehicles}
             vehicle_lines = vehicle_records.receipt_lines(local_vehicles)
