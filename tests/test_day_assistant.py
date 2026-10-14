@@ -238,6 +238,16 @@ class DailyAssistantTests(unittest.TestCase):
         self, paid_therapy=False
     ):
         from receipt.location_settings import DEFAULT_LOCATION, validate_location
+        from services import vehicle_records
+
+        saved_vehicles = [
+            vehicle_records.record(
+                {"registration": "AB12CDE", "insurance_expiry": "2027-01-01"}
+            ),
+            vehicle_records.record(
+                {"registration": "XY34XYZ", "breakdown_expiry": "2027-02-01"}
+            ),
+        ]
 
         source = ast.parse(Path("services/live_pipeline.py").read_text())
         function = next(
@@ -274,9 +284,9 @@ class DailyAssistantTests(unittest.TestCase):
             one_shot_requested=lambda *args: False,
             feature_enabled=lambda value, key: value["features"].get(key, False),
             preview_progress=lambda *args: None,
-            vehicles=[],
+            vehicles=[{"registration": "AB12 CDE"}],
             dvla_api_key="",
-            print_vehicle_expiry_checks=lambda *args: None,
+            print_vehicle_expiry_checks=Mock(),
             CALENDAR_ICAL_URL="",
             GOOGLE_DOC_1_URL="",
             get_calendar_events=lambda *args, **kwargs: events,
@@ -319,6 +329,11 @@ class DailyAssistantTests(unittest.TestCase):
                 return_value=["[ ] Put out General today", "Collection: Wed 14 Oct"],
             ),
             patch("web_control.today_summary.save_calendar"),
+            patch.object(
+                vehicle_records,
+                "load",
+                return_value={"version": 1, "vehicles": saved_vehicles},
+            ),
             patch(
                 "actions.birthdays.receipt_lines",
                 return_value=["Today: Example birthday (36)"],
@@ -334,6 +349,12 @@ class DailyAssistantTests(unittest.TestCase):
         self.assertEqual(printed.count("Put out General"), 1)
         self.assertEqual(printed.count("BIRTHDAYS"), 1)
         self.assertEqual(printed.count("Today: Example birthday (36)"), 1)
+        self.assertEqual(printed.count("VEHICLES - SAVED DATES"), 1)
+        self.assertEqual(printed.count("AB12CDE"), 1)
+        self.assertEqual(printed.count("XY34XYZ"), 1)
+        namespace["print_vehicle_expiry_checks"].assert_called_once_with(
+            printer, [], ""
+        )
         self.assertIn("BEFORE BED", printed)
         self.assertLess(printed.index("WORKOUT"), printed.index("BEFORE BED"))
         namespace["finance_requested"].assert_called_once_with(

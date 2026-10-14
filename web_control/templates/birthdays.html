@@ -72,20 +72,13 @@
                                required
                                value="{{ draft.get('day','') }}">
                     </label>
-                    <label>
-                        Facebook profile (optional)
-                        <input type="url"
-                               name="profile"
-                               maxlength="250"
-                               value="{{ draft.get('profile','') }}">
-                    </label>
                     <button class="primary">Save birthday</button>
                 </form>
             </section>
             <section>
                 <h2>Import and export</h2>
                 <p class="muted">
-                    CSV columns: Name, Year, Month, Day, Link to Profile. The saved CSV also includes a stable ID so edits remain attached to the same record. Blank rows and identical duplicates are removed; conflicting duplicates or invalid dates reject the import without replacing saved entries.
+                    CSV columns: Name, Year, Month, Day. The saved CSV also includes a stable ID so edits remain attached to the same record. Blank rows and identical duplicates are removed; conflicting duplicates or invalid dates reject the import without replacing saved entries.
                 </p>
                 <form method="post"
                       action="{{ url_for('birthday_import') }}"
@@ -144,10 +137,6 @@
                                        max="31"
                                        required
                                        value="{{ item.day }}">
-                            </label>
-                            <label>
-                                Facebook profile (optional)
-                                <input type="url" name="profile" maxlength="250" value="{{ item.profile }}">
                             </label>
                             <button>Update birthday for {{ item.name }}</button>
                             <button name="action" value="remove" formnovalidate>Remove birthday for {{ item.name }}</button>

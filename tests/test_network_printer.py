@@ -58,8 +58,17 @@ class PrinterConnectionTests(unittest.TestCase):
     def test_network_connects_before_returning(self):
         self.assertIs(connection.open_printer(), self.device)
         self.device.open.assert_called_once_with()
+        self.device.cut.assert_not_called()
+        self.assertEqual([call[0] for call in self.device.mock_calls], ['open'])
+
+    def test_usb_does_not_cut_blank_paper_on_open(self):
+        os.environ['RECEIPT_PRINTER_CONNECTION'] = 'usb'
+        connection.open_printer()
+        self.device.cut.assert_not_called()
+
+    def test_initial_cut_is_available_only_when_explicitly_requested(self):
+        connection.open_printer(initial_cut=True)
         self.device.cut.assert_called_once_with()
-        self.assertEqual([call[0] for call in self.device.mock_calls], ['open', 'cut'])
 
     def test_main_receipt_uses_network_factory_and_restores_pipeline(self):
         original_usb = object()

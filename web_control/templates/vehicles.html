@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Vehicles · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <h1>Vehicles</h1>
+            <p class="muted">
+                Save MOT, tax, insurance and breakdown dates for each vehicle locally. These manually entered records appear on the Actions receipt; dates are reminders and do not verify current cover. Leave unknown dates blank.
+            </p>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            {% macro editor(row, saved=false) %}
+                <form method="post"
+                      action="{{ url_for('vehicle_save') }}"
+                      class="bin-settings-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="id" value="{{ row.get('id','') }}">
+                    <label>
+                        Vehicle name (optional)
+                        <input name="name" maxlength="80" value="{{ row.get('name','') }}">
+                    </label>
+                    <label>
+                        Registration
+                        <input name="registration"
+                               maxlength="20"
+                               required
+                               value="{{ row.get('registration','') }}">
+                    </label>
+                    {% for field,label in dates.items() %}
+                        <label>
+                            {{ label }}
+                            {% if field == 'tax_due' %}
+                                due date
+                            {% else %}
+                                expiry date
+                            {% endif %}
+                            <input type="date" name="{{ field }}" value="{{ row.get(field,'') }}">
+                        </label>
+                    {% endfor %}
+                    {% for field,label in details.items() %}
+                        <label>
+                            {{ label }} (optional)
+                            <input name="{{ field }}" maxlength="160" value="{{ row.get(field,'') }}">
+                        </label>
+                    {% endfor %}
+                    <button class="primary">
+                        {% if saved %}
+                            Update vehicle {{ row.registration }}
+                        {% else %}
+                            Save vehicle
+                        {% endif %}
+                    </button>
+                    {% if saved %}
+                        <button name="action" value="remove" formnovalidate>Remove vehicle {{ row.registration }}</button>
+                    {% endif %}
+                </form>
+            {% endmacro %}
+            <section>
+                <h2>Add or correct a vehicle</h2>
+                {{ editor(draft) }}
+            </section>
+            <section>
+                <h2>Saved vehicles ({{ vehicles|length }})</h2>
+                {% for row in vehicles %}
+                    <section>
+                        <h3>
+                            {{ row.name or row.registration }}
+                            {% if row.name %}· {{ row.registration }}{% endif %}
+                        </h3>
+                        {% for field,label in dates.items() %}
+                            <p>
+                                <strong>{{ label }}:</strong> {{ expiry_label(row[field]) }}
+                            </p>
+                        {% endfor %}
+                        <details>
+                            <summary>Edit {{ row.registration }}</summary>
+                            {{ editor(row,true) }}
+                        </details>
+                    </section>
+                {% else %}
+                    <p>No vehicles saved yet.</p>
+                {% endfor %}
+            </section>
+        </main>
+    </body>
+</html>

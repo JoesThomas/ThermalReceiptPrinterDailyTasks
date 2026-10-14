@@ -1296,6 +1296,9 @@ register_task_tools(app, login_required)
 from web_control.birthday_tools import register as register_birthdays
 register_birthdays(app, login_required)
 
+from web_control.vehicle_tools import register as register_vehicle_tools
+register_vehicle_tools(app, login_required)
+
 from web_control.bin_tools import register as register_bin_tools
 register_bin_tools(app, login_required)
 
