@@ -248,7 +248,8 @@ def upcoming(rows=None, day=None, days=7):
 
 
 def receipt_lines(day=None):
-    rows = upcoming(day=day)
+    day = day or today()
+    rows = upcoming(day=day, days=10 if day.weekday() == 6 else 0)
     lines = []
     for row in rows[:10]:
         age = f" ({row['age']})" if row["age"] is not None else ""

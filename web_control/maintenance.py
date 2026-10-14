@@ -131,7 +131,9 @@ def run_once(root=ROOT, *, warnings=None, now=None):
     from receipt.archive_policy import prune as prune_archive
     now = now or datetime.now(ZoneInfo('Europe/London'))
     warnings = warnings if warnings is not None else {}
-    jobs = [('Private backup', lambda: create(root, now=now)),
+    from services.vehicle_records import sync_mot_tasks
+    jobs = [('MOT task reminders', lambda: sync_mot_tasks(today=now.astimezone(ZoneInfo('Europe/London')).date(), root=root)),
+            ('Private backup', lambda: create(root, now=now)),
             ('Backup recovery check', lambda: check(root, now=now)),
             ('Lifestyle cleanup', lambda: prune(root)),
             ('Finance explanation cleanup', lambda: prune_explanations(root)),

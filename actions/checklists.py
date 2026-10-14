@@ -26,6 +26,12 @@ EQUIPMENT = {'dumbbells': 'Dumbbells', 'rowing_machine': 'Rowing machine',
 def validate_state(value):
     if not isinstance(value, dict) or not isinstance(value.get('items'), list):
         raise ValueError('Saved checklist is invalid; restore it before editing.')
+    mot_keys = value.get('mot_task_keys', [])
+    if not isinstance(mot_keys, list) or len(mot_keys) > 2000 or any(
+        not isinstance(key, str) or len(key) != 64 or any(c not in '0123456789abcdef' for c in key)
+        for key in mot_keys
+    ):
+        raise ValueError('Invalid saved MOT task history.')
     for row in value['items']:
         if (not isinstance(row, dict) or row.get('kind') not in {'tasks', 'exercises'}
             or row.get('source') not in {'doc', 'local'}

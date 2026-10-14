@@ -2,7 +2,8 @@
 
 import re
 import json
-from datetime import date
+import hashlib
+from datetime import date, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -87,9 +88,9 @@ def validate(state):
     return state
 
 
-def load():
+def load(path=None):
     try:
-        with FILE.open("rb") as stream:
+        with (Path(path) if path is not None else FILE).open("rb") as stream:
             raw = stream.read(256_001)
     except FileNotFoundError:
         return {"version": 1, "vehicles": []}
@@ -158,3 +159,78 @@ def receipt_lines(rows=None, today=None):
             if row[field]:
                 lines.append(f"{label}: {row[field]}")
     return lines
+
+
+def sync_mot_tasks(today=None, root=None):
+    """Add one local booking task per registration/expiry cycle, including catch-up."""
+    from actions import checklists
+
+    today = today or uk_today()
+    vehicle_path = Path(root) / "data" / "vehicles.json" if root is not None else None
+    rows = load(vehicle_path)["vehicles"]
+    eligible = [
+        row
+        for row in rows
+        if row["mot_expiry"]
+        and (date.fromisoformat(row["mot_expiry"]) - today).days <= 30
+    ]
+    if not eligible:
+        return 0
+    target = (
+        Path(root) / "data" / "daily_lists.json"
+        if root is not None
+        else checklists.FILE
+    )
+    with file_lock(target):
+        try:
+            with target.open("rb") as stream:
+                raw = stream.read(900_001)
+            if len(raw) > 900_000:
+                raise ValueError("Saved checklist exceeds the size limit.")
+            state = checklists.validate_state(json.loads(raw))
+        except FileNotFoundError:
+            state = {"items": []}
+        except (UnicodeError, ValueError, RecursionError):
+            raise ValueError(
+                "Saved checklist could not be read; restore it before adding MOT tasks."
+            ) from None
+        history = state.get("mot_task_keys", [])
+        seen = set(history) | {item["id"] for item in state["items"]}
+        added = 0
+        for row in eligible:
+            key = hashlib.sha256(
+                (row["registration"] + ":" + row["mot_expiry"]).encode()
+            ).hexdigest()
+            if key in seen:
+                continue
+            if len(state["items"]) >= 500 or len(history) >= 2000:
+                raise ValueError(
+                    "The task list is full. Remove old tasks before adding MOT reminders."
+                )
+            title = f"Book MOT for {row['registration']}"
+            if row["name"]:
+                title += f" ({row['name']})"
+            title += f" - expires {date.fromisoformat(row['mot_expiry']):%d %b %Y}"
+            state["items"].append(
+                dict(
+                    id=key,
+                    kind="tasks",
+                    source="local",
+                    title=title,
+                    done=False,
+                    done_on=None,
+                    repeat="none",
+                    priority="normal",
+                    due=(
+                        date.fromisoformat(row["mot_expiry"]) - timedelta(days=30)
+                    ).isoformat(),
+                )
+            )
+            history.append(key)
+            seen.add(key)
+            added += 1
+        if added:
+            state["mot_task_keys"] = history
+            checklists.validate_state(state)
+            write_json(target, state)
+    return added

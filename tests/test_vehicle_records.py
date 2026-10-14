@@ -197,3 +197,122 @@ class VehicleRecordsTests(unittest.TestCase):
                 records.receipt_lines(rows),
                 records.receipt_lines(rows, date(2026, 10, 14)),
             )
+
+    def test_mot_task_boundary_catchup_and_dedup_after_completion_or_deletion(self):
+        from actions import checklists
+
+        target = self.root / "data" / "daily_lists.json"
+        with patch.object(checklists, "FILE", target):
+            records.update(
+                {"registration": "AB12CDE", "name": "Car", "mot_expiry": "2026-11-13"}
+            )
+            self.assertEqual(records.sync_mot_tasks(date(2026, 10, 13)), 0)
+            self.assertEqual(records.sync_mot_tasks(date(2026, 10, 14)), 1)
+            task = checklists.load()["items"][0]
+            self.assertIn("Book MOT for AB12CDE", task["title"])
+            self.assertEqual(task["due"], "2026-10-14")
+            self.assertEqual(records.sync_mot_tasks(date(2026, 10, 15)), 0)
+            checklists.update("tasks", "toggle", task["id"])
+            self.assertEqual(records.sync_mot_tasks(date(2026, 10, 16)), 0)
+            checklists.update("tasks", "delete", task["id"])
+            self.assertEqual(records.sync_mot_tasks(date(2026, 10, 17)), 0)
+            vehicle = records.load()["vehicles"][0]
+            records.update(dict(vehicle, mot_expiry="2027-11-13"), vehicle["id"])
+            self.assertEqual(records.sync_mot_tasks(date(2027, 10, 20)), 1)
+            self.assertEqual(len(checklists.load()["items"]), 1)
+
+    def test_mot_sync_root_isolated_backup_preserves_deleted_task_history(self):
+        from actions import checklists
+
+        target = self.root / "data" / "daily_lists.json"
+        records.update(
+            {
+                "registration": "AB12CDE",
+                "mot_expiry": "2026-10-01",
+                "tax_due": "2026-10-20",
+            }
+        )
+        with (
+            patch.object(checklists, "FILE", target),
+            patch(
+                "requests.sessions.Session.request",
+                side_effect=AssertionError("remote call"),
+            ),
+        ):
+            self.assertEqual(
+                records.sync_mot_tasks(date(2026, 10, 14), root=self.root), 1
+            )
+            task = checklists.load()["items"][0]
+            checklists.update("tasks", "delete", task["id"])
+            value = private_backup.validate(private_backup.export(self.root))
+            target.unlink()
+            private_backup.restore(self.root, value)
+            self.assertEqual(
+                records.sync_mot_tasks(date(2026, 10, 14), root=self.root), 0
+            )
+            self.assertEqual(checklists.load()["items"], [])
+
+    def test_mot_sync_ignores_other_dates_and_preserves_corrupt_or_full_tasks(self):
+        from actions import checklists
+
+        target = self.root / "data" / "daily_lists.json"
+        records.update(
+            {
+                "registration": "AB12CDE",
+                "tax_due": "2026-10-20",
+                "insurance_expiry": "2026-10-20",
+                "breakdown_expiry": "2026-10-20",
+            }
+        )
+        with patch.object(checklists, "FILE", target):
+            self.assertEqual(records.sync_mot_tasks(date(2026, 10, 14)), 0)
+            self.assertFalse(target.exists())
+            vehicle = records.load()["vehicles"][0]
+            records.update(dict(vehicle, mot_expiry="2026-10-20"), vehicle["id"])
+            target.write_text("invalid checklist")
+            with self.assertRaises(ValueError):
+                records.sync_mot_tasks(date(2026, 10, 14))
+            self.assertEqual(target.read_text(), "invalid checklist")
+            items = [
+                dict(
+                    id=str(n),
+                    title="Existing task",
+                    kind="tasks",
+                    source="local",
+                    done=False,
+                    done_on=None,
+                )
+                for n in range(500)
+            ]
+            target.write_text(json.dumps({"items": items}))
+            before = target.read_bytes()
+            with self.assertRaises(ValueError):
+                records.sync_mot_tasks(date(2026, 10, 14))
+            self.assertEqual(target.read_bytes(), before)
+
+    def test_mot_sync_runs_in_maintenance_and_web_vehicle_save(self):
+        from actions import checklists
+        from web_control import maintenance
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        records.update({"registration": "AB12CDE", "mot_expiry": "2026-11-13"})
+        target = self.root / "data" / "daily_lists.json"
+        with patch.object(checklists, "FILE", target):
+            maintenance.run_once(
+                self.root,
+                now=datetime(2026, 10, 14, 9, tzinfo=ZoneInfo("Europe/London")),
+            )
+            self.assertEqual(len(checklists.load()["items"]), 1)
+        from flask import Flask
+        from web_control.vehicle_tools import register
+
+        app = Flask(__name__)
+        app.secret_key = "test-only"
+        register(app, lambda view: view)
+        with (
+            app.test_client() as client,
+            patch.object(records, "sync_mot_tasks", return_value=0) as sync,
+        ):
+            client.post("/vehicles/save", data={"registration": "XY34XYZ"})
+            sync.assert_called_once_with()

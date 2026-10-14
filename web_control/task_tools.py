@@ -11,6 +11,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def register(app, login_required):
     def display(kind, prep_draft=None):
+        if kind == 'tasks':
+            try:
+                from services.vehicle_records import sync_mot_tasks
+                sync_mot_tasks()
+            except (OSError, ValueError):
+                flash('MOT tasks could not be updated. Check saved vehicle dates and task data.')
         try:
             if kind == 'exercises':
                 from actions.receipt_workout import plan
