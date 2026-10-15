@@ -33,6 +33,17 @@ def register(app,login_required):
         except (OSError,ValueError,TypeError,KeyError):history=[]
         return render_template('planning.html',planning_view=view,insights={'history':history},checked_at=today)
 
+    @app.post('/finance/expected-income')
+    @login_required
+    def save_expected_income():
+        from finance.expected_income import save
+        try:
+            save(request.form,action=request.form.get('action','save'))
+            flash('Expected non-salary income saved privately. Confirmed bank income is unchanged.')
+        except (ValueError,TypeError,OSError,KeyError):
+            flash('Expected income was not saved. Check the name, positive amount, payment dates and frequency.')
+        return redirect(url_for('finance_review')+'#expected-income')
+
     @app.post('/finance/planning')
     @login_required
     def save_finance_plan():

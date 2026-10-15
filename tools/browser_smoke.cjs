@@ -390,6 +390,22 @@ process.on('exit', () => child.kill());
   // Navigation responses precede loading the new document's refresh handlers.
   await page.waitForLoadState('load');
   assert.match(await page.locator('#finance-refresh').innerText(), /cached for up to 30 minutes/);
+  await page.locator('#expected-income > details').last().locator('summary').first().click();
+  const expectedForm=page.locator('#expected-income form').last();
+  await expectedForm.locator('input[name="name"]').fill('Fixture property rent');
+  await expectedForm.locator('input[name="amount"]').fill('100');
+  await expectedForm.locator('input[name="date"]').fill(new Date(Date.now()+86400000).toISOString().slice(0,10));
+  await expectedForm.locator('select[name="repeat"]').selectOption('month_end');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}), expectedForm.getByRole('button',{name:'Add expected payment',exact:true}).click()]);
+  await page.getByText('Expected non-salary income saved privately.',{exact:false}).waitFor();
+  assert.match(await page.locator('#expected-income').innerText(), /Including expected income/);
+  await page.locator('#expected-income > details').last().locator('summary').first().click();
+  const existingExpected=page.locator('#expected-income details details').first();
+  await existingExpected.locator('summary').first().click();
+  assert.equal(await existingExpected.locator('input[name="amount"]').inputValue(), '100');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}), existingExpected.getByRole('button',{name:'Delete expected payment',exact:true}).click()]);
+  await page.getByText('Manage expected income (0)',{exact:true}).waitFor();
+
   await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
   const unsavedField = page.locator('input[name="emergency_buffer"]');
   await unsavedField.fill('123.45');

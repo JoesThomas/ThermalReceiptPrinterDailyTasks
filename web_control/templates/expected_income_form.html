@@ -1,0 +1,59 @@
+<form method="post" action="{{ url_for('save_expected_income') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if payment %}<input type="hidden" name="id" value="{{ payment.id }}">{% endif %}
+    <div class="grid">
+        <label>
+            Name (not salary)
+            <input name="name"
+                   maxlength="120"
+                   required
+                   value="{{ payment.name if payment else '' }}"
+                   placeholder="Property rent">
+        </label>
+        <label>
+            Amount (£)
+            <input name="amount"
+                   type="number"
+                   min="0.01"
+                   max="10000000"
+                   step="0.01"
+                   required
+                   value="{{ payment.amount if payment else '' }}">
+        </label>
+        <label>
+            First expected date
+            <input name="date"
+                   type="date"
+                   required
+                   value="{{ payment.date if payment else '' }}">
+        </label>
+        <label>
+            Frequency
+            <select name="repeat">
+                {% for value,label in [('once','One-off'),('monthly','Monthly on the same day'),('month_end','Last day of every month'),('yearly','Yearly')] %}
+                    <option value="{{ value }}"
+                            {% if (payment and payment.repeat == value) or (not payment and value == 'monthly') %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Last payment date (optional)
+            <input name="end_date"
+                   type="date"
+                   value="{{ payment.end_date if payment else '' }}">
+        </label>
+        <label>
+            <input name="enabled"
+                   type="checkbox"
+                   {% if not payment or payment.enabled %}checked{% endif %}>
+            Include in expected-income projection
+        </label>
+    </div>
+    <p class="muted">
+        Monthly dates such as the 31st use the last available day in shorter months. Choose “Last day of every month” for payments that always arrive at month end.
+    </p>
+    <button name="action" value="save">{{ 'Save expected payment' if payment else 'Add expected payment' }}</button>
+    {% if payment %}<button name="action" value="delete" formnovalidate>Delete expected payment</button>{% endif %}
+</form>
