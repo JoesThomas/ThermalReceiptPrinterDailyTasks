@@ -140,30 +140,7 @@
                             </div>
                         {% endif %}
                         {% if account.type in ['savings','cash_isa'] %}
-                            <form method="post" action="{{ url_for('isa_rate') }}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <input type="hidden" name="account" value="{{ account.id }}">
-                                <label>
-                                    Forecast annual interest / AER (%, optional)
-                                    <input type="number"
-                                           name="rate"
-                                           min="0"
-                                           max="100"
-                                           step="0.01"
-                                           value="{{ account.interest_rate if account.interest_rate is defined and account.interest_rate is not none else '' }}">
-                                </label>
-                                <label>
-                                    Effective from
-                                    <input type="date"
-                                           name="date"
-                                           value="{{ account.rate_date if account.rate_date is defined else goals.today }}"
-                                           required>
-                                </label>
-                                <button>Save interest assumption</button>
-                            </form>
-                            <p class="muted">
-                                Used for estimated growth in the test forecast from today or the effective date, whichever is later. Assumes a constant AER, retained interest and a 365-day year; excludes tax, fees and provider payment dates. Blank or 0% means no estimated interest. Recorded balances are unchanged.
-                            </p>
+                            {% include 'savings_interest_form.html' %}
                         {% endif %}
                         {% if account.type in ['cash_isa','stocks_isa','other_isa'] %}
                             <h3>Current amount & interest</h3>

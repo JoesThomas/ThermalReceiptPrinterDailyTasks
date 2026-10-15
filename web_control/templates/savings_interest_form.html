@@ -1,0 +1,39 @@
+<h4>Savings interest</h4>
+<p>
+    {% if account.interest_rate is defined and account.interest_rate is not none %}
+        Current forecast assumption: <strong>{{ '%.2f'|format(account.interest_rate|float) }}% AER</strong> from {{ account.rate_date }}.
+    {% else %}
+        No interest rate set; estimated growth is excluded.
+    {% endif %}
+</p>
+<form method="post" action="{{ url_for('isa_rate') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="account" value="{{ account.id }}">
+    <input type="hidden"
+           name="return_to"
+           value="{{ interest_return|default('goals') }}">
+    <div class="grid">
+        <label>
+            Forecast annual interest / AER (%, optional)
+            <input type="number"
+                   name="rate"
+                   min="0"
+                   max="100"
+                   step="0.01"
+                   value="{{ account.interest_rate if account.interest_rate is defined and account.interest_rate is not none else '' }}">
+        </label>
+        <label>
+            Effective from
+            <input type="date"
+                   name="date"
+                   value="{{ account.rate_date if account.rate_date is defined else savings_interest_today }}"
+                   required>
+        </label>
+    </div>
+    <button>Save interest assumption</button>
+</form>
+<p class="muted">
+    Used by the test receipt for projected balances and time to target. The recorded balance above is unchanged.
+    Assumes a constant AER, retained interest and a 365-day year; excludes tax, fees and provider payment dates.
+    Blank or 0% means no estimated interest.
+</p>

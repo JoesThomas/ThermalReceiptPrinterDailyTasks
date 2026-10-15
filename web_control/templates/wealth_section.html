@@ -71,6 +71,14 @@
                     <text x="30" y="18" font-size="12">£{{ '%.2f'|format(account.high) }}</text><text x="30" y="145" font-size="12">£{{ '%.2f'|format(account.low) }}</text><text x="30" y="164" font-size="12">{{ account.chart[0].date }}</text><text x="570" y="164" text-anchor="end" font-size="12">{{ account.chart[-1].date }}</text>
                 </svg>
             {% endif %}
+            {% set interest_account = savings_interest_details(account) %}
+            {% if interest_account and interest_account.type in ['savings','cash_isa'] and account.kind == 'savings' %}
+                {% with account=interest_account, interest_return='savings' %}
+                    {% include 'savings_interest_form.html' %}
+                {% endwith %}
+            {% elif interest_account is none %}
+                <p class="helper">Interest settings could not be loaded. Restore the savings settings before editing rates.</p>
+            {% endif %}
             <details>
                 <summary>Recorded valuations / edit or remove</summary>
                 {% for entry in account.entries %}
