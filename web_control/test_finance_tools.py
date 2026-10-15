@@ -29,6 +29,7 @@ def collect(values, today, *, shared_snapshot=None, local=None):
         raise ValueError("Enter valid starting bank cash.")
     if daily:
         settings["runway_daily_spend"] = str(daily_value)
+    bank_sources = {}
     if cash and daily:
         # A fully manual scenario reads local commitments without touching APIs.
         transactions = []
@@ -51,6 +52,10 @@ def collect(values, today, *, shared_snapshot=None, local=None):
         from services import live_pipeline as pipeline
 
         data, balances = snapshot["data"], snapshot["balances"]
+        bank_sources = {
+            provider: deepcopy(balances.get(provider, {}))
+            for provider in ("HSBC", "MONZO")
+        }
         transactions = data[0]
         status = pipeline.build_subscription_status(
             transactions,
@@ -127,6 +132,8 @@ def collect(values, today, *, shared_snapshot=None, local=None):
     from finance.savings_goals import load as load_goals
     if values.get("respect_isa_allowance") == "on" and values.get("use_saved_accounts") == "on":
         projection["isa_records"] = deepcopy(local["isa_records"] if local and "isa_records" in local else load_goals())
+    projection["bank_balance_sources"] = bank_sources
+    projection["bank_cash_manual"] = bool(cash)
     projection["primary_bank"] = "HSBC"
     projection["monzo_balance"] = money(balances.get("MONZO", {}).get("available", balances.get("MONZO", {}).get("current")), Decimal(0))
     if cash:
