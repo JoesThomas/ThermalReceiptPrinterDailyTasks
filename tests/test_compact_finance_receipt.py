@@ -94,8 +94,8 @@ class CompactFinanceTests(TestCase):
         self.assertIn("Interest assumption: 3.50% AER", short)
         self.assertIn("HOLIDAY POT", short)
         self.assertNotIn("Linked regular savings payment", short)
-        self.assertIn("Do not send again", short)
-        self.assertIn("Internal bank transfer", short)
+        self.assertIn("do not resend", short)
+        self.assertIn("Monzo top-up (from reserves)", short)
         self.assertEqual(result, original)
         self.assertEqual(receipt(result, TODAY), full)
 
@@ -154,3 +154,40 @@ class CompactFinanceTests(TestCase):
                     text,
                 )
             start.assert_not_called()
+
+    def test_funded_transfer_notes_fit_a_short_block_without_repeating_amounts(self):
+        base = source()
+        base["cash"] = D(5000)
+        base["reserve_details"] = dict(
+            target=D(500), held=D(200), gap=D(300), tax_reserve=D(0), date=TODAY
+        )
+        base["savings_accounts"].append(
+            dict(
+                id="cash",
+                name="Cash",
+                kind="savings",
+                type="savings",
+                balance=D(200),
+                target=D(500),
+                share=D(0),
+                date=str(TODAY),
+                isa_contributions=None,
+            )
+        )
+        result = build(base, values(invest_spare_cash="on"), TODAY)
+        text = receipt(result, TODAY, detail="compact")
+        block = text.split("WHAT TO MOVE THIS PAYDAY")[1].split("WHAT TO KEEP")[0]
+        lines = [line for line in block.splitlines() if line and set(line) != {"-"}]
+        self.assertLessEqual(len(lines), 9)
+        self.assertEqual(block.count("Top-ups use reserves, not extra income."), 1)
+        for label in [
+            "Cash top-up (from reserves)",
+            "Monzo top-up (from reserves)",
+            "Spare cash (included above)",
+            "Scheduled savings - do not resend",
+        ]:
+            matching = [line for line in lines if line.startswith(label)]
+            self.assertEqual(len(matching), 1)
+            self.assertIn("£", matching[0])
+        self.assertNotIn("Already included in the transfers above", block)
+        self.assertTrue(all(len(line) <= 42 for line in lines))
