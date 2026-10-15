@@ -87,7 +87,7 @@ def build_validated(
     )
     inputs["isa_limits"] = isa_limits
     forecast = simulate(base, inputs, today)
-    account_plan = allocate(
+    account_plan = forecast.get("account_plan") or allocate(
         accounts,
         forecast["payments"] if inputs["use_accounts"] else [],
         forecast["events"] + forecast["reserve_transfers"]
@@ -115,7 +115,7 @@ def build_validated(
         )
         forecast["extended_goal_date"] = extended["goal_date"]
         forecast["extended_goal_months"] = extended_inputs["months"]
-        extended_accounts = allocate(
+        extended_accounts = extended.get("account_plan") or allocate(
             accounts,
             extended["payments"] if inputs["use_accounts"] else [],
             extended["events"] + extended["reserve_transfers"]
