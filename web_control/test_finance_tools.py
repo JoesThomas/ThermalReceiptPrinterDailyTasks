@@ -434,7 +434,7 @@ def register(app, login_required, start_print):
             details["values"] = scenario_inputs(values)
             result["sensitivity"] = details["sensitivity"]
             result["contribution"] = details["contribution"]
-            text = receipt(result, today)
+            text = receipt(result, today, detail=values.get("receipt_detail","compact"))
             from receipt.archive import save
 
             identifier = save(

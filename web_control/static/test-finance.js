@@ -29,9 +29,18 @@ function updateScenarioFields() {
         form.elements[name].disabled = lump;
         form.elements[name].closest('label').hidden = lump;
     }
+    form.elements.existing_salary.closest('label').hidden = form.elements.mode.value !== 'additional';
     if (form.elements.use_saved_accounts) form.elements.starting_savings.disabled = form.elements.use_saved_accounts.checked;
     if (form.elements.strategy) {
         form.elements.amex_split.closest('label').hidden = form.elements.strategy.value !== 'split';
+    }
+    const allSurplus = form.elements.save_all.checked;
+    form.elements.savings_target.disabled = lump;
+    form.elements.savings_target.closest('label').hidden = lump || allSurplus;
+    if (form.elements.use_saved_accounts) {
+        const saved = form.elements.use_saved_accounts.checked;
+        form.elements.starting_savings.closest('label').hidden = saved;
+        form.elements.equal_savings.closest('label').hidden = !saved;
     }
     form.elements.lump_sum.disabled = !hasLump;
     form.elements.lump_sum.required = hasLump;
@@ -57,3 +66,11 @@ window.addEventListener('pageshow', () => {
     compareForm.removeAttribute('aria-busy');
     document.getElementById('scenario-compare-status').hidden = true;
 });
+
+scenarioForm?.addEventListener('invalid', event => {
+    for (let parent=event.target.parentElement; parent; parent=parent.parentElement) {
+        if (parent.tagName==='DETAILS') parent.open=true;
+    }
+}, true);
+
+document.querySelector('#test-finance-form input[name=save_all]')?.addEventListener('change', updateScenarioFields);
