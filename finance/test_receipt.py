@@ -75,6 +75,10 @@ def receipt(result, today, *, detail="detailed"):
     )
     text(f"Generated {today:%d %b %Y}")
     text(f"Forecast ends {forecast['end']:%d %b %Y} ({data['months']} months)")
+    from finance.bank_balance_receipt import bank_balances
+
+    bank_balances(page, base)
+
     section("PAY PERIOD ALLOCATION")
     text(f"{data['start']:%d %b} to {result['cycle_end']:%d %b %Y}")
     if data["mode"] in {"lump", "lump_income"}:

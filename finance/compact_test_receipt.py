@@ -61,6 +61,10 @@ def receipt(result, today):
             "FUNDING WARNING: this pathway breaches protected reserves. Review costs before making transfers."
         )
 
+    from finance.bank_balance_receipt import bank_balances
+
+    bank_balances(page, base)
+
     section("WHAT TO MOVE THIS PAYDAY")
     text(f"{data['start']:%d %b} to {result['cycle_end']:%d %b %Y}")
     destinations = [(name(row), row["first"]) for row in accounts if row["first"]]

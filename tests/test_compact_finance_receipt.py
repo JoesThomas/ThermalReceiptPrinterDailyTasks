@@ -69,6 +69,118 @@ def values(**changes):
 
 
 class CompactFinanceTests(TestCase):
+    def test_connected_accounts_and_totals_in_both_layouts_without_changing_plan(self):
+        base = source()
+        base["monzo_balance"] = D(400)
+        base["bank_balance_sources"] = {
+            "HSBC": {
+                "available": D(2100),
+                "accounts": [
+                    {"name": "Current account", "available": D(2000)},
+                    {"name": "Second current account", "available": D(100)},
+                ],
+                "scope": "Selected accounts",
+                "checked_at": "2026-10-15T17:00:00+00:00",
+            },
+            "MONZO": {
+                "available": D(400),
+                "accounts": [
+                    {"name": "Personal current account", "available": D(400)},
+                ],
+                "scope": "First account (default)",
+            },
+        }
+        result = build(base, values(monzo_balance=""), TODAY)
+        original = deepcopy(result)
+        for detail in ("compact", "detailed"):
+            text = receipt(result, TODAY, detail=detail)
+            section = text.split("CONNECTED BANK BALANCES")[1].split(
+                "Combined bank balance"
+            )[0]
+            for label in (
+                "HSBC - Current account",
+                "HSBC - Second current account",
+                "MONZO - Personal current account",
+                "HSBC total",
+                "MONZO total",
+            ):
+                self.assertIn(label, section)
+            self.assertIn("£2,100.00", section)
+            self.assertIn("£400.00", section)
+            self.assertIn("MONZO: first account default; check", section)
+            self.assertIn("Combined bank balance            £2,500.00", text)
+            self.assertIn("Checked: 2026-10-15T17:00:00+00:00", text)
+            self.assertNotIn("Starting Monzo override", text)
+            self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
+        self.assertEqual(original, result)
+        overridden = build(base, values(), TODAY)
+        text = receipt(overridden, TODAY, detail="compact")
+        self.assertIn("Starting Monzo override            £200.00", text)
+        self.assertIn("combined bank cash unchanged", " ".join(text.split()))
+
+    def test_collection_preserves_selected_balance_sources_and_manual_override(self):
+        from web_control.test_finance_tools import collect
+
+        snapshot = {
+            "data": [[], None, None, None, {"bank_data_status": "complete"}],
+            "balances": {
+                "HSBC": {
+                    "available": 2100,
+                    "accounts": [{"name": "Current", "available": 2100}],
+                },
+                "MONZO": {
+                    "available": 400,
+                    "accounts": [{"name": "Personal", "available": 400}],
+                },
+            },
+        }
+        original = deepcopy(snapshot)
+        local = {
+            "settings": {},
+            "subscriptions": {"monthly": [], "yearly": []},
+            "accounts": [],
+        }
+        import services
+
+        pipeline = Mock(
+            build_subscription_status=Mock(return_value={"monthly": [], "yearly": []})
+        )
+        with (
+            patch.object(services, "live_pipeline", pipeline, create=True),
+            patch(
+                "finance.projection.build_projection",
+                side_effect=lambda *a, **kw: source(),
+            ),
+            patch("finance.salary_plan.reserves", return_value={}),
+        ):
+            connected = collect({}, TODAY, shared_snapshot=snapshot, local=local)
+            manual = collect(
+                {"opening_cash": "1200"}, TODAY, shared_snapshot=snapshot, local=local
+            )
+            offline = collect(
+                {"opening_cash": "1200", "daily_spend": "10"}, TODAY, local=local
+            )
+        self.assertEqual(connected["bank_balance_sources"], snapshot["balances"])
+        self.assertEqual(connected["monzo_balance"], D(400))
+        self.assertFalse(connected["bank_cash_manual"])
+        self.assertEqual(manual["bank_balance_sources"], snapshot["balances"])
+        self.assertTrue(manual["bank_cash_manual"])
+        self.assertEqual(offline["bank_balance_sources"], {})
+        self.assertTrue(offline["bank_cash_manual"])
+        self.assertEqual(snapshot, original)
+
+    def test_manual_balances_are_labelled_and_sum_to_starting_cash(self):
+        base = source()
+        base.update(bank_balance_sources={}, bank_cash_manual=True)
+        result = build(base, values(), TODAY)
+        for detail in ("compact", "detailed"):
+            text = receipt(result, TODAY, detail=detail)
+            self.assertNotIn("CONNECTED BANK BALANCES", text)
+            self.assertIn("HSBC (scenario)                  £2,300.00", text)
+            self.assertIn("Monzo (scenario)                   £200.00", text)
+            self.assertIn("Combined bank cash used          £2,500.00", text)
+            self.assertIn("Manual starting cash", text)
+
     def test_compact_receipt_orders_actions_before_outcomes_and_keeps_money_correct(
         self,
     ):
