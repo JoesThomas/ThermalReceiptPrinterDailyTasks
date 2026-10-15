@@ -17,6 +17,7 @@
                 {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
             {% endwith %}
             {% include 'finance_refresh_status.html' %}
+            {% include 'expected_income.html' %}
             <nav aria-label="Finance tools">
                 <a href="{{ url_for('test_finance_page') }}">Test finance</a>
                 <a href="{{ url_for('savings_review') }}">Recorded savings & investments</a>

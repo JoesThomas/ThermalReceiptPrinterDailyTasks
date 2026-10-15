@@ -288,6 +288,9 @@ def build_review(deps, snapshot, fresh, refresh_status=None):
 
 def render_review(deps, snapshot, fresh, refresh_status):
     model = build_review(deps, snapshot, fresh, refresh_status)
+    from finance.expected_income import view as expected_income_view
+    from receipt.local_time import uk_today
+    model['expected_income'] = expected_income_view(model.get('projection'), uk_today())
     return render_template('finance_review.html', **model), model.get('http_status', 200)
 
 
@@ -336,7 +339,9 @@ def register(app, login_required, deps):
                     "state": "failed",
                     "stage": "Finance configuration unavailable. Check settings and try again.",
                 }
-        return render_template("finance_loading.html", refresh_status=status)
+        from finance.expected_income import view as expected_income_view
+        return render_template("finance_loading.html", refresh_status=status,
+                               expected_income=expected_income_view(None, _local_today()))
 
     @app.post("/finance-review/refresh")
     @login_required

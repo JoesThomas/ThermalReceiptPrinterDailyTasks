@@ -1,0 +1,87 @@
+{% if expected_income is defined %}
+    <section id="expected-income" aria-labelledby="expected-income-title">
+        <h2 id="expected-income-title">Expected income · excluding salary</h2>
+        <p class="muted">
+            Plan rent and other future payments. These are expectations, separate from confirmed bank income. Future salary is not included.
+        </p>
+        {% if expected_income.error %}
+            <p class="helper" role="status">{{ expected_income.error }}</p>
+        {% else %}
+            {% if expected_income.events %}
+                {% if expected_income.valid %}
+                    <div class="flow-totals" data-bank-forecast>
+                        <div>
+                            <span>Including expected income · no salary</span>
+                            <strong>{{ expected_income.duration if expected_income.run_out else 'Over ' ~ projection.horizon_duration }}</strong>
+                            <p class="muted">
+                                {% if expected_income.run_out %}
+                                    First projected shortfall: {{ expected_income.run_out.strftime('%d %b %Y') }}
+                                {% else %}
+                                    No shortfall through {{ expected_income.end.strftime('%d %b %Y') }}
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div>
+                            <span>Projected bank cash on {{ expected_income.end.strftime('%d %b %Y') }}</span>
+                            <strong>£{{ '%.2f'|format(expected_income.end_cash) }}</strong>
+                            <p class="muted">
+                                Includes £{{ '%.2f'|format(expected_income.total) }} expected income through this date. Uses the same bills, spending and protected buffer as the baseline Cash runway below. Accessible savings are excluded.
+                            </p>
+                        </div>
+                    </div>
+                    <details>
+                        <summary>Next 30 days including expected income</summary>
+                        {% for point in expected_income.timeline %}
+                            <div class="merchant-payment">
+                                <span>{{ point.date.strftime('%d %b') }}
+                                    {% if point.incoming %}
+                                        · expected in £{{ '%.2f'|format(point.incoming) }}
+                                    {% endif %}
+                                    </span><strong>£{{ '%.2f'|format(point.cash) }} above buffer</strong>
+                                </div>
+                            {% endfor %}
+                        </details>
+                    {% else %}
+                        <p>Complete, fresh bank balances and spending estimates are needed for the expected-income projection.</p>
+                    {% endif %}
+                    <details>
+                        <summary>Expected payments in the next 30 days ({{ expected_income.upcoming|length }})</summary>
+                        {% for payment in expected_income.upcoming %}
+                            <div class="merchant-payment">
+                                <span>{{ payment.date.strftime('%d %b %Y') }} · {{ payment.name }}</span><strong>£{{ '%.2f'|format(payment.amount) }}</strong>
+                            </div>
+                        {% else %}
+                            <p>No expected payments in the next 30 days.</p>
+                        {% endfor %}
+                    </details>
+                {% endif %}
+                <details>
+                    <summary>Manage expected income ({{ expected_income.rows|length }})</summary>
+                    <p>
+                        Add payments not already reflected in your bank balance. Only dates after today are projected; past and today's payments are not added again. Update or remove an expectation if it is cancelled or paid early.
+                    </p>
+                    {% for payment in expected_income.rows %}
+                        <details>
+                            <summary>
+                                {{ payment.name }} · £{{ payment.amount }} · {{ payment.frequency }}
+                                {% if not payment.enabled %}
+                                    · Paused
+                                {% elif payment.next_date %}
+                                    · next {{ payment.next_date.strftime('%d %b %Y') }}
+                                {% else %}
+                                    · No future payment within forecast
+                                {% endif %}
+                            </summary>
+                            {% include 'expected_income_form.html' %}
+                        </details>
+                    {% else %}
+                        <p>No expected non-salary income recorded.</p>
+                    {% endfor %}
+                    <h3>Add expected payment</h3>
+                    {% with payment=none %}
+                        {% include 'expected_income_form.html' %}
+                    {% endwith %}
+                </details>
+            {% endif %}
+        </section>
+    {% endif %}

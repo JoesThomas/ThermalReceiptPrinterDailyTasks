@@ -777,6 +777,13 @@ def print_integrated_finance(
         for row in wrap(warning.upper(), width=40):
             left(printer, row)
 
+    from finance.expected_income import receipt_summary as expected_income_receipt
+    expected_text = expected_income_receipt(projection, today)
+    if expected_text:
+        printer.text("\n")
+        for line in expected_text.splitlines():
+            left(printer, line)
+
     # ==========================================
     # QUARTER / YEAR REVIEW
     # ==========================================

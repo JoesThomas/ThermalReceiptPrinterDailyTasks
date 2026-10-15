@@ -33,6 +33,7 @@
                 {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
             {% endwith %}
             {% include 'finance_refresh_status.html' %}
+            {% include 'expected_income.html' %}
             {% include 'renewal_reminders.html' %}
             {% if update_items %}
                 <details class="section-disclosure">

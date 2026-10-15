@@ -19,7 +19,7 @@ class FinanceProjectionWebTests(unittest.TestCase):
         try:
             script = '''
 import sys, json, tempfile
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path('web_control').resolve()))
 from app import app
 import finance.receipt as receipt
 from web_control import finance_suggestions, finance_insights
-from finance import planning
+from finance import planning, expected_income
 transactions = [{'date': date.today().isoformat(), 'amount': -30, 'description': 'Everyday store'}]
 status = {'monthly': [{'name': 'Example bill', 'amount': 80, 'due_day': 15}], 'yearly': [], 'ended': []}
 pipeline = SimpleNamespace(
@@ -44,6 +44,7 @@ with tempfile.TemporaryDirectory() as directory:
          patch.object(receipt, 'load_finance_settings', side_effect=lambda: json.loads(settings.read_text())), \\
          patch.object(finance_insights, 'FILE', Path(directory) / 'observations.json'), \\
          patch.object(finance_suggestions, 'DISMISSED_FILE', Path(directory) / 'dismissed.json'), \\
+         patch.object(expected_income, 'FILE', Path(directory) / 'expected_income.json'), \\
          patch.object(planning, 'FILE', Path(directory) / 'planning.json'), \\
          patch.object(app.extensions['finance_refresh'], 'read', side_effect=lambda: {
              'data': pipeline.get_regular_finance_data(), 'balances': pipeline.get_account_balances(),
@@ -81,11 +82,18 @@ with tempfile.TemporaryDirectory() as directory:
                 assert b'This page is ready while the banks respond' in shell.data
             assert client.get('/finance-review/status').status_code == 200
             assert client.post('/finance-review/refresh', data={'csrf_token':'test-csrf'}, headers={'Accept':'application/json'}).status_code == 202
+            assert client.post('/finance/expected-income', data={'name':'Property payment'}).status_code == 403
+            payment={'csrf_token':'test-csrf','name':'Property payment','amount':'100','date':(date.today()+timedelta(days=1)).isoformat(),'repeat':'monthly','enabled':'on'}
+            assert client.post('/finance/expected-income',data=payment).status_code == 302
+            assert expected_income.load()['payments'][0]['amount']=='100'
             response = client.get('/finance-review')
             assert response.status_code == 200, response.status_code
             assert b'Finance suggestions' in response.data
             assert b'Review uncertain payments' in response.data
             assert b'Cash runway' in response.data
+            assert b'Expected income' in response.data
+            assert b'Property payment' in response.data
+            assert b'Including expected income' in response.data
             assert b'Understand the figures' in response.data
             assert b'Private monthly observations' in response.data
             assert json.loads((Path(directory)/'observations.json').read_text()) == [old]
