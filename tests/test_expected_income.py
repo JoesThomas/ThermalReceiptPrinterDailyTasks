@@ -150,6 +150,77 @@ class ExpectedIncomeTests(TestCase):
                 income.save(form)
             self.assertEqual(income.FILE.read_text(), "broken")
 
+    def test_30_day_card_is_shown_only_before_any_shortfall(self):
+        from flask import Flask, render_template
+
+        app = Flask(
+            __name__,
+            template_folder=str(
+                Path(__file__).resolve().parents[1] / "web_control/templates"
+            ),
+        )
+        app.add_url_rule("/finance/expected-income", "save_expected_income", lambda: "")
+        app.jinja_env.globals["csrf_token"] = lambda: "test"
+        with (
+            TemporaryDirectory() as folder,
+            patch.object(income, "FILE", Path(folder) / "income.json"),
+        ):
+            income.save(
+                dict(
+                    name="Property rent",
+                    amount="100",
+                    date="2026-10-20",
+                    repeat="monthly",
+                    enabled="on",
+                )
+            )
+            base = projection(
+                cash=D(2000), horizon=1826, horizon_end_date=date(2031, 10, 15)
+            )
+            original = deepcopy(base)
+            view = income.view(base, TODAY)
+            self.assertEqual(view["end"], date(2026, 11, 14))
+            self.assertEqual(view["total"], D(100))
+            self.assertEqual(view["end_cash"], D(1800))
+            self.assertTrue(view["show_end_balance"])
+            self.assertEqual(base, original)
+            with app.test_request_context():
+                html = render_template(
+                    "expected_income.html", expected_income=view, projection=base
+                )
+            self.assertIn("Projected bank cash on 14 Nov 2026", html)
+            self.assertNotIn("2031", html)
+            shortfall = income.view(projection(cash=D(1010)), TODAY)
+            self.assertFalse(shortfall["show_end_balance"])
+            with app.test_request_context():
+                html = render_template(
+                    "expected_income.html", expected_income=shortfall, projection=base
+                )
+            self.assertNotIn("Projected bank cash on", html)
+            self.assertIn("First projected shortfall: 17 Oct 2026", html)
+            text = income.receipt_summary(projection(cash=D(1010)), TODAY)
+            self.assertNotIn("Projected bank cash", text)
+            self.assertIn("First shortfall: 17 Oct 2026", text)
+
+    def test_later_payments_remain_manageable_without_a_30_day_projection(self):
+        with (
+            TemporaryDirectory() as folder,
+            patch.object(income, "FILE", Path(folder) / "income.json"),
+        ):
+            income.save(
+                dict(
+                    name="Later payment",
+                    amount="100",
+                    date="2026-11-20",
+                    repeat="once",
+                    enabled="on",
+                )
+            )
+            view = income.view(projection(), TODAY)
+            self.assertEqual(view["events"], [])
+            self.assertEqual(view["rows"][0]["next_date"], date(2026, 11, 20))
+            self.assertEqual(income.receipt_summary(projection(), TODAY), "")
+
     def test_receipt_uses_same_projection_and_retains_40_columns(self):
         with (
             TemporaryDirectory() as folder,
@@ -166,8 +237,8 @@ class ExpectedIncomeTests(TestCase):
                     enabled="on",
                 )
             )
-            view = income.view(projection(), TODAY)
-            text = income.receipt_summary(projection(), TODAY)
+            view = income.view(projection(cash=D(1100)), TODAY)
+            text = income.receipt_summary(projection(cash=D(1100)), TODAY)
             self.assertIn("EXPECTED INCOME / NO SALARY", text)
             self.assertIn("Property rent", text)
             self.assertIn(f"First shortfall: {view['run_out']:%d %b %Y}", text)

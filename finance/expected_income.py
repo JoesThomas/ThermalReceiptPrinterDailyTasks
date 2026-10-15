@@ -193,12 +193,23 @@ def view(projection, today):
         )
         for row in rows
     ]
+    days = min(30, projection["horizon"]) if projection else 30
+    outlook_end = today + timedelta(days=days)
+    upcoming = [event for event in events if event["date"] <= outlook_end]
+    outlook = (
+        dict(projection, horizon=days, horizon_end_date=outlook_end)
+        if projection
+        else None
+    )
+    comparison = compare(outlook, upcoming, today)
     return dict(
         rows=display,
-        events=events,
-        upcoming=[e for e in events if e["date"] <= today + timedelta(days=30)],
-        total=sum((e["amount"] for e in events), ZERO),
-        **compare(projection, events, today),
+        events=upcoming,
+        upcoming=upcoming,
+        total=sum((e["amount"] for e in upcoming), ZERO),
+        horizon_duration=format_runway(days, today),
+        show_end_balance=bool(comparison["valid"] and comparison["run_out"] is None),
+        **comparison,
     )
 
 
@@ -213,7 +224,7 @@ def receipt_summary(projection, today):
         return ""
     page = ReceiptText(width=40)
     page.section("EXPECTED INCOME / NO SALARY")
-    page.text("Unconfirmed future payments only.")
+    page.text("Next 30 days; unconfirmed income only.")
     for event in result["upcoming"][:6]:
         page.amount(f"{event['date']:%d %b} {event['name']}", event["amount"])
     if len(result["upcoming"]) > 6:
@@ -227,14 +238,15 @@ def receipt_summary(projection, today):
         page.text(
             result["duration"]
             if result["run_out"]
-            else "Over " + projection["horizon_duration"]
+            else "Over " + result["horizon_duration"]
         )
         if result["run_out"]:
             page.text(f"First shortfall: {result['run_out']:%d %b %Y}")
         else:
             page.text(f"No shortfall through {result['end']:%d %b %Y}")
-        page.text(f"Projected bank cash {result['end']:%d %b %Y}")
-        page.amount("Including expected income", result["end_cash"])
+        if result["show_end_balance"]:
+            page.text(f"Projected bank cash {result['end']:%d %b %Y}")
+            page.amount("Including expected income", result["end_cash"])
     else:
         page.text(
             "Projection unavailable: complete bank data and spending estimate needed."

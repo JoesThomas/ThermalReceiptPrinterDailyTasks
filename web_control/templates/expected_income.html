@@ -2,7 +2,7 @@
     <section id="expected-income" aria-labelledby="expected-income-title">
         <h2 id="expected-income-title">Expected income · excluding salary</h2>
         <p class="muted">
-            Plan rent and other future payments. These are expectations, separate from confirmed bank income. Future salary is not included.
+            Plan rent and other future payments. This 30-day outlook uses expectations, separate from confirmed bank income. Future salary is not included.
         </p>
         {% if expected_income.error %}
             <p class="helper" role="status">{{ expected_income.error }}</p>
@@ -12,7 +12,7 @@
                     <div class="flow-totals" data-bank-forecast>
                         <div>
                             <span>Including expected income · no salary</span>
-                            <strong>{{ expected_income.duration if expected_income.run_out else 'Over ' ~ projection.horizon_duration }}</strong>
+                            <strong>{{ expected_income.duration if expected_income.run_out else 'Over ' ~ expected_income.horizon_duration }}</strong>
                             <p class="muted">
                                 {% if expected_income.run_out %}
                                     First projected shortfall: {{ expected_income.run_out.strftime('%d %b %Y') }}
@@ -21,13 +21,15 @@
                                 {% endif %}
                             </p>
                         </div>
-                        <div>
-                            <span>Projected bank cash on {{ expected_income.end.strftime('%d %b %Y') }}</span>
-                            <strong>£{{ '%.2f'|format(expected_income.end_cash) }}</strong>
-                            <p class="muted">
-                                Includes £{{ '%.2f'|format(expected_income.total) }} expected income through this date. Uses the same bills, spending and protected buffer as the baseline Cash runway below. Accessible savings are excluded.
-                            </p>
-                        </div>
+                        {% if expected_income.show_end_balance %}
+                            <div>
+                                <span>Projected bank cash on {{ expected_income.end.strftime('%d %b %Y') }}</span>
+                                <strong>£{{ '%.2f'|format(expected_income.end_cash) }}</strong>
+                                <p class="muted">
+                                    Includes £{{ '%.2f'|format(expected_income.total) }} expected income through this date. Uses the same bills, spending and protected buffer as the baseline Cash runway below. Accessible savings are excluded.
+                                </p>
+                            </div>
+                        {% endif %}
                     </div>
                     <details>
                         <summary>Next 30 days including expected income</summary>
