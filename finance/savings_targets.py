@@ -50,6 +50,7 @@ def load_view(today):
             {
                 "id": account["id"],
                 "name": account["name"],
+                "label": account.get("label", account["name"]),
                 "kind": account["kind"],
                 "type": account["type"],
                 "balance": money(account.get("balance")),

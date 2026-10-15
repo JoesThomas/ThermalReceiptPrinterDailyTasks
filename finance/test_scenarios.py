@@ -23,7 +23,7 @@ def snapshot(result, today):
         reached = goal_date(row["goal_date"] or row.get("extended_goal_date"), today)
         accounts.append(
             {
-                "name": row["name"],
+                "name": row.get("label", row["name"]),
                 "balance": pounds(row["balance"]),
                 "target": pounds(row["target"]),
                 "projected": pounds(row["projected"]),
@@ -110,7 +110,7 @@ def compare(projection, values, today, *, current=None):
             message = f"Funded goal date: {improved:%d %b %Y}"
         else:
             message = "No funded goal date within the planning horizon"
-        changes.append({"name": row["name"], "message": message})
+        changes.append({"name": row.get("label", row["name"]), "message": message})
     original = current["forecast"]["goal_date"] or current["forecast"].get(
         "extended_goal_date"
     )

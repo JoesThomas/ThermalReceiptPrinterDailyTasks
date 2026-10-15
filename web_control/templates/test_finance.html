@@ -294,7 +294,7 @@
                                     {% for account in saved_savings if account.balance is not none %}
                                         <option value="{{ account.id }}"
                                                 {% if values.get('payment_account_' ~ payment.key) == account.id %}selected{% endif %}>
-                                            {{ account.name }}
+                                            {{ account.label|default(account.name,true) }}
                                         </option>
                                     {% endfor %}
                                 </select>
@@ -307,7 +307,7 @@
                                 {% for account in saved_savings if account.balance is not none %}
                                     <option value="{{ account.id }}"
                                             {% if values.get('hl_account') == account.id %}selected{% endif %}>
-                                        {{ account.name }}
+                                        {{ account.label|default(account.name,true) }}
                                     </option>
                                 {% endfor %}
                             </select>
@@ -513,7 +513,7 @@
                                 <h4>Account targets</h4>
                                 {% for account in scenario.accounts %}
                                     <p>
-                                        <strong>{{ account.name }}</strong>: {{ account.balance }} now; {{ account.projected }} at forecast end against {{ account.target }}. Goal: {{ account.goal_date or 'No funded target date' }}{{ ' (beyond selected forecast)' if account.extended else '' }}.
+                                        <strong>{{ account.label|default(account.name,true) }}</strong>: {{ account.balance }} now; {{ account.projected }} at forecast end against {{ account.target }}. Goal: {{ account.goal_date or 'No funded target date' }}{{ ' (beyond selected forecast)' if account.extended else '' }}.
                                     </p>
                                 {% else %}
                                     <p>No recorded accounts selected.</p>

@@ -79,7 +79,10 @@
                 </p>
                 {% for account in goals.accounts %}
                     <section>
-                        <h2>{{ account.name }}</h2>
+                        <h2>{{ account.label|default(account.name,true) }}</h2>
+                        {% with name_return="goals" %}
+                            {% include "savings_account_name.html" %}
+                        {% endwith %}
                         <p>
                             {% if account.balance is not none %}
                                 Latest balance: £{{ '{:,.2f}'.format(account.balance) }} · {{ account.balance_date }}
@@ -177,7 +180,7 @@
                             {% if account.percent is not none %}
                                 <progress max="100"
                                           value="{{ account.percent }}"
-                                          aria-label="{{ account.name }} contribution share of overall allowance"></progress>
+                                          aria-label="{{ account.label|default(account.name,true) }} contribution share of overall allowance"></progress>
                                 <p class="muted">
                                     {{ '%.1f'|format(account.percent) }}% of the shared allowance; this account has no separate £20,000 allowance.
                                 </p>

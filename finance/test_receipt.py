@@ -155,7 +155,7 @@ def receipt(result, today):
     if data["use_accounts"]:
         for account in result["account_plan"]["accounts"]:
             if account["first"]:
-                amount(account["name"], account["first"])
+                amount(account.get("label", account["name"]), account["first"])
                 moved += account["first"]
     unassigned = first["savings"] - moved
     if unassigned:
@@ -367,7 +367,7 @@ def receipt(result, today):
         for index, account in enumerate(result["account_plan"]["accounts"]):
             if index:
                 rule()
-            text(account["name"].upper())
+            text(account.get("label", account["name"]).upper())
             from finance.savings_targets import contribution_limit
 
             limit = contribution_limit(account)
@@ -485,9 +485,9 @@ def receipt(result, today):
     if data["use_accounts"]:
         for account in result["account_plan"]["accounts"]:
             if account["projected"] is not None:
-                amount(account["name"], account["projected"])
+                amount(account.get("label", account["name"]), account["projected"])
             else:
-                text(account["name"] + ": balance unavailable")
+                text(account.get("label", account["name"]) + ": balance unavailable")
     text("Projected balances only; no money is moved.")
     amount("Projected savings at forecast end", forecast["savings_end"])
     if not forecast["savings_total"]:

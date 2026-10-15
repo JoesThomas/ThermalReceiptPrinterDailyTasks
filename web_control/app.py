@@ -1192,11 +1192,13 @@ def savings_review():
 @login_required
 def savings_record():
     from finance.wealth_history import record
+    from finance.savings_goals import recorded_name
     try:
         deposits, withdrawals = request.form.get("deposits", ""), request.form.get("withdrawals", "")
         if bool(deposits) != bool(withdrawals):
             raise ValueError("Fill both cash-flow fields (use zero where applicable), or leave both blank.")
-        record(request.form.get("name", ""), request.form.get("kind", ""), request.form.get("date", ""),
+        kind=request.form.get("kind", "")
+        record(recorded_name(request.form.get("name", ""),kind), kind, request.form.get("date", ""),
                request.form.get("balance", ""), deposits or None, withdrawals or None, today=_local_today())
     except (ValueError, OSError):
         flash("Could not save. Check the account, date, balance and both cash-flow fields.")

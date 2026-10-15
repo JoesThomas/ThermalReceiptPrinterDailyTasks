@@ -28,8 +28,15 @@
             Opening is the last valuation on or before month-start, or the first valuation recorded in that month. Closing is the latest available valuation in the selected month. Comparison dates below show the actual coverage. Percentage is balance change, not an investment return.
         </p>
         {% for account in wealth.accounts %}
+            {% set interest_account = savings_interest_details(account) %}
+            {% set account_label = (interest_account.display_name if interest_account else none) or account.name %}
             <article class="panel">
-                <h3>{{ account.name }} · {{ account.kind|title }}</h3>
+                <h3>{{ account_label }} · {{ account.kind|title }}</h3>
+                {% if interest_account %}
+                    {% with account=interest_account, name_return="savings" %}
+                        {% include "savings_account_name.html" %}
+                    {% endwith %}
+                {% endif %}
                 <p>
                     <strong>£{{ '%.2f'|format(account.balance) }}</strong> as of {{ account.latest.date }} · {{ account.latest.source }}
                 </p>
@@ -59,11 +66,11 @@
             {% if account.chart|length > 1 %}
                 <svg viewBox="0 0 600 170"
                      role="img"
-                     aria-label="Recorded balance history for {{ account.name }}"
+                     aria-label="Recorded balance history for {{ account_label }}"
                      style="width:100%;
                             height:auto;
                             max-height:250px">
-                    <title>{{ account.name }} balance history. {{ account.chart[0].date }} to {{ account.chart[-1].date }}. Range £{{ '%.2f'|format(account.low) }} to £{{ '%.2f'|format(account.high) }}.</title>
+                    <title>{{ account_label }} balance history. {{ account.chart[0].date }} to {{ account.chart[-1].date }}. Range £{{ '%.2f'|format(account.low) }} to £{{ '%.2f'|format(account.high) }}.</title>
                     <line x1="30" y1="130" x2="570" y2="130" stroke="#c4cec8" /><polyline points="{{ account.points }}" fill="none" stroke="#286b58" stroke-width="3" />
                     {% for point in account.chart %}
                         <circle cx="{{ point.x }}" cy="{{ point.y }}" r="3" fill="#286b58"><title>{{ point.date }}: £{{ point.balance }}</title></circle>
@@ -71,7 +78,6 @@
                     <text x="30" y="18" font-size="12">£{{ '%.2f'|format(account.high) }}</text><text x="30" y="145" font-size="12">£{{ '%.2f'|format(account.low) }}</text><text x="30" y="164" font-size="12">{{ account.chart[0].date }}</text><text x="570" y="164" text-anchor="end" font-size="12">{{ account.chart[-1].date }}</text>
                 </svg>
             {% endif %}
-            {% set interest_account = savings_interest_details(account) %}
             {% if interest_account and interest_account.type in ['savings','cash_isa'] and account.kind == 'savings' %}
                 {% with account=interest_account, interest_return='savings' %}
                     {% include 'savings_interest_form.html' %}

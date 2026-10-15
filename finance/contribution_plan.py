@@ -117,7 +117,7 @@ def contribution_plan(projection, current, today):
     alternative_goal = target_date(alternative_row, today)
     return {
         "available": True,
-        "account": row["name"],
+        "account": row.get("label", row["name"]),
         "account_id": identifier,
         "existing": format_pounds(existing),
         "scheduled_this_period": format_pounds(scheduled[0]),
