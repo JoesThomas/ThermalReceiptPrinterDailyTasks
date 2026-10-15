@@ -56,6 +56,8 @@ def load_view(today):
                 "date": account.get("balance_date"),
                 "target": target,
                 "balance_limit": money(account.get("balance_limit")),
+                "interest_rate": money(account.get("interest_rate")),
+                "rate_date": account.get("rate_date"),
                 "share": money(account.get("monthly_share"), ZERO),
                 "isa_contributions": account.get("contributions", ZERO)
                 if account["type"] in {"cash_isa", "stocks_isa", "other_isa"}
@@ -181,7 +183,17 @@ def contribution_limit(row):
     return limit
 
 
-def allocate(accounts, periods, automatic_events=(), *, equal=False, isa_limits=None):
+def allocate(
+    accounts,
+    periods,
+    automatic_events=(),
+    *,
+    equal=False,
+    isa_limits=None,
+    start_date=None,
+    end_date=None,
+    total_goal=None,
+):
     rows = deepcopy(accounts)
     for row in rows:
         if row["type"] == "premium_bonds":
@@ -203,6 +215,9 @@ def allocate(accounts, periods, automatic_events=(), *, equal=False, isa_limits=
         ):
             row["goal_date"] = "already"
     explicit = not equal and any(row["share"] > 0 for row in rows)
+    from finance.savings_interest import Growth
+
+    growth = Growth(rows, start_date, total_goal)
     fraction = (
         min(
             Decimal(100),
@@ -236,6 +251,9 @@ def allocate(accounts, periods, automatic_events=(), *, equal=False, isa_limits=
     for on, kind, index, period in sorted(
         timeline, key=lambda item: (item[0], item[1])
     ):
+        if end_date is not None and on > end_date:
+            continue
+        growth.advance(on)
         if kind == 0:
             row = by_id.get(period["savings_account"])
             if row is None or row["projected"] is None:
@@ -243,13 +261,17 @@ def allocate(accounts, periods, automatic_events=(), *, equal=False, isa_limits=
             part = period["amount"]
             cap = contribution_limit(row)
             if cap is not None:
-                part = min(part, max(ZERO, cap - row["projected"]))
+                part = min(
+                    part,
+                    rounded(max(ZERO, cap - row["projected"]), rounding=ROUND_DOWN),
+                )
             isa_room = headroom.room(row, on)
             if isa_room is not None:
                 part = min(part, isa_room)
             headroom.use(row, on, part)
             row["projected"] += part
             row["added"] += part
+            growth.check(on)
             if period.get("reserved_cash_topup"):
                 row["reserved_added"] += part
             else:
@@ -312,7 +334,10 @@ def allocate(accounts, periods, automatic_events=(), *, equal=False, isa_limits=
                     ZERO,
                 )
                 room[row["id"]] = (
-                    max(ZERO, limit - row["projected"] - reserved_amount)
+                    rounded(
+                        max(ZERO, limit - row["projected"] - reserved_amount),
+                        rounding=ROUND_DOWN,
+                    )
                     if limit is not None
                     else remaining
                 )
@@ -442,7 +467,13 @@ def allocate(accounts, periods, automatic_events=(), *, equal=False, isa_limits=
                 {"date": on, "total": part, "income": income, "cash": part - income}
             )
         unallocated += max(ZERO, amount - assigned)
+        growth.check(on)
+    if end_date is not None:
+        growth.advance(end_date)
+    growth.finish()
     return {
+        "goal_date": growth.goal_date,
+        "estimated_interest": sum((row["estimated_interest"] for row in rows), ZERO),
         "accounts": rows,
         "isa_years": headroom.years,
         "unallocated": unallocated,

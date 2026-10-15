@@ -53,7 +53,7 @@ def validate(value):
             if limit > 10000000 or (row['type'] == 'premium_bonds' and limit > 50000): raise ValueError('Invalid account balance limit.')
         if row.get('monthly_share') is not None and amount(row['monthly_share'])>100: raise ValueError('Savings shares must be between 0 and 100%.')
         if row.get('interest_rate') is not None:
-            if amount(row['interest_rate'])>100 or row.get('type')!='cash_isa': raise ValueError('Use a cash ISA interest rate between 0 and 100%.')
+            if amount(row['interest_rate'])>100 or row.get('type') not in {'cash_isa','savings'}: raise ValueError('Use a savings interest rate between 0 and 100%.')
             date.fromisoformat(row['rate_date'])
     identifiers=set()
     if len(value['entries']) > 10000: raise ValueError('Contribution ledger limit reached.')
@@ -111,7 +111,7 @@ def account_settings(name,kind,account_type,target=None,monthly_share=None,balan
     with edit() as value:
         key=identity(name,kind)
         old=value['accounts'].get(key,{})
-        value['accounts'][key]={**{k:v for k,v in old.items() if k in {'interest_rate','rate_date'} and account_type=='cash_isa'},'name':name,'kind':kind,'type':account_type,'target':str(target) if target is not None else None,'monthly_share':str(share) if share is not None else old.get('monthly_share','0')}
+        value['accounts'][key]={**{k:v for k,v in old.items() if k in {'interest_rate','rate_date'} and account_type in {'cash_isa','savings'}},'name':name,'kind':kind,'type':account_type,'target':str(target) if target is not None else None,'monthly_share':str(share) if share is not None else old.get('monthly_share','0')}
         if balance_limit is not None:
             value['accounts'][key]['balance_limit'] = str(limit) if limit is not None else None
         elif 'balance_limit' in old:
@@ -121,12 +121,12 @@ def account_settings(name,kind,account_type,target=None,monthly_share=None,balan
 
 
 def interest_rate(account,rate,on):
-    rate=amount(rate);on=date.fromisoformat(on)
-    if rate>100 or on.year<2000: raise ValueError('Use an annual rate between 0 and 100% and a valid effective date.')
+    rate=amount(rate) if rate not in ('',None) else None;on=date.fromisoformat(on)
+    if (rate is not None and rate>100) or on.year<2000: raise ValueError('Use an annual rate between 0 and 100% and a valid effective date.')
     with edit() as state:
         row=state['accounts'].get(account)
-        if not row or row['type']!='cash_isa': raise ValueError('Choose an existing cash ISA.')
-        row.update(interest_rate=str(rate),rate_date=on.isoformat())
+        if not row or row['type'] not in {'cash_isa','savings'}: raise ValueError('Choose an existing savings account or cash ISA.')
+        row.update(interest_rate=str(rate) if rate is not None else None,rate_date=on.isoformat())
 
 
 def record(account,on,value,event='contribution',entry_id=None):

@@ -41,7 +41,7 @@ def register(app,login_required,wealth_fn):
     def isa_rate():
         try:
             goals.interest_rate(request.form.get('account',''),request.form.get('rate',''),request.form.get('date',''))
-            flash('Cash ISA annual interest rate updated privately. Recorded interest credits are unchanged.')
+            flash('Savings interest assumption saved privately. Recorded balances and interest credits are unchanged.')
         except (ValueError,TypeError,OSError) as error: flash(str(error) if isinstance(error,ValueError) else 'Interest rate could not be saved.')
         return redirect(url_for('savings_goals_page'))
 

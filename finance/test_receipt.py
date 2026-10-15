@@ -194,7 +194,9 @@ def receipt(result, today):
         or bill["name"].casefold().strip() == "hlam regular saving"
     ]
     if forecast.get("capped_savings_events"):
-        text("Some scheduled savings are capped in this plan; adjust standing orders to match.")
+        text(
+            "Some scheduled savings are capped in this plan; adjust standing orders to match."
+        )
     if regular:
         text("Already scheduled - do not send again:")
         for bill in regular:
@@ -388,7 +390,18 @@ def receipt(result, today):
                 text("Balance date not recorded.")
             if account["target"]:
                 amount("Target balance", account["target"])
-                amount("Projected account balance", account["projected"])
+            amount("Planned contributions", account["added"])
+            if (
+                account.get("interest_rate") is not None
+                and account["type"] in {"savings", "cash_isa"}
+                and not account.get("cash_reserve_limit")
+            ):
+                text(f"Interest assumption: {account['interest_rate']:.2f}% AER")
+                if account.get("rate_date"):
+                    text(f"Rate effective from {account['rate_date']}")
+                amount("Estimated interest (before tax)", account["estimated_interest"])
+            amount("Projected account balance", account["projected"])
+            if account["target"]:
                 if account["projected"] < account["target"]:
                     amount(
                         "Still to save at forecast end",
@@ -452,6 +465,8 @@ def receipt(result, today):
         amount("Scheduled savings over forecast", forecast["automatic_total"])
     if forecast["reserved_total"]:
         amount("One-off cash top-up from reserves", forecast["reserved_total"])
+    if forecast.get("savings_interest"):
+        amount("Estimated savings interest", forecast["savings_interest"])
     section("BALANCES AT FORECAST END")
     bank_total = forecast["end_cash"] + base["buffer"] - forecast["reserved_total"]
     monzo_end = min(data.get("monzo_target", Decimal(0)), max(Decimal(0), bank_total))
@@ -578,8 +593,18 @@ def receipt(result, today):
         )
     text("Scheduled savings may use bank cash. Reserved cash top-up is separate.")
     text(
-        "Salary follows selected dates; other income continues. One-off costs occur once; finite repayments stop at completion. No savings growth or new card purchases assumed. Goal dates are estimates; no transfers are made."
+        "Salary follows selected dates; other income continues. One-off costs occur once; finite repayments stop at completion. "
+        + (
+            "No new card purchases assumed. "
+            if forecast.get("savings_interest")
+            else "No savings growth or new card purchases assumed. "
+        )
+        + "Goal dates are estimates; no transfers are made."
     )
+    if forecast.get("savings_interest"):
+        text(
+            "Savings growth estimates retain interest at the entered AER using a 365-day year. Rates stay constant from their effective date; excludes tax, fees and provider credit dates. Interest is not a bank transfer or ISA subscription. Investment growth is excluded."
+        )
     for warning in base.get("warnings", []):
         text(warning)
     rule()

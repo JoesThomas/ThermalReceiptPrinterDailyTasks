@@ -63,6 +63,12 @@ def simulate(base, inputs, today):
                 )
             if event["amount"] < requested_amount:
                 capped_savings_events = True
+    from finance.savings_interest import Growth
+
+    growing_rows = deepcopy(accounts) if inputs.get("use_accounts") else []
+    growth = Growth(growing_rows, today)
+    growing_by_id = {row["id"]: row for row in growing_rows}
+    has_interest = bool(growth.factors)
     daily = base.get("daily_cost", base["daily"])
     salary_amount = inputs["salary"] + inputs["existing"]
     daily_base = daily
@@ -115,6 +121,8 @@ def simulate(base, inputs, today):
     topup = base.get("cash_topup")
     for offset in range((end - today).days):
         on = today + timedelta(days=offset)
+        if has_interest:
+            growth.advance(on)
         if known and balance > 0 and offset:
             interest = balance * rate
             balance += interest
@@ -201,6 +209,8 @@ def simulate(base, inputs, today):
                     actual + reserve_transfers,
                     equal=inputs["equal_savings"],
                     isa_limits=inputs.get("isa_limits"),
+                    start_date=today,
+                    end_date=on,
                 )
                 caps = Headroom(previous["isa_years"])
                 projected = {
@@ -218,7 +228,10 @@ def simulate(base, inputs, today):
                     maximum = contribution_limit(row)
                     if maximum is not None and projected[key] is not None:
                         event["amount"] = min(
-                            event["amount"], max(ZERO, maximum - projected[key])
+                            event["amount"],
+                            rounded(
+                                max(ZERO, maximum - projected[key]), rounding=ROUND_DOWN
+                            ),
                         )
                     caps.use(row, event["date"], event["amount"])
                     if projected[key] is not None:
@@ -300,6 +313,8 @@ def simulate(base, inputs, today):
                     scheduled_savings,
                     equal=inputs["equal_savings"],
                     isa_limits=inputs.get("isa_limits"),
+                    start_date=today,
+                    end_date=on,
                 )
                 accepted = sum(
                     (
@@ -331,6 +346,9 @@ def simulate(base, inputs, today):
             saving += remaining_cash
             cash_invested_total += cash_invested
             cash_repaid_total += cash_repaid
+            if has_interest and account_allocations:
+                for key, contribution in account_allocations.items():
+                    growing_by_id[key]["projected"] += contribution
             transfers += saving
             extra_total += extra
             if (
@@ -383,6 +401,31 @@ def simulate(base, inputs, today):
             )
         for event in events.get(on, []):
             amount = event["amount"]
+            growing_account = growing_by_id.get(event.get("savings_account"))
+            if (
+                has_interest
+                and growing_account is not None
+                and growing_account["projected"] is not None
+            ):
+                maximum = contribution_limit(growing_account)
+                if maximum is not None:
+                    amount = min(
+                        amount,
+                        rounded(
+                            max(ZERO, maximum - growing_account["projected"]),
+                            rounding=ROUND_DOWN,
+                        ),
+                    )
+                    if amount < event["amount"]:
+                        capped_savings_events = True
+                        if periods:
+                            periods[-1]["costs"] -= event["amount"] - amount
+                            periods[-1]["automatic_savings"] -= event["amount"] - amount
+                            periods[-1]["surplus"] += event["amount"] - amount
+                            periods[-1]["cash_after_allocation"] += (
+                                event["amount"] - amount
+                            )
+                growing_account["projected"] += amount
             if known and is_card_payment(event):
                 amount = min(amount, balance)
                 balance -= amount
@@ -420,6 +463,8 @@ def simulate(base, inputs, today):
             # The gap was deducted in the starting protected buffer already.
             # Moving that reserved cash to the physical cash goal is one transfer.
             reserved_total = topup["amount"]
+            if has_interest:
+                growing_by_id[topup["savings_account"]]["projected"] += reserved_total
             reserve_transfers.append(dict(topup, funded=True))
             if (
                 inputs["goal"]
@@ -445,7 +490,7 @@ def simulate(base, inputs, today):
             points.append({"date": on, "scenario": cash})
         if on in checkpoint_dates:
             checkpoints.append((checkpoint_dates[on], cash))
-    return dict(
+    result = dict(
         capped_savings_events=capped_savings_events,
         minimum_bank=minimum_bank,
         minimum_cash=minimum_cash,
@@ -475,3 +520,25 @@ def simulate(base, inputs, today):
         + automatic_total
         + reserved_total,
     )
+
+    if inputs.get("use_accounts") and has_interest:
+        from finance.savings_targets import allocate
+
+        plan = allocate(
+            accounts,
+            periods,
+            actual + reserve_transfers,
+            equal=inputs["equal_savings"],
+            isa_limits=inputs.get("isa_limits"),
+            start_date=today,
+            end_date=result["end"],
+            total_goal=inputs["goal"],
+        )
+        result["account_plan"] = plan
+        result["savings_end"] = plan["projected_total"]
+        result["savings_interest"] = plan["estimated_interest"]
+        if plan["estimated_interest"] and (
+            run_out is None or (plan["goal_date"] and plan["goal_date"] < run_out)
+        ):
+            result["goal_date"] = plan["goal_date"]
+    return result

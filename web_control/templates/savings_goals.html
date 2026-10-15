@@ -139,35 +139,34 @@
                                 <div class="bar-fill" style="width:{{ account.balance_goal.percent }}%"></div>
                             </div>
                         {% endif %}
+                        {% if account.type in ['savings','cash_isa'] %}
+                            <form method="post" action="{{ url_for('isa_rate') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="account" value="{{ account.id }}">
+                                <label>
+                                    Forecast annual interest / AER (%, optional)
+                                    <input type="number"
+                                           name="rate"
+                                           min="0"
+                                           max="100"
+                                           step="0.01"
+                                           value="{{ account.interest_rate if account.interest_rate is defined and account.interest_rate is not none else '' }}">
+                                </label>
+                                <label>
+                                    Effective from
+                                    <input type="date"
+                                           name="date"
+                                           value="{{ account.rate_date if account.rate_date is defined else goals.today }}"
+                                           required>
+                                </label>
+                                <button>Save interest assumption</button>
+                            </form>
+                            <p class="muted">
+                                Used for estimated growth in the test forecast from today or the effective date, whichever is later. Assumes a constant AER, retained interest and a 365-day year; excludes tax, fees and provider payment dates. Blank or 0% means no estimated interest. Recorded balances are unchanged.
+                            </p>
+                        {% endif %}
                         {% if account.type in ['cash_isa','stocks_isa','other_isa'] %}
                             <h3>Current amount & interest</h3>
-                            {% if account.type == 'cash_isa' %}
-                                <form method="post" action="{{ url_for('isa_rate') }}">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <input type="hidden" name="account" value="{{ account.id }}">
-                                    <label>
-                                        Annual interest rate / AER (%)
-                                        <input type="number"
-                                               name="rate"
-                                               min="0"
-                                               max="100"
-                                               step="0.01"
-                                               value="{{ account.interest_rate if account.interest_rate is defined else '' }}"
-                                               required>
-                                    </label>
-                                    <label>
-                                        Effective from
-                                        <input type="date"
-                                               name="date"
-                                               value="{{ account.rate_date if account.rate_date is defined else goals.today }}"
-                                               required>
-                                    </label>
-                                    <button>Update interest rate</button>
-                                </form>
-                                <p class="muted">
-                                    Reference rate supplied by your provider. Change it when your rate changes; it does not estimate interest or alter recorded credits. ISA allowance rules are managed separately under tax-year limits.
-                                </p>
-                            {% endif %}
                             <p>
                                 Recorded interest credited in {{ goals.label }}: <strong>£{{ '{:,.2f}'.format(account.interest) }}</strong>. Only interest entries you have recorded are included.
                             </p>
