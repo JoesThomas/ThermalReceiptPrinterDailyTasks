@@ -82,36 +82,34 @@ def receipt(result, today):
         )
     ):
         text("No transfers needed this payday.")
+    reserved_topups = False
     if reserve.get("gap"):
         funded = not base.get("cash_topup") or any(
             e["date"] <= first["end"] for e in forecast["reserve_transfers"]
         )
         amount(
-            "Cash top-up (already reserved)"
-            if funded
-            else "Cash top-up - funding needed",
+            "Cash top-up (from reserves)" if funded else "Cash top-up - funding needed",
             reserve["gap"],
         )
-        text(
-            "Uses protected reserves; do not deduct it again."
-            if funded
-            else "Not credited to the cash goal this period."
-        )
+        reserved_topups = funded
+        if not funded:
+            text("Not credited to the cash goal this period.")
     monzo_gap = max(
         ZERO, data.get("monzo_target", ZERO) - base.get("monzo_balance", ZERO)
     )
     if monzo_gap:
         amount(
-            "Monzo - from bank reserves"
+            "Monzo top-up (from reserves)"
             if first["opening"] >= base["buffer"]
             else "Monzo top-up - funding needed",
             monzo_gap,
         )
-        text("Internal bank transfer; not an extra savings cost.")
+        reserved_topups = reserved_topups or first["opening"] >= base["buffer"]
+    if reserved_topups:
+        text("Top-ups use reserves, not extra income.")
     spare = first["cash_repaid"] + first["cash_invested"]
     if spare:
-        amount("Includes spare bank cash", spare)
-        text("Already included in the transfers above.")
+        amount("Spare cash (included above)", spare)
     regular = [
         bill
         for bill in result["bills"]
@@ -122,9 +120,9 @@ def receipt(result, today):
     ]
     if regular:
         amount(
-            "Already scheduled savings", sum((bill["amount"] for bill in regular), ZERO)
+            "Scheduled savings - do not resend",
+            sum((bill["amount"] for bill in regular), ZERO),
         )
-        text("Do not send again; included in bills below.")
         if any(not bill.get("savings_account") for bill in regular):
             text(
                 "Some regular savings are unlinked; check destinations on the website."
