@@ -398,7 +398,13 @@ process.on('exit', () => child.kill());
   await expectedForm.locator('select[name="repeat"]').selectOption('month_end');
   await Promise.all([page.waitForNavigation({waitUntil:'load'}), expectedForm.getByRole('button',{name:'Add expected payment',exact:true}).click()]);
   await page.locator('p.flash').filter({hasText:'Expected non-salary income saved privately.'}).waitFor();
-  assert.match(await page.locator('#expected-income').innerText(), /Including expected income/);
+  // This fixture retains incomplete commitments from earlier finance checks.
+  // Expectations remain editable, but numeric forecasts must stay withheld.
+  assert.match(await page.locator('#expected-income').innerText(), /Complete, fresh bank balances and spending estimates are needed/);
+  const upcomingExpected=page.locator('#expected-income > details').first();
+  await upcomingExpected.locator('summary').first().click();
+  assert.match(await upcomingExpected.innerText(), /Fixture property rent/);
+  assert.match(await upcomingExpected.innerText(), /£100.00/);
   await page.locator('#expected-income > details').last().locator('summary').first().click();
   const existingExpected=page.locator('#expected-income details details').first();
   await existingExpected.locator('summary').first().click();
