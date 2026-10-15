@@ -40,10 +40,19 @@ def register(app,login_required,wealth_fn):
     @login_required
     def isa_rate():
         try:
-            goals.interest_rate(request.form.get('account',''),request.form.get('rate',''),request.form.get('date',''))
+            key=request.form.get('account','')
+            new_account=None
+            if key not in goals.load()['accounts']:
+                recorded=next((row for row in wealth_fn()['accounts'] if goals.identity(row['name'],row['kind']) == key),None)
+                if recorded is None: raise ValueError('Choose a recorded savings account.')
+                new_account={field:recorded[field] for field in ('name','kind')}
+                new_account['type']=goals.infer(recorded['name'],recorded['kind'])
+                if recorded['kind'] != 'savings' or new_account['type'] not in {'savings','cash_isa'}: raise ValueError('Choose an ordinary savings account or cash ISA.')
+            goals.interest_rate(key,request.form.get('rate',''),request.form.get('date',''),new_account=new_account)
             flash('Savings interest assumption saved privately. Recorded balances and interest credits are unchanged.')
         except (ValueError,TypeError,OSError) as error: flash(str(error) if isinstance(error,ValueError) else 'Interest rate could not be saved.')
-        return redirect(url_for('savings_goals_page'))
+        endpoint='savings_review' if request.form.get('return_to') == 'savings' else 'savings_goals_page'
+        return redirect(url_for(endpoint))
 
     @app.post('/savings/isa/balance')
     @login_required
@@ -98,7 +107,16 @@ def register(app,login_required,wealth_fn):
 
     @app.context_processor
     def goals_context():
+        settings=None
+        def interest_details(account):
+            nonlocal settings
+            if settings is None:
+                try: settings=goals.load()
+                except (ValueError,OSError): settings={'unavailable':True}
+            if settings.get('unavailable'): return None
+            key=goals.identity(account['name'],account['kind'])
+            return dict(settings['accounts'].get(key,dict(name=account['name'],kind=account['kind'],type=goals.infer(account['name'],account['kind']))),id=key)
         def summary(wealth):
             try: return goals.review(wealth)
             except (ValueError,OSError,KeyError,TypeError): return None
-        return {'savings_goals_summary':summary}
+        return {'savings_goals_summary':summary,'savings_interest_details':interest_details,'savings_interest_today':goals.today().isoformat()}

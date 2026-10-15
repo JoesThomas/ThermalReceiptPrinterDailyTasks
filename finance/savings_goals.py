@@ -120,11 +120,15 @@ def account_settings(name,kind,account_type,target=None,monthly_share=None,balan
             for row in value['years'].values(): row['complete']=False
 
 
-def interest_rate(account,rate,on):
+def interest_rate(account,rate,on,*,new_account=None):
     rate=amount(rate) if rate not in ('',None) else None;on=date.fromisoformat(on)
     if (rate is not None and rate>100) or on.year<2000: raise ValueError('Use an annual rate between 0 and 100% and a valid effective date.')
     with edit() as state:
         row=state['accounts'].get(account)
+        if row is None and new_account is not None:
+            row={**new_account,'target':None,'monthly_share':'0'}
+            if identity(row.get('name',''),row.get('kind','')) != account: raise ValueError('Choose a recorded savings account.')
+            state['accounts'][account]=row
         if not row or row['type'] not in {'cash_isa','savings'}: raise ValueError('Choose an existing savings account or cash ISA.')
         row.update(interest_rate=str(rate) if rate is not None else None,rate_date=on.isoformat())
 

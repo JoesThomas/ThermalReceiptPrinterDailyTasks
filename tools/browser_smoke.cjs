@@ -319,6 +319,19 @@ process.on('exit', () => child.kill());
   assert.equal(await page.locator('#archive-keep-days').inputValue(),'90');
   assert.ok(await page.locator('.review-row .badge').filter({hasText:'Pinned'}).count()>0);
 
+  // Edit savings interest directly on a newly recorded account card.
+  await page.goto('http://receipt.test/savings');
+  const valuationForm=page.locator('form[action$="/savings/record"]').filter({has:page.locator('select[name=kind]')});
+  await valuationForm.locator('input[name=name]').fill('Holiday pot');
+  await valuationForm.locator('input[name=balance]').fill('250.00');
+  await Promise.all([page.waitForResponse(r=>r.url().endsWith('/savings/record')&&r.request().method()==='POST'),valuationForm.getByRole('button',{name:'Save dated balance'}).click()]);
+  const potCard=page.locator('article.panel').filter({has:page.getByRole('heading',{name:'Holiday pot · Savings',exact:true})});
+  await potCard.getByText('No interest rate set; estimated growth is excluded.',{exact:true}).waitFor();
+  await potCard.locator('input[name=rate]').fill('4.5');
+  await Promise.all([page.waitForResponse(r=>r.url().endsWith('/savings/isa/rate')&&r.request().method()==='POST'),potCard.getByRole('button',{name:'Save interest assumption'}).click()]);
+  await potCard.getByText('4.50% AER',{exact:true}).waitFor();
+  assert.match(await potCard.innerText(), /£250.00/);
+  assert.equal(new URL(page.url()).pathname,'/savings');
   // Exercise real loading handlers without navigating away from the outgoing document.
   await page.goto('http://receipt.test/bins');
   await page.clock.install();
