@@ -36,18 +36,36 @@ def register(app,login_required,wealth_fn):
         except (ValueError,TypeError,OSError) as error: flash(str(error) if isinstance(error,ValueError) else 'ISA could not be created.')
         return redirect(url_for('savings_goals_page'))
 
+    def new_settings(key):
+        if key in goals.load()['accounts']: return None
+        recorded=next((row for row in wealth_fn()['accounts'] if goals.identity(row['name'],row['kind']) == key),None)
+        if recorded is None: raise ValueError('Choose a recorded account.')
+        return dict(name=recorded['name'],kind=recorded['kind'],type=goals.infer(recorded['name'],recorded['kind']))
+
+    @app.post('/savings/name')
+    @login_required
+    def savings_account_name():
+        try:
+            key=request.form.get('account','')
+            label=request.form.get('display_name','').strip()
+            current=goals.load()['accounts'].get(key) or new_settings(key)
+            for row in wealth_fn()['accounts']:
+                other=goals.identity(row['name'],row['kind'])
+                if other != key and row['kind'] == current['kind'] and label.casefold() == row['name'].casefold():
+                    raise ValueError('Another account already uses that name.')
+            goals.display_name(key,label,new_account=current)
+            flash('Account display name saved. History, interest and forecast links are unchanged.')
+        except (ValueError,TypeError,OSError) as error: flash(str(error) if isinstance(error,ValueError) else 'Account name could not be saved.')
+        endpoint='savings_goals_page' if request.form.get('return_to') == 'goals' else 'savings_review'
+        return redirect(url_for(endpoint))
+
     @app.post('/savings/isa/rate')
     @login_required
     def isa_rate():
         try:
             key=request.form.get('account','')
-            new_account=None
-            if key not in goals.load()['accounts']:
-                recorded=next((row for row in wealth_fn()['accounts'] if goals.identity(row['name'],row['kind']) == key),None)
-                if recorded is None: raise ValueError('Choose a recorded savings account.')
-                new_account={field:recorded[field] for field in ('name','kind')}
-                new_account['type']=goals.infer(recorded['name'],recorded['kind'])
-                if recorded['kind'] != 'savings' or new_account['type'] not in {'savings','cash_isa'}: raise ValueError('Choose an ordinary savings account or cash ISA.')
+            new_account=new_settings(key)
+            if new_account is not None and (new_account['kind'] != 'savings' or new_account['type'] not in {'savings','cash_isa'}): raise ValueError('Choose an ordinary savings account or cash ISA.')
             goals.interest_rate(key,request.form.get('rate',''),request.form.get('date',''),new_account=new_account)
             flash('Savings interest assumption saved privately. Recorded balances and interest credits are unchanged.')
         except (ValueError,TypeError,OSError) as error: flash(str(error) if isinstance(error,ValueError) else 'Interest rate could not be saved.')

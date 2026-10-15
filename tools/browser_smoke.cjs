@@ -332,6 +332,18 @@ process.on('exit', () => child.kill());
   await potCard.getByText('4.50% AER',{exact:true}).waitFor();
   assert.match(await potCard.innerText(), /£250.00/);
   assert.equal(new URL(page.url()).pathname,'/savings');
+  await potCard.getByText('Edit account name',{exact:true}).click();
+  await potCard.locator('input[name=display_name]').fill('Travel savings');
+  await Promise.all([page.waitForResponse(r=>r.url().endsWith('/savings/name')&&r.request().method()==='POST'),potCard.getByRole('button',{name:'Save account name'}).click()]);
+  const renamedCard=page.locator('article.panel').filter({has:page.getByRole('heading',{name:'Travel savings · Savings',exact:true})});
+  await renamedCard.getByText('4.50% AER',{exact:true}).waitFor();
+  assert.match(await renamedCard.innerText(), /£250.00/);
+  const renamedValuation=page.locator('form[action$="/savings/record"]').filter({has:page.locator('select[name=kind]')});
+  await renamedValuation.locator('input[name=name]').fill('Travel savings');
+  await renamedValuation.locator('input[name=balance]').fill('275');
+  await Promise.all([page.waitForResponse(r=>r.url().endsWith('/savings/record')&&r.request().method()==='POST'),renamedValuation.getByRole('button',{name:'Save dated balance'}).click()]);
+  await renamedCard.getByText('£275.00',{exact:true}).waitFor();
+  assert.equal(await page.getByRole('heading',{name:'Holiday pot · Savings',exact:true}).count(),0);
   // Exercise real loading handlers without navigating away from the outgoing document.
   await page.goto('http://receipt.test/bins');
   await page.clock.install();

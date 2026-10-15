@@ -48,6 +48,8 @@ def validate(value):
         if not isinstance(row,dict) or not isinstance(row.get('name'),str) or not 1 <= len(row['name']) <= 90 or any(ord(c)<32 for c in row['name']) or row.get('kind') not in {'savings','investment'} or key != identity(row['name'],row['kind']) or row.get('type') not in TYPES:
             raise ValueError('Invalid savings account settings.')
         if row.get('target') is not None: amount(row['target'])
+        label=row.get('display_name')
+        if label is not None and (not isinstance(label,str) or not 1 <= len(label) <= 90 or any(ord(c)<32 for c in label)): raise ValueError('Use an account display name up to 90 characters.')
         if row.get('balance_limit') is not None:
             limit = amount(row['balance_limit'])
             if limit > 10000000 or (row['type'] == 'premium_bonds' and limit > 50000): raise ValueError('Invalid account balance limit.')
@@ -116,19 +118,45 @@ def account_settings(name,kind,account_type,target=None,monthly_share=None,balan
             value['accounts'][key]['balance_limit'] = str(limit) if limit is not None else None
         elif 'balance_limit' in old:
             value['accounts'][key]['balance_limit'] = old['balance_limit']
+        if old.get('display_name'):
+            value['accounts'][key]['display_name']=old['display_name']
         if old.get('type') != account_type:
             for row in value['years'].values(): row['complete']=False
+
+
+def _configured_account(state,account,new_account):
+    row=state['accounts'].get(account)
+    if row is None and new_account is not None:
+        row={**new_account,'target':None,'monthly_share':'0'}
+        if identity(row.get('name',''),row.get('kind','')) != account: raise ValueError('Choose a recorded savings account.')
+        state['accounts'][account]=row
+    return row
+
+
+def display_name(account,label,*,new_account=None):
+    label=label.strip()
+    if len(label)>90 or any(ord(c)<32 for c in label): raise ValueError('Use an account display name up to 90 characters.')
+    with edit() as state:
+        row=_configured_account(state,account,new_account)
+        if row is None: raise ValueError('Choose a recorded account.')
+        if label and any(key != account and other['kind'] == row['kind'] and label.casefold() in {other['name'].casefold(),(other.get('display_name') or other['name']).casefold()} for key,other in state['accounts'].items()): raise ValueError('Another account already uses that name.')
+        row['display_name']=label or None
+
+
+def recorded_name(name,kind):
+    accounts=load()['accounts']
+    original=accounts.get(identity(name,kind))
+    if original: return original['name']
+    matches=[row['name'] for row in accounts.values() if row['kind'] == kind and (row.get('display_name') or '').casefold() == name.strip().casefold()]
+    if len(matches)>1: raise ValueError('Account name is ambiguous; use its original name.')
+    return matches[0] if matches else name
 
 
 def interest_rate(account,rate,on,*,new_account=None):
     rate=amount(rate) if rate not in ('',None) else None;on=date.fromisoformat(on)
     if (rate is not None and rate>100) or on.year<2000: raise ValueError('Use an annual rate between 0 and 100% and a valid effective date.')
     with edit() as state:
-        row=state['accounts'].get(account)
-        if row is None and new_account is not None:
-            row={**new_account,'target':None,'monthly_share':'0'}
-            if identity(row.get('name',''),row.get('kind','')) != account: raise ValueError('Choose a recorded savings account.')
-            state['accounts'][account]=row
+        row=_configured_account(state,account,new_account)
         if not row or row['type'] not in {'cash_isa','savings'}: raise ValueError('Choose an existing savings account or cash ISA.')
         row.update(interest_rate=str(rate) if rate is not None else None,rate_date=on.isoformat())
 
@@ -238,6 +266,7 @@ def review(wealth=None,year=None,state=None,on=None,bond_balances=None):
     used=sum((amount(e['amount']) for e in entries if e['event']=='contribution'),Decimal(0))
     cash_used=sum((amount(e['amount']) for e in entries if e['event']=='contribution' and e.get('isa_type',state['accounts'][e['account']]['type'])=='cash_isa'),Decimal(0))
     for key,row in accounts.items():
+        row['label']=row.get('display_name') or row['name']
         row['interest']=sum((amount(e['amount']) for e in entries if e['account']==key and e['event']=='interest'),Decimal(0))
         row['contributions']=sum((amount(e['amount']) for e in entries if e['account']==key and e['event']=='contribution'),Decimal(0))
         if row['type'] in ISA:
@@ -266,7 +295,7 @@ def receipt_lines(view, *, include_balances=False):
         from receipt.layout import amount_rows
         lines += ['', 'SAVINGS & TARGETS [F]', '-' * 40]
         for row in view['accounts']:
-            lines += [row['name'].upper()]
+            lines += [row.get('label',row['name']).upper()]
             if row['balance'] is None:
                 lines.append('BALANCE UNAVAILABLE')
             else:
@@ -284,7 +313,7 @@ def receipt_lines(view, *, include_balances=False):
                 lines.append('BALANCE AS OF ' + str(row['balance_date']))
     for row in view['accounts']:
         if not include_balances and row['balance_target'] and row['balance'] is not None:
-            lines += [row['name'].upper()+' BALANCE GOAL',f"GBP {row['balance']:.2f} / {row['balance_target']:.2f} ({row['balance_goal']['percent']:.0f}%)"]
+            lines += [row.get('label',row['name']).upper()+' BALANCE GOAL',f"GBP {row['balance']:.2f} / {row['balance_target']:.2f} ({row['balance_goal']['percent']:.0f}%)"]
             lines.append(progress_bar(row['balance_goal']['percent']))
     if view['has_isa']:
         row=view['shared'];lines += ['ISA NEW CONTRIBUTIONS '+view['label'],f"RECORDED GBP {row['used']:.2f}"]
@@ -293,7 +322,7 @@ def receipt_lines(view, *, include_balances=False):
             lines.append(progress_bar(row['percent']))
         for account in view['accounts']:
             if account['type'] in ISA:
-                lines.append(f"{account['name']}: GBP {account['contributions']:.2f}")
+                lines.append(f"{account.get('label',account['name'])}: GBP {account['contributions']:.2f}")
                 if not include_balances and account.get('balance') is not None: lines.append(f"BALANCE GBP {account['balance']:.2f}")
                 if account['interest']: lines.append(f"RECORDED INTEREST GBP {account['interest']:.2f}")
         if row['complete'] and row['remaining'] is not None: lines.append(f"RECORDED SPACE GBP {row['remaining']:.2f}")

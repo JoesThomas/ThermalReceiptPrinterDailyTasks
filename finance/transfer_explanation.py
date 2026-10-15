@@ -50,7 +50,7 @@ def explain(result):
         for account in result["account_plan"]["accounts"]:
             if account["first"]:
                 destinations.append(
-                    {"name": account["name"], "amount": pounds(account["first"])}
+                    {"name": account.get("label", account["name"]), "amount": pounds(account["first"])}
                 )
                 moved += account["first"]
     if first["savings"] - moved:

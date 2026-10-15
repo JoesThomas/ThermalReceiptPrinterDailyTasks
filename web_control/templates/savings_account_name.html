@@ -1,0 +1,20 @@
+<details>
+    <summary>Edit account name</summary>
+    <form method="post" action="{{ url_for('savings_account_name') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="account" value="{{ account.id }}">
+        <input type="hidden"
+               name="return_to"
+               value="{{ name_return|default('savings') }}">
+        <label>
+            Account display name
+            <input name="display_name"
+                   maxlength="90"
+                   value="{{ account.display_name|default(account.name,true) }}">
+        </label>
+        <button>Save account name</button>
+    </form>
+    <p class="muted">
+        Used on account cards and receipts. Balance history, interest and targets stay attached. Leave blank to restore the original name.
+    </p>
+</details>

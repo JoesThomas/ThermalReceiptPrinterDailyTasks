@@ -104,3 +104,91 @@ class SavingsInterestCardTests(TestCase):
             self.save(return_to="https://example.com").headers["Location"],
             "/savings/goals",
         )
+
+    def test_display_name_preserves_identity_interest_history_and_forecast_links(self):
+        self.save()
+        goals.account_settings(
+            self.row["name"], "savings", "savings", "500", "25", "1000"
+        )
+        original = deepcopy(self.wealth)
+        response = self.client.post(
+            "/savings/name", data=dict(account=self.key, display_name="Travel savings")
+        )
+        self.assertEqual(response.headers["Location"], "/savings")
+        state = goals.load()
+        self.assertEqual(list(state["accounts"]), [self.key])
+        row = state["accounts"][self.key]
+        self.assertEqual(row["name"], self.row["name"])
+        self.assertEqual(row["interest_rate"], "4.50")
+        self.assertEqual(row["target"], "500.00")
+        self.assertEqual(row["balance_limit"], "1000.00")
+        self.assertIn(b"Travel savings", self.client.get("/savings").data)
+        self.assertEqual(
+            goals.recorded_name("Travel savings", "savings"), self.row["name"]
+        )
+        view = goals.review(
+            self.wealth, state=state, on=date(2026, 10, 15), bond_balances=[]
+        )
+        self.assertEqual(view["accounts"][0]["id"], self.key)
+        self.assertEqual(view["accounts"][0]["label"], "Travel savings")
+        from finance.savings_targets import load_view
+        from finance.test_receipt import build, receipt
+
+        with (
+            patch("finance.wealth_history.review", return_value=self.wealth),
+            patch("savings_runway.load_savings", return_value={"accounts": []}),
+            patch(
+                "finance.investments.load_investments", return_value={"accounts": []}
+            ),
+        ):
+            accounts = load_view(date(2026, 10, 15))
+        self.assertEqual(accounts[0]["name"], self.row["name"])
+        base = dict(
+            valid=True,
+            cash=Decimal(1000),
+            buffer=Decimal(1000),
+            daily=Decimal(0),
+            events=[],
+            warnings=[],
+            amex=dict(balance=Decimal(0)),
+            savings_accounts=accounts,
+        )
+        result = build(
+            base,
+            dict(
+                start="2026-10-15",
+                months="1",
+                salary="10",
+                strategy="amex_first",
+                use_saved_accounts="on",
+                save_all="on",
+            ),
+            date(2026, 10, 15),
+        )
+        self.assertIn("TRAVEL SAVINGS", receipt(result, date(2026, 10, 15)))
+        self.assertIn(
+            "TRAVEL SAVINGS", " ".join(goals.receipt_lines(view, include_balances=True))
+        )
+        goals.account_settings(self.row["name"], "savings", "savings", "600")
+        self.assertEqual(
+            goals.load()["accounts"][self.key]["display_name"], "Travel savings"
+        )
+        self.assertEqual(self.wealth, original)
+        self.client.post("/savings/name", data=dict(account=self.key, display_name=""))
+        self.assertIsNone(goals.load()["accounts"][self.key]["display_name"])
+
+    def test_names_are_validated_and_conflicting_names_do_not_merge_accounts(self):
+        self.save()
+        goals.account_settings("Other pot", "savings", "savings")
+        before = goals.load()
+        for label in ["x" * 91, "Bad\nname", "Other pot"]:
+            self.client.post(
+                "/savings/name", data=dict(account=self.key, display_name=label)
+            )
+            self.assertEqual(goals.load(), before)
+        self.client.post(
+            "/savings/name", data=dict(account=self.key, display_name="<b>Holiday</b>")
+        )
+        page = self.client.get("/savings").data
+        self.assertIn(b"&lt;b&gt;Holiday&lt;/b&gt;", page)
+        self.assertNotIn(b"<b>Holiday</b>", page)
