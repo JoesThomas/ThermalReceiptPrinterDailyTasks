@@ -397,7 +397,7 @@ process.on('exit', () => child.kill());
   await expectedForm.locator('input[name="date"]').fill(new Date(Date.now()+86400000).toISOString().slice(0,10));
   await expectedForm.locator('select[name="repeat"]').selectOption('month_end');
   await Promise.all([page.waitForNavigation({waitUntil:'load'}), expectedForm.getByRole('button',{name:'Add expected payment',exact:true}).click()]);
-  await page.getByText('Expected non-salary income saved privately.',{exact:false}).waitFor();
+  await page.locator('p.flash').filter({hasText:'Expected non-salary income saved privately.'}).waitFor();
   assert.match(await page.locator('#expected-income').innerText(), /Including expected income/);
   await page.locator('#expected-income > details').last().locator('summary').first().click();
   const existingExpected=page.locator('#expected-income details details').first();
