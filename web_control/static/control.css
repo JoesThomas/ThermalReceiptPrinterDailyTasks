@@ -110,3 +110,10 @@ html[data-reduce-motion="true"],html[data-reduce-motion="true"] *{scroll-behavio
 
 /* Long revision and configuration identifiers stay inside their cards. */
 dd code { overflow-wrap: anywhere; }
+
+/* Test finance: keep related decisions together on narrow and wide screens. */
+#test-finance-form .finance-input-group{min-width:0;margin:1.25rem 0;padding:1rem;border:1px solid var(--border,#c4cec8);border-radius:.75rem}
+#test-finance-form .finance-input-group legend{font-weight:700;max-width:100%;padding:0 .4rem;white-space:normal}
+#test-finance-form .finance-toggle{grid-column:1/-1}
+#test-finance-form .finance-form-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+#test-finance-form .finance-form-actions button{max-width:100%}

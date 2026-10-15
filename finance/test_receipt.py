@@ -1,35 +1,23 @@
 """Render a compact test receipt; calculation imports remain compatible."""
 
 from decimal import Decimal
-from textwrap import wrap
 from finance.projection import occurs, format_runway, money, day
 from finance.test_forecast import is_amex, is_card_payment
 from finance.scenario_inputs import validate  # public compatibility export
 from finance.scenario_plan import build  # public compatibility export
-from finance.money import format_pounds
 
 
-def receipt(result, today):
-    lines = []
+def receipt(result, today, *, detail="detailed"):
+    if detail == "compact":
+        from finance.compact_test_receipt import receipt as compact_receipt
 
-    def text(value=""):
-        lines.extend(wrap(str(value), 42) or [""])
+        return compact_receipt(result, today)
+    if detail != "detailed":
+        raise ValueError("Choose compact or detailed finance receipt.")
+    from finance.receipt_text import ReceiptText
 
-    def rule():
-        lines.append("-" * 42)
-
-    def section(title):
-        rule()
-        text(title.center(42))
-        rule()
-
-    def amount(label, value):
-        right = format_pounds(value)
-        if len(label) + len(right) + 1 <= 42:
-            lines.append(label + right.rjust(42 - len(label)))
-        else:
-            text(label)
-            lines.append(right.rjust(42))
+    page = ReceiptText()
+    text, rule, section, amount = page.text, page.rule, page.section, page.amount
 
     data, base, forecast = result["inputs"], result["projection"], result["forecast"]
 
@@ -242,9 +230,9 @@ def receipt(result, today):
             right = contribution[key]
             if len(label) + len(right) + 1 > 42:
                 text(label)
-                lines.append(right.rjust(42))
+                page.lines.append(right.rjust(42))
             else:
-                lines.append(label + right.rjust(42 - len(label)))
+                page.lines.append(label + right.rjust(42 - len(label)))
         for label, key in [
             ("Current pathway target", "goal_keep"),
             ("Compared pathway target", "goal_proposed"),
@@ -610,4 +598,4 @@ def receipt(result, today):
     rule()
     text("SIMULATION ONLY - LIVE RECORDS UNCHANGED")
     rule()
-    return "\n".join(lines) + "\n"
+    return page.render()

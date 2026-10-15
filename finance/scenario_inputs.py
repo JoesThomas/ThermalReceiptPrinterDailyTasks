@@ -6,6 +6,8 @@ from finance.projection import day, money, occurs
 
 
 def validate(values, today):
+    if values.get("receipt_detail", "compact") not in {"compact", "detailed"}:
+        raise ValueError("Choose compact or detailed finance receipt.")
     monzo_target = money(values.get("monzo_target", "0") or "0")
     monzo_balance = (
         money(values["monzo_balance"])
