@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 MAX_BYTES = 900_000
-OBJECT_FILES = {'vehicles.json','birthdays.csv','finance_scenarios.json', 'receipt_settings.last-good.json','receipt_archive_settings.json','finance_reviews.json','assets.json','rental_tax.json','finance_explanations.json','lifestyle.json','transaction_sources.json','finance_planning.json','bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
+OBJECT_FILES = {'bank_overdrafts.json','vehicles.json','birthdays.csv','finance_scenarios.json', 'receipt_settings.last-good.json','receipt_archive_settings.json','finance_reviews.json','assets.json','rental_tax.json','finance_explanations.json','lifestyle.json','transaction_sources.json','finance_planning.json','bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
                 'investments.json', 'finance_settings.json', 'finance_categories.json',
                 'food_shop_override.json', 'tesco_progress.json', 'meals_eaten.json'}
 LIST_FILES = {'finance_monthly_snapshots.json','routines.json', 'future_tasks.json', 'wealth_history.json'}
@@ -76,6 +76,9 @@ def _validate_file(name, content):
     elif name == 'calendar_location_overrides.json':
         from services.calendar_locations import validate as validate_locations
         validate_locations(content)
+    elif name == 'bank_overdrafts.json':
+        from finance.bank_overdrafts import validate as validate_overdrafts
+        validate_overdrafts(content)
     elif name == 'bank_account_selection.json':
         from finance.bank_accounts import validate as validate_accounts
         validate_accounts(content)

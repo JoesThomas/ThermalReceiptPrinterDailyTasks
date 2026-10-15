@@ -110,6 +110,18 @@ class FinanceBackgroundTests(TestCase):
             )
             self.assertIsNone(manager.read())
 
+    def test_overdraft_changes_invalidate_cached_bank_balances(self):
+        with TemporaryDirectory() as folder:
+            manager = FinanceRefresh(folder, lambda progress: snapshot())
+            manager.start()
+            manager.worker.join(3)
+            self.assertIsNotNone(manager.read())
+            write_json(
+                Path(folder) / "data" / "bank_overdrafts.json",
+                {"MONZO": {"account": "300"}},
+            )
+            self.assertIsNone(manager.read())
+
     def test_source_change_during_refresh_never_publishes_wrong_scope(self):
         with TemporaryDirectory() as folder:
 

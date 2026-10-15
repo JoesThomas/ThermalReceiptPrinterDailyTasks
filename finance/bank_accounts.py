@@ -55,6 +55,8 @@ def first(get,token,resource):
 
 
 def collect(refresh,initial,get):
+    from finance.bank_overdrafts import load as load_overdrafts, cash_balance
+    overdrafts=load_overdrafts()
     selected=selection();rows=[];result={};tokens={};inventory={};stamp=datetime.now(timezone.utc).isoformat()
     for provider in PROVIDERS:
         token=refresh(provider,initial(provider));tokens[provider]=token
@@ -75,9 +77,11 @@ def collect(refresh,initial,get):
         for identity in ids:
             values=get(token,f'/accounts/{identity}/balance').get('results',[])
             if not values or values[0].get('currency','GBP')!='GBP': raise RuntimeError('A selected GBP cash balance is unavailable.')
-            row=values[0];c=number(row.get('current'));a=number(row.get('available',c))
+            row=values[0]
+            c,a,reported,limit=cash_balance(row,overdrafts.get(provider,{}).get(identity))
             current+=c;available+=a
-            parts.append({'name':next((r['name'] for r in rows if r['id']==identity and r['provider']==provider),'Account'),'available':float(a),'current':float(c)})
+            parts.append({'name':next((r['name'] for r in rows if r['id']==identity and r['provider']==provider),'Account'),'available':float(a),'current':float(c),'reported_available':float(reported) if 'available' in row else None,
+                          'overdraft':float(limit),'overdraft_source':'manual' if identity in overdrafts.get(provider,{}) else 'bank' if 'overdraft' in row else 'not supplied'})
         result[provider]={'current':float(current),'available':float(available),'currency':'GBP','accounts':parts,
                           'scope':'Selected accounts' if provider in selected else 'First account (default)','checked_at':stamp}
     # Persist only display names and private selection IDs, never credentials or transaction history.

@@ -56,8 +56,8 @@ class FinanceRefresh:
 
     def scope(self):
         # Invalidate only bank-source choices, not local forecast/display settings.
-        digest = hashlib.sha256()
-        for name in ("bank_account_selection.json", "transaction_sources.json"):
+        digest = hashlib.sha256(b"cash-excludes-overdraft-v1")
+        for name in ("bank_account_selection.json", "transaction_sources.json", "bank_overdrafts.json"):
             path = self.root / "data" / name
             try:
                 digest.update(path.read_bytes())

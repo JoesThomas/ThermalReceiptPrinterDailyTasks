@@ -22,6 +22,16 @@ def bank_balances(page, projection):
                 page.amount(
                     f"{provider} - {name}", money(account.get("available"), ZERO)
                 )
+                if (
+                    money(account.get("overdraft"), ZERO) > 0
+                    and account.get("reported_available") is not None
+                ):
+                    page.amount(
+                        "  Reported available",
+                        money(account.get("reported_available"), ZERO),
+                    )
+                    page.amount("  Overdraft allowance", money(account["overdraft"]))
+                    page.text("  Overdraft excluded from cash above.")
             balance = money(row.get("available", row.get("current")))
             if balance is None:
                 complete = False
@@ -38,7 +48,7 @@ def bank_balances(page, projection):
             total,
         )
         page.text(
-            "Available balances before planned transfers. Confirm selected accounts in Finance."
+            "Cash balances exclude overdraft; before planned transfers. Confirm selected accounts in Finance."
         )
     if projection.get("bank_cash_manual") or not sources:
         page.section("STARTING BANK BALANCES")
