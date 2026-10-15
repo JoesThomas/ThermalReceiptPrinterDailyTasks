@@ -35,15 +35,42 @@ def register(app,login_required):
         from finance import bank_accounts
         try: selected=bank_accounts.selection();error=None
         except (ValueError,OSError,TypeError): selected={};error='Saved account selection could not be loaded.'
+        from finance.bank_overdrafts import load as load_overdrafts
+        try: overdrafts=load_overdrafts()
+        except (ValueError,OSError,TypeError):
+            overdrafts={};error='Saved overdraft settings could not be loaded. Restore a private backup or correct the local settings file.'
         state=bank_accounts.catalog();accounts=state['accounts'];seen=set()
         for row in accounts:
             provider=row['provider']
             row['included']=row['id'] in selected[provider] if provider in selected else provider not in seen
+            row['overdraft_override']=overdrafts.get(provider,{}).get(row['id'],'')
             seen.add(provider)
         from finance.transaction_sources import load as source_settings
         try: scope=source_settings()['monzo']
         except (ValueError,TypeError,OSError): scope='invalid'
         return render_template('cash_accounts.html',accounts=accounts,checked=state.get('checked_at'),error=error,monzo_scope=scope)
+
+    @app.post('/finance/accounts/overdrafts')
+    @login_required
+    def save_bank_overdrafts():
+        from finance import bank_accounts, bank_overdrafts
+        try:
+            values=bank_overdrafts.load()
+            known=bank_accounts.catalog()['accounts']
+            allowed={(row['provider'],row['id']) for row in known}
+            values={p:{i:v for i,v in entries.items() if (p,i) in allowed} for p,entries in values.items()}
+            for row in known:
+                field=f"overdraft:{row['provider']}:{row['id']}"
+                if field not in request.form: continue
+                raw=request.form[field].strip()
+                accounts=values.setdefault(row['provider'],{})
+                if raw: accounts[row['id']]=raw
+                else: accounts.pop(row['id'],None)
+            bank_overdrafts.save(values)
+            flash('Overdraft settings saved. Refresh Finance and generate a new test receipt to apply them.')
+        except (ValueError,OSError,TypeError,KeyError):
+            flash('Enter valid non-negative overdraft limits, or leave blank to use bank data. No settings were saved.')
+        return redirect(url_for('cash_accounts'))
 
     @app.post('/finance/transaction-sources')
     @login_required

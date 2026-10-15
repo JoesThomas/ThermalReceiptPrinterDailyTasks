@@ -14,7 +14,7 @@
         <main id="main-content">
             <h1>Choose cash accounts</h1>
             <p>
-                Select the HSBC and Monzo accounts whose available GBP balances should count towards cash and runway. Transaction reporting still uses the connected accounts. Cards are debt, not cash.
+                Select the HSBC and Monzo accounts whose GBP cash balances should count towards cash and runway. Overdraft borrowing is excluded. Transaction reporting still uses the connected accounts. Cards are debt, not cash.
             </p>
             {% for message in get_flashed_messages() %}<p class="helper" role="status">{{ message }}</p>{% endfor %}
             {% if error %}<p class="helper">{{ error }}</p>{% endif %}
@@ -45,6 +45,31 @@
                 If a selected account disappears after reconnecting, numeric forecasts are withheld until you reset or update the selection. A cash reserve should be included once: do not also enter the same balance as separate accessible savings.
             </p>
             <a class="button" href="{{ url_for('finance_review') }}">Refresh Finance & balances</a>
+            <section>
+                <h2>Overdraft allowances</h2>
+                <p>
+                    Overdrafts are borrowing, so they are excluded from cash, runway and savings forecasts. The bank's reported overdraft is deducted automatically. Leave blank to use bank data, or enter the allowance included in that account's available balance. Enter 0 only if its available balance already excludes borrowing.
+                </p>
+                <p>
+                    If the bank omits its overdraft limit, the forecast uses the lower of current and available balances. Enter a limit here to also account for pending payments accurately.
+                </p>
+                <form method="post" action="{{ url_for('save_bank_overdrafts') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% for account in accounts %}
+                        <label>
+                            {{ account.provider }} · {{ account.name }} — overdraft included (£)
+                            <input type="number"
+                                   name="overdraft:{{ account.provider }}:{{ account.id }}"
+                                   value="{{ account.overdraft_override }}"
+                                   min="0"
+                                   max="10000000"
+                                   step="0.01"
+                                   placeholder="Automatic from bank">
+                        </label>
+                    {% endfor %}
+                    {% if accounts %}<button>Save overdraft allowances</button>{% endif %}
+                </form>
+            </section>
             <section>
                 <h2>Monzo transaction sources</h2>
                 <p>
