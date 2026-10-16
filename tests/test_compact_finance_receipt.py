@@ -109,7 +109,7 @@ class CompactFinanceTests(TestCase):
             self.assertIn("£400.00", section)
             self.assertIn("MONZO: first account default; check", section)
             self.assertIn("Combined bank balance            £2,500.00", text)
-            self.assertIn("Checked: 2026-10-15T17:00:00+00:00", text)
+            self.assertIn("Checked: 15 Oct 2026, 18:00 BST", text)
             self.assertNotIn("Starting Monzo override", text)
             self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
         self.assertEqual(original, result)

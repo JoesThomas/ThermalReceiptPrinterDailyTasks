@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 from finance.projection import money
+from receipt.local_time import uk_receipt_time
 
 ZERO = Decimal(0)
 
@@ -42,7 +43,9 @@ def bank_balances(page, projection):
             if row.get("scope") == "First account (default)":
                 page.text(f"{provider}: first account default; check selection.")
             if row.get("checked_at"):
-                page.text("Checked: " + str(row["checked_at"]))
+                page.text(
+                    "Checked: " + (uk_receipt_time(row["checked_at"]) or "Unavailable")
+                )
         page.amount(
             "Combined bank balance" if complete else "Combined known bank balance",
             total,
