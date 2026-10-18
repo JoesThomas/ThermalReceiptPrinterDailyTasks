@@ -83,8 +83,24 @@ def save(account, values, wealth, today):
                         year["complete"] = False
                 goals.validate(state)
                 if balance != "":
+                    existing = next(
+                        (
+                            r
+                            for r in wealth_history.load_history()
+                            if r["kind"] == current["kind"]
+                            and r["name"].casefold() == current["name"].casefold()
+                            and r["date"] == stamp
+                        ),
+                        {},
+                    )
                     wealth_history.record(
-                        current["name"], current["kind"], stamp, balance, today=today
+                        current["name"],
+                        current["kind"],
+                        stamp,
+                        balance,
+                        deposits=existing.get("deposits"),
+                        withdrawals=existing.get("withdrawals"),
+                        today=today,
                     )
                     recorded = True
         except Exception:

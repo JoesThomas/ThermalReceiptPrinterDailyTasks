@@ -17,6 +17,13 @@
             <p>
                 One place for this account's dated balance and planning settings. The account's original identity and history stay linked. New ISA contributions must be recorded separately.
             </p>
+            {% if account.balance is not none %}
+                <p>
+                    Recorded balance: <strong>£{{ '{:,.2f}'.format(account.balance) }}</strong> · {{ account.balance_date }}.
+                </p>
+            {% else %}
+                <p class="muted">No dated balance recorded yet.</p>
+            {% endif %}
             <form method="post">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="grid">

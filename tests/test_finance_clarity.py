@@ -93,7 +93,13 @@ class FinanceClarityTests(TestCase):
             patch.object(wealth_history, "HISTORY_FILE", Path(folder) / "wealth.json"),
         ):
             wealth_history.record(
-                "Original pot", "savings", str(TODAY), 100, today=TODAY
+                "Original pot",
+                "savings",
+                str(TODAY),
+                100,
+                deposits=20,
+                withdrawals=0,
+                today=TODAY,
             )
             key = goals.identity("Original pot", "savings")
             values = dict(
@@ -111,6 +117,7 @@ class FinanceClarityTests(TestCase):
             state = goals.load()["accounts"][key]
             self.assertEqual(state["name"], "Original pot")
             self.assertEqual(state["display_name"], "Holiday pot")
+            self.assertEqual(wealth_history.load_history()[0]["deposits"], "20.00")
             self.assertIsNone(state["target"])
             self.assertIsNone(state["balance_limit"])
             self.assertEqual(
