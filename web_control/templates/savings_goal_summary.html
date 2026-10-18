@@ -59,23 +59,25 @@
                 {% endif %}
             </article>
         {% endif %}
-        {% for account in goals.accounts %}
-            <article class="goal-card">
-                <h3>{{ account.label|default(account.name,true) }}</h3>
-                {% if account.balance_target and account.balance is not none %}
-                    <strong>£{{ '{:,.2f}'.format(account.balance) }} / £{{ '{:,.2f}'.format(account.balance_target) }}</strong><progress max="100"
+        {% if not hide_account_cards|default(false) %}
+            {% for account in goals.accounts %}
+                <article class="goal-card">
+                    <h3>{{ account.label|default(account.name,true) }}</h3>
+                    {% if account.balance_target and account.balance is not none %}
+                        <strong>£{{ '{:,.2f}'.format(account.balance) }} / £{{ '{:,.2f}'.format(account.balance_target) }}</strong><progress max="100"
           value="{{ account.balance_goal.percent }}"
           aria-label="Savings target progress for {{ account.label|default(account.name,true) }}"></progress>
-                    <p>£{{ '{:,.2f}'.format(account.balance_goal.remaining) }} to goal · valuation {{ account.balance_date }}</p>
-                {% elif account.balance is not none %}
-                    <strong>£{{ '{:,.2f}'.format(account.balance) }}</strong>
-                    <p class="muted">No target set · contributions can still be allocated.</p>
-                {% else %}
-                    <p class="muted">Balance not recorded · excluded from numeric account forecasts.</p>
-                {% endif %}
-                <a href="{{ url_for('savings_account_editor',account=account.id) }}">Edit account &amp; planning settings</a>
-            </article>
-        {% endfor %}
+                        <p>£{{ '{:,.2f}'.format(account.balance_goal.remaining) }} to goal · valuation {{ account.balance_date }}</p>
+                    {% elif account.balance is not none %}
+                        <strong>£{{ '{:,.2f}'.format(account.balance) }}</strong>
+                        <p class="muted">No target set · contributions can still be allocated.</p>
+                    {% else %}
+                        <p class="muted">Balance not recorded · excluded from numeric account forecasts.</p>
+                    {% endif %}
+                    <a href="{{ url_for('savings_account_editor',account=account.id) }}">Edit account &amp; planning settings</a>
+                </article>
+            {% endfor %}
+        {% endif %}
         <a class="button" href="{{ url_for('savings_goals_page') }}">Manage goals & ISA entries</a>
     </section>
 {% endif %}

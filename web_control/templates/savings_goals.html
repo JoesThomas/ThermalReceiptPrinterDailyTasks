@@ -73,7 +73,9 @@
                     </label>
                     <button>Show year</button>
                 </form>
-                {% include 'savings_goal_summary.html' %}
+                {% with hide_account_cards=true %}
+                    {% include 'savings_goal_summary.html' %}
+                {% endwith %}
                 <p class="muted">
                     Balances use your latest recorded valuations. Premium Bonds uses its dated holdings ledger when that is more appropriate than an undated local balance. The combined holding limit applies to your total Premium Bonds, not each entry.
                 </p>
