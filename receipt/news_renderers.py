@@ -12,7 +12,7 @@ def _print_news_stories(printer, heading, stories, include_summary=None, *, _con
     left(printer, heading)
     printer.set(bold=False)
     for index, story in enumerate(stories[:5], 1):
-        if index > 1:
+        if index > 1 and not getattr(printer,'paper_saver',False):
             printer.text('\n')
         headline = story.get('headline', '')
         summary = story.get('summary', '')

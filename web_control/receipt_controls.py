@@ -29,7 +29,9 @@ def register(app, login_required, start_print, root):
                 meal=next((row for row in (meal_plan or {}).get('meals',[]) if row.get('date')==uk_today().isoformat()), {})
                 meal_name=meal.get('recipe',{}).get('name') or meal.get('name') or 'No saved meal plan yet'
             except (ValueError,OSError,KeyError): meal_name='Meal plan unavailable'
-        return render_template('print_plan.html', settings=settings, today_view=dashboard(), meal_name=meal_name,
+        from receipt.paper import estimate
+        saved=load_capture(LIVE_PREVIEW_FILE) or {}
+        return render_template('print_plan.html', paper_usage=estimate(saved.get('pages',{}),saved.get('page_images',{})), settings=settings, today_view=dashboard(), meal_name=meal_name,
                                installation=installation_checks(root))
 
     @app.post('/print-plan')
@@ -39,7 +41,10 @@ def register(app, login_required, start_print, root):
         from receipt_settings import load_receipt_settings
         try: pages = apply_preferences(request.form.getlist('pages'), load_receipt_settings())
         except ValueError: abort(400)
-        started, error = start_print(['--pages', *pages])
+        detail=request.form.get('detail','')
+        if detail not in {'','compact','detailed'}:abort(400)
+        args=['--pages', *pages]+(['--detail',detail] if detail else [])
+        started, error = start_print(args)
         flash('Selected receipt pages queued.' if started else error)
         return redirect(url_for('preview'))
 

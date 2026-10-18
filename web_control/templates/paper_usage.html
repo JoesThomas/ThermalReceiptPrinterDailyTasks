@@ -1,0 +1,17 @@
+{% if paper_usage and paper_usage.pages %}
+    <section class="panel">
+        <h2>Estimated paper use</h2>
+        <p>
+            <strong>About {{ paper_usage.cm }} cm</strong> for the saved pages · around {{ paper_usage.year_metres }} metres per year if printed daily at this length.
+        </p>
+        <details>
+            <summary>By page and estimate assumptions</summary>
+            {% for page in paper_usage.pages %}
+                <p>{{ page.name|title }}: {{ page.cm }} cm · {{ page.lines }} text lines</p>
+            {% endfor %}
+            <p class="muted">
+                {{ paper_usage.note }} This estimate uses saved pages; regenerate with Daily summary to measure that version.
+            </p>
+        </details>
+    </section>
+{% endif %}

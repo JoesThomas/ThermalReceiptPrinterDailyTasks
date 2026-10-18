@@ -21,6 +21,7 @@
                     Generate a receipt from current data without printing. Your latest generated preview stays here so you can view it away from the printer. A saved web print is available separately.
                 </p>
             </header>
+            {% include 'paper_usage.html' %}
             {% with messages=get_flashed_messages() %}
                 {% for message in messages %}<p class="flash">{{ message }}</p>{% endfor %}
             {% endwith %}
@@ -68,6 +69,13 @@
                             {% for key in ['all','information','actions','food','finance'] if key != 'food' or meals_on_receipt %}
                                 <option value="{{ key }}">{{ key|title }}</option>
                             {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Receipt detail
+                        <select name="detail">
+                            <option value="compact">Daily summary · less paper</option>
+                            <option value="detailed">Full detail</option>
                         </select>
                     </label>
                     <a class="button" href="{{ url_for('index',view='receipt') }}">Receipt options</a>

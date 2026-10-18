@@ -465,6 +465,26 @@
                     </p>
                 </form>
             </section>
+            {% if scenario_details and scenario_details.charts %}
+                {% with chart_bundle=scenario_details.charts %}
+                    {% include 'finance_visuals.html' %}
+                {% endwith %}
+                {% if scenario_details.stress_scenarios %}
+                    <details>
+                        <summary>Stress scenario results · exact dates</summary>
+                        {% for stress in scenario_details.stress_scenarios %}
+                            <h3>{{ stress.name }}</h3>
+                            <p>
+                                First shortfall: {{ stress.shortfall_date or 'none in selected forecast' }} · Amex cleared: {{ stress.payoff or 'not within forecast' }} · Savings at end: {{ stress.savings_end }}
+                            </p>
+                            {% for account in stress.accounts %}
+                                <p>{{ account.name }}: {{ account.projected }} · goal date {{ account.goal_date or 'not within planning horizon' }}</p>
+                            {% endfor %}
+                        {% endfor %}
+                    </details>
+                {% endif %}
+                {% for assumption in scenario_details.stress_assumptions %}<p class="muted">{{ assumption }}</p>{% endfor %}
+            {% endif %}
             {% if result_text %}
                 <section data-private>
                     <h2>Simulation receipt</h2>
@@ -666,5 +686,6 @@
             {% endif %}
         </main>
         <script src="{{ url_for('static', filename='test-finance.js') }}" defer></script>
+        <script src="{{ url_for('static', filename='finance-visuals.js') }}" defer></script>
     </body>
 </html>

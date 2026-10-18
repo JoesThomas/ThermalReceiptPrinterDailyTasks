@@ -73,13 +73,17 @@
                     </label>
                     <button>Show year</button>
                 </form>
-                {% include 'savings_goal_summary.html' %}
+                {% with hide_account_cards=true %}
+                    {% include 'savings_goal_summary.html' %}
+                {% endwith %}
                 <p class="muted">
                     Balances use your latest recorded valuations. Premium Bonds uses its dated holdings ledger when that is more appropriate than an undated local balance. The combined holding limit applies to your total Premium Bonds, not each entry.
                 </p>
                 {% for account in goals.accounts %}
                     <section>
                         <h2>{{ account.label|default(account.name,true) }}</h2>
+                        <a class="button"
+                           href="{{ url_for('savings_account_editor',account=account.id) }}">Edit account &amp; planning settings</a>
                         {% with name_return="goals" %}
                             {% include "savings_account_name.html" %}
                         {% endwith %}

@@ -165,7 +165,8 @@ class ContributionPlanTests(TestCase):
             ).build_validated,
         ) as calculate:
             compare(base, settings, TODAY, current=current)
-        self.assertEqual(calculate.call_count, 1)
+        # Only sensitivity and the new missed-salary case need calculation.
+        self.assertEqual(calculate.call_count, 2)
 
     def test_maximum_horizon_does_not_repeat_extension(self):
         base = source()

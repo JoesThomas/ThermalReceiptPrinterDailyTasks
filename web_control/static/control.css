@@ -117,3 +117,11 @@ dd code { overflow-wrap: anywhere; }
 #test-finance-form .finance-toggle{grid-column:1/-1}
 #test-finance-form .finance-form-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
 #test-finance-form .finance-form-actions button{max-width:100%}
+
+.finance-chart { margin-block: 1rem; padding: .75rem; border: 1px solid var(--border, #c4cec8); border-radius: .6rem; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
+.chart-legend label { display: flex; align-items: center; gap: .4rem; max-width: 100%; overflow-wrap: anywhere; }
+.chart-legend input { width: auto; }
+.chart-data { max-height: 20rem; overflow: auto; }
+.allocation-stack { display: flex; height: 2rem; border-radius: .3rem; overflow: hidden; }
+.finance-visuals svg { display: block; }

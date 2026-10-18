@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Edit savings account</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <h1>{{ account.label }} · account settings</h1>
+            {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            <p>
+                One place for this account's dated balance and planning settings. The account's original identity and history stay linked. New ISA contributions must be recorded separately.
+            </p>
+            {% if account.balance is not none %}
+                <p>
+                    Recorded balance: <strong>£{{ '{:,.2f}'.format(account.balance) }}</strong> · {{ account.balance_date }}.
+                </p>
+            {% else %}
+                <p class="muted">No dated balance recorded yet.</p>
+            {% endif %}
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="grid">
+                    <label>
+                        Display name
+                        <input name="display_name" maxlength="90" value="{{ account.label }}">
+                    </label>
+                    <label>
+                        Account type
+                        <select name="type">
+                            {% for key,label in types.items() %}
+                                <option value="{{ key }}" {% if key==account.type %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        New current balance (£, optional)
+                        <input type="number"
+                               min="0"
+                               step="0.01"
+                               name="balance"
+                               placeholder="Leave blank to keep recorded balance">
+                    </label>
+                    <label>
+                        Balance date
+                        <input type="date" name="balance_date" max="{{ today }}" value="{{ today }}">
+                    </label>
+                    <label>
+                        Target balance (£, optional milestone)
+                        <input type="number"
+                               min="0.01"
+                               step="0.01"
+                               name="target"
+                               value="{{ account.target or '' }}">
+                    </label>
+                    <label>
+                        Maximum balance (£, optional contribution stop)
+                        <input type="number"
+                               min="0"
+                               max="10000000"
+                               step="0.01"
+                               name="balance_limit"
+                               value="{{ account.balance_limit if account.balance_limit is defined and account.balance_limit is not none else '' }}">
+                    </label>
+                    <label>
+                        Contribution share (%)
+                        <input type="number"
+                               min="0"
+                               max="100"
+                               step="0.01"
+                               name="monthly_share"
+                               value="{{ account.monthly_share or '0' }}">
+                    </label>
+                    <label>
+                        Savings/cash ISA interest assumption (AER %, optional)
+                        <input type="number"
+                               min="0"
+                               max="100"
+                               step="0.01"
+                               name="interest_rate"
+                               value="{{ account.interest_rate if account.interest_rate is defined and account.interest_rate is not none else '' }}">
+                    </label>
+                    <label>
+                        Interest effective date
+                        <input type="date" name="rate_date" value="{{ account.rate_date or today }}">
+                    </label>
+                </div>
+                <p class="muted">
+                    A target is optional and does not stop contributions. A maximum does; Premium Bonds always stop at £50,000. Interest assumptions apply to ordinary savings and cash ISAs, not stocks and shares. All shares at zero allow equal automatic allocation.
+                </p>
+                <button>Save account details</button>
+            </form>
+            <a href="{{ url_for('savings_goals_page') }}">Back to all accounts &amp; ISA contributions</a>
+        </main>
+    </body>
+</html>

@@ -394,7 +394,7 @@
                             <select name="detail">
                                 <option value="detailed"
                                         {% if settings.layout.detail == 'detailed' %}selected{% endif %}>
-                                    Detailed (current behaviour)
+                                    Full detail
                                 </option>
                                 <option value="compact"
                                         {% if settings.layout.detail == 'compact' %}selected{% endif %}>
@@ -403,8 +403,15 @@
                             </select>
                         </label>
                         <p class="muted">
-                            Compact uses shorter weather and at most two headlines per news section. Tasks, exercise instructions and finance amounts stay complete.
+                            Daily summary uses at most two headlines per news section. Weather graphs, tasks, exercise instructions and finance amounts stay complete.
                         </p>
+                        <input type="hidden" name="paper_saver" value="off">
+                        <label>
+                            <input type="checkbox"
+                                   name="paper_saver"
+                                   {% if settings.layout.paper_saver|default(true) %}checked{% endif %}>
+                            Paper-saving spacing (remove repeated blank lines and adjacent rules)
+                        </label>
                         <button>Save receipt layout</button>
                     </form>
                 </section>

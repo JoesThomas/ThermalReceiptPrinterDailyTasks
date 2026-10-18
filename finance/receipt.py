@@ -758,6 +758,8 @@ def print_integrated_finance(
     left(printer, _amount_line("LISTED PAYMENTS / 30D", upcoming_total))
     for label, days in (("CASH RUNWAY", projection["cash_days"]),
                         ("WITH ACCESSIBLE SAVINGS", projection["total_days"])):
+        if label == "WITH ACCESSIBLE SAVINGS" and st["runway_accessible"] <= 0:
+            continue
         from finance.projection import format_runway
         value = (format_runway(days, today) if days is not None else
                  "Over " + projection["horizon_duration"] if projection["valid"] else "Unavailable")
@@ -773,7 +775,7 @@ def print_integrated_finance(
     if projection["buffer"] > 0:
         left(printer, "DATES PROTECT YOUR CASH BUFFER")
     from textwrap import wrap
-    for warning in projection["warnings"]:
+    for warning in dict.fromkeys(projection["warnings"]):
         for row in wrap(warning.upper(), width=40):
             left(printer, row)
 

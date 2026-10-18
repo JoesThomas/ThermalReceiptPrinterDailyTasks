@@ -1,0 +1,100 @@
+{% if chart_bundle and chart_bundle.lines %}
+    <section class="finance-visuals" aria-label="Finance charts">
+        <h2>Explore the figures</h2>
+        <p class="muted">
+            Turn lines on or off to compare accounts and assumptions. Exact chart values are available underneath. Charts describe estimates, not guarantees.
+        </p>
+        {% for chart in chart_bundle.lines %}
+            <details class="finance-chart" {% if loop.first %}open{% endif %}>
+                <summary>{{ chart.title }}</summary>
+                <p class="muted">{{ chart.note }}</p>
+                <svg viewBox="0 0 730 270"
+                     role="img"
+                     aria-label="{{ chart.title }}"
+                     style="width:100%;
+                            height:auto;
+                            max-height:360px">
+                    <title>{{ chart.title }} · {{ chart.start }} to {{ chart.end }}</title>
+                    {% if chart.band_y is not none %}
+                        <rect x="58" y="{{ chart.band_y }}" width="620" height="{{ 220-chart.band_y }}" fill="#e9c991" opacity="0.35" />
+                    {% endif %}
+                    <line x1="58" y1="{{ chart.zero }}" x2="678" y2="{{ chart.zero }}" stroke="#88978e" />
+                    {% for marker in chart.markers %}
+                        <line x1="{{ marker.x }}" y1="35" x2="{{ marker.x }}" y2="220" stroke="#aeb9b0" stroke-dasharray="2 5"><title>{{ marker.date }} · {{ marker.label }}</title></line>
+                    {% endfor %}
+                    {% for line in chart.series %}
+                        <polyline id="{{ chart.key }}-series-{{ loop.index0 }}" points="{{ line.points }}" fill="none" stroke="{{ line.color }}" stroke-width="2.5" stroke-dasharray="{{ line.dash }}"><title>{{ line.name }}</title></polyline>
+                    {% endfor %}
+                    <text x="58" y="20" font-size="12" fill="currentColor">{{ chart.high }}</text><text x="58" y="238" font-size="12" fill="currentColor">{{ chart.low }}</text>
+                    <text x="58" y="260" font-size="12" fill="currentColor">{{ chart.start }}</text><text x="678" y="260" text-anchor="end" font-size="12" fill="currentColor">{{ chart.end }}</text>
+                </svg>
+                <div class="chart-legend">
+                    {% for line in chart.series %}
+                        <label>
+                            <input type="checkbox"
+                                   checked
+                                   data-chart-series="{{ chart.key }}-series-{{ loop.index0 }}"
+                                   aria-controls="{{ chart.key }}-series-{{ loop.index0 }}">
+                            <span style="border-bottom:3px solid {{ line.color }}">{{ line.name }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+                <details>
+                    <summary>Exact values · {{ chart.start }} to {{ chart.end }}</summary>
+                    {% for line in chart.series %}
+                        <details>
+                            <summary>{{ line.name }}</summary>
+                            <div class="chart-data"
+                                 tabindex="0"
+                                 role="region"
+                                 aria-label="{{ chart.title }} · {{ line.name }} exact values">
+                                <table>
+                                    <caption>{{ line.name }} · GBP</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Date</th>
+                                            <th scope="col">Balance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for point in line.data %}
+                                            <tr>
+                                                <td>{{ point.date }}</td>
+                                                <td>{{ point.value }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                    {% endfor %}
+                </details>
+            </details>
+        {% endfor %}
+        {% if chart_bundle.allocation %}
+            <details class="finance-chart">
+                <summary>Payday allocation · where the cash goes</summary>
+                <p class="muted">{{ chart_bundle.allocation.note }}</p>
+                <div class="allocation-stack"
+                     role="img"
+                     aria-label="Planned cash allocation; exact amounts below">
+                    {% for row in chart_bundle.allocation.rows %}
+                        <span style="width:{{ row.percent }}%;
+                                     background:{{ row.color }}"
+                              title="{{ row.label }}: {{ row.value }}"></span>
+                    {% endfor %}
+                </div>
+                <dl>
+                    {% for row in chart_bundle.allocation.rows %}
+                        <div class="merchant-payment">
+                            <dt>{{ row.label }}</dt>
+                            <dd>
+                                {{ row.value }}
+                            </dd>
+                        </div>
+                    {% endfor %}
+                </dl>
+            </details>
+        {% endif %}
+    </section>
+{% endif %}

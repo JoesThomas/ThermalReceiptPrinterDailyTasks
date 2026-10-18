@@ -16,9 +16,10 @@ IMAGE_MARKER = re.compile(r"\[\[RECEIPT_IMAGE_(\d+)\]\]")
 
 
 class RecordingPrinter:
-    def __init__(self, printer, defer=False):
+    def __init__(self, printer, defer=False, paper_saver=False):
         self.printer = printer
         self.defer = defer
+        self.paper_saver = paper_saver
         self.operations = []
         self.lines = []
         self.images = []
@@ -40,6 +41,18 @@ class RecordingPrinter:
 
     def text(self, value):
         value = str(value)
+        if self.paper_saver:
+            value = re.sub(r"\n{3,}", "\n\n", value)
+            tail = ''.join(self.lines[-3:])
+            blank_tail = re.sub(r'[ \t]+(?=\n)', '', tail)
+            previous = len(blank_tail)-len(blank_tail.rstrip('\n'))
+            leading = len(value)-len(value.lstrip('\n'))
+            allowed = 0 if not self.lines or '--- CUT ---' in self.lines[-1] else max(0,2-previous)
+            if leading>allowed:value=value[leading-allowed:]
+            if not value:return
+            if re.fullmatch(r"[-=]{40,42}\n",value):
+                last=tail.rstrip().splitlines()
+                if last and last[-1].strip()==value.strip():return
         # Closing/opening section rules can meet with no content between them.
         if re.fullmatch(r"[-=]{42}\n", value) and self.lines and re.fullmatch(r"[-=]{42}\n", self.lines[-1]):
             return

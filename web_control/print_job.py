@@ -27,7 +27,8 @@ def main():
     scheduled = bool(args and args[0] == '--scheduled')
     if scheduled:
         args = args[1:]
-    page = " + ".join(args[1:]) if args and args[0] == "--pages" else args[1] if len(args) == 2 and args[0] == "--only" else "full receipt"
+    display_args = args[:args.index('--detail')] if '--detail' in args else args
+    page = " + ".join(display_args[1:]) if display_args and display_args[0] == "--pages" else display_args[1] if len(display_args) == 2 and display_args[0] == "--only" else "full receipt"
     if args == ['--paper-test']: page = 'paper test'
     elif args == ['--printer-test']: page = 'printer test'
     # The parent writes the lock immediately after starting this process.

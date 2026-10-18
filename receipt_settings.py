@@ -12,7 +12,8 @@ DEFAULT_SETTINGS = {
     "api_health": {"enabled": True, "interval_minutes": 60},
     "layout": {
         "order": ["information", "actions", "food", "finance"],
-        "detail": "detailed",
+        "detail": "compact",
+        "paper_saver": True,
     },
     "print_schedule": {"enabled": True, "time": "03:00"},
     "location": DEFAULT_LOCATION,

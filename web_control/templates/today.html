@@ -4,6 +4,16 @@
     <p class="muted">
         Saved information, without waiting for external services. Generate a live receipt to check for updates.
     </p>
+    {% if today_view.priorities %}
+        <section class="today-priorities">
+            <h3>Needs your attention today</h3>
+            {% for item in today_view.priorities %}
+                <article><strong>{{ item.title }}</strong>
+                    <p class="muted">{{ item.why }}</p>
+                    <a href="{{ url_for(item.endpoint) }}">Review action</a></article>
+            {% endfor %}
+        </section>
+    {% endif %}
     {% for error in today_view.errors %}<p class="flash">{{ error }}</p>{% endfor %}
     {% if today_view.assistant.focus or today_view.assistant.appointment %}
         <div class="today-grid">

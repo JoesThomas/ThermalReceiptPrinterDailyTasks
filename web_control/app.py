@@ -448,7 +448,8 @@ def save_receipt_layout():
     from receipt.layout import validate as validate_layout
     try:
         layout = validate_layout({'order': [request.form.get(f'page_{n}', '') for n in range(4)],
-                                  'detail': request.form.get('detail', 'detailed')})
+                                  'detail': request.form.get('detail', 'detailed'),
+                                  'paper_saver': 'on' in request.form.getlist('paper_saver') if 'paper_saver' in request.form else True})
         settings = load_receipt_settings()
         settings['layout'] = layout
         save_receipt_settings(settings)
@@ -1040,7 +1041,9 @@ def preview():
              for name in selected]
     from receipt.quality import check
     quality_warnings = check(capture.get("pages", {}), capture.get("freshness", {}))
-    return render_template("preview.html", quality_warnings=quality_warnings, freshness=[dict(name=name, status=value["status"], local=uk_receipt_time(value.get("source_checked_at") or value["checked_at"])) for name, value in capture.get("freshness", {}).items()], pages=pages, page=page, source=source,
+    from receipt.paper import estimate
+    paper_usage=estimate({p['name']:capture['pages'].get(p['name'],'') for p in pages if not p['sample']},capture.get('page_images',{}))
+    return render_template("preview.html", paper_usage=paper_usage, quality_warnings=quality_warnings, freshness=[dict(name=name, status=value["status"], local=uk_receipt_time(value.get("source_checked_at") or value["checked_at"])) for name, value in capture.get("freshness", {}).items()], pages=pages, page=page, source=source,
                            preview_status=load_live_preview_status(),
                            has_live=bool(live_capture), has_printed=bool(printed_capture))
 
@@ -1082,6 +1085,7 @@ def _generate_live_preview_locked():
         from receipt.selection import validate as validate_sections
         try: validate_sections(request.form.getlist('sections'))
         except ValueError: abort(400)
+    if request.form.get('detail','') not in {'','compact','detailed'}: abort(400)
     if request.form.get("page", "all") not in {"all", *PRINT_PAGES}:
         abort(400)
     if not load_receipt_settings()['features'].get('meals', True) and (request.form.get('page') == 'food' or (request.form.get('selected_sections') == '1' and request.form.getlist('sections') == ['food'])):
@@ -1115,6 +1119,7 @@ def _generate_live_preview_locked():
                 args += ['--only', page]
             if retry:
                 args += ['--refresh-source', retry]
+            if request.form.get('detail'):args += ['--detail',request.form['detail']]
             process = subprocess.Popen(
                 [sys.executable, str(PROJECT_ROOT / "web_control" / "preview_job.py"), *args],
                 cwd=PROJECT_ROOT, stdout=log_handle, stderr=subprocess.STDOUT,
