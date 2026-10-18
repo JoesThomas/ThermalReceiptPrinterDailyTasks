@@ -1,0 +1,19 @@
+{% if finance_changes %}
+    <details class="section-disclosure">
+        <summary>What changed since the previous successful finance check?</summary>
+        {% if finance_changes.error %}
+            <p>{{ finance_changes.error }}</p>
+        {% elif finance_changes.previous %}
+            {% for change in finance_changes.changes %}
+                <p>{{ change }}</p>
+            {% else %}
+                <p>No changes detected in bank cash, Amex debt, recorded savings or upcoming payments.</p>
+            {% endfor %}
+        {% else %}
+            <p>A comparison appears after two successful complete finance checks.</p>
+        {% endif %}
+        <p class="muted">
+            Changes compare saved check values; a savings balance change is not necessarily investment growth. New check: {{ planning_local_time(finance_changes.checked_at) if finance_changes.checked_at else 'not yet' }}.
+        </p>
+    </details>
+{% endif %}

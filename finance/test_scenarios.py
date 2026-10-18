@@ -145,7 +145,48 @@ def compare(projection, values, today, *, current=None):
             else "Amex: same approximate clearance timing"
         )
     from finance.transfer_explanation import explain
+    from finance.visuals import test_charts
+
+    stress = dict(
+        current["inputs"],
+        one_off_expenses=list(current["inputs"]["one_off_expenses"])
+        + [
+            dict(
+                date=current["inputs"]["start"],
+                amount=difference,
+                name="Illustrative extra expense",
+                scenario_expense=True,
+            )
+        ],
+    )
+    extra_cost = build_validated(projection, stress, today) if difference else current
+    missed = dict(
+        current["inputs"],
+        missed_salary_dates=list(current["inputs"]["missed_salary_dates"])
+        + [current["inputs"]["start"]],
+    )
+    late_salary = (
+        build_validated(projection, missed, today)
+        if current["forecast"]["payments"][0]["salary"]
+        else current
+    )
+    chart_cases = [
+        ("Current plan", current),
+        ("Lower spending", lower),
+        ("Higher spending", higher),
+        ("Extra one-off expense", extra_cost),
+        ("First salary missed", late_salary),
+    ]
     return {
+        "charts": test_charts(current, today, chart_cases),
+        "stress_scenarios": [
+            dict(snapshot(extra_cost, today), name="Extra one-off expense"),
+            dict(snapshot(late_salary, today), name="First salary missed"),
+        ],
+        "stress_assumptions": [
+            f"Extra expense: {pounds(difference)} on the first payday.",
+            "First salary missed: salary resumes on the next scheduled payday; other income is unchanged.",
+        ],
         "transfers": explain(current),
         "contribution": contribution_plan(projection, current, today),
         "scenarios": [

@@ -94,7 +94,13 @@ def dashboard():
     except (OSError, ValueError):
         birthday_rows = []
         errors.append('Birthday data unavailable; review the birthday list.')
-    return dict(birthdays=birthday_rows, assistant=assistant, bin_lines=bin_lines, tasks=tasks, exercises=exercises, deliveries=deliveries,
+    from web_control.daily_focus import build as build_focus
+    from services.vehicle_records import load as load_vehicles
+    from finance.check_changes import view as finance_changes
+    try: vehicle_rows=load_vehicles()['vehicles']
+    except (ValueError,OSError): vehicle_rows=[]
+    focus=build_focus(datetime.fromisoformat(checklists.today()).date(),tasks,assistant,bin_lines,vehicle_rows,birthday_rows,finance_changes())
+    return dict(priorities=focus,birthdays=birthday_rows, assistant=assistant, bin_lines=bin_lines, tasks=tasks, exercises=exercises, deliveries=deliveries,
                 events=[e for index, e in enumerate(calendar.get('events', [])) if isinstance(e, dict) and e.get('date') == checklists.today() and (not assistant['appointment'] or index != assistant['appointment']['index'])] if isinstance(calendar.get('events', []), list) else [],
                 calendar_checked=uk_receipt_time(calendar.get('checked_at')),
                 checks=[{'name': name, 'status': row['status'], 'local': uk_receipt_time(row.get('source_checked_at') or row['checked_at'])} for name, row in checks.items()],

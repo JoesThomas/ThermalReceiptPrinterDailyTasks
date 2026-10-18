@@ -33,6 +33,7 @@ class SavingsGoalTests(unittest.TestCase):
             view=goals.review(wealth,state=state,on=date(2026,10,4),bond_balances=[])
             app=Flask(__name__,template_folder=str(Path(__file__).resolve().parents[1]/'web_control'/'templates'))
             app.add_url_rule('/goals',endpoint='savings_goals_page',view_func=lambda: '')
+            app.add_url_rule('/accounts/<account>',endpoint='savings_account_editor',view_func=lambda account: '')
             with app.test_request_context():
                 html=render_template('savings_goal_summary.html',goals=view)
             self.assertNotIn('Premium Bonds holdings',html)

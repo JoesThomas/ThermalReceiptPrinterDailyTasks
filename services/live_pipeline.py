@@ -4585,6 +4585,9 @@ def run_live_pipeline(
     setup_printer(printer)
     from receipt.layout import validate as validate_layout, OrderedPrinter, begin as begin_page, checked_lines
     layout = validate_layout(settings.get('layout', {}))
+    override = os.getenv('RECEIPT_DETAIL_OVERRIDE','')
+    if override in {'compact','detailed'}: layout['detail']=override
+    if hasattr(printer,'paper_saver'): printer.paper_saver=layout['paper_saver']
     compact = layout['detail'] == 'compact'
     if compact:
         settings['display']['news_count'] = min(2, settings['display']['news_count'])

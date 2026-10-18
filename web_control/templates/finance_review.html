@@ -34,6 +34,10 @@
             {% endwith %}
             {% include 'finance_refresh_status.html' %}
             {% include 'expected_income.html' %}
+            {% include 'finance_changes.html' %}
+            {% with chart_bundle=finance_visuals %}
+                {% include 'finance_visuals.html' %}
+            {% endwith %}
             {% include 'renewal_reminders.html' %}
             {% if update_items %}
                 <details class="section-disclosure">
@@ -754,5 +758,6 @@
                     </p>
                 </div>
             </main>
+            <script src="{{ url_for('static',filename='finance-visuals.js') }}" defer></script>
         </body>
     </html>

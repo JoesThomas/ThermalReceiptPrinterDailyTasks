@@ -15,6 +15,27 @@ def register(app,login_required,wealth_fn):
         result,error=view()
         return render_template('savings_goals.html',goals=result,error=error,types=goals.TYPES,events=goals.EVENTS)
 
+    @app.get('/savings/accounts/<account>')
+    @login_required
+    def savings_account_editor(account):
+        result,error=view()
+        row=next((r for r in (result or {}).get('accounts',[]) if r['id']==account),None)
+        if row is None:
+            from flask import abort
+            abort(404)
+        return render_template('savings_account_editor.html',account=row,types=goals.TYPES,today=goals.today(),error=error)
+
+    @app.post('/savings/accounts/<account>')
+    @login_required
+    def save_savings_account_editor(account):
+        from finance.account_editor import save
+        try:
+            save(account,request.form,wealth_fn(),goals.today())
+            flash('Account name, balance and planning settings saved. ISA contributions remain separate.')
+        except (ValueError,OSError,TypeError,KeyError) as error:
+            flash(str(error) if isinstance(error,ValueError) else 'Account could not be saved. Check the private data.')
+        return redirect(url_for('savings_account_editor',account=account))
+
     @app.post('/savings/isa/create')
     @login_required
     def isa_create():

@@ -33,6 +33,7 @@
             <article class="panel">
                 <h3>{{ account_label }} · {{ account.kind|title }}</h3>
                 {% if interest_account %}
+                    <a href="{{ url_for('savings_account_editor',account=interest_account.id) }}">Edit account &amp; planning settings</a>
                     {% with account=interest_account, name_return="savings" %}
                         {% include "savings_account_name.html" %}
                     {% endwith %}

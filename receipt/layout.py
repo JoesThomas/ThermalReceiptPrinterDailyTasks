@@ -2,7 +2,7 @@
 from io import BytesIO
 
 PAGES = ('information', 'actions', 'food', 'finance')
-DEFAULT = {'order': list(PAGES), 'detail': 'detailed'}
+DEFAULT = {'order': list(PAGES), 'detail': 'compact', 'paper_saver': True}
 
 
 def validate(value):
@@ -11,7 +11,8 @@ def validate(value):
     order = value.get('order', list(PAGES))
     if not isinstance(order, list) or len(order) != 4 or any(not isinstance(x, str) for x in order) or set(order) != set(PAGES):
         raise ValueError('Choose each receipt page once.')
-    return {'order': order, 'detail': value.get('detail', 'detailed')}
+    if type(value.get('paper_saver',True)) is not bool: raise ValueError('Choose paper-saving spacing on or off.')
+    return {'order': order, 'detail': value.get('detail', 'detailed'), 'paper_saver': value.get('paper_saver',True)}
 
 
 class OrderedPrinter:

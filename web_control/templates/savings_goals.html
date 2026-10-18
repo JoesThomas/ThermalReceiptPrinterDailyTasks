@@ -80,6 +80,8 @@
                 {% for account in goals.accounts %}
                     <section>
                         <h2>{{ account.label|default(account.name,true) }}</h2>
+                        <a class="button"
+                           href="{{ url_for('savings_account_editor',account=account.id) }}">Edit account &amp; planning settings</a>
                         {% with name_return="goals" %}
                             {% include "savings_account_name.html" %}
                         {% endwith %}

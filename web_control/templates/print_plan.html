@@ -15,6 +15,7 @@
             <header>
                 <h1>Prepare print</h1>
             </header>
+            {% include 'paper_usage.html' %}
             {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
             <section>
                 <p>
@@ -42,12 +43,32 @@
                         These counts come from local records; calendar and deliveries may change when refreshed. Finance can be included by selecting its page. Meals reflect the current plan, confirmations and Away dates.
                     </p>
                     <label>
+                        Receipt detail
+                        <select name="detail">
+                            <option value="compact">Daily summary · less paper</option>
+                            <option value="detailed">Full detail</option>
+                        </select>
+                    </label>
+                    <label>
                         <input type="checkbox" name="allow_repeat">
                         Allow intentional reprint
                     </label>
                     <button class="primary">Generate and print selected pages</button>
                 </form>
                 <a class="button" href="{{ url_for('preview') }}">Generate without printing</a>
+                <details>
+                    <summary>Why these sections and reminders appear</summary>
+                    <ul>
+                        <li>Information uses your configured location and enabled weather/news sources.</li>
+                        <li>Actions include due tasks and today's calendar; put-bin-out reminders appear the day before collection.</li>
+                        <li>
+                            MOT booking tasks start 30 days before the recorded expiry. Vehicle summaries print on Sundays or at the 30, 14 and 7-day milestones.
+                        </li>
+                        <li>Birthdays print on the day and in Sunday's next-10-days list. Meals use the current plan when enabled.</li>
+                        <li>Selecting Finance here explicitly includes it for this print. Forecast figures remain estimates.</li>
+                    </ul>
+                    <p class="muted">These explanations stay on the web page to avoid repeating them on daily paper.</p>
+                </details>
             </section>
             <section>
                 <details>

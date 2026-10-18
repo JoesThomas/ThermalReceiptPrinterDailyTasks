@@ -249,6 +249,7 @@ def build_review(deps, snapshot, fresh, refresh_status=None):
             rows=rows,
             charts=charts,
             wealth=wealth,
+            goals=goals_view,
             wealth_error=wealth_error,
             bonds_summary=bonds_summary,
             month=month,
@@ -291,6 +292,10 @@ def render_review(deps, snapshot, fresh, refresh_status):
     from finance.expected_income import view as expected_income_view
     from receipt.local_time import uk_today
     model['expected_income'] = expected_income_view(model.get('projection'), uk_today())
+    from finance.visuals import main_cash
+    from finance.check_changes import view as changes_view
+    model['finance_changes'] = changes_view()
+    model['finance_visuals'] = {'lines':[c for days in (30,90) if (c:=main_cash(model.get('projection'),model['expected_income']['rows'],uk_today(),days))]}
     return render_template('finance_review.html', **model), model.get('http_status', 200)
 
 
@@ -316,6 +321,8 @@ def capture_review(deps, snapshot):
     capture(model['salary_plan'], observation['transactions'], model['rows'], model['income'],
             model['projection'], observation['summary'], model['net_worth'], observation['rental_plan'],
             today, model['month']['total'])
+    from finance.check_changes import record as record_check_changes
+    record_check_changes(model,snapshot['checked_at'],today)
 
 
 def register(app, login_required, deps):
