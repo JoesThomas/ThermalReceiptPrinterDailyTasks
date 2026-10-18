@@ -44,7 +44,10 @@
                     {% for line in chart.series %}
                         <details>
                             <summary>{{ line.name }}</summary>
-                            <div class="chart-data">
+                            <div class="chart-data"
+                                 tabindex="0"
+                                 role="region"
+                                 aria-label="{{ chart.title }} · {{ line.name }} exact values">
                                 <table>
                                     <caption>{{ line.name }} · GBP</caption>
                                     <thead>
