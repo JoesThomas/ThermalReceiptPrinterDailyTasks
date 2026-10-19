@@ -56,8 +56,10 @@ def component_guidance(item, made_on: date):
     deadline = _deadline(hours, made_on)
     if deadline:
         rows.append(deadline)
-    if cid in {'chicken_stock', 'focaccia'}:
+    if cid == 'chicken_stock':
         rows.append(COOL)
+    if cid == 'focaccia':
+        rows.append('Cool plain bread completely before wrapping or freezing.')
     if cid in {'chicken_stock', 'pesto', 'fresh_pasta', 'focaccia'}:
         rows.extend([FREEZE, THAW])
     if cid == 'chicken_stock':

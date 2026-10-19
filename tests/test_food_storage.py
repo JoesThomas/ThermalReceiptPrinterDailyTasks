@@ -22,6 +22,9 @@ class FoodStorageTests(TestCase):
         self.assertIn('pasteurised egg', ' '.join(mayo))
         self.assertIn('use today, Mon 19 Oct', ' '.join(mayo))
         self.assertNotIn(storage.FREEZE, mayo)
+        bread = storage.component_guidance({'id': 'focaccia', 'action': 'make'}, TODAY)
+        self.assertNotIn(storage.COOL, bread)
+        self.assertIn('cool, dry cupboard', ' '.join(bread))
 
     def test_leftovers_rice_and_ordinary_limits_with_conditional_dates(self):
         for ingredients, hours, day in [(['chicken', 'couscous'], 48, 'Wed 21 Oct'),
