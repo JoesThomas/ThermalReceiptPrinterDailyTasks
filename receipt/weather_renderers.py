@@ -86,6 +86,34 @@ def _hourly_rows(rows):
             yield from wrap(row[4], width=COLUMNS)
 
 
+def _extra_current_rows(current):
+    """Only show optional current measurements actually supplied by the source."""
+    def number(key):
+        value = current.get(key)
+        if isinstance(value, bool):
+            return None
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            return None
+        return value if math.isfinite(value) else None
+
+    headers, values = [], []
+    pressure = number("surface_pressure")
+    if pressure is not None and pressure > 0:
+        headers.append("Air pressure")
+        values.append(f"{pressure:.0f} hPa")
+    direction = number("wind_direction_10m")
+    if direction is not None and 0 <= direction <= 360:
+        points = ("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+                  "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
+        compass = points[int((direction + 11.25) // 22.5) % 16]
+        headers.append("Wind direction")
+        values.append(f"{compass} ({round(direction) % 360} deg)")
+    if headers:
+        yield from _table_rows(headers, [values])
+
+
 def _weather_title(location):
     # The country suffix is unnecessary on a local daily receipt.
     region = location.get("region", "")
@@ -182,6 +210,8 @@ def print_weather(
         [(f"{current_temperature:.1f}C", f"{current['apparent_temperature']:.1f}C",
           f"{current['relative_humidity_2m']:.0f}%", f"{current['wind_speed_10m']:.1f}km/h")],
     ):
+        left(printer, row)
+    for row in _extra_current_rows(current):
         left(printer, row)
     print_line(printer)
     printer.set(bold=True)

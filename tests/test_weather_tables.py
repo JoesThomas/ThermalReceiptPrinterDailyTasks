@@ -59,6 +59,25 @@ class WeatherTablesTests(unittest.TestCase):
                 self.assertTrue(printer.rows[continuation][1])
                 self.assertFalse(printer.bold)
 
+    def test_optional_current_measurements_align_and_omit_invalid_values(self):
+        from unittest.mock import patch
+        from receipt import weather_renderers as weather
+        for columns in (20,30,48):
+            with self.subTest(columns=columns), patch.object(weather,'COLUMNS',columns):
+                rows=list(weather._extra_current_rows({'surface_pressure':1013.2,'wind_direction_10m':220}))
+                self.assertTrue(all(len(row)<=columns for row in rows))
+                self.assertIn('1013 hPa',' '.join(rows))
+                self.assertIn('SW (220 deg)',' '.join(rows))
+                if columns==48:
+                    self.assertEqual(len(rows),2)
+                    self.assertEqual(rows[0].index('Air pressure'),rows[1].index('1013'))
+                    self.assertEqual(rows[0].index('Wind direction'),rows[1].index('SW'))
+        for direction in (0,360,359.9):
+            self.assertIn('N (0 deg)',' '.join(weather._extra_current_rows({'wind_direction_10m':direction})))
+        for value in (None,float('nan'),float('inf'),True,-1,'invalid'):
+            self.assertEqual(list(weather._extra_current_rows({'surface_pressure':value,'wind_direction_10m':value})),[])
+        self.assertEqual(list(weather._extra_current_rows({})),[])
+
     def test_gigs_heading_matches_standard_section_and_empty_gigs_print_nothing(self):
         printer = Printer()
         result = {'events': [], 'status': 'not_configured', 'location': 'Birmingham', 'radius': 25, 'truncated': False}
