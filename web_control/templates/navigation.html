@@ -1,6 +1,6 @@
 <a class="skip-link" href="#main-content">Skip to content</a>
 <!-- djlint:off -->
-<style>:root { --receipt-columns: {{ receipt_columns|default(46) }}; }</style>
+<style>:root { --receipt-columns: {{ receipt_columns|default(46) }}; --receipt-paper-width: {{ receipt_paper_width|default(80) }}mm; }</style>
 <!-- djlint:on -->
 {% if receipt_retries is defined %}
     <nav aria-label="Print and settings">
@@ -106,3 +106,10 @@
         <a class="button" href="{{ url_for('preview') }}">View receipt</a>
     </form>
 </aside>
+
+{% if paper_profile_pending %}
+    <p class="flash" role="alert">
+        Printer size changed. Restart Receipt Control before generating or printing receipts. <a href="{{ url_for('index',view='settings',_anchor='printer-paper') }}">Paper settings</a>
+    </p>
+{% endif %}
+{% if paper_settings_warning %}<p class="flash" role="alert">{{ paper_settings_warning }}</p>{% endif %}

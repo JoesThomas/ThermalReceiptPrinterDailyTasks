@@ -91,8 +91,9 @@ def preview_settings_fingerprint():
         }
     except (OSError, ValueError):
         bin_settings = "unavailable"
+    from receipt.paper_settings import load as load_paper, geometry
     return fingerprint(
-        dict(receipt=settings, bins=bin_settings, finance=finance_fingerprint(),
+        dict(receipt=settings, paper=geometry(load_paper()), bins=bin_settings, finance=finance_fingerprint(),
              assistant=assistant_fingerprint())
     )
 

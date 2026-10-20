@@ -221,3 +221,6 @@ data/birthdays.lock
 # Private vehicle dates and cover details
 data/vehicles.json
 data/vehicles.lock
+
+data/printer_paper.json
+data/printer_paper.lock

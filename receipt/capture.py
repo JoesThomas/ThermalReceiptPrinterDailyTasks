@@ -5,7 +5,7 @@ import json
 import base64
 import binascii
 import re
-from receipt.profile import COLUMNS, PRINTABLE_PIXELS
+from receipt.profile import COLUMNS, PRINTABLE_PIXELS, fit_text
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -40,7 +40,7 @@ class RecordingPrinter:
         self._output('hw', args, kwargs)
 
     def text(self, value):
-        value = str(value)
+        value = fit_text(value)
         if self.paper_saver:
             value = re.sub(r"\n{3,}", "\n\n", value)
             tail = ''.join(self.lines[-3:])
@@ -50,11 +50,11 @@ class RecordingPrinter:
             allowed = 0 if not self.lines or '--- CUT ---' in self.lines[-1] else max(0,2-previous)
             if leading>allowed:value=value[leading-allowed:]
             if not value:return
-            if re.fullmatch(r"[-=]{40,46}\n",value):
+            if re.fullmatch(r"[-=]{20,80}\n",value):
                 last=tail.rstrip().splitlines()
                 if last and last[-1].strip()==value.strip():return
         # Closing/opening section rules can meet with no content between them.
-        if re.fullmatch(r"[-=]{40,46}\n", value) and self.lines and re.fullmatch(r"[-=]{40,46}\n", self.lines[-1]):
+        if re.fullmatch(r"[-=]{20,80}\n", value) and self.lines and re.fullmatch(r"[-=]{20,80}\n", self.lines[-1]):
             return
         self._output('text', (value,), {})
         if self.align == "center":

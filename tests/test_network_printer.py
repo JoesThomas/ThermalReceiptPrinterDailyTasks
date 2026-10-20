@@ -16,14 +16,20 @@ from receipt.live_preview import VirtualPrinter
 
 class PrinterConnectionTests(unittest.TestCase):
     def setUp(self):
+        fingerprint = patch("receipt.build_info.preview_settings_fingerprint", return_value="test")
+        fingerprint.start()
+        self.addCleanup(fingerprint.stop)
         self.network = []
         self.usb = []
         escpos = ModuleType("escpos")
         escpos.__path__ = []
         escpos_printer = ModuleType("escpos.printer")
         self.device = Mock()
+        self.device.profile.profile_data = {"media": {"width": {"pixels": 0}}}
+        self.usb_device = Mock()
+        self.usb_device.profile.profile_data = {"media": {"width": {"pixels": 0}}}
         escpos_printer.Network = lambda *args, **kw: self.network.append((args, kw)) or self.device
-        escpos_printer.Usb = lambda *args, **kw: self.usb.append((args, kw)) or Mock()
+        escpos_printer.Usb = lambda *args, **kw: self.usb.append((args, kw)) or self.usb_device
         exceptions = ModuleType("escpos.exceptions")
         exceptions.DeviceNotFoundError = type("DeviceNotFoundError", (Exception,), {})
         self.modules = patch.dict(sys.modules, {"escpos": escpos, "escpos.printer": escpos_printer, "escpos.exceptions": exceptions})
@@ -40,6 +46,7 @@ class PrinterConnectionTests(unittest.TestCase):
         self.assertEqual(self.network, [((connection.DEFAULT_NETWORK_HOST,),
                                         {"port": 9100, "timeout": 10})])
         self.assertFalse(self.usb)
+        self.assertEqual(self.device.profile.profile_data["media"]["width"]["pixels"], connection.PRINTABLE_PIXELS)
         os.environ["RECEIPT_PRINTER_HOST"] = "203.0.113.5"
         connection.open_printer()
         self.assertEqual(self.network[-1][0], ("203.0.113.5",))
@@ -54,6 +61,7 @@ class PrinterConnectionTests(unittest.TestCase):
         self.assertIn("--live-preview", str(caught.exception))
         self.device.close.assert_called_once()
         self.assertFalse(self.usb)
+        self.assertEqual(self.device.profile.profile_data["media"]["width"]["pixels"], connection.PRINTABLE_PIXELS)
 
     def test_network_connects_before_returning(self):
         self.assertIs(connection.open_printer(), self.device)
@@ -129,6 +137,7 @@ class PrinterConnectionTests(unittest.TestCase):
         self.assertIn("CURRENT WEATHER", saved["pages"]["information"])
         self.assertFalse(self.network)
         self.assertFalse(self.usb)
+        self.assertEqual(self.device.profile.profile_data["media"]["width"]["pixels"], 0)  # No hardware opened.
         self.assertIs(pipeline.Usb, original_usb)
 
 

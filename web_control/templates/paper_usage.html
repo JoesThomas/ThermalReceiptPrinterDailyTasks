@@ -2,7 +2,18 @@
     <section class="panel">
         <h2>Estimated paper use</h2>
         <p>
-            <strong>About {{ paper_usage.cm }} cm</strong> for the saved pages · around {{ paper_usage.year_metres }} metres per year if printed daily at this length.
+            <strong>About {{ paper_usage.cm }} cm</strong> for the saved pages · around {{ paper_usage.year_metres }} metres per year at {{ paper_usage.prints_per_week }} prints per week.
+        </p>
+        <p>
+            <strong>About {{ paper_usage.rolls_per_year }} rolls per year</strong> · budget for {{ paper_usage.rolls_required }} whole rolls.
+        </p>
+        {% if paper_usage.days_per_roll %}
+            <p>
+                One roll lasts about {{ paper_usage.days_per_roll }} days at this rate. Starting with a full roll, that means about {{ paper_usage.replacements }} replacements during the year.
+            </p>
+        {% endif %}
+        <p class="muted">
+            Uses an assumed/user-entered {{ paper_usage.roll_length_m }} m roll ({{ paper_usage.usable_length_m }} m usable after waste). This is an estimate, not a live paper-level reading. <a href="{{ url_for('index',view='settings',_anchor='printer-paper') }}">Edit paper length, printer size and print frequency</a>
         </p>
         <details>
             <summary>By page and estimate assumptions</summary>
