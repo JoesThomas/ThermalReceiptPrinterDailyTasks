@@ -268,9 +268,11 @@ class DailyAssistantTests(unittest.TestCase):
         assistant.save_preparation(
             "Next appointment", 30, ["Bring ticket"], ["Charge phone"]
         )
+        clock = Mock(wraps=datetime)
+        clock.now.side_effect = lambda zone=None: NOW.astimezone(zone or UK)
         namespace = dict(
             os=os,
-            datetime=datetime,
+            datetime=clock,
             ZoneInfo=ZoneInfo,
             traceback=traceback,
             load_receipt_settings=lambda: settings,
@@ -293,7 +295,7 @@ class DailyAssistantTests(unittest.TestCase):
             get_google_doc_text=lambda *args: "",
             therapy_payment_due=lambda *args: paid_therapy,
             therapy_paid_recently=lambda *args: paid_therapy,
-            print_calendar=lambda p, rows: output.extend(row["title"] for row in rows),
+            print_calendar=lambda p, rows: output.extend(value for row in rows for value in [row["title"], *row.get("receipt_notes", [])]),
             print_google_doc=lambda p, text, *args, **kwargs: output.extend(
                 text.splitlines()
             ),
@@ -353,6 +355,9 @@ class DailyAssistantTests(unittest.TestCase):
         if paid_therapy:
             self.assertNotIn("Pay for therapy", printed)
         self.assertEqual(printed.count("Next appointment"), 1)
+        self.assertNotIn("NEXT APPOINTMENT", printed)
+        self.assertIn("[ ] Bring ticket", printed)
+        self.assertIn("Leave by:", printed)
         self.assertEqual(printed.count("Put out General"), 1)
         self.assertEqual(printed.count("BIRTHDAYS"), 1)
         self.assertEqual(printed.count("Today: Example birthday (36)"), 1)

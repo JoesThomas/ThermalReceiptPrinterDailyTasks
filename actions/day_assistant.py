@@ -197,6 +197,7 @@ def briefing(state, events=(), now=None):
         lines = [start.strftime("%H:%M") + " " + str(event.get("title", "Appointment"))]
         if event.get("location"):
             lines.append("Location: " + str(event["location"]))
+        notes_start = len(lines)
         minutes = rule.get("travel_minutes")
         if minutes is not None:
             leave = (
@@ -207,7 +208,7 @@ def briefing(state, events=(), now=None):
             if leave.astimezone(timezone.utc) < now.astimezone(timezone.utc):
                 lines.append("Planned leave time has passed.")
         lines.extend("[ ] " + line for line in rule.get("prep", []))
-        appointment = dict(index=index, lines=lines)
+        appointment = dict(index=index, lines=lines, notes=lines[notes_start:])
     bedtime = []
     early = [
         row
@@ -228,6 +229,15 @@ def briefing(state, events=(), now=None):
     bedtime.extend("[ ] " + line for line in config.get("bedtime", []))
     bedtime = list(dict.fromkeys(bedtime))
     return dict(focus=chosen, appointment=appointment, bedtime=bedtime)
+
+
+def calendar_with_preparation(events, upcoming_events, appointment):
+    """Keep today's events together and attach next-event notes without mutation."""
+    selected = None
+    if appointment and 0 <= appointment["index"] < len(upcoming_events):
+        selected = upcoming_events[appointment["index"]]
+    return [dict(event, receipt_notes=list(appointment.get("notes", []))
+                 if appointment and event is selected else []) for event in events]
 
 
 def print_section(printer, title, lines, *, line, left, wrap, safe):

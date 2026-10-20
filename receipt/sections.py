@@ -59,3 +59,6 @@ def print_calendar(printer, events, *, print_line, left, print_wrapped):
         if location:
             print_wrapped(printer, f"LOCATION: {location}", width=40)
 
+
+        for note in event.get("receipt_notes", []):
+            print_wrapped(printer, str(note), width=40)

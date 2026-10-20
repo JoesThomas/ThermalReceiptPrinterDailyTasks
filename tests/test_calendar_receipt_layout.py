@@ -58,6 +58,30 @@ class CalendarReceiptTests(unittest.TestCase):
         self.assertNotIn("TRAVEL", printer.lines)
         self.assertNotIn("LEAVE BY", "\n".join(printer.lines))
 
+    def test_next_appointment_stays_in_calendar_with_checkbox_and_notes(self):
+        from actions.day_assistant import calendar_with_preparation
+        from receipt.sections import print_calendar
+        from textwrap import wrap
+        events = [
+            {"time": "09:20", "title": "JSA", "location": "Selly Oak Jobcentre"},
+            {"time": "10:45-11:45", "title": "Drive Dave"},
+        ]
+        appointment = {"index": 0, "notes": ["Leave by: 08:50", "[ ] Bring ID"]}
+        rows = calendar_with_preparation(events, events, appointment)
+        printed = []
+        from unittest.mock import Mock
+        print_calendar(Mock(), rows, print_line=lambda *args: None,
+                       left=lambda p, s: printed.append(s),
+                       print_wrapped=lambda p, s, width: printed.extend(wrap(" ".join(s.split()), width)))
+        self.assertEqual(printed.count("[ ] 09:20 JSA"), 1)
+        self.assertIn("[ ] 10:45-11:45 Drive Dave", printed)
+        self.assertEqual(printed.count("LOCATION: Selly Oak Jobcentre"), 1)
+        self.assertIn("[ ] Bring ID", printed)
+        self.assertLess(printed.index("Leave by: 08:50"), printed.index("[ ] 10:45-11:45 Drive Dave"))
+        self.assertNotIn("receipt_notes", events[0])
+        self.assertTrue(all(len(s) <= 40 for s in printed))
+        self.assertEqual(calendar_with_preparation(events, events, None)[0]['receipt_notes'], [])
+
     def test_villa_train_renderer_remains_separate(self):
         source = (ROOT / "services" / "villa.py").read_text(encoding="utf-8")
         self.assertIn("def print_villa_matchday(", source)
