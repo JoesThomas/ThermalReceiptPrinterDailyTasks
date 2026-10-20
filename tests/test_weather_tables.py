@@ -46,7 +46,7 @@ class WeatherTablesTests(unittest.TestCase):
                     self.assertEqual(text[today+1].index(label), text[today+2].index(value))
                 current = text.index('CURRENT CONDITIONS'.center(COLUMNS))
                 self.assertEqual(text[current+3], '-' * COLUMNS)
-                for label, value in [('Temperature','-10.9C'),('Feels like','-11.3C'),('Humidity','100%'),('Wind','105.3km/h')]:
+                for label, value in [('Temp','-10.9C'),('Feels','-11.3C'),('Hum','100%'),('Wind','105.3km/h')]:
                     self.assertEqual(text[current+1].index(label), text[current+2].index(value))
                 hourly = text.index('HOURLY WEATHER'.center(COLUMNS))
                 header = text[hourly+1]
@@ -58,6 +58,29 @@ class WeatherTablesTests(unittest.TestCase):
                 continuation = next(i for i, (row, bold) in enumerate(printer.rows) if row.lstrip().startswith('09:00'))+1
                 self.assertTrue(printer.rows[continuation][1])
                 self.assertFalse(printer.bold)
+
+    def test_optional_current_measurements_align_and_omit_invalid_values(self):
+        from unittest.mock import patch
+        from receipt import weather_renderers as weather
+        values = dict(weather._extra_current_fields({'surface_pressure':1013.2,'wind_direction_10m':220}))
+        self.assertEqual(values, {'Press':'1013hPa','Dir':'SW220deg'})
+        headers = ['Temp','Feels','Hum','Wind',*values]
+        readings = ['-10.9C','-11.3C','100%','105.3km/h',*values.values()]
+        for columns in (20,30,48):
+            with self.subTest(columns=columns), patch.object(weather,'COLUMNS',columns):
+                rows=list(weather._table_rows(headers,[readings]))
+                self.assertTrue(all(len(row)<=columns for row in rows))
+                self.assertIn('1013hPa',' '.join(rows))
+                self.assertIn('SW220deg',' '.join(rows))
+                if columns==48:
+                    self.assertEqual(len(rows),2)
+                    for label,value in zip(headers,readings):
+                        self.assertEqual(rows[0].index(label),rows[1].index(value))
+        for direction in (0,360,359.9):
+            self.assertEqual(dict(weather._extra_current_fields({'wind_direction_10m':direction})),{'Dir':'N0deg'})
+        for value in (None,float('nan'),float('inf'),True,-1,'invalid'):
+            self.assertEqual(weather._extra_current_fields({'surface_pressure':value,'wind_direction_10m':value}),[])
+        self.assertEqual(weather._extra_current_fields({}),[])
 
     def test_gigs_heading_matches_standard_section_and_empty_gigs_print_nothing(self):
         printer = Printer()

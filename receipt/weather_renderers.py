@@ -86,6 +86,33 @@ def _hourly_rows(rows):
             yield from wrap(row[4], width=COLUMNS)
 
 
+def _extra_current_fields(current):
+    """Only show optional current measurements actually supplied by the source."""
+    def number(key):
+        value = current.get(key)
+        if isinstance(value, bool):
+            return None
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            return None
+        return value if math.isfinite(value) else None
+
+    headers, values = [], []
+    pressure = number("surface_pressure")
+    if pressure is not None and pressure > 0:
+        headers.append("Press")
+        values.append(f"{pressure:.0f}hPa")
+    direction = number("wind_direction_10m")
+    if direction is not None and 0 <= direction <= 360:
+        points = ("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+                  "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
+        compass = points[int((direction + 11.25) // 22.5) % 16]
+        headers.append("Dir")
+        values.append(f"{compass}{round(direction) % 360}deg")
+    return list(zip(headers, values))
+
+
 def _weather_title(location):
     # The country suffix is unnecessary on a local daily receipt.
     region = location.get("region", "")
@@ -177,11 +204,15 @@ def print_weather(
     printer.set(bold=True)
     print_heading(printer, "CURRENT CONDITIONS", write=left)
     printer.set(bold=False)
-    for row in _table_rows(
-        ("Temperature", "Feels like", "Humidity", "Wind"),
-        [(f"{current_temperature:.1f}C", f"{current['apparent_temperature']:.1f}C",
-          f"{current['relative_humidity_2m']:.0f}%", f"{current['wind_speed_10m']:.1f}km/h")],
-    ):
+    fields = [
+        ("Temp", f"{current_temperature:.1f}C"),
+        ("Feels", f"{current['apparent_temperature']:.1f}C"),
+        ("Hum", f"{current['relative_humidity_2m']:.0f}%"),
+        ("Wind", f"{current['wind_speed_10m']:.1f}km/h"),
+        *_extra_current_fields(current),
+    ]
+    for row in _table_rows([label for label, value in fields],
+                           [[value for label, value in fields]]):
         left(printer, row)
     print_line(printer)
     printer.set(bold=True)
