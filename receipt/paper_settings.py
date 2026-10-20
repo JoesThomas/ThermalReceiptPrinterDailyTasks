@@ -6,7 +6,7 @@ from pathlib import Path
 
 FILE = Path(os.environ.get('RECEIPT_PAPER_SETTINGS', str(Path(__file__).resolve().parents[1] / 'data' / 'printer_paper.json')))
 PRESETS = {
-    '80mm': dict(paper_width_mm=80, columns=46, printable_pixels=576, dpi=203, font_dots=12),
+    '80mm': dict(paper_width_mm=80, columns=48, printable_pixels=576, dpi=203, font_dots=12),
     '58mm': dict(paper_width_mm=58, columns=30, printable_pixels=384, dpi=203, font_dots=12),
 }
 GEOMETRY_KEYS = tuple(PRESETS['80mm'])
@@ -32,6 +32,11 @@ def validate(value):
         if int(result[key]) != result[key]:
             raise ValueError(f'{key.replace("_", " ").title()} must be a whole number.')
         result[key] = int(result[key])
+    # Upgrade the previous standard 80 mm profile after the successful 48-column
+    # physical test. Custom profiles retain their explicitly chosen dimensions.
+    if result['preset'] == '80mm' and all(result[key] == number for key, number in
+        dict(paper_width_mm=80, columns=46, printable_pixels=576, dpi=203, font_dots=12).items()):
+        result['columns'] = 48
     if result['printable_pixels'] % 8:
         raise ValueError('Printable width must be a multiple of eight dots.')
     if result['columns'] * result['font_dots'] > result['printable_pixels']:

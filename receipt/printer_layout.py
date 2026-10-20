@@ -1,7 +1,8 @@
 """Physical-only text positioning, independent of raster margin side effects.
 
 Keep saved content at the configured column width. On the default 48-column
-Font A printer, add the one-space inset only as text is sent to hardware. Native-centred headings
+Font A printer, 48-column output uses the full printable area. Narrower
+layouts receive their balancing inset only as text is sent to hardware. Native-centred headings
 and full-width bitmaps retain their shared paper midpoint.
 """
 from receipt.profile import COLUMNS, FONT_A_DOTS, printable_width, fit_text

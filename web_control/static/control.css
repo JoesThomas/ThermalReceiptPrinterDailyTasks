@@ -98,10 +98,10 @@ html[data-reduce-motion="true"],html[data-reduce-motion="true"] *{scroll-behavio
 
 .forecast-cases{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}.forecast-cases article{min-width:0;overflow-wrap:anywhere;padding:16px;border:1px solid var(--border);border-radius:12px;background:#f7faf7}.forecast-cases dt{font-weight:600;margin-top:12px}.forecast-cases dd{margin:3px 0 0}.forecast-cases h3{margin-top:0}.forecast-cases details{margin-top:18px}@media(max-width:800px){.forecast-cases{grid-template-columns:minmax(0,1fr)}}
 
-/* Text and charts share the centred 46-character receipt column. */
-.paper-roll{font:10px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
-.paper-roll .paper-text{width:calc(var(--receipt-columns,46)*1ch);max-width:calc(100% - 22px);margin:0 auto;padding-left:0;padding-right:0;font:inherit;box-sizing:content-box}
-.paper-graphic{width:calc(var(--receipt-columns,46)*1ch);max-width:calc(100% - 22px);margin:0 auto}
+/* Text and charts share the configured receipt column. */
+.paper-roll{font:9.5px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
+.paper-roll .paper-text{width:calc(var(--receipt-columns,48)*1ch);max-width:calc(100% - 22px);margin:0 auto;padding-left:0;padding-right:0;font:inherit;box-sizing:content-box}
+.paper-graphic{width:calc(var(--receipt-columns,48)*1ch);max-width:calc(100% - 22px);margin:0 auto}
 @media(max-width:650px){.paper-roll{font-size:8px}}
 
 #archive-keep-days{max-width:100%;width:100%}
