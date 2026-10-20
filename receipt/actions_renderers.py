@@ -1,4 +1,6 @@
 """Actions rendering; compatibility helpers are injected by the live facade."""
+from receipt.output import heading as print_heading
+from receipt.profile import COLUMNS
 
 def print_upcoming_deliveries(printer, deliveries, *, _context):
     _normalise_delivery_carrier = _context.get('_normalise_delivery_carrier')
@@ -23,7 +25,7 @@ def print_to_buy(printer, items, *, _context):
     if not items:
         left(printer, 'NO TO BUY ITEMS')
     for item in items:
-        print_wrapped(printer, f'[ ] {printer_safe_text(item)}', width=40)
+        print_wrapped(printer, f'[ ] {printer_safe_text(item)}', width=COLUMNS)
     print_line(printer, '-')
 
 def print_future_tasks(printer, tasks, *, _context):
@@ -41,9 +43,9 @@ def print_future_tasks(printer, tasks, *, _context):
     if not pending:
         left(printer, 'NO UNFINISHED FUTURE TASKS')
     for task in pending:
-        print_wrapped(printer, '[ ] ' + printer_safe_text(task['title']), width=40)
+        print_wrapped(printer, '[ ] ' + printer_safe_text(task['title']), width=COLUMNS)
         if task['next_step']:
-            print_wrapped(printer, 'Next: ' + printer_safe_text(task['next_step']), width=40)
+            print_wrapped(printer, 'Next: ' + printer_safe_text(task['next_step']), width=COLUMNS)
     print_line(printer, '-')
 
 def print_header(printer, location=None, *, _context):
@@ -72,11 +74,11 @@ def print_google_doc(printer, text, upcoming_events, therapy_paid=None, *, _cont
     therapy_payment_due = _context.get('therapy_payment_due')
     print_line(printer, '=')
     printer.set(bold=True)
-    left(printer, 'TO DO')
+    print_heading(printer, 'TO DO', write=left)
     printer.set(bold=False)
     print_line(printer, '-')
     if therapy_payment_due(upcoming_events) and (not therapy_paid):
-        print_wrapped(printer, f"[ ] {printer_safe_text('Pay for therapy')}", width=40)
+        print_wrapped(printer, f"[ ] {printer_safe_text('Pay for therapy')}", width=COLUMNS)
     for line in text.splitlines():
         line = line.lstrip('\ufeff').strip()
         if not line.endswith('.'):
@@ -86,7 +88,7 @@ def print_google_doc(printer, text, upcoming_events, therapy_paid=None, *, _cont
             continue
         if therapy_paid and line.casefold() == 'pay for therapy':
             continue
-        print_wrapped(printer, f'[ ] {printer_safe_text(line)}', width=40)
+        print_wrapped(printer, f'[ ] {printer_safe_text(line)}', width=COLUMNS)
 
 def print_random_document_lines(printer, text, *, _context):
     left = _context.get('left')
@@ -95,14 +97,14 @@ def print_random_document_lines(printer, text, *, _context):
     printer_safe_text = _context.get('printer_safe_text')
     print_line(printer, '=')
     printer.set(bold=True)
-    left(printer, "TODAY'S WORKOUT")
+    print_heading(printer, "TODAY'S WORKOUT", write=left)
     printer.set(bold=False)
     print_line(printer, '-')
     from actions.receipt_workout import plan
     selected = plan()
     pending = [row for row in selected if not row['completed']]
     for row in pending:
-        print_wrapped(printer, f"[ ] {printer_safe_text(row['title'])}", width=40)
+        print_wrapped(printer, f"[ ] {printer_safe_text(row['title'])}", width=COLUMNS)
     if pending:
         left(printer, 'Warm up 5 min; keep a comfortable pace.')
         if any((row.get('sets') for row in pending)):
@@ -111,7 +113,7 @@ def print_random_document_lines(printer, text, *, _context):
         required = {item for row in pending for item in row.get('required', [])}
         if required:
             from actions.checklists import EQUIPMENT
-            print_wrapped(printer, 'Equipment: ' + ', '.join((EQUIPMENT[key] for key in sorted(required))), width=40)
+            print_wrapped(printer, 'Equipment: ' + ', '.join((EQUIPMENT[key] for key in sorted(required))), width=COLUMNS)
     if not pending:
         left(printer, "TODAY'S EXERCISES COMPLETE" if selected else 'NO EXERCISES SELECTED')
 
@@ -158,7 +160,7 @@ def print_vehicle_expiry_checks(printer, vehicles, dvla_api_key, *, _context):
         return
     print_line(printer, '=')
     printer.set(bold=True)
-    left(printer, 'VEHICLE REMINDERS')
+    print_heading(printer, 'VEHICLE REMINDERS', write=left)
     printer.set(bold=False)
     for name, status, warnings in vehicles_due:
         print_line(printer, '-')

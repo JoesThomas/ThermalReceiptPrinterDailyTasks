@@ -144,7 +144,7 @@
                     </p>
                 {% endif %}
                 <p class="receipt-width-key">
-                    80 mm paper · configured 576-dot printable area · 42-column text layout. Width checks flag possible wrapping; physical margins depend on the printer.
+                    80 mm paper · configured 576-dot printable area · {{ receipt_columns }}-column text layout. Width checks flag possible wrapping; physical margins depend on the printer.
                 </p>
                 <nav class="nav" aria-label="Receipt source">
                     <a href="{{ url_for('preview', page=page, source='live') }}"

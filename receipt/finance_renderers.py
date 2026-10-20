@@ -1,4 +1,6 @@
 """Finance rendering; compatibility helpers are injected by the live facade."""
+from receipt.output import heading as print_heading
+from receipt.profile import COLUMNS
 
 def print_subscription_changes(printer, changes, *, _context):
     left = _context.get('left')
@@ -8,7 +10,7 @@ def print_subscription_changes(printer, changes, *, _context):
         return
     print_line(printer, '-')
     printer.set(bold=True)
-    left(printer, 'BILL CHANGES [B+F]')
+    print_heading(printer, 'BILL CHANGES [B+F]', write=left)
     printer.set(bold=False)
     for change in changes:
         name = printer_safe_text(change.get('name', 'SUBSCRIPTION')).upper()
@@ -29,7 +31,7 @@ def print_instalment_status(printer, subscriptions_data, *, _context):
     if not instalments:
         return
     printer.set(bold=True)
-    left(printer, 'INSTALMENTS')
+    print_heading(printer, 'INSTALMENTS', write=left)
     printer.set(bold=False)
     monthly_total = 0.0
     known_balance = 0.0
@@ -71,7 +73,7 @@ def print_subscription_status(printer, left, print_line, transactions, subscript
     remaining_total = summary['remaining_total']
     print_line(printer, '=')
     printer.set(bold=True)
-    left(printer, 'MONTHLY COMMITMENTS [F+B]')
+    print_heading(printer, 'MONTHLY COMMITMENTS [F+B]', write=left)
     printer.set(bold=False)
     print_line(printer, '-')
     printer.set(bold=True)
@@ -136,7 +138,7 @@ def print_annual_subscription_status(printer, left, print_line, subscriptions_da
     if not rows:
         return
     print_line(printer, '=')
-    left(printer, 'ANNUAL SUBSCRIPTIONS [F+B]')
+    print_heading(printer, 'ANNUAL SUBSCRIPTIONS [F+B]', write=left)
     print_line(printer, '-')
     for item in rows:
         name = str(item.get('name') or 'SUBSCRIPTION')[:25]
@@ -172,7 +174,7 @@ def print_financial_status(printer, balances, snapshot=None, *, _context):
     printer_safe_text = _context.get('printer_safe_text')
     print_line(printer, '=')
     printer.set(bold=True)
-    left(printer, 'FINANCIAL STATUS')
+    print_heading(printer, 'FINANCIAL STATUS', write=left)
     printer.set(bold=False)
     print_line(printer, '=')
     hsbc = balances.get('HSBC', {})
@@ -196,7 +198,7 @@ def print_financial_status(printer, balances, snapshot=None, *, _context):
     if manual_assets:
         print_line(printer, '-')
         printer.set(bold=True)
-        left(printer, 'OTHER ASSETS')
+        print_heading(printer, 'OTHER ASSETS', write=left)
         printer.set(bold=False)
         for asset in manual_assets:
             name = str(asset.get('name', 'ASSET'))
@@ -208,7 +210,7 @@ def print_financial_status(printer, balances, snapshot=None, *, _context):
     cashflow = snapshot.get('cashflow', {})
     print_line(printer, '=')
     printer.set(bold=True)
-    left(printer, 'CASH FLOW - THIS MONTH')
+    print_heading(printer, 'CASH FLOW - THIS MONTH', write=left)
     printer.set(bold=False)
     income = float(cashflow.get('income', 0.0) or 0.0)
     outgoings = float(cashflow.get('outgoings', 0.0) or 0.0)
@@ -221,7 +223,7 @@ def print_financial_status(printer, balances, snapshot=None, *, _context):
     if categories:
         print_line(printer, '-')
         printer.set(bold=True)
-        left(printer, 'SPENDING')
+        print_heading(printer, 'SPENDING', write=left)
         printer.set(bold=False)
         category_order = ('food', 'eating_out', 'taxis', 'transport', 'shopping', 'other')
         printed_categories = set()
@@ -245,7 +247,7 @@ def print_financial_status(printer, balances, snapshot=None, *, _context):
     payments_remaining = payments.get('remaining', [])
     print_line(printer, '=')
     printer.set(bold=True)
-    left(printer, 'PAYMENTS MADE')
+    print_heading(printer, 'PAYMENTS MADE', write=left)
     printer.set(bold=False)
     if not payments_made:
         left(printer, 'NONE IDENTIFIED')
@@ -256,7 +258,7 @@ def print_financial_status(printer, balances, snapshot=None, *, _context):
             left(printer, f'[X] {name[:17]:<17} {format_money(amount)}')
     print_line(printer, '-')
     printer.set(bold=True)
-    left(printer, 'STILL TO PAY')
+    print_heading(printer, 'STILL TO PAY', write=left)
     printer.set(bold=False)
     if not payments_remaining:
         left(printer, 'NO KNOWN PAYMENTS')
@@ -275,7 +277,7 @@ def print_financial_status(printer, balances, snapshot=None, *, _context):
         left(printer, f'TOTAL STILL DUE {format_money(remaining_total)}')
     print_line(printer, '=')
     printer.set(bold=True)
-    left(printer, 'DIRECT DEBITS')
+    print_heading(printer, 'DIRECT DEBITS', write=left)
     printer.set(bold=False)
     direct_debits = snapshot.get('direct_debits', [])
     if not direct_debits:
@@ -283,10 +285,10 @@ def print_financial_status(printer, balances, snapshot=None, *, _context):
     else:
         for payment in direct_debits:
             name = payment.get('name') or payment.get('reference') or payment.get('description') or 'DIRECT DEBIT'
-            print_wrapped(printer, printer_safe_text(str(name)), width=40)
+            print_wrapped(printer, printer_safe_text(str(name)), width=COLUMNS)
     print_line(printer, '-')
     printer.set(bold=True)
-    left(printer, 'STANDING ORDERS')
+    print_heading(printer, 'STANDING ORDERS', write=left)
     printer.set(bold=False)
     standing_orders = snapshot.get('standing_orders', [])
     if not standing_orders:
@@ -294,13 +296,13 @@ def print_financial_status(printer, balances, snapshot=None, *, _context):
     else:
         for payment in standing_orders:
             name = payment.get('name') or payment.get('reference') or payment.get('description') or 'STANDING ORDER'
-            print_wrapped(printer, printer_safe_text(str(name)), width=40)
+            print_wrapped(printer, printer_safe_text(str(name)), width=COLUMNS)
     regular_payments = load_regular_payments()
     subscriptions = [payment for payment in regular_payments if payment.get('type') == 'subscription']
     if subscriptions:
         print_line(printer, '=')
         printer.set(bold=True)
-        left(printer, 'SUBSCRIPTIONS')
+        print_heading(printer, 'SUBSCRIPTIONS', write=left)
         printer.set(bold=False)
         subscription_total = 0.0
         for subscription in subscriptions:
@@ -314,14 +316,14 @@ def print_financial_status(printer, balances, snapshot=None, *, _context):
     if observations:
         print_line(printer, '=')
         printer.set(bold=True)
-        left(printer, 'OBSERVATIONS')
+        print_heading(printer, 'OBSERVATIONS', write=left)
         printer.set(bold=False)
         for observation in observations:
-            print_wrapped(printer, '! ' + printer_safe_text(str(observation)), width=40)
+            print_wrapped(printer, '! ' + printer_safe_text(str(observation)), width=COLUMNS)
     rest = snapshot.get('rest_of_month', {})
     print_line(printer, '=')
     printer.set(bold=True)
-    left(printer, 'REST OF MONTH')
+    print_heading(printer, 'REST OF MONTH', write=left)
     printer.set(bold=False)
     remaining_bills = float(payments.get('remaining_total', 0.0) or 0.0)
     after_bills = float(rest.get('after_bills', cash_available - remaining_bills) or 0.0)
@@ -335,7 +337,7 @@ def print_financial_status(printer, balances, snapshot=None, *, _context):
     left(printer, f'DAILY ALLOWANCE  {format_money(daily_allowance)}')
     print_line(printer, '=')
     printer.set(bold=True)
-    left(printer, 'RUNWAY')
+    print_heading(printer, 'RUNWAY', write=left)
     printer.set(bold=False)
     monthly_burn = float(snapshot.get('monthly_burn', 0.0) or 0.0)
     essential_burn = float(snapshot.get('essential_burn', 0.0) or 0.0)
@@ -350,11 +352,11 @@ def print_financial_status(printer, balances, snapshot=None, *, _context):
     left(printer, f"{essential_runway.get('months', 0):.2f} MONTHS / {essential_runway.get('days', 0)} DAYS")
     print_line(printer, '=')
     printer.set(bold=True)
-    left(printer, 'QUICK SUMMARY')
+    print_heading(printer, 'QUICK SUMMARY', write=left)
     printer.set(bold=False)
     summary_lines = finance_quick_summary(snapshot)
     for summary in summary_lines:
-        print_wrapped(printer, printer_safe_text(summary), width=40)
+        print_wrapped(printer, printer_safe_text(summary), width=COLUMNS)
     print_line(printer, '=')
 
 def print_full_finance_report(printer, balances, direct_debits=None, standing_orders=None, subscriptions=None, spending_summary=None, *, _context):
@@ -387,14 +389,14 @@ def print_full_finance_report(printer, balances, direct_debits=None, standing_or
     printer.set(bold=False)
     left(printer, 'ALL VALUES GBP')
     print_line(printer, '-')
-    left(printer, 'SNAPSHOT')
+    print_heading(printer, 'SNAPSHOT', write=left)
     left(printer, f"HSBC             {s['hsbc']:>10.2f}")
     left(printer, f"MONZO             {s['monzo']:>10.2f}")
     left(printer, f"CASH              {s['cash']:>10.2f}")
     left(printer, f"AMEX OWED         {-s['amex']:>10.2f}")
     left(printer, f"NET CASH          {s['net_cash']:>10.2f}")
     print_line(printer, '-')
-    left(printer, 'CASH FLOW / 30 DAYS')
+    print_heading(printer, 'CASH FLOW / 30 DAYS', write=left)
     left(printer, f'SALARY            {salary_30:>10.2f}')
     left(printer, f'OTHER IN          {other_in_30:>10.2f}')
     left(printer, f'TOTAL IN          {total_in_30:>10.2f}')
@@ -410,20 +412,20 @@ def print_full_finance_report(printer, balances, direct_debits=None, standing_or
             left(printer, f"{date_text} {name:<18} {item['amount']:>8.2f}")
     if direct_debits or standing_orders or subscriptions:
         print_line(printer, '-')
-        left(printer, 'REGULAR OUTGOINGS')
+        print_heading(printer, 'REGULAR OUTGOINGS', write=left)
         for item, label in [(x, 'DD') for x in direct_debits] + [(x, 'SO') for x in standing_orders] + [(x, 'SUB') for x in subscriptions]:
             name = printer_safe_text(str(item.get('name', 'PAYMENT')))[:20]
             amount = _safe_amount(item.get('amount'))
             left(printer, f'{label:<3} {name:<20} {amount:>8.2f}')
         left(printer, f"REGULAR TOTAL     {s['committed']:>10.2f}")
     print_line(printer, '-')
-    left(printer, 'SPENDING')
+    print_heading(printer, 'SPENDING', write=left)
     left(printer, f'90 DAY AVG        {ninety_avg:>10.2f}')
     left(printer, f'ESSENTIAL AVG     {essential_avg:>10.2f}')
     left(printer, f'LAST 30 DAYS      {last_30:>10.2f}')
     left(printer, f'TREND             {trend_pct:>9.1f}%')
     print_line(printer, '-')
-    left(printer, 'RUNWAY')
+    print_heading(printer, 'RUNWAY', write=left)
     normal_days = s['normal_days']
     survival_days = s['survival_days']
     left(printer, 'NORMAL')
@@ -433,7 +435,7 @@ def print_full_finance_report(printer, balances, direct_debits=None, standing_or
     left(printer, _runway_bar(survival_days))
     left(printer, f'{survival_days:>5.0f} DAYS / {survival_days / 30.44:>.1f} MO')
     print_line(printer, '=')
-    left(printer, 'SUMMARY')
+    print_heading(printer, 'SUMMARY', write=left)
     left(printer, f"NET CASH          {s['net_cash']:>10.2f}")
     left(printer, f'30D NET FLOW      {net_flow_30:>+10.2f}')
     left(printer, f'NORMAL RUNWAY     {normal_days:>7.0f} DAYS')
@@ -447,7 +449,7 @@ def print_full_finance_report(printer, balances, direct_debits=None, standing_or
         left(printer, 'SUB EST. SUBSCRIPTION')
     if spending_summary.get('salary_incomings'):
         left(printer, 'SAL LIKELY SALARY')
-    print_wrapped(printer, 'RUNWAY BASED ON CURRENT NET CASH AND RECENT SPENDING.', width=40)
+    print_wrapped(printer, 'RUNWAY BASED ON CURRENT NET CASH AND RECENT SPENDING.', width=COLUMNS)
     print_line(printer, '=')
 
 def print_subscriptions(printer, subscriptions_text, *, _context):
@@ -457,7 +459,7 @@ def print_subscriptions(printer, subscriptions_text, *, _context):
     printer_safe_text = _context.get('printer_safe_text')
     print_line(printer, '=')
     printer.set(bold=True)
-    left(printer, 'SUBSCRIPTIONS')
+    print_heading(printer, 'SUBSCRIPTIONS', write=left)
     printer.set(bold=False)
     print_line(printer, '-')
     items = [printer_safe_text(line.strip()) for line in (subscriptions_text or '').splitlines() if line.strip()]
@@ -465,5 +467,5 @@ def print_subscriptions(printer, subscriptions_text, *, _context):
         left(printer, 'NO SUBSCRIPTIONS LISTED')
         return
     for item in items:
-        print_wrapped(printer, f'[ ] {item}', width=40)
+        print_wrapped(printer, f'[ ] {item}', width=COLUMNS)
     print_line(printer, '-')

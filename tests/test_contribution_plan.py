@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal as D
@@ -76,7 +77,7 @@ class ContributionPlanTests(TestCase):
         current["contribution"] = plan
         text = receipt(current, TODAY)
         self.assertIn("HARGREAVES LANSDOWN PLAN", text)
-        self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
+        self.assertTrue(all(len(line) <= COLUMNS for line in text.splitlines()))
 
     def test_explicit_destination_disambiguates_two_isas(self):
         base = source()

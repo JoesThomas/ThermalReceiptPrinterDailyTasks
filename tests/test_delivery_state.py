@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,7 +21,7 @@ class DeliveryChecklistTests(unittest.TestCase):
         self.assertEqual(sum('[ ]' in line for line in lines), 2)
         self.assertNotIn('Ordered:', '\n'.join(lines))
         self.assertNotIn('Ref', '\n'.join(lines))
-        self.assertTrue(all(len(line) <= 40 for line in lines))
+        self.assertTrue(all(len(line) <= COLUMNS for line in lines))
 
     def test_confirm_hide_future_notices_and_undo(self):
         with tempfile.TemporaryDirectory() as folder, patch.object(state, 'FILE', Path(folder) / 'state.json'):

@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 import tempfile
 import unittest
 from datetime import date
@@ -72,7 +73,7 @@ class ProjectionTests(unittest.TestCase):
         self.assertNotIn('Rent',text)
         self.assertNotIn('UPCOMING PAYMENTS',text)
         self.assertNotIn('11 Oct Rent [R]',text)
-        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))
 
     def test_annual_renewal_paid_early_not_counted_again(self):
         annual = [{'name': 'Annual service', 'amount': 250, 'renewal_date': '2026-09-05', 'match': ['annual service']}]

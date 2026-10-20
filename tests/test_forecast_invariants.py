@@ -1,4 +1,5 @@
 """Scenario-wide accounting properties rather than copies of implementation steps."""
+from receipt.profile import COLUMNS
 
 from copy import deepcopy
 from datetime import date
@@ -104,7 +105,7 @@ class ForecastInvariantTests(TestCase):
                     if D(salary) == 0:
                         self.assertEqual(period["cash_invested"], 0)
                 text = receipt(result, TODAY)
-                self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
+                self.assertTrue(all(len(line) <= COLUMNS for line in text.splitlines()))
                 self.assertEqual(base, before)
 
     def test_equal_account_allocation_conserves_every_penny_and_caps_explicit_limits(self):

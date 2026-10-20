@@ -1,4 +1,5 @@
 """Compact delivery notices without claiming unrelated notices are one parcel."""
+from receipt.profile import COLUMNS
 import hashlib
 from html import unescape
 import re
@@ -78,7 +79,7 @@ def summary_lines(deliveries, carrier, expected):
             if ref:
                 detail = detail or ('Order ...' + ref[-6:])
             if detail:
-                lines.extend(wrap('[ ] ' + detail, 40, subsequent_indent='    '))
-        lines.extend(wrap(when, 40, subsequent_indent='    '))
+                lines.extend(wrap('[ ] ' + detail, COLUMNS, subsequent_indent='    '))
+        lines.extend(wrap(when, COLUMNS, subsequent_indent='    '))
         lines.append('')
     return lines

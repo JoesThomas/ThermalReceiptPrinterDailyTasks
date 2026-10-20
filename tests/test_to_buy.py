@@ -48,8 +48,8 @@ class ToBuyTests(unittest.TestCase):
         }
         exec(compile(ast.Module(body=[node], type_ignores=[]), 'live_pipeline.py', 'exec'), namespace)
         namespace['print_to_buy'](printer, ["An item ®", 'Example item'])
-        self.assertEqual(lines, ['TO BUY', ("[ ] An item (R)", 40),
-                                 ('[ ] Example item', 40)])
+        self.assertEqual(lines, ['TO BUY', ("[ ] An item (R)", 46),
+                                 ('[ ] Example item', 46)])
 
 
 if __name__ == '__main__':

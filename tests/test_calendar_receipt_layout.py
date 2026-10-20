@@ -1,4 +1,5 @@
 """The event list prints locations while Villa travel keeps its own renderer."""
+from receipt.profile import COLUMNS
 import ast
 from pathlib import Path
 import unittest
@@ -79,7 +80,7 @@ class CalendarReceiptTests(unittest.TestCase):
         self.assertIn("[ ] Bring ID", printed)
         self.assertLess(printed.index("Leave by: 08:50"), printed.index("[ ] 10:45-11:45 Drive Dave"))
         self.assertNotIn("receipt_notes", events[0])
-        self.assertTrue(all(len(s) <= 40 for s in printed))
+        self.assertTrue(all(len(s) <= COLUMNS for s in printed))
         self.assertEqual(calendar_with_preparation(events, events, None)[0]['receipt_notes'], [])
 
     def test_villa_train_renderer_remains_separate(self):

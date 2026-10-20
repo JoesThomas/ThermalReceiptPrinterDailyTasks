@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 import json
 import tempfile
 import unittest
@@ -77,7 +78,7 @@ class LocalGigsTests(unittest.TestCase):
     def test_receipt_wrapping_limits_and_empty_source(self):
         result={'events':[{'name':'Example gig '*10,'venue':'Example venue','time':'19:30'}]*10,'status':'ok','location':'Example city','radius':25,'truncated':False}
         lines=gigs.receipt_lines(result,2)
-        self.assertTrue(all(len(line)<=40 for line in lines))
+        self.assertTrue(all(len(line)<= COLUMNS for line in lines))
         self.assertIn('+8 MORE ON WEB GIGS PAGE',lines)
         result['events']=[]
         self.assertEqual(gigs.receipt_lines(result), [])

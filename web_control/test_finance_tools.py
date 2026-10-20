@@ -1,4 +1,5 @@
 """Explicit manual generation/printing, separate from scheduled and live previews."""
+from receipt.profile import COLUMNS
 
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -278,7 +279,7 @@ def register(app, login_required, start_print):
             try:
                 item = load(identifier)
                 candidate = item["pages"].get("finance", "")
-                if candidate.startswith("-" * 42) and (
+                if any(candidate.startswith("-" * n + "\n") for n in (42, COLUMNS)) and (
                     "SIMULATION - POTENTIAL SALARY" in candidate
                     or "SIMULATION - LUMP SUM ONLY" in candidate
                 ):

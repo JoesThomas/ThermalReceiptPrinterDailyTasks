@@ -26,6 +26,12 @@ def left(printer, value):
     text(printer, value + "\n")
 
 
-def wrapped(printer, value, width=40):
+def wrapped(printer, value, width=COLUMNS):
     for row in wrap(value, width=width, break_long_words=False, break_on_hyphens=False):
         left(printer, row)
+
+
+def heading(printer, value, *, write=left):
+    """Centre semantic headings within the same column as body text and rules."""
+    for row in wrap(printer_safe_text(value), width=COLUMNS) or [""]:
+        write(printer, row.center(COLUMNS))

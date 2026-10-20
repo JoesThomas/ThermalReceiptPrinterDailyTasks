@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal as D
@@ -37,7 +38,7 @@ class SpareBankCashTests(TestCase):
         self.assertIn('ISA',text)
         self.assertIn('£1,600.00',text)
         self.assertIn('Spare bank cash invested over forecast',text)
-        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))
 
     def test_disabling_option_retains_existing_income_only_behavior(self):
         result=build(source(),values(invest_spare_cash=''),TODAY)
@@ -174,4 +175,4 @@ class SpareBankCashTests(TestCase):
             reserve_line=next(line for line in text.splitlines() if 'Bank reserve kept' in line)
             self.assertIn(expected,reserve_line)
             self.assertIn('Bank cash above reserves at end',text)
-            self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+            self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))

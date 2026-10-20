@@ -1,4 +1,5 @@
 from __future__ import annotations
+from receipt.profile import COLUMNS
 from pathlib import Path
 import json
 import math
@@ -70,7 +71,7 @@ def savings_receipt_lines(data: dict) -> list[str]:
     t = savings_totals(data)
     if not t["accounts"]:
         return []
-    lines = [" " * 42,"SAVINGS"]
+    lines = [" " * COLUMNS,"SAVINGS"]
     for a in t["accounts"]:
         lines.append(f"{a['name'][:27].upper():<27}{money(a['balance']):>15}")
     lines.append(f"{'TOTAL':<27}{money(t['total']):>15}")
@@ -84,10 +85,10 @@ def runway_receipt_lines(available_cash: float, savings_data: dict,
         return []
     return [
         "RUNWAY",
-        "-" * 42,
+        "-" * COLUMNS,
         f"{'AVAILABLE CASH':<28}{r['cash_days']:>9} DAYS",
         f"{'+ ACCESSIBLE SAVINGS':<28}{r['savings_days']:>9} DAYS",
-        "-" * 42,
+        "-" * COLUMNS,
         f"{'TOTAL RUNWAY':<28}{r['total_days']:>9} DAYS",
         f"{'':<28}{r['total_months']:>9.1f} MONTHS",
     ]

@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from datetime import date, datetime
 import json
 from pathlib import Path
@@ -63,7 +64,7 @@ class FoodStorageTests(TestCase):
                 planner.print_today_recipe(printer, lambda p, s: printed.append(s), Mock())
             text = '\n'.join(printed)
             self.assertEqual('LEFTOVERS / STORAGE' in text, enabled)
-            self.assertTrue(all(len(s) <= 42 for s in printed))
+            self.assertTrue(all(len(s) <= COLUMNS for s in printed))
             if enabled:
                 self.assertIn('within 1h', text)
                 self.assertIn('24 hours', text)
@@ -75,9 +76,9 @@ class FoodStorageTests(TestCase):
         plan = {'prep': [{'id': 'chicken_stock', 'name': 'Stock', 'action': 'make', 'details': {}}]}
         with patch.object(planner, 'datetime', clock), patch.object(planner, 'load_plan_for', return_value=plan), patch.object(planner, 'preferences', return_value={}):
             planner.print_sunday_prep(Mock(paper_saver=True), lambda p, s: printed.append(s), Mock())
-        self.assertIn('STORE / USE', printed)
+        self.assertIn('STORE / USE'.center(COLUMNS), printed)
         self.assertIn('Tue 20 Oct', '\n'.join(printed))
-        self.assertTrue(all(len(s) <= 42 for s in printed))
+        self.assertTrue(all(len(s) <= COLUMNS for s in printed))
 
     def test_web_template_shows_all_guides_and_escapes_local_notes(self):
         from flask import Flask

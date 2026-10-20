@@ -5,6 +5,7 @@ The planner is intentionally conservative about allergens/storage: metadata is g
 not a substitute for package labels or food-safety advice.
 """
 from __future__ import annotations
+from receipt.output import heading as print_heading
 
 import json
 import random
@@ -30,7 +31,7 @@ FREEZER_FILE = DATA_DIR / "freezer.json"
 HISTORY_FILE = DATA_DIR / "recipe_history.json"
 OVERRIDES_FILE = DATA_DIR / "meal_overrides.json"
 PLANS_DIR = BASE_DIR / "meal_plans"
-RECEIPT_WIDTH = 42
+from receipt.profile import COLUMNS as RECEIPT_WIDTH
 
 
 def _load(path: Path, default: Any) -> Any:
@@ -524,7 +525,7 @@ def _print_wrapped_step(printer, left, number: int, text: str) -> None:
 def print_weekly_overview(printer, left, line) -> None:
     today = datetime.now(TZ).date()
     plan = generate_week(sunday_for(today))
-    line(printer, "="); left(printer, "MEALS FOR THE WEEK"); line(printer, "=")
+    line(printer, "="); print_heading(printer, "MEALS FOR THE WEEK", write=left); line(printer, "=")
     for meal in plan.get("meals", []):
         d = date.fromisoformat(meal["date"])
         if meal.get("kind") == "recipe":
@@ -549,7 +550,7 @@ def print_sunday_prep(printer, left, line) -> None:
     prep = plan.get("prep", [])
 
     line(printer, "=")
-    left(printer, "SUNDAY KITCHEN PLAN")
+    print_heading(printer, "SUNDAY KITCHEN PLAN", write=left)
     line(printer, "=")
 
     if not prep:
@@ -569,7 +570,7 @@ def print_sunday_prep(printer, left, line) -> None:
         left(printer, f"BACKGROUND: ~{background} MIN")
 
     line(printer, "-")
-    left(printer, "MAKE")
+    print_heading(printer, "MAKE", write=left)
     for item in make_items:
         yield_text = item.get("details", {}).get("yield", "")
         suffix = f" - {yield_text}" if yield_text else ""
@@ -579,7 +580,7 @@ def print_sunday_prep(printer, left, line) -> None:
 
     if buy_items:
         line(printer, "-")
-        left(printer, "BUY / USE BOUGHT")
+        print_heading(printer, "BUY / USE BOUGHT", write=left)
         for item in buy_items:
             left(printer, item["name"].upper())
         if preferences().get("cooking_style", {}).get("show_storage_guidance", True):
@@ -589,14 +590,14 @@ def print_sunday_prep(printer, left, line) -> None:
     order = _prep_order(prep)
     if order:
         line(printer, "=")
-        left(printer, "PREP ORDER")
+        print_heading(printer, "PREP ORDER", write=left)
         line(printer, "-")
         for i, step in enumerate(order, 1):
             _print_wrapped_step(printer, left, i, step)
 
     if make_items:
         line(printer, "=")
-        left(printer, "SUNDAY PREP RECIPES")
+        print_heading(printer, "SUNDAY PREP RECIPES", write=left)
         line(printer, "=")
 
     for item in make_items:
@@ -615,7 +616,7 @@ def print_sunday_prep(printer, left, line) -> None:
             _print_wrapped_step(printer, left, i, step)
 
         if preferences().get("cooking_style", {}).get("show_storage_guidance", True):
-            left(printer, "STORE / USE")
+            print_heading(printer, "STORE / USE", write=left)
             for note in receipt_lines(component_guidance(item, today), getattr(printer, "paper_saver", False) is True):
                 for piece in wrap(note, RECEIPT_WIDTH - 2):
                     left(printer, "  " + piece)
@@ -640,7 +641,7 @@ def print_today_recipe(printer, left, line) -> None:
     meal = get_meal(today)
     if not meal:
         return
-    line(printer, "="); left(printer, "TODAY'S RECIPE");
+    line(printer, "="); print_heading(printer, "TODAY'S RECIPE", write=left);
     line(printer, "-")
     if meal.get("kind") != "recipe":
         left(printer, meal.get("name", "PLANNED MEAL").upper())
@@ -657,22 +658,22 @@ def print_today_recipe(printer, left, line) -> None:
     left(printer, "ALLERGENS: " + (", ".join(a.replace("cereals_containing_gluten","gluten") for a in allergens).upper() if allergens else "NONE LISTED"))
     if r.get("allergens", {}).get("check_labels_for"):
         left(printer, "CHECK LABELS: " + ", ".join(r["allergens"]["check_labels_for"]).upper())
-    line(printer, "-"); left(printer, "INGREDIENTS")
+    line(printer, "-"); print_heading(printer, "INGREDIENTS", write=left)
     for item in r.get("ingredients", []): left(printer, "- " + item)
-    line(printer, "-"); left(printer, "METHOD")
+    line(printer, "-"); print_heading(printer, "METHOD", write=left)
     for i, step in enumerate(r.get("method", []), 1):
         for j, x in enumerate(wrap(step, RECEIPT_WIDTH-3)):
             left(printer, (f"{i}. " if j == 0 else "   ") + x)
     cooking_hints = cooking_hint_for_recipe(r)
     if cooking_hints:
         line(printer, "-")
-        left(printer, "COOKING GUIDE")
+        print_heading(printer, "COOKING GUIDE", write=left)
         for hint in cooking_hints:
             for x in wrap(hint, RECEIPT_WIDTH - 2):
                 left(printer, "- " + x)
 
     if r.get("hacks"):
-        line(printer, "-"); left(printer, "COOKING TIPS")
+        line(printer, "-"); print_heading(printer, "COOKING TIPS", write=left)
         for tip in r["hacks"][:2]:
             for x in wrap(tip, RECEIPT_WIDTH-2): left(printer, "- " + x if x == wrap(tip, RECEIPT_WIDTH-2)[0] else "  " + x)
     tomorrow = today + timedelta(days=1)
@@ -681,13 +682,13 @@ def print_today_recipe(printer, left, line) -> None:
     if lunch_override and lunch_override.get("type") in {"buy_lunch", "eat_out"}:
         lunch = {"name": lunch_override.get("name") or ("BUY LUNCH" if lunch_override.get("type") == "buy_lunch" else "EAT OUT"), "overview": lunch_override.get("note", "No lunch ingredients needed."), "extra_ingredients": []}
     if lunch:
-        line(printer, "-"); left(printer, "LUNCH TOMORROW"); left(printer, lunch.get("name", "").upper())
+        line(printer, "-"); print_heading(printer, "LUNCH TOMORROW", write=left); left(printer, lunch.get("name", "").upper())
         for x in wrap(lunch.get("overview", "")): left(printer, x)
         for item in lunch.get("extra_ingredients", []): left(printer, "+ " + item)
 
     if preferences().get("cooking_style", {}).get("show_storage_guidance", True):
         line(printer, "-")
-        left(printer, "LEFTOVERS / STORAGE")
+        print_heading(printer, "LEFTOVERS / STORAGE", write=left)
         for note in receipt_lines(leftover_guidance(r, today), getattr(printer, "paper_saver", False) is True):
             for piece in wrap(note, RECEIPT_WIDTH - 2):
                 left(printer, "  " + piece)
@@ -699,7 +700,7 @@ def print_shopping_list(printer, left, line, plan: dict | None = None) -> None:
         # Saturday prints the coming Sunday-start week, just like the overview.
         plan = (generate_week(sunday_for(today)) if today.weekday() == 5
                 else load_plan_for(today) or generate_week(sunday_for(today)))
-    line(printer, "="); left(printer, "MEAL SHOPPING LIST"); line(printer, "=")
+    line(printer, "="); print_heading(printer, "MEAL SHOPPING LIST", write=left); line(printer, "=")
     for section, items in plan.get("shopping", {}).items():
         left(printer, section)
         for item in items:

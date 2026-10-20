@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 import ast
 import os
 import tempfile
@@ -375,7 +376,7 @@ class DailyAssistantTests(unittest.TestCase):
             ("Pay for therapy" if paid_therapy else "First")
             + ".\nSecond.\nThird.\nFourth."
         )
-        self.assertTrue(all(len(line) <= 40 for line in output))
+        self.assertTrue(all(len(line) <= COLUMNS for line in output))
 
     def test_paid_therapy_task_is_not_reintroduced_as_priority(self):
         self.test_actions_pipeline_no_duplicates_and_preserves_triggers(

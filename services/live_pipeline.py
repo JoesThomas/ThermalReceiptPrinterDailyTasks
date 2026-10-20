@@ -350,7 +350,7 @@ MATCH_TRAIN_WINDOW_HOURS = 2
 MATCH_ARRIVAL_BUFFER_MINUTES = 30
 
 # Compact 80mm receipt width.
-from receipt.profile import COLUMNS as RECEIPT_WIDTH
+from receipt.profile import COLUMNS, COLUMNS as RECEIPT_WIDTH
 
 # Number of random lines from Google Doc #2.
 RANDOM_LINES = 5
@@ -2633,7 +2633,7 @@ def print_instalment_status(printer, subscriptions_data):
 
 
 
-def receipt_right_amount(label, amount, width=40):
+def receipt_right_amount(label, amount, width=COLUMNS):
     """Align a money value with the right end of the receipt rule."""
     from receipt.layout import amount_rows
     return amount_rows(label, amount, width)
@@ -4040,7 +4040,7 @@ def boxed_line(printer, text):
     printer_text(printer, "|" + text.ljust(available) + "|\n")
 
 
-def print_wrapped(printer, text, width=40):
+def print_wrapped(printer, text, width=COLUMNS):
     """Wrap text to fit the compact receipt width."""
 
     words = text.split()
@@ -4084,7 +4084,7 @@ def _right_value_line(
     printer,
     label,
     value,
-    width=40,
+    width=COLUMNS,
 ):
     """
     Print a label on the left and a value flush-right.
@@ -4111,7 +4111,7 @@ def _time_line(
     printer,
     label,
     dt,
-    width=40,
+    width=COLUMNS,
 ):
     """
     Print a time consistently flush-right.
@@ -4555,6 +4555,8 @@ def run_live_pipeline(
     selected_pages=None,
 ):
 
+    from receipt.profile import COLUMNS
+
     print(
         "Building receipt before connecting to printer..."
     )
@@ -4797,7 +4799,7 @@ def run_live_pipeline(
         # ==========================================
 
         for check in checked_lines({'Weather'}):
-            print_wrapped(printer, printer_safe_text(check), width=40)
+            print_wrapped(printer, printer_safe_text(check), width=COLUMNS)
         cut_receipt_section(
             printer
         )
@@ -4834,8 +4836,8 @@ def run_live_pipeline(
                 left(printer, 'VEHICLES - SAVED DATES')
                 printer.set(bold=False)
                 for line in vehicle_lines:
-                    print_wrapped(printer, printer_safe_text(line), width=40)
-                print_wrapped(printer, 'Manually recorded; confirm current cover.', width=40)
+                    print_wrapped(printer, printer_safe_text(line), width=COLUMNS)
+                print_wrapped(printer, 'Manually recorded; confirm current cover.', width=COLUMNS)
         except (OSError, ValueError):
             local_registrations = set()
             left(printer, 'VEHICLE DATA UNAVAILABLE - CHECK WEB LIST')
@@ -5257,7 +5259,7 @@ def run_live_pipeline(
                 assistant_section('PUT BINS OUT TODAY' if any(value.startswith('[ ]') for value in bin_lines) else 'BIN SCHEDULE CHECK', bin_lines)
 
         for check in checked_lines({'Calendar'}):
-            print_wrapped(printer, printer_safe_text(check), width=40)
+            print_wrapped(printer, printer_safe_text(check), width=COLUMNS)
         cut_receipt_section(
             printer
         )
@@ -5418,7 +5420,7 @@ def run_live_pipeline(
             )
 
             for check in checked_lines({'Bank transactions'}):
-                print_wrapped(printer, printer_safe_text(check), width=40)
+                print_wrapped(printer, printer_safe_text(check), width=COLUMNS)
 
             finance_success = True
 

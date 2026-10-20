@@ -1,4 +1,5 @@
 """Private dated savings/investment valuations; no bank transaction history."""
+from receipt.profile import COLUMNS
 import json
 import uuid
 from datetime import date
@@ -133,10 +134,10 @@ def receipt_lines(view):
     if not view['accounts']:
         return []
     from textwrap import wrap
-    lines = ['SAVINGS / INVESTMENT HISTORY [F]', '-' * 40, 'MONTH: ' + view['month']]
+    lines = ['SAVINGS / INVESTMENT HISTORY [F]'.center(COLUMNS), '-' * COLUMNS, 'MONTH: ' + view['month']]
     for account in view['accounts']:
-        lines.extend(wrap(account['name'].upper(),40))
-        lines.append(('LATEST GBP ' + f"{account['balance']:.2f}" + ' / ' + account['latest']['date']).rjust(40))
+        lines.extend(wrap(account['name'].upper(),COLUMNS))
+        lines.append(('LATEST GBP ' + f"{account['balance']:.2f}" + ' / ' + account['latest']['date']).rjust(COLUMNS))
         if account['change'] is None:
             lines.append('NEED TWO DATED VALUES TO COMPARE')
         else:
@@ -148,8 +149,8 @@ def receipt_lines(view):
                 lines.append(f"GROWTH EXCL. FLOWS GBP {account['growth']:+.2f}")
             else:
                 lines.append('GROWTH UNKNOWN: RECORD CASH FLOWS')
-        lines.append('-' * 40)
-    return [part for line in lines for part in wrap(line,40)]
+        lines.append('-' * COLUMNS)
+    return [part for line in lines for part in wrap(line,COLUMNS)]
 
 
 def apply_latest(savings_data, investments_data, view):

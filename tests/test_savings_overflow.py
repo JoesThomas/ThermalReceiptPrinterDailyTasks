@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal as D
@@ -162,7 +163,7 @@ class SavingsOverflowTests(TestCase):
         ]:
             self.assertIn(label, section)
             self.assertIn(amount, section)
-        self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
+        self.assertTrue(all(len(line) <= COLUMNS for line in text.splitlines()))
 
     def test_invalid_monzo_balance_cannot_exceed_combined_starting_cash(self):
         with self.assertRaises(ValueError):

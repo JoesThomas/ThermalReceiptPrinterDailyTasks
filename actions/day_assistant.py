@@ -1,4 +1,6 @@
 """Small daily prompts from chosen tasks and explicitly configured preparation."""
+from receipt.output import heading as print_heading
+from receipt.profile import COLUMNS
 
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -244,7 +246,7 @@ def print_section(printer, title, lines, *, line, left, wrap, safe):
     if not lines:
         return
     line(printer, "=")
-    left(printer, title)
+    print_heading(printer, title, write=left)
     line(printer, "-")
     for value in lines:
-        wrap(printer, safe(value), width=40)
+        wrap(printer, safe(value), width=COLUMNS)

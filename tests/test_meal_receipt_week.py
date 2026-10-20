@@ -29,7 +29,7 @@ class MealReceiptWeekTests(unittest.TestCase):
         printed = []
         with patch.object(planner, 'generate_week', return_value=plan):
             planner.print_weekly_overview(Mock(), lambda p, s: printed.append(s), Mock())
-        description = [s for s in printed if s.startswith('  ') and ' KCAL' not in s]
+        description = [s for s in printed if s.startswith('  ') and ' KCAL' not in s and not s.strip().isupper()]
         self.assertEqual(' '.join(s.strip() for s in description), overview)
         self.assertTrue(all(len(s) <= planner.RECEIPT_WIDTH for s in description))
 

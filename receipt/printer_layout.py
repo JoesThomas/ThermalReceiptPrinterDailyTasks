@@ -1,15 +1,16 @@
 """Physical-only text positioning, independent of raster margin side effects.
 
-Keep saved content at 42 columns. On the 48-column Font A printer, add the
-three-space inset only as text is sent to hardware. Native-centred headings
+Keep saved content at 46 columns. On the 48-column Font A printer, add the
+one-space inset only as text is sent to hardware. Native-centred headings
 and full-width bitmaps retain their shared paper midpoint.
 """
 from receipt.profile import COLUMNS, FONT_A_DOTS, printable_width
 
 
 class ContentPrinter:
-    def __init__(self, printer):
+    def __init__(self, printer, columns=COLUMNS):
         self.printer = printer
+        self.columns = columns
         self.align = 'left'
         self.line_start = True
         self.image_pending = False
@@ -43,7 +44,7 @@ class ContentPrinter:
             value = value[1:]
         if not value:
             return
-        padding = max(0, (printable_width(self.printer) // FONT_A_DOTS - COLUMNS) // 2)
+        padding = max(0, (printable_width(self.printer) // FONT_A_DOTS - self.columns) // 2)
         rows = []
         for row in value.splitlines(keepends=True):
             if self.line_start and self.align == 'left' and row.strip():

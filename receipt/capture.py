@@ -50,11 +50,11 @@ class RecordingPrinter:
             allowed = 0 if not self.lines or '--- CUT ---' in self.lines[-1] else max(0,2-previous)
             if leading>allowed:value=value[leading-allowed:]
             if not value:return
-            if re.fullmatch(r"[-=]{40,42}\n",value):
+            if re.fullmatch(r"[-=]{40,46}\n",value):
                 last=tail.rstrip().splitlines()
                 if last and last[-1].strip()==value.strip():return
         # Closing/opening section rules can meet with no content between them.
-        if re.fullmatch(r"[-=]{42}\n", value) and self.lines and re.fullmatch(r"[-=]{42}\n", self.lines[-1]):
+        if re.fullmatch(r"[-=]{40,46}\n", value) and self.lines and re.fullmatch(r"[-=]{40,46}\n", self.lines[-1]):
             return
         self._output('text', (value,), {})
         if self.align == "center":

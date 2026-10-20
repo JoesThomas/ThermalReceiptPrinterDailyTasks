@@ -1,4 +1,5 @@
 """Render a compact test receipt; calculation imports remain compatible."""
+from receipt.profile import COLUMNS
 
 from decimal import Decimal
 from finance.projection import occurs, format_runway, money, day
@@ -232,11 +233,11 @@ def receipt(result, today, *, detail="detailed"):
             ("Regular amount being compared", "proposed"),
         ]:
             right = contribution[key]
-            if len(label) + len(right) + 1 > 42:
+            if len(label) + len(right) + 1 > page.width:
                 text(label)
-                page.lines.append(right.rjust(42))
+                page.lines.append(right.rjust(page.width))
             else:
-                page.lines.append(label + right.rjust(42 - len(label)))
+                page.lines.append(label + right.rjust(page.width - len(label)))
         for label, key in [
             ("Current pathway target", "goal_keep"),
             ("Compared pathway target", "goal_proposed"),

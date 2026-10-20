@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal as D
@@ -46,7 +47,7 @@ class IncomeTransferTests(TestCase):
         self.assertIn('£75.00',summary)
         self.assertIn('Already scheduled - do not send again:',summary)
         self.assertIn('07 Nov Hargreaves Lansdown',summary)
-        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))
 
     def test_save_all_keeps_automatic_saving_in_costs_without_double_deduction(self):
         result=build(source(),values(save_all='on'),TODAY)
@@ -94,7 +95,7 @@ class IncomeTransferTests(TestCase):
         self.assertNotIn('Extra transfer this period',text)
         self.assertNotIn('No other confirmed repayment balances.',text)
         self.assertLess(text.index('WHERE TO MOVE THIS PAYDAY'),text.index('RECORDED SAVINGS'))
-        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))
 
     def test_zero_income_does_not_use_bank_cash_for_extra_savings(self):
         base=source();base['cash']=D(1000)

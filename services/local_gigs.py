@@ -1,4 +1,5 @@
 """Dated nearby music listings from Ticketmaster; shared by web and receipt."""
+from receipt.profile import COLUMNS
 import hashlib
 import json
 import math
@@ -179,7 +180,7 @@ def receipt_lines(result, limit=8):
     from textwrap import wrap
     if result["status"] == "ok" and not result["events"] and not result["truncated"]:
         return []
-    lines = ['GIGS TODAY', '-'*40, f"{result['location']} / {result['radius']} KM"]
+    lines = ['GIGS TODAY', '-'*COLUMNS, f"{result['location']} / {result['radius']} KM"]
     if result['status'] == 'not_configured':
         lines.append('SET UP TICKETMASTER IN WEB GIGS PAGE')
     elif result['status'] == 'unavailable':
@@ -194,5 +195,5 @@ def receipt_lines(result, limit=8):
     if result['status'] == 'partial' or result['truncated']:
         lines.append('LISTINGS INCOMPLETE')
     lines.append('TICKETMASTER LISTINGS / CHECK DETAILS')
-    lines.append('-'*40)
-    return [part for line in lines for part in wrap(line,width=40)]
+    lines.append('-'*COLUMNS)
+    return [part for line in lines for part in wrap(line,width=COLUMNS)]

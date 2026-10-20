@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 import tempfile
 import unittest
 from datetime import date
@@ -25,7 +26,7 @@ class WealthTests(unittest.TestCase):
         self.assertEqual(account['percent'],Decimal('100'))
         self.assertEqual(account['growth'],Decimal('300'))
         self.assertEqual(account['net_contributions'],Decimal('700'))
-        self.assertTrue(all(len(line)<=40 for line in wealth.receipt_lines(wealth.review(self.today))))
+        self.assertTrue(all(len(line)<= COLUMNS for line in wealth.receipt_lines(wealth.review(self.today))))
     def test_unknown_flows_not_claimed_as_growth_and_zero_start(self):
         self.record('2026-09-05',0)
         self.record('2026-09-30',2000)

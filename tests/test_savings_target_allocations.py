@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal as D
@@ -52,7 +53,7 @@ class AccountGoalTests(TestCase):
         self.assertIn('RECORDED SAVINGS & INVESTMENTS',text)
         self.assertIn('Projected target date: around October 2026',text)
         self.assertIn('Estimated time to target:\nNow', text)
-        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))
 
     def test_account_target_duration_extends_and_disabled_allocation_is_explicit(self):
         source={'valid':True,'cash':D(100),'buffer':D(100),'daily':D(0),'events':[],'warnings':[],
@@ -63,7 +64,7 @@ class AccountGoalTests(TestCase):
         self.assertIn('Projected target date: around December 2026', ' '.join(text.split()))
         self.assertIn('Estimated time to target:', text)
         self.assertIn('About 2 months', ' '.join(text.split()))
-        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))
         values['use_saved_accounts']=''
         text=receipt(build(source,values,TODAY),TODAY)
         self.assertIn('Enable saved account allocation', text)
@@ -78,7 +79,7 @@ class AccountGoalTests(TestCase):
         self.assertEqual(lines.count('RAINY DAY'),1)
         self.assertTrue(any('STILL TO SAVE' in line and '£200.00' in line for line in lines))
         self.assertIn('TARGET NOT SET',lines)
-        self.assertTrue(all(len(line)<=40 for line in lines))
+        self.assertTrue(all(len(line)<= COLUMNS for line in lines))
 
     def test_target_shares_save_privately_and_excess_is_rejected(self):
         with TemporaryDirectory() as folder,patch.object(goals,'FILE',Path(folder)/'goals.json'):

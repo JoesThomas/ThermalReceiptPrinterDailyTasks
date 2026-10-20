@@ -1,4 +1,5 @@
 """Food rendering; compatibility helpers are injected by the live facade."""
+from receipt.profile import COLUMNS
 
 def print_food_shop_check(printer, food_shop_text, *, _context):
     centre = _context.get('centre')
@@ -16,7 +17,7 @@ def print_food_shop_check(printer, food_shop_text, *, _context):
         left(printer, 'NO FOOD SHOP ITEMS')
         return
     for item in items:
-        print_wrapped(printer, f'[ ] {item}', width=40)
+        print_wrapped(printer, f'[ ] {item}', width=COLUMNS)
     print_line(printer, '-')
 
 def print_shopping_list(printer, shopping_list_text, *, _context):
@@ -35,5 +36,5 @@ def print_shopping_list(printer, shopping_list_text, *, _context):
         left(printer, 'NO SHOPPING LIST ITEMS')
         return
     for item in items:
-        print_wrapped(printer, f'[ ] {item}', width=40)
+        print_wrapped(printer, f'[ ] {item}', width=COLUMNS)
     print_line(printer, '-')

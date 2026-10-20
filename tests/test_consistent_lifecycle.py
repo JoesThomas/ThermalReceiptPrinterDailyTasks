@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 import json
 import os
 import tempfile
@@ -46,8 +47,8 @@ class ConsistentLifecycleTests(unittest.TestCase):
     def test_receipt_columns_progress_and_clock_transition(self):
         for amount in (-12.345, 1000000):
             lines = amount_rows('A lengthy commitment name ' * 3, amount)
-            self.assertTrue(all(len(line) <= 40 for line in lines))
-            self.assertEqual(len(lines[-1]), 40)
+            self.assertTrue(all(len(line) <= COLUMNS for line in lines))
+            self.assertEqual(len(lines[-1]), COLUMNS)
         self.assertEqual(progress_bar(60), '[#########.......] 60%')
         self.assertEqual(uk_receipt_time('2026-10-25T00:30:00Z'), '25 Oct 2026, 01:30 BST')
         self.assertEqual(uk_receipt_time('2026-10-25T01:30:00Z'), '25 Oct 2026, 01:30 GMT')

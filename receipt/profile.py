@@ -1,6 +1,6 @@
 """One sizing profile shared by rendering, capture and web previews."""
 
-COLUMNS = 42
+COLUMNS = 46
 PRINTABLE_PIXELS = 576
 
 

@@ -17,7 +17,7 @@ def render_text(document: ReceiptDocument) -> str:
     for section in document.sections:
         if section.title:
             out.append("=" * RECEIPT_WIDTH)
-            out.extend(_wrap(section.title.upper()))
+            out.extend(row.center(RECEIPT_WIDTH) for row in _wrap(section.title.upper()))
             out.append("-" * RECEIPT_WIDTH)
         for line in section.lines:
             out.extend(_wrap(line))
