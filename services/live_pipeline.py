@@ -4962,7 +4962,7 @@ def run_live_pipeline(
 
             traceback.print_exc()
 
-        from actions.day_assistant import briefing, print_section
+        from actions.day_assistant import briefing, print_section, calendar_with_preparation
         assistant_brief = dict(focus=[], appointment=None, bedtime=[])
         try:
             from actions.checklists import load as load_lists
@@ -4981,11 +4981,8 @@ def run_live_pipeline(
         assistant_section('DO FIRST', ['[ ] '+row['title'] for row in assistant_brief['focus']
                                        if not (therapy_paid and row['title'].casefold() == 'pay for therapy')])
         appointment = assistant_brief['appointment']
-        if appointment:
-            assistant_section('NEXT APPOINTMENT', appointment['lines'])
-        remaining_events = [event for event in events if not appointment or event is not upcoming_events[appointment['index']]]
-        if feature_enabled(settings, 'calendar') and (remaining_events or not appointment):
-            print_calendar(printer, remaining_events)
+        if feature_enabled(settings, 'calendar'):
+            print_calendar(printer, calendar_with_preparation(events, upcoming_events, appointment))
         remaining_tasks = '\n'.join(value for value in document_1.splitlines()
                                      if value.rstrip('.').strip() not in focus_titles)
         if remaining_tasks or (therapy_payment_due(upcoming_events, today) and not therapy_paid):
