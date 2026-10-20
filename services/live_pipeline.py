@@ -4018,8 +4018,6 @@ def setup_printer(printer):
         double_width=False,
         align="left",
     )
-    from receipt.profile import centre_text_area
-    centre_text_area(printer)
 
 
 def print_line(printer, character="-"):

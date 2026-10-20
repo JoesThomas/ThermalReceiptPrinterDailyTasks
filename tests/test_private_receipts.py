@@ -33,7 +33,7 @@ class PrivateReceiptTests(unittest.TestCase):
             printer=Mock()
             with patch('receipt.printer.open_printer',return_value=printer):
                 archive.reprint(identifier,'information')
-            printer.text.assert_any_call('Saved text')
+            printer.text.assert_any_call('   Saved text')
             printer.cut.assert_called_once()
             printer.close.assert_called_once()
 
