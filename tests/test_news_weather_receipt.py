@@ -18,6 +18,30 @@ def renderer(name, namespace):
 
 
 class NewsWeatherReceiptTests(unittest.TestCase):
+    def test_centred_text_area_is_buffered_and_restored_after_graph(self):
+        from escpos.printer import Dummy
+        from receipt.capture import RecordingPrinter
+        from receipt import output
+        device = Dummy()
+        printer = RecordingPrinter(device, defer=True)
+        renderer('setup_printer', {})(printer)
+        output.left(printer, '[ ] Example task')
+        image = BytesIO()
+        Image.new('1', (576, 8), 1).save(image, format='PNG')
+        image.seek(0)
+        printer.image(image)
+        output.left(printer, 'After graph')
+        self.assertEqual(device.output, b'')  # No early connection or commands.
+        printer.send()
+        raw = device.output
+        self.assertEqual(raw.count(b'\x1dL\x24\x00'), 2)  # 36-dot left inset.
+        self.assertEqual(raw.count(b'\x1dW\xf8\x01'), 2)  # 504-dot text area.
+        self.assertIn(b'\x1dL\x00\x00\x1dW\x40\x02', raw)  # Full 576-dot graph.
+        self.assertLess(raw.rfind(b'\x1dL\x24\x00'), raw.index(b'After graph'))
+        self.assertEqual((576 - 504) // 2, 36)  # Equal right and left margins.
+        self.assertIn('[ ] Example task\n', printer.lines)
+        self.assertNotIn('   [ ] Example task\n', printer.lines)
+
     def test_rules_reset_physical_justification_after_centred_titles(self):
         from escpos.printer import Dummy
         from receipt import output

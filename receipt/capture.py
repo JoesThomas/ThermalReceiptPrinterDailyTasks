@@ -24,6 +24,7 @@ class RecordingPrinter:
         self.lines = []
         self.images = []
         self.align = "left"
+        self.centered_text_area = False
         self.capture_order = None
         from receipt.build_info import preview_settings_fingerprint
         self.settings_fingerprint = preview_settings_fingerprint()
@@ -35,6 +36,9 @@ class RecordingPrinter:
         self._output('set', args, kwargs)
         if kwargs.get("align"):
             self.align = kwargs["align"]
+
+    def _raw(self, data):
+        self._output("_raw", (data,), {})
 
     def hw(self, *args, **kwargs):
         self._output('hw', args, kwargs)
@@ -63,6 +67,11 @@ class RecordingPrinter:
         self.lines.append(value)
 
     def image(self, *args, **kwargs):
+        from receipt.profile import full_width_image
+        with full_width_image(self):
+            self._capture_image(*args, **kwargs)
+
+    def _capture_image(self, *args, **kwargs):
         if self.defer:
             from io import BytesIO
             position = args[0].tell(); args[0].seek(0)
