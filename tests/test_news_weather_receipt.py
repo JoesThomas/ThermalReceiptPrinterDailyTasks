@@ -76,7 +76,7 @@ class NewsWeatherReceiptTests(unittest.TestCase):
         self.assertGreater(len(rules), 4)
         self.assertEqual(set(rules), {0})
         self.assertTrue(all(offset == 0 for row, offset in printer.rows
-                            if row.lstrip().startswith(('Maximum ', 'Temperature '))))
+                            if row.lstrip().startswith(('Maximum ', 'Temp '))))
         self.assertTrue(any(row == 'Weather - Stirchley, Birmingham'.center(COLUMNS) for row, offset in printer.rows))
 
     def test_temperature_graph_fits_receipt_and_centres_image(self):

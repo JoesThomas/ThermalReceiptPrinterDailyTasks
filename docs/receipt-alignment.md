@@ -30,10 +30,12 @@ Section headings are explicitly centred within that same configured column block
 Historical archive pages retain their recorded rule width when reprinted.
 
 Weather uses one local heading, followed by centred two-line tables: column
-names and aligned values. Current conditions keep temperature, feels like,
-humidity and wind, followed by an aligned table for air pressure (hPa) and wind
-direction (compass point and degrees). Missing or invalid optional readings are
-omitted rather than shown as zero. These add two lines on the standard profile. Hourly
+names and aligned values. Current conditions use abbreviated headings Temp,
+Feels, Hum, Wind, Press and Dir so all six measurements fit in one header row
+and one value row on the standard 48-column profile. Pressure includes hPa;
+direction includes a compass point and degrees (for example SW220deg). Missing
+or invalid optional readings are omitted rather than shown as zero. Narrow
+profiles split the table into smaller groups. Hourly
 conditions wrap inside their final column, with the current reading hour bold
 on the physical printer and no extra marker or legend. Plain-text captures
 retain the table spacing but do not store printer bold styling. The gigs

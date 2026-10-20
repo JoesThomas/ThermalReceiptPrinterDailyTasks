@@ -119,7 +119,7 @@ from PIL import Image
 text,images=weather_capture()
 assert COLUMNS==30 and PRINTABLE_PIXELS==384
 assert all(len(line)<=30 for line in text.splitlines()),text
-assert all(word in text for word in ('Maximum','Minimum','Sunrise','Sunset','Temperature','Feels like','Humidity'))
+assert all(word in text for word in ('Maximum','Minimum','Sunrise','Sunset','Temp','Feels','Hum'))
 assert '23:00' in text
 for image in images:
  import base64
