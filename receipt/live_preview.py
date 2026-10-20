@@ -16,6 +16,9 @@ class VirtualPrinter:
         # hardware identifiers when rendering the receipt in memory.
         self.profile = SimpleNamespace(profile_data={"media": {"width": {"pixels": PRINTABLE_PIXELS}}})
 
+    def _raw(self, data):
+        pass
+
     def hw(self, *args, **kwargs):
         pass
 

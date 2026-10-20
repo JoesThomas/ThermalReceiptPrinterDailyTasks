@@ -4018,10 +4018,13 @@ def setup_printer(printer):
         double_width=False,
         align="left",
     )
+    from receipt.profile import centre_text_area
+    centre_text_area(printer)
+
 
 def print_line(printer, character="-"):
-    character = "-" if character == "=" else character
-    printer_text(printer, character * RECEIPT_WIDTH + "\n")
+    from receipt.output import line
+    return line(printer, character)
 
 def centre(printer, text):
     printer.set(align="center")

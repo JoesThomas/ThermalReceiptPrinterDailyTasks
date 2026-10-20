@@ -104,13 +104,18 @@ def reprint(identifier, page='all'):
         raise ValueError('Page unavailable')
     printer = open_printer()
     try:
+        from receipt.profile import centre_text_area, full_width_image
+        printer.hw('init')
+        printer.set(font='a', normal_textsize=True, align='left')
+        centre_text_area(printer)
         for name in names:
             printer.set(align='left')
             for block in receipt_blocks(item['pages'][name], item.get('page_images', {}).get(name, [])):
                 if 'text' in block:
                     printer.text(block['text'])
                 else:
-                    printer.image(BytesIO(base64.b64decode(block['image'].split(',', 1)[1], validate=True)))
+                    with full_width_image(printer):
+                        printer.image(BytesIO(base64.b64decode(block['image'].split(',', 1)[1], validate=True)))
             printer.text('\n')
             printer.cut()
         from receipt.recovery import mark

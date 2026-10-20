@@ -10,6 +10,9 @@ def text(printer, value):
 
 
 def line(printer, character="-"):
+    # Justification persists on hardware: a centred title must not centre the
+    # shorter rule inside a printer's wider physical line (e.g. 48 vs 42 cells).
+    printer.set(align="left")
     text(printer, ("-" if character == "=" else character) * COLUMNS + "\n")
 
 
