@@ -572,7 +572,9 @@ def meals_page():
         problem = None
     except (RuntimeError, ValueError, OSError) as error:
         planned, problem = None, str(error)
-    return render_template("meals.html", recipes=recipes, planned=planned,
+    from meals.food_storage import web_guidance
+    storage = web_guidance(planned, meals._load(meals.COMPONENTS_FILE, {}).get("components", []), today)
+    return render_template("meals.html", recipes=recipes, planned=planned, storage=storage,
                            confirmed=meal_confirmation(today), today=today, error=problem)
 
 

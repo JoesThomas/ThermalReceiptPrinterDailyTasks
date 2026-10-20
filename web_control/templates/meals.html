@@ -75,6 +75,38 @@
                 </form>
             </section>
             <section>
+                <h2>Storage &amp; leftovers</h2>
+                <p class="muted">
+                    Planning guidance assumes preparation today, not confirmation that a batch was made. Time limits start when you prepare the food. Earlier ingredient and pack instructions still apply.
+                </p>
+                {% if storage.leftovers %}
+                    <h3>Today's recipe: leftovers and tomorrow's lunch</h3>
+                    <ul>
+                        {% for note in storage.leftovers %}<li>{{ note }}</li>{% endfor %}
+                    </ul>
+                {% endif %}
+                <details>
+                    <summary>Bulk prep storage guide</summary>
+                    {% for item in storage.components %}
+                        <h3>{{ item.name }}</h3>
+                        <ul>
+                            {% for note in item.lines %}<li>{{ note }}</li>{% endfor %}
+                        </ul>
+                    {% endfor %}
+                    <p>Bought versions: follow the label's storage, use-by and after-opening instructions.</p>
+                </details>
+                <p class="muted">
+                    Guidance based on the Food Standards Agency. Shorter app planning windows are identified as conservative choices; freezer quality dates are not safety expiry dates.
+                </p>
+                <ul>
+                    {% for title, link in storage.sources %}
+                        <li>
+                            <a href="{{ link }}">{{ title }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            <section>
                 <h2>Confirm a meal eaten</h2>
 
                 {% if not confirmed %}

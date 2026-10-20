@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
+from meals.food_storage import component_guidance, leftover_guidance, receipt_lines
 
 TZ = ZoneInfo("Europe/London")
 ROOT = Path(__file__).resolve().parent
@@ -581,6 +582,9 @@ def print_sunday_prep(printer, left, line) -> None:
         left(printer, "BUY / USE BOUGHT")
         for item in buy_items:
             left(printer, item["name"].upper())
+        if preferences().get("cooking_style", {}).get("show_storage_guidance", True):
+            for piece in wrap("Bought items: follow pack storage, use-by and after-opening instructions."):
+                left(printer, piece)
 
     order = _prep_order(prep)
     if order:
@@ -610,11 +614,11 @@ def print_sunday_prep(printer, left, line) -> None:
         for i, step in enumerate(details.get("method", []), 1):
             _print_wrapped_step(printer, left, i, step)
 
-        storage = details.get("storage")
-        if storage:
-            left(printer, "STORE:")
-            for x in wrap(storage, RECEIPT_WIDTH - 2):
-                left(printer, "  " + x)
+        if preferences().get("cooking_style", {}).get("show_storage_guidance", True):
+            left(printer, "STORE / USE")
+            for note in receipt_lines(component_guidance(item, today), getattr(printer, "paper_saver", False) is True):
+                for piece in wrap(note, RECEIPT_WIDTH - 2):
+                    left(printer, "  " + piece)
 
         allergens = details.get("allergens", [])
         if allergens:
@@ -680,6 +684,13 @@ def print_today_recipe(printer, left, line) -> None:
         line(printer, "-"); left(printer, "LUNCH TOMORROW"); left(printer, lunch.get("name", "").upper())
         for x in wrap(lunch.get("overview", "")): left(printer, x)
         for item in lunch.get("extra_ingredients", []): left(printer, "+ " + item)
+
+    if preferences().get("cooking_style", {}).get("show_storage_guidance", True):
+        line(printer, "-")
+        left(printer, "LEFTOVERS / STORAGE")
+        for note in receipt_lines(leftover_guidance(r, today), getattr(printer, "paper_saver", False) is True):
+            for piece in wrap(note, RECEIPT_WIDTH - 2):
+                left(printer, "  " + piece)
 
 
 def print_shopping_list(printer, left, line, plan: dict | None = None) -> None:
