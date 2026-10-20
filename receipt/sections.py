@@ -1,4 +1,6 @@
 """Receipt sections independent of network collection."""
+from receipt.output import heading as print_heading
+from receipt.profile import COLUMNS
 
 def print_upcoming_deliveries(printer, deliveries, *, _normalise_delivery_carrier, format_delivery_expected, print_line, left, printer_safe_text):
     """
@@ -30,7 +32,7 @@ def print_upcoming_deliveries(printer, deliveries, *, _normalise_delivery_carrie
 
     print_line(printer, "=")
     printer.set(bold=True)
-    left(printer, "UPCOMING DELIVERIES")
+    print_heading(printer, "UPCOMING DELIVERIES", write=left)
     printer.set(bold=False)
     print_line(printer, "-")
 
@@ -46,19 +48,19 @@ def print_calendar(printer, events, *, print_line, left, print_wrapped):
 
     print_line(printer, "=")
     printer.set(bold=True)
-    left(printer, "TODAY'S CALENDAR")
+    print_heading(printer, "TODAY'S CALENDAR", write=left)
     printer.set(bold=False)
     print_line(printer, "-")
 
     for event in events:
         time_text = event.get("time") or ""
         title = event.get("title") or "EVENT"
-        print_wrapped(printer, f"[ ] {time_text}  {title}", width=40)
+        print_wrapped(printer, f"[ ] {time_text}  {title}", width=COLUMNS)
 
         location = str(event.get("location") or "").strip()
         if location:
-            print_wrapped(printer, f"LOCATION: {location}", width=40)
+            print_wrapped(printer, f"LOCATION: {location}", width=COLUMNS)
 
 
         for note in event.get("receipt_notes", []):
-            print_wrapped(printer, str(note), width=40)
+            print_wrapped(printer, str(note), width=COLUMNS)

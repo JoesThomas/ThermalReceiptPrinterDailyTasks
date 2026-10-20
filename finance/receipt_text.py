@@ -1,11 +1,12 @@
-"""Consistent 42-column text for compact and detailed finance receipts."""
+"""Consistent shared-width text for compact and detailed finance receipts."""
+from receipt.profile import COLUMNS
 
 from textwrap import wrap
 from finance.money import format_pounds
 
 
 class ReceiptText:
-    def __init__(self, width=42):
+    def __init__(self, width=COLUMNS):
         self.width = width
         self.lines = []
 

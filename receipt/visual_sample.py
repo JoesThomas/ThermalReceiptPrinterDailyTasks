@@ -1,12 +1,13 @@
 """Illustrative full-width receipt pages before a captured web print exists."""
 from __future__ import annotations
+from receipt.profile import COLUMNS
 
 from datetime import date
 
 
 def example_pages(today: date):
     stamp = today.strftime("%a %d %b %Y").upper()
-    return {
+    pages = {
         "information": (
             "==========================================\n"
             "       DAILY INFORMATION · SAMPLE         \n"
@@ -76,3 +77,15 @@ def example_pages(today: date):
             "==========================================\n"
         ),
     }
+
+    titles = {"NEWS", "LOCAL NEWS", "SPORT", "TODAY'S CALENDAR", "TO-DO", "DELIVERIES", "TODAY'S RECIPE", "INGREDIENTS", "METHOD", "MEAL SHOPPING LIST", "SPENDING BY CATEGORY (30 DAYS)", "MONTHLY COMMITMENTS [F+B]"}
+    for name, text in pages.items():
+        rows = []
+        for row in text.splitlines():
+            if row and set(row) <= {"-", "="}:
+                row = row[0] * COLUMNS
+            elif row.strip() in titles or '· SAMPLE' in row:
+                row = row.strip().center(COLUMNS)
+            rows.append(row)
+        pages[name] = "\n".join(rows) + "\n"
+    return pages

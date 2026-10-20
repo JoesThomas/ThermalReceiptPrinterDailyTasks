@@ -20,6 +20,7 @@ from actions import delivery_state
 from services import bin_collections
 from storage import write_json
 from receipt.capture import RecordingPrinter
+from receipt.profile import COLUMNS
 from receipt.live_preview import VirtualPrinter
 from web_control import preview_job
 
@@ -74,7 +75,7 @@ def fixture_preview():
     # Replace external collection, retaining the production capture/save/render path.
     printer = RecordingPrinter(VirtualPrinter(), defer=True)
     printer.text('INFORMATION\nFixture receipt generated\n')
-    printer.text('-'*42 + '\n')
+    printer.text('-'*COLUMNS + '\n')
     from io import BytesIO
     import math
     from PIL import Image, ImageDraw
@@ -82,7 +83,7 @@ def fixture_preview():
     print_temperature_graph(printer, [{'time':f'{h:02d}:00','temperature':8+h/3} for h in range(24)],
         _context={'Image':Image,'ImageDraw':ImageDraw,'BytesIO':BytesIO,'math':math,
                   'printer_text':lambda printer,text:printer.text(text)})
-    printer.text('-'*42 + '\n')
+    printer.text('-'*COLUMNS + '\n')
     from receipt.capture import LIVE_PREVIEW_FILE
     printer.save('information', path=LIVE_PREVIEW_FILE, replace=True)
     preview_job.save_status('running')

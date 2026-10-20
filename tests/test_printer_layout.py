@@ -64,7 +64,7 @@ class PrinterLayoutTests(TestCase):
                     self.assertEqual(device.printed, [])
                     recorder.send()
                 rows = [(align, row) for align, value in device.printed for row in value.splitlines() if row]
-                self.assertEqual([row for align, row in rows if not row.startswith('   ')], ['CENTRED HEADING'])
+                self.assertEqual([row for align, row in rows if not row.startswith(' ')], ['CENTRED HEADING'])
                 self.assertEqual(rows[-1], ('center', 'CENTRED HEADING'))
                 self.assertTrue(all(align == 'left' for align, row in rows[:-1]))
                 self.assertEqual(device.images, 4)
@@ -77,12 +77,12 @@ class PrinterLayoutTests(TestCase):
         printer.text('[ ] A ')
         printer.text('task\n\nHSBC'.ljust(10) + ' £1,000.00\n')
         text = ''.join(value for _, value in device.printed)
-        self.assertTrue(text.startswith('   [ ] A task\n\n   HSBC'))
-        self.assertEqual(text.count('   [ ]'), 1)
+        self.assertTrue(text.startswith(' [ ] A task\n\n HSBC'))
+        self.assertEqual(text.count(' [ ]'), 1)
         self.assertIn('£1,000.00', text)
         printer.image(bitmap())
         printer.text('No renderer newline\n')
-        self.assertEqual(device.printed[-1], ('left', '   No renderer newline\n'))
+        self.assertEqual(device.printed[-1], ('left', ' No renderer newline\n'))
 
     def test_reordered_pages_use_same_physical_boundary(self):
         device = RasterResetPrinter()
@@ -99,7 +99,7 @@ class PrinterLayoutTests(TestCase):
         printer.flush()
         recorder.send()
         rows = [value for _, value in device.printed if value.strip()]
-        self.assertEqual(rows, ['   [ ] Task\n', '   Before graph\n', '   After graph\n'])
+        self.assertEqual(rows, [' [ ] Task\n', ' Before graph\n', ' After graph\n'])
         self.assertEqual(device.cuts, 2)
 
     def test_archive_reprint_and_lazy_hardware_connection(self):
@@ -111,12 +111,12 @@ class PrinterLayoutTests(TestCase):
         self.assertEqual(calls, [])
         lazy.text('Lazy line\n')
         self.assertEqual(calls, ['open'])
-        self.assertEqual(device.printed[-1], ('left', '   Lazy line\n'))
+        self.assertEqual(device.printed[-1], ('left', ' Lazy line\n'))
         encoded = 'data:image/png;base64,' + base64.b64encode(bitmap().getvalue()).decode()
         item = {'pages': {'information': 'Before\n[[RECEIPT_IMAGE_0]]\n\nAfter\n'},
                 'page_images': {'information': [encoded]}}
         with patch.object(archive, 'load', return_value=item), patch('receipt.printer.open_printer', return_value=device), patch('receipt.recovery.mark'):
             archive.reprint('example', 'information')
-        self.assertIn('   After\n', ''.join(value for _, value in device.printed))
+        self.assertIn(' After\n', ''.join(value for _, value in device.printed))
         self.assertEqual(device.images, 1)
         self.assertEqual(device.cuts, 1)

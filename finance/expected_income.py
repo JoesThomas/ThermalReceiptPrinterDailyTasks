@@ -1,4 +1,5 @@
 """Private, non-salary expectations; never alter confirmed income or baseline runway."""
+from receipt.profile import COLUMNS
 
 from calendar import monthrange
 from datetime import date, timedelta
@@ -222,7 +223,7 @@ def receipt_summary(projection, today):
         return "EXPECTED INCOME UNAVAILABLE\nCheck private expected-income settings.\n"
     if not result["events"]:
         return ""
-    page = ReceiptText(width=40)
+    page = ReceiptText(width=COLUMNS)
     page.section("EXPECTED INCOME / NO SALARY")
     page.text("Next 30 days; unconfirmed income only.")
     for event in result["upcoming"][:6]:

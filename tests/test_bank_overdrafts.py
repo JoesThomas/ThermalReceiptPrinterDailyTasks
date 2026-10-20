@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from copy import deepcopy
 from decimal import Decimal as D
 from pathlib import Path
@@ -99,11 +100,11 @@ class BankOverdraftTests(TestCase):
             page = ReceiptText()
             bank_balances(page, {"bank_balance_sources": result})
             text = page.render()
-            self.assertIn("MONZO total                        £100.00", text)
-            self.assertIn("Combined bank balance              £300.00", text)
+            self.assertIn("MONZO total                            £100.00", text)
+            self.assertIn("Combined bank balance                  £300.00", text)
             self.assertIn("Overdraft allowance", text)
             self.assertIn("Overdraft excluded from cash above.", text)
-            self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
+            self.assertTrue(all(len(line) <= COLUMNS for line in text.splitlines()))
 
     def test_web_override_validation_private_storage_clear_and_backup(self):
         from web_control.private_backup import _validate_file

@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from datetime import date
 from decimal import Decimal as D
 from unittest import TestCase
@@ -39,7 +40,7 @@ class AmexPeriodSummaryTests(TestCase):
         self.assertIn('£100.00',forecast)
         self.assertIn('£3,449.94',forecast)
         self.assertNotIn('Savings redirected',text)
-        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))
 
     def test_delayed_payday_uses_card_balance_after_prior_scheduled_payment(self):
         result=build(source(),values(start='2026-11-11'),TODAY)
@@ -55,4 +56,4 @@ class AmexPeriodSummaryTests(TestCase):
         self.assertGreater(first['closing_card'],D('197.53'))
         text=receipt(result,TODAY).split('THIS PAY PERIOD')[1].split('WHOLE FORECAST')[0]
         self.assertIn('Estimated interest this period',text)
-        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))

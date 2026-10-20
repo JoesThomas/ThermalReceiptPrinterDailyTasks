@@ -1,4 +1,6 @@
 """Weather rendering; compatibility helpers are injected by the live facade."""
+from receipt.output import heading as print_heading
+from receipt.profile import COLUMNS
 
 from dataclasses import dataclass, fields
 from datetime import datetime
@@ -103,7 +105,7 @@ def print_weather(
     centre(printer, location["region"].upper())
     print_line(printer)
     printer.set(bold=True)
-    left(printer, "TODAY")
+    print_heading(printer, "TODAY", write=left)
     printer.set(bold=False)
     left(
         printer,
@@ -125,7 +127,7 @@ def print_weather(
     printer.set(bold=False)
     print_line(printer)
     printer.set(bold=True)
-    left(printer, "CURRENT CONDITIONS")
+    print_heading(printer, "CURRENT CONDITIONS", write=left)
     printer.set(bold=False)
     left(
         printer,
@@ -141,12 +143,12 @@ def print_weather(
     )
     print_line(printer)
     printer.set(bold=True)
-    left(printer, "TEMPERATURE GRAPH")
+    print_heading(printer, "TEMPERATURE GRAPH", write=left)
     printer.set(bold=False)
     render_graph(printer, graph_readings)
     print_line(printer)
     printer.set(bold=True)
-    left(printer, "HOURLY WEATHER")
+    print_heading(printer, "HOURLY WEATHER", write=left)
     printer.set(bold=False)
     left(printer, "TIME  TEMP  HUM  WIND(km/h)  WEATHER")
     left(printer, "> marks the current reading hour")
@@ -163,7 +165,7 @@ def print_weather(
         condition = weather_description(reading["code"])
         line = f"{reading['time']} {reading['temperature']:4.1f}C {reading['humidity']:3.0f}% {reading['wind']:4.1f} {condition}"
         print_wrapped(
-            printer, (">" if reading["time"] == current_hour else "") + line, width=40
+            printer, (">" if reading["time"] == current_hour else "") + line, width=COLUMNS
         )
     print_line(printer)
 

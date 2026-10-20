@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal as D
@@ -42,7 +43,7 @@ class DailyFinanceTests(TestCase):
         self.assertEqual(before['amex'],base['amex'])
         text=receipt(result,TODAY)
         self.assertLess(text.index('PAY PERIOD ALLOCATION'),text.index('CASH & RESERVES'))
-        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))
 
     def test_interest_delays_payoff_and_is_accounted_for(self):
         no_interest=build(source('150'),values(strategy='amex_first',amex_apr='0'),TODAY)
@@ -72,7 +73,7 @@ class DailyFinanceTests(TestCase):
         self.assertIn('no savings added in the selected forecast.', ' '.join(text.split()))
         self.assertIn('Extended projected goal date:', text)
         self.assertIn('Estimated time to target:', text)
-        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))
 
     def test_progress_uses_starting_balance_and_handles_already_met_or_unfunded(self):
         settings=values(strategy='savings_first',starting_savings='30000',savings_goal='50000')

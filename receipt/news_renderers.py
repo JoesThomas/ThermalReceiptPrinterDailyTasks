@@ -1,4 +1,6 @@
 """News rendering; compatibility helpers are injected by the live facade."""
+from receipt.output import heading as print_heading
+from receipt.profile import COLUMNS
 
 def _print_news_stories(printer, heading, stories, include_summary=None, *, _context):
     _news_summary_is_useful = _context.get('_news_summary_is_useful')
@@ -9,16 +11,16 @@ def _print_news_stories(printer, heading, stories, include_summary=None, *, _con
         return
     print_line(printer, '=')
     printer.set(bold=True)
-    left(printer, heading)
+    print_heading(printer, heading, write=left)
     printer.set(bold=False)
     for index, story in enumerate(stories[:5], 1):
         if index > 1 and not getattr(printer,'paper_saver',False):
             printer.text('\n')
         headline = story.get('headline', '')
         summary = story.get('summary', '')
-        print_wrapped(printer, f'{index}. {headline}', width=40)
+        print_wrapped(printer, f'{index}. {headline}', width=COLUMNS)
         if include_summary and _news_summary_is_useful(headline, summary):
-            print_wrapped(printer, summary, width=40)
+            print_wrapped(printer, summary, width=COLUMNS)
 
 def print_news(printer, stories, *, _context):
     _print_news_stories = _context.get('_print_news_stories')

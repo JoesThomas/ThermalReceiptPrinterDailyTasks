@@ -1,4 +1,5 @@
 """Private dated copies of generated pages; no bank or printer calls when browsing."""
+from receipt.profile import COLUMNS
 import base64
 import json
 import re
@@ -108,6 +109,10 @@ def reprint(identifier, page='all'):
         printer.hw('init')
         printer.set(font='a', normal_textsize=True, align='left')
         for name in names:
+            # Historical captures retain their original columns and indentation.
+            widths = [len(row) for row in item['pages'][name].splitlines()
+                      if row and set(row) <= {'-', '='} and len(row) in (40, 42, COLUMNS)]
+            printer.columns = max(widths) if widths else COLUMNS
             printer.set(align='left')
             for block in receipt_blocks(item['pages'][name], item.get('page_images', {}).get(name, [])):
                 if 'text' in block:

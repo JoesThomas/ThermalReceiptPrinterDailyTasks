@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from copy import deepcopy
 from datetime import date, timedelta
 from decimal import Decimal as D
@@ -242,7 +243,7 @@ class ExpectedIncomeTests(TestCase):
             self.assertIn("EXPECTED INCOME / NO SALARY", text)
             self.assertIn("Property rent", text)
             self.assertIn(f"First shortfall: {view['run_out']:%d %b %Y}", text)
-            self.assertTrue(all(len(line) <= 40 for line in text.splitlines()))
+            self.assertTrue(all(len(line) <= COLUMNS for line in text.splitlines()))
             self.assertIn(
                 "Projection unavailable",
                 income.receipt_summary(projection(valid=False), TODAY),

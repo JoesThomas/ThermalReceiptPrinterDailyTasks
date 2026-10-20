@@ -1,4 +1,5 @@
 from __future__ import annotations
+from receipt.profile import COLUMNS
 
 from collections import defaultdict
 from dataclasses import dataclass
@@ -886,7 +887,7 @@ def format_trend(value: float | None) -> str:
     return f"{value:+.1f}%"
 
 def receipt_trend_lines(trends: list[dict], max_categories: int = 8) -> list[str]:
-    lines = ["SPENDING TRENDS", "-" * 42, "                    30 DAYS     VS 90D"]
+    lines = ["SPENDING TRENDS", "-" * COLUMNS, "                    30 DAYS     VS 90D"]
     for row in trends[:max_categories]:
         name = row["category"][:18]
         amount = format_money(row["current"])
@@ -894,7 +895,7 @@ def receipt_trend_lines(trends: list[dict], max_categories: int = 8) -> list[str
         lines.append(f"{name:<18}{amount:>12}{trend:>12}")
     changes = largest_changes(trends, 2)
     if changes:
-        lines += ["", "LARGEST CHANGES", "-" * 42]
+        lines += ["", "LARGEST CHANGES", "-" * COLUMNS]
         for row in changes:
             lines.append(
                 f"{row['category'][:18]:<18}"
@@ -907,7 +908,7 @@ def period_receipt_lines(analysis: dict) -> list[str]:
     heading = "QUARTERLY ANALYSIS" if analysis["kind"] == "quarter" else "YEARLY ANALYSIS"
     lines = [
         heading,
-        "-" * 42,
+        "-" * COLUMNS,
         analysis["label"],
         f"TOTAL SPEND            {format_money(analysis['total_spend']):>14}",
     ]
@@ -915,7 +916,7 @@ def period_receipt_lines(analysis: dict) -> list[str]:
         lines.append(
             f"VS PREVIOUS PERIOD     {format_trend(analysis['change_pct']):>14}"
         )
-    lines += ["", "BY CATEGORY", "-" * 42]
+    lines += ["", "BY CATEGORY", "-" * COLUMNS]
     for row in analysis["categories"][:10]:
         lines.append(
             f"{row['category'][:18]:<18}"
@@ -923,7 +924,7 @@ def period_receipt_lines(analysis: dict) -> list[str]:
             f"{format_trend(row['change_pct']):>12}"
         )
     if analysis["largest_changes"]:
-        lines += ["", "LARGEST CHANGES", "-" * 42]
+        lines += ["", "LARGEST CHANGES", "-" * COLUMNS]
         for row in analysis["largest_changes"]:
             lines.append(
                 f"{row['category'][:18]:<18}"
@@ -968,7 +969,7 @@ def savings_growth_receipt_lines(analysis: dict) -> list[str]:
         return []
     lines = [
         "SAVINGS CHANGE",
-        "-" * 42,
+        "-" * COLUMNS,
         f"{'START OF PERIOD':<27}{format_money(growth['start']):>15}",
         f"{'END OF PERIOD':<27}{format_money(growth['end']):>15}",
         f"{'CHANGE':<27}{format_money(growth['change']):>15}",

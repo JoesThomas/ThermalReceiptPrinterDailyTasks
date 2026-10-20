@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from copy import deepcopy
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal as D
@@ -47,7 +48,7 @@ class PaperTestTests(TestCase):
         self.assertEqual(len(text.splitlines()), 12)
         self.assertIn("PAPER REFILL TEST", text)
         self.assertIn(" (____).__|", text)
-        self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
+        self.assertTrue(all(len(line) <= COLUMNS for line in text.splitlines()))
         printer.cut.assert_called_once()
         printer.close.assert_called_once()
 
@@ -87,7 +88,7 @@ class PaperTestTests(TestCase):
                 self.assertIn(stamp, text)
                 self.assertIn(f"Connection: {method}", text)
                 self.assertIn("Check print is clear and paper is cut.", text)
-                self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
+                self.assertTrue(all(len(line) <= COLUMNS for line in text.splitlines()))
                 printer.cut.assert_called_once()
                 printer.close.assert_called_once()
 

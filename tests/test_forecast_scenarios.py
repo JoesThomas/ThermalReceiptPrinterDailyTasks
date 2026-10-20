@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal as D
@@ -88,7 +89,7 @@ class ForecastScenariosTests(TestCase):
         self.assertNotIn('month(s): cash above reserves',text)
         self.assertIn('Rough planning estimate',' '.join(text.split()))
         self.assertIn('Projected target date: around',' '.join(text.split()))
-        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))
 
     def test_minimum_bank_balance_tracks_daily_costs_and_reserve_transfers(self):
         result=build(source(),values(),TODAY)

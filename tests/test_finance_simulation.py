@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal as D
@@ -37,7 +38,7 @@ class SimulationTests(TestCase):
         self.assertIn('£4,500.00', text)
         self.assertNotIn('Existing salary (additional mode)', text)
         self.assertEqual(result['forecast']['payments'][0]['salary'], D('4500'))
-        self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
+        self.assertTrue(all(len(line) <= COLUMNS for line in text.splitlines()))
 
     def test_repayment_options_and_monthly_savings_are_explicit(self):
         source = projection()
@@ -55,7 +56,7 @@ class SimulationTests(TestCase):
         without = dict(values, savings_target='0')
         self.assertEqual(build(source, without, TODAY)['forecast']['end_cash'] - result['forecast']['end_cash'], D('2000'))
         self.assertIn('Savings target not set', receipt(build(source, without, TODAY), TODAY))
-        self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
+        self.assertTrue(all(len(line) <= COLUMNS for line in text.splitlines()))
 
     def test_lump_sum_arrives_once_and_ignores_all_recurring_income(self):
         values = inputs(); values.update(mode='lump', lump_sum='10000')
@@ -69,7 +70,7 @@ class SimulationTests(TestCase):
         text = receipt(result, TODAY)
         self.assertIn('SIMULATION - LUMP SUM ONLY', text)
         self.assertNotIn('£4,500.00', text)
-        self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
+        self.assertTrue(all(len(line) <= COLUMNS for line in text.splitlines()))
         values['start'] = '2026-11-10'
         self.assertLess(build(projection(), values, TODAY)['forecast']['run_out'], date(2026, 11, 10))
         values['lump_sum'] = '-1'
@@ -145,7 +146,7 @@ class SimulationTests(TestCase):
         self.assertIn('£760.00', text)
         self.assertIn('Extra repayment this period', text)
         self.assertNotIn('Savings redirected to repayment', text)
-        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))
         source['amex']['full_reserved']=True
         text=receipt(build(source,inputs(),TODAY),TODAY)
         self.assertIn('Additional suggested repayment:', ' '.join(text.split()))

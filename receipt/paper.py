@@ -1,4 +1,5 @@
 """Approximate paper use from an already generated capture, never live data."""
+from receipt.profile import COLUMNS
 
 import base64
 import math
@@ -32,7 +33,7 @@ def estimate(pages, images=None):
                 ):
                     image_mm += 50
             else:
-                lines += max(1, math.ceil(len(line) / 42))
+                lines += max(1, math.ceil(len(line) / COLUMNS))
         cm = round((lines * 3.75 + image_mm + 15) / 10, 1)
         rows.append(dict(name=name, lines=lines, cm=cm))
     total = round(sum(r["cm"] for r in rows), 1)
@@ -40,5 +41,5 @@ def estimate(pages, images=None):
         pages=rows,
         cm=total,
         year_metres=round(total * 365 / 100, 1),
-        note="Approximate: 42 columns, 3.75 mm per text line, image height at 203 dpi and 15 mm cutter allowance per page. Actual printer spacing and new live content can change this.",
+        note=f"Approximate: {COLUMNS} columns, 3.75 mm per text line, image height at 203 dpi and 15 mm cutter allowance per page. Actual printer spacing and new live content can change this.",
     )

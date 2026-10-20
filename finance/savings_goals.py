@@ -1,4 +1,5 @@
 """Private savings targets and dated ISA subscriptions, separate from valuations."""
+from receipt.profile import COLUMNS
 import calendar
 import hashlib
 import re
@@ -293,7 +294,7 @@ def receipt_lines(view, *, include_balances=False):
     lines=[]
     if include_balances and view['accounts']:
         from receipt.layout import amount_rows
-        lines += ['', 'SAVINGS & TARGETS [F]', '-' * 40]
+        lines += ['', 'SAVINGS & TARGETS [F]'.center(COLUMNS), '-' * COLUMNS]
         for row in view['accounts']:
             lines += [row.get('label',row['name']).upper()]
             if row['balance'] is None:
@@ -334,4 +335,4 @@ def receipt_lines(view, *, include_balances=False):
         else: lines.append(plan['status'].upper())
         if row['over']: lines.append('RECORDED CONTRIBUTIONS EXCEED LIMIT')
         if view['has_cash'] and view['cash']['limit'] is None: lines.append('VERIFY CASH ISA LIMIT FOR THIS YEAR')
-    return [part for line in lines for part in wrap(line,width=40)]
+    return [part for line in lines for part in wrap(line,width=COLUMNS)]

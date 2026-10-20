@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 import ast
 from io import BytesIO
 from pathlib import Path
@@ -37,11 +38,11 @@ class NewsWeatherReceiptTests(unittest.TestCase):
                     raw = device.output
                     # Test actual ESC/POS alignment bytes, not just the 42-column
                     # web capture which hides the physical printer's extra space.
-                    reset_rule = b"\x1ba\x00" + b"-" * 42 + b"\n"
+                    reset_rule = b"\x1ba\x00" + b"-" * COLUMNS + b"\n"
                     self.assertEqual(raw.count(reset_rule), 2)
                     self.assertEqual(printer.align, "left")
                     self.assertEqual([row for row in ''.join(printer.lines).splitlines()
-                                      if row.startswith('-')], ['-' * 42] * 2)
+                                      if row.startswith('-')], ['-' * COLUMNS] * 2)
                     self.assertIn(b"\x1ba\x01", raw)
 
     def test_weather_rules_share_body_margin_on_wider_printer(self):
@@ -71,11 +72,11 @@ class NewsWeatherReceiptTests(unittest.TestCase):
                                    print_temperature_graph=lambda *a: None,
                                    now=lambda: datetime(2026, 10, 20, 9))
         print_weather(printer, weather, {'name': 'Stirchley', 'region': 'Birmingham, UK'}, deps=deps)
-        rules = [offset for row, offset in printer.rows if row == '-' * 42]
+        rules = [offset for row, offset in printer.rows if row == '-' * COLUMNS]
         self.assertGreater(len(rules), 4)
         self.assertEqual(set(rules), {0})
         self.assertTrue(all(offset == 0 for row, offset in printer.rows
-                            if row.startswith(('TODAY', 'MAX ', 'CURRENT CONDITIONS', 'TEMP '))))
+                            if row.startswith(('MAX ', 'TEMP '))))
         self.assertTrue(any(row == 'WEATHER' and offset > 0 for row, offset in printer.rows))
 
     def test_temperature_graph_fits_receipt_and_centres_image(self):
@@ -206,11 +207,11 @@ class NewsWeatherReceiptTests(unittest.TestCase):
                     'print_temperature_graph':lambda printer,rows:graphs.append(rows)}
                 print_weather(SimpleNamespace(set=lambda **kwargs:None), weather, location, detail, _context=context)
                 self.assertIn('EDINBURGH',text); self.assertIn('SCOTLAND',text)
-                self.assertEqual(text[text.index('SCOTLAND')+1:text.index('SCOTLAND')+5],
+                self.assertEqual([s.strip() for s in text[text.index('SCOTLAND')+1:text.index('SCOTLAND')+5]],
                     ['TODAY','MAX 17.0C  MIN 12.0C','RAIN 0%','SUNRISE/SUNSET 07:00-18:00'])
-                self.assertEqual(text.count('TODAY'),1)
-                self.assertIn('HOURLY WEATHER',text); self.assertEqual(drawings,[0])
-                self.assertLess(text.index('TEMPERATURE GRAPH'), text.index('HOURLY WEATHER'))
+                self.assertEqual([s.strip() for s in text].count('TODAY'),1)
+                self.assertIn('HOURLY WEATHER'.center(COLUMNS),text); self.assertEqual(drawings,[0])
+                self.assertLess(text.index('TEMPERATURE GRAPH'.center(COLUMNS)), text.index('HOURLY WEATHER'.center(COLUMNS)))
                 self.assertEqual(len(graphs[0]),24)
                 for hour in range(24):
                     self.assertTrue(any(line.lstrip('>').startswith(f'{hour:02d}:00 ') for line in text))
@@ -229,7 +230,7 @@ class WeatherIllustrationTests(unittest.TestCase):
                 self.assertEqual(len(rows), len(graphic(code)) + 1)
                 self.assertEqual(rows[-1], '')
                 self.assertEqual(len({len(row) for row in rows[:-1]}), 1)
-                self.assertTrue(all(len(row) <= 42 for row in rows))
+                self.assertTrue(all(len(row) <= COLUMNS for row in rows))
                 self.assertEqual(rows[-2].strip(), graphic(code)[-1].strip())
                 if code in (1, 2, 3):
                     self.assertEqual(rows[-2].strip(), "'------'")

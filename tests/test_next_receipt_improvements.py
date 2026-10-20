@@ -36,7 +36,7 @@ class WeatherAndProfileTests(TestCase):
         self.assertEqual(len(images), 1)
 
     def test_profile_and_renderer_are_independent_of_live_configuration(self):
-        self.assertEqual(COLUMNS, 42)
+        self.assertEqual(COLUMNS, 46)
         self.assertEqual(PRINTABLE_PIXELS, 576)
         self.assertEqual(printable_width(object()), PRINTABLE_PIXELS)
         deps = WeatherDependencies()

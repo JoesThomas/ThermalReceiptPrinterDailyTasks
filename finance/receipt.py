@@ -1,4 +1,6 @@
 from __future__ import annotations
+from receipt.output import heading as print_heading
+from receipt.profile import COLUMNS
 from finance_trends import prepare_rules
 from finance.investments import (
     load_investments,
@@ -51,7 +53,7 @@ def _money(v):
 def print_line(
     printer,
     char="-",
-    width=40,
+    width=COLUMNS,
 ):
     printer.text(
         (char * width) + "\n"
@@ -67,7 +69,7 @@ def _decimal(value):
         raise ValueError(f"Invalid finance amount: {value!r}") from exc
 
 
-def _amount_rows(label, value, width=40):
+def _amount_rows(label, value, width=COLUMNS):
     from receipt.layout import amount_rows
     return amount_rows(str(label).upper(), value, width)
 
@@ -107,7 +109,7 @@ def print_incoming_payments(printer, left, line, summary, total_outgoings, today
     total = salary_total + other_total
 
     printer.text("\n")
-    left(printer, "INCOMING / LAST 30 DAYS [BANK TX]")
+    print_heading(printer, "INCOMING / LAST 30 DAYS [BANK TX]", write=left)
     line(printer, "-")
     if summary.get("bank_data_status", "complete") != "complete":
         left(printer, "BANK DATA INCOMPLETE")
@@ -439,7 +441,7 @@ def print_integrated_finance(
     # B = bank data; F = stored file; C = arithmetic; E = estimate.
     left(printer, "B BANK  F FILE  C CALC  E ESTIMATE")
     printer.text("\n")
-    left(printer, "CASH NOW")
+    print_heading(printer, "CASH NOW", write=left)
     print_line(printer)
     for label, value in (("HSBC", hsbc), ("MONZO", monzo)):
         left(printer, _amount_line(f"{label} [B]", value))
@@ -447,7 +449,7 @@ def print_integrated_finance(
     left(printer, _amount_line("AVAILABLE CASH [C]", available_cash))
 
     printer.text("\n")
-    left(printer, "AMOUNTS OWED")
+    print_heading(printer, "AMOUNTS OWED", write=left)
     print_line(printer)
     for debt in debt_summary["debts"]:
         if debt["balance"]:
@@ -467,7 +469,7 @@ def print_integrated_finance(
                 left(printer, row)
 
     printer.text("\n")
-    left(printer, "UNTIL PAYDAY [E]")
+    print_heading(printer, "UNTIL PAYDAY [E]", write=left)
     print_line(printer)
     if debt_summary.get("payday"):
         reviewed_on = finance_settings.get("reviewed_on")
@@ -529,10 +531,7 @@ def print_integrated_finance(
 
         printer.text("\n")
 
-        left(
-            printer,
-            "INVESTMENTS [F]",
-        )
+        print_heading(printer, "INVESTMENTS [F]", write=left)
 
         line(
             printer,
@@ -614,10 +613,7 @@ def print_integrated_finance(
         bond_lines = ["PREMIUM BONDS HISTORY UNAVAILABLE"]
     for row in bond_lines:
         left(printer, row)
-    left(
-        printer,
-        "SPENDING - BANK TX [C]",
-    )
+    print_heading(printer, "SPENDING - BANK TX [C]", write=left)
 
     print_line(
         printer,
@@ -663,7 +659,7 @@ def print_integrated_finance(
             salary_goals=goal_review(wealth,on=today)
             allocation=build_salary_plan(spending_summary.get('salary_incomings',[]),transactions,balances,projection,finance_settings,salary_goals,today)
             printer.text("\n")
-            left(printer,'SALARY ALLOCATION [E]')
+            print_heading(printer, 'SALARY ALLOCATION [E]', write=left)
             print_line(printer)
             left(printer,_amount_line('HSBC RESERVE TARGET',allocation['reserve']['bank']))
             left(printer,_amount_line('PHYSICAL CASH TARGET',allocation['reserve']['target']))
@@ -726,7 +722,7 @@ def print_integrated_finance(
     )
     if unknown:
         printer.text("\n")
-        left(printer, "CATEGORY CHECK - OTHER [BANK TX]")
+        print_heading(printer, "CATEGORY CHECK - OTHER [BANK TX]", write=left)
         print_line(printer, "-")
         for item in unknown:
             for row in _amount_rows(item["merchant"][:24], item["amount"]):
@@ -739,7 +735,7 @@ def print_integrated_finance(
     ][:8]
     if current_categories:
         printer.text("\n")
-        left(printer, "SPENDING BY CATEGORY / 30 DAYS")
+        print_heading(printer, "SPENDING BY CATEGORY / 30 DAYS", write=left)
         print_line(printer, "-")
         for row in current_categories:
             for amount_row in _amount_rows(row["category"], row["current"]):
@@ -750,7 +746,7 @@ def print_integrated_finance(
     # ==========================================
 
     printer.text("\n")
-    left(printer, "RUNWAY / DATED PAYMENTS [E]")
+    print_heading(printer, "RUNWAY / DATED PAYMENTS [E]", write=left)
     print_line(printer)
     left(printer, "ASSUMES NO FUTURE INCOME")
     left(printer, _amount_line("EVERYDAY PER DAY", projection["daily"]))
@@ -765,8 +761,8 @@ def print_integrated_finance(
                  "Over " + projection["horizon_duration"] if projection["valid"] else "Unavailable")
         left(printer, label)
         from textwrap import wrap
-        for row in wrap(value.upper(), width=40):
-            left(printer, row.rjust(40))
+        for row in wrap(value.upper(), width=COLUMNS):
+            left(printer, row.rjust(COLUMNS))
         run_out = projection["cash_run_out_date" if label == "CASH RUNWAY" else "total_run_out_date"]
         if run_out:
             left(printer, f"PROJECTED SHORTFALL: {run_out:%d %b %Y}".upper())
@@ -776,7 +772,7 @@ def print_integrated_finance(
         left(printer, "DATES PROTECT YOUR CASH BUFFER")
     from textwrap import wrap
     for warning in dict.fromkeys(projection["warnings"]):
-        for row in wrap(warning.upper(), width=40):
+        for row in wrap(warning.upper(), width=COLUMNS):
             left(printer, row)
 
     from finance.expected_income import receipt_summary as expected_income_receipt
@@ -852,7 +848,7 @@ def print_integrated_finance(
             "=",
         )
 
-        left(printer, "PERIOD REVIEW [C]: BANK TX + FILE")
+        print_heading(printer, "PERIOD REVIEW [C]: BANK TX + FILE", write=left)
         for text in (
             period_receipt_lines(
                 analysis
@@ -880,7 +876,7 @@ def print_integrated_finance(
         upcoming = _forecast_events(events, today, end)
         change = sum((_decimal(item["amount"]) for item in upcoming), Decimal(0))
         printer.text("\n")
-        left(printer, "NEXT 30 DAYS - LISTED EVENTS")
+        print_heading(printer, "NEXT 30 DAYS - LISTED EVENTS", write=left)
         print_line(printer)
         left(printer, _amount_line("KNOWN CASH CHANGE [C]", change))
         left(printer, _amount_line("CASH AFTER EVENTS [E]", _decimal(available_cash) + change))
@@ -888,7 +884,7 @@ def print_integrated_finance(
     goals = finance_settings.get("savings_goals", [])
     if goals:
         printer.text("\n")
-        left(printer, "SAVINGS GOALS [F]")
+        print_heading(printer, "SAVINGS GOALS [F]", write=left)
         print_line(printer)
         for goal in goals:
             for row in _amount_rows(str(goal["name"]), goal["saved"]):

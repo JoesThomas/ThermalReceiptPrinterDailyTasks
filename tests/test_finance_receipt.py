@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 import unittest
 from unittest.mock import patch
 from datetime import date
@@ -28,7 +29,7 @@ class FinanceReceiptTests(unittest.TestCase):
                 {'HSBC': {'available': 500}, 'MONZO': {'available': 100},
                  'AMEX': {'current': 900}}, transactions=[],
                 finance_settings_file=settings, today=date(2026, 9, 29))
-        self.assertIn('RUNWAY / DATED PAYMENTS [E]', lines)
+        self.assertIn('RUNWAY / DATED PAYMENTS [E]'.center(COLUMNS), lines)
         self.assertTrue(any('51 DAYS' in row for row in lines))
         self.assertTrue(any('£100.00' in row and 'LISTED PAYMENTS' in row for row in lines))
 
@@ -54,7 +55,7 @@ class FinanceReceiptTests(unittest.TestCase):
         self.assertTrue(all(any(f'OTHER SOURCE {index}' in row for row in lines)
                             for index in range(7)))
         self.assertFalse(any('OLD INCOME' in row for row in lines))
-        self.assertTrue(all(len(row) <= 40 for row in lines))
+        self.assertTrue(all(len(row) <= COLUMNS for row in lines))
 
     def test_rent_and_winnings_are_grouped_without_losing_each_payment(self):
         lines = []
@@ -74,7 +75,7 @@ class FinanceReceiptTests(unittest.TestCase):
         self.assertTrue(any('28 SEP RENT FROM TENANT' in row and '£800.00' in row for row in lines))
         self.assertTrue(any('TOTAL IN' in row and '£872.00' in row for row in lines))
         self.assertTrue(any('£772.00' in row for row in lines))
-        self.assertTrue(all(len(row) <= 40 for row in lines))
+        self.assertTrue(all(len(row) <= COLUMNS for row in lines))
 
     def test_live_amex_and_instalment_take_precedence(self):
         settings = {
@@ -129,16 +130,16 @@ class FinanceReceiptTests(unittest.TestCase):
         self.assertTrue(any('HSBC [B]' in line for line in printer.lines))
         self.assertTrue(any('PLAN [F]' in line for line in printer.lines))
         self.assertTrue(any('SAFE TO SPEND [E]' in line for line in printer.lines))
-        self.assertTrue(all(len(line) <= 40 for line in printer.lines))
+        self.assertTrue(all(len(line) <= COLUMNS for line in printer.lines))
 
     def test_long_name_keeps_amount_and_fits_receipt(self):
         rows = _amount_rows('Very long payment plan description on paper', 123.45)
-        self.assertTrue(all(len(row) <= 40 for row in rows))
+        self.assertTrue(all(len(row) <= COLUMNS for row in rows))
         self.assertTrue(any('£123.45' in row for row in rows))
 
     def test_negative_amount_puts_minus_before_pound_sign(self):
         self.assertEqual(_amount_rows('Known cash change', -500)[0],
-                         'KNOWN CASH CHANGE               -£500.00')
+                         'KNOWN CASH CHANGE                     -£500.00')
         self.assertEqual(_amount_rows('Credit', 0)[0][-5:], '£0.00')
 
     def test_monthly_payday_and_bill_roll_without_losing_day_31(self):

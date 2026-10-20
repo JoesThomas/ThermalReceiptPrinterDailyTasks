@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal as D
@@ -32,7 +33,7 @@ class EqualSavingsTests(TestCase):
         self.assertEqual([r['share'] for r in result['account_plan']['accounts']],[D(50),D(50),D(0),D(0)])
         text=receipt(result,TODAY)
         self.assertIn('Savings split: equal between eligible accounts.',' '.join(text.split()))
-        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))
 
     def test_custom_shares_remain_available(self):
         result=build(source(),values(equal_savings=''),TODAY)

@@ -1,4 +1,5 @@
 """Optional page ordering; unchanged order streams directly to the printer."""
+from receipt.profile import COLUMNS
 from io import BytesIO
 
 PAGES = ('information', 'actions', 'food', 'finance')
@@ -82,7 +83,7 @@ from finance.money import parse
 from textwrap import wrap
 
 
-def amount_rows(label, value, width=40):
+def amount_rows(label, value, width=COLUMNS):
     amount = parse(value)
     if amount is None:
         raise ValueError('Invalid receipt amount')

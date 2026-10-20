@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 import unittest
 import ast
 from datetime import date
@@ -56,7 +57,7 @@ class AnnualSubscriptionTests(unittest.TestCase):
                     and item.name == 'print_annual_subscription_status')
         amount_node = next(item for item in source.body if isinstance(item, ast.FunctionDef)
                            and item.name == 'receipt_right_amount')
-        namespace = {'annual_subscription_rows': annual_subscription_rows}
+        namespace = {'annual_subscription_rows': annual_subscription_rows, 'COLUMNS': COLUMNS}
         exec(compile(ast.Module(body=[amount_node, node], type_ignores=[]), '<annual-receipt>', 'exec'), namespace)
         lines = []
         namespace['print_annual_subscription_status'](
@@ -65,25 +66,25 @@ class AnnualSubscriptionTests(unittest.TestCase):
             {'yearly': [{'name': 'Annual service', 'amount': 120,
                          'renewal_date': '2025-10-21', 'last_paid': '2025-10-21'}]},
             [], date(2026, 9, 29))
-        self.assertIn('ANNUAL SUBSCRIPTIONS [F+B]', lines)
+        self.assertIn('ANNUAL SUBSCRIPTIONS [F+B]'.center(COLUMNS), lines)
         self.assertIn('  PAYMENT UNVERIFIED', lines)
         self.assertTrue(any('NEXT 21 Oct 2026' in line for line in lines))
         self.assertTrue(any(line.startswith('Annual service') and line.endswith('£120.00')
-                            and len(line) == 40 for line in lines))
-        self.assertTrue(all(len(line) <= 40 for line in lines))
+                            and len(line) == COLUMNS for line in lines))
+        self.assertTrue(all(len(line) <= COLUMNS for line in lines))
 
     def test_right_aligned_amount_wraps_large_values(self):
         source = ast.parse((Path(__file__).resolve().parents[1] / 'services/live_pipeline.py')
                            .read_text(encoding='utf-8'))
         node = next(item for item in source.body if isinstance(item, ast.FunctionDef)
                     and item.name == 'receipt_right_amount')
-        namespace = {}
+        namespace = {'COLUMNS': COLUMNS}
         exec(compile(ast.Module(body=[node], type_ignores=[]), '<receipt-amount>', 'exec'), namespace)
         amount = namespace['receipt_right_amount']
-        self.assertEqual(len(amount('Council Tax', 114)[0]), 40)
+        self.assertEqual(len(amount('Council Tax', 114)[0]), COLUMNS)
         self.assertTrue(amount('Council Tax', 114)[0].endswith('£114.00'))
-        self.assertEqual(amount('Very long annual subscription name', 100000),
-                         ['Very long annual subscription name', '£100,000.00'.rjust(40)])
+        self.assertEqual(amount('An exceptionally long annual subscription name', 100000),
+                         ['An exceptionally long annual subscription name', '£100,000.00'.rjust(COLUMNS)])
 
 
 if __name__ == '__main__':

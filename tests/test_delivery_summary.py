@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 import ast
 import re
 import unittest
@@ -15,7 +16,7 @@ class DeliverySummaryTests(unittest.TestCase):
         self.assertEqual(lines.count('AMAZON / 2 items'),1)
         self.assertEqual(lines.count('Expected tomorrow'),1)
         self.assertEqual(sum('[ ]' in line for line in lines), 2)
-        self.assertTrue(all(len(line)<=40 for line in lines))
+        self.assertTrue(all(len(line)<= COLUMNS for line in lines))
     def test_tracking_updates_and_split_order(self):
         first=dict(carrier='AMAZON',**references('Dispatched','Tracking number TBA123456789 Order 123-1234567-1234567'))
         second=dict(carrier='AMAZON',**references('Arriving today','Tracking number TBA123456789 Order 123-1234567-1234567'))
@@ -46,7 +47,7 @@ class DeliveryEntityTests(unittest.TestCase):
         self.assertIn('Subscribe & Save',item_title(row))
         lines=summary_lines([row],lambda row:'AMAZON',lambda row:'Expected today')
         self.assertNotIn('&amp;', '\n'.join(lines))
-        self.assertIn('Subscribe & Save', '\n'.join(lines))
+        self.assertIn('Subscribe & Save', ' '.join(' '.join(lines).split()))
 
     def test_old_checklist_labels_are_decoded_without_losing_confirmation(self):
         from actions import delivery_state

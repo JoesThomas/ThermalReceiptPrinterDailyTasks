@@ -54,10 +54,10 @@ class ReceiptUsabilityTests(unittest.TestCase):
             response.close.assert_called_once()
 
     def test_quality_detects_wide_duplicate_long_and_stale_sources(self):
-        text='UPCOMING DELIVERIES\n[ ] Dispatched: Example item\n[ ] Ordered: Example item\n' + ('X'*43+'\n')*181
+        text='UPCOMING DELIVERIES\n[ ] Dispatched: Example item\n[ ] Ordered: Example item\n' + ('X'*47+'\n')*181
         rows=quality.check({'actions':text},{'Calendar':{'status':'cached','checked_at':'2020-01-01T00:00:00+00:00'}})
         messages=' '.join(row['message'] for row in rows)
-        for expected in ('42 columns','Long page','duplicate','cached','24 hours'):self.assertIn(expected,messages)
+        for expected in ('46 columns','Long page','duplicate','cached','24 hours'):self.assertIn(expected,messages)
         self.assertEqual(quality.check({'information':'Safe line\n'+'-'*42},{}),[])
 
     def test_deferred_printer_checks_before_sending_preserves_commands(self):

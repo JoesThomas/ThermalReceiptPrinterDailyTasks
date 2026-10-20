@@ -1,3 +1,4 @@
+from receipt.profile import COLUMNS
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal as D
@@ -44,7 +45,7 @@ class CashTopupGoalTests(TestCase):
         self.assertIn('Estimated time to target:\nNow',text)
         self.assertNotIn('11 Mar 2027',text)
         self.assertIn('Average ongoing additions / month',text)
-        self.assertTrue(all(len(line)<=42 for line in text.splitlines()))
+        self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))
 
     def test_newer_physical_count_is_used_by_the_cash_goal_and_reserve(self):
         base=source();base['reserve_details']['date']=TODAY
