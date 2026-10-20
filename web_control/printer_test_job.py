@@ -13,8 +13,11 @@ from receipt.printer import open_printer
 def main():
     paper_test = "--paper-test" in sys.argv[1:]
     printer = open_printer(initial_cut=False) if paper_test else open_printer()
+    from receipt.printer_layout import ContentPrinter
+    printer = ContentPrinter(printer)
     try:
-        printer.set(align="left")
+        printer.hw("init")
+        printer.set(font="a", normal_textsize=True, align="left")
         now = datetime.now(ZoneInfo("Europe/London"))
         connection = os.getenv("RECEIPT_PRINTER_CONNECTION", "network").strip().lower()
         method = "USB" if connection == "usb" else "Network (TCP)"

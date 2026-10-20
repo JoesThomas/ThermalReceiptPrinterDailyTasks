@@ -1,28 +1,27 @@
 # Centred receipt content
 
-The 80mm, 203dpi printer has a 576-dot printable line. Standard Font A is
-12 dots wide, so the existing 42-column content occupies 504 dots. Receipt
-setup centres that block with 36-dot side margins (about 4.5mm each inside
-the printable area). Lists and amounts stay left/right aligned within the
-block; native centred headings share its midpoint. No leading spaces are
-added to stored text, so saved previews and later reprints keep their layout.
+The 80mm, 203dpi printer has a 576-dot printable line. Font A has a 12-dot
+character cell: the existing 42-column content fits within a 48-column physical
+line. `ContentPrinter` adds a three-space inset at the hardware boundary for
+left-aligned body lines, giving the 42-column block equal side margins.
+Native-centred headings and full-width graphs share its midpoint.
 
-Setup sends ESC/POS `GS P` (203 horizontal/vertical units per inch), `GS L`
-(left margin) and `GS W` (print width) after `ESC @`. The recorder buffers these
-commands along with text, so generation does not connect to the printer early.
-Divider lines explicitly select left justification to avoid inheriting it from
-a title or symbol. This matters on hardware wider than the web's 42-column view.
+This physical adapter is used by the deferred live printer, including custom
+page ordering, saved-receipt reprints and short printer tests. It preserves
+partial text writes, list indentation, amounts and blank lines. Saved text and
+web previews remain at 42 columns, so reprinting never adds the inset twice.
 
-Existing full-width graph images temporarily use the full printable area;
-text margins are restored immediately afterwards. Archive reprints initialise
-the same Font A and margins, including for old saved receipts and images.
-This preserves graph detail and avoids clipping images to the narrower text area.
+Earlier positioning used GS L / GS W and switched the native area around raster
+images. Some ESC/POS-compatible devices do not reliably restore that state at
+the image boundary. Receipt initialization now resets the device to its normal
+full print area; no renderer switches native margins. Each body line gets its
+inset independently of image state.
 
-The printer must support standard ESC/POS margin commands and the configured
-80mm/203dpi Font A profile. Tests inspect the emitted bytes and deferred ordering;
-a fresh physical receipt is still the final check on the specific printer.
+The adapter also ends a raster line before reasserting text justification. If
+the renderer already supplies a leading newline, that newline is reused, so
+this does not add an extra blank line after each graph. Tests use a printer
+model that deliberately loses alignment after a bitmap and rejects text until
+that raster line is finished, across immediate/deferred/reordered/archive paths.
 
-Command references:
-- https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/gs_cp.html
-- https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/gs_cl.html
-- https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/gs_cw.html
+The layout assumes the configured 80mm/203dpi Font A profile. A fresh physical
+receipt remains the final check on a particular printer's firmware.

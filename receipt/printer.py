@@ -83,7 +83,9 @@ class DeferredPhysicalPrinter:
         self.profile = SimpleNamespace(profile_data={'media': {'width': {'pixels': PRINTABLE_PIXELS}}})
 
     def open(self):
-        if self.device is None: self.device = self.factory()
+        if self.device is None:
+            from receipt.printer_layout import ContentPrinter
+            self.device = ContentPrinter(self.factory())
 
     def __getattr__(self, name):
         self.open()
