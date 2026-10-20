@@ -7,6 +7,7 @@ from datetime import datetime
 from io import BytesIO
 import math
 from typing import Callable
+from textwrap import wrap
 from PIL import Image, ImageDraw
 from receipt.local_time import uk_now
 from receipt import output
@@ -40,6 +41,29 @@ class WeatherDependencies:
         return cls(
             **{f.name: context[f.name] for f in fields(cls) if f.name in context}
         )
+
+
+def _table_rows(headers, rows):
+    """Keep each value under its heading, wrapping only the final text column."""
+    widths = [max(len(str(row[i])) for row in [headers, *rows])
+              for i in range(len(headers) - 1)]
+    last_width = COLUMNS - sum(widths) - len(widths)
+    if last_width < len(headers[-1]):
+        raise ValueError("Weather columns exceed receipt width")
+    table_width = sum(widths) + len(widths) + min(last_width, max(len(str(row[-1])) for row in [headers, *rows]))
+    padding = " " * ((COLUMNS - table_width) // 2)
+    for row in [headers, *rows]:
+        prefix = " ".join(str(value).ljust(width) for value, width in zip(row, widths)) + " "
+        for index, tail in enumerate(wrap(str(row[-1]), width=last_width) or [""]):
+            yield padding + (prefix if index == 0 else " " * len(prefix)) + tail
+
+
+def _weather_title(location):
+    # The country suffix is unnecessary on a local daily receipt.
+    region = location.get("region", "")
+    region = region.removesuffix(", UK")
+    places = list(dict.fromkeys(part for part in (location.get("name", ""), region) if part))
+    return "Weather - " + ", ".join(places)
 
 
 def print_weather_graphic(printer, code, *, deps=None, _context=None):
@@ -90,7 +114,6 @@ def print_weather(
     render_graphic = deps.print_weather_graphic or (
         lambda p, c: print_weather_graphic(p, c, deps=deps)
     )
-    print_wrapped = deps.print_wrapped
     weather_description = deps.weather_description
     # Weather essentials are always present, including for legacy auto/compact settings.
     current = weather["current"]
@@ -99,25 +122,22 @@ def print_weather(
     graph_readings = text_readings
     print_line(printer, "=")
     printer.set(bold=True)
-    centre(printer, "WEATHER")
+    print_heading(printer, _weather_title(location or {}), write=left)
     printer.set(bold=False)
-    centre(printer, location["name"].upper())
-    centre(printer, location["region"].upper())
     print_line(printer)
     printer.set(bold=True)
     print_heading(printer, "TODAY", write=left)
     printer.set(bold=False)
-    left(
-        printer,
-        f"MAX {daily['temperature_2m_max'][0]:.1f}C  MIN {daily['temperature_2m_min'][0]:.1f}C",
-    )
-    left(printer, f"RAIN {daily['precipitation_probability_max'][0]:.0f}%")
     sunrise = datetime.fromisoformat(daily["sunrise"][0])
     sunset = datetime.fromisoformat(daily["sunset"][0])
-    left(
-        printer,
-        f"SUNRISE/SUNSET {sunrise.strftime('%H:%M')}-{sunset.strftime('%H:%M')}",
-    )
+    for row in _table_rows(
+        ("Maximum", "Minimum", "Rain", "Sunrise", "Sunset"),
+        [(f"{daily['temperature_2m_max'][0]:.1f}C",
+          f"{daily['temperature_2m_min'][0]:.1f}C",
+          f"{daily['precipitation_probability_max'][0]:.0f}%",
+          sunrise.strftime("%H:%M"), sunset.strftime("%H:%M"))],
+    ):
+        left(printer, row)
     print_line(printer)
     render_graphic(printer, current["weather_code"])
     current_temperature = current["temperature_2m"]
@@ -129,18 +149,12 @@ def print_weather(
     printer.set(bold=True)
     print_heading(printer, "CURRENT CONDITIONS", write=left)
     printer.set(bold=False)
-    left(
-        printer,
-        f"TEMP {current_temperature:.1f}C  FEELS {current['apparent_temperature']:.1f}C",
-    )
-    left(
-        printer,
-        f"HUM {current['relative_humidity_2m']:.0f}%  WIND {current['wind_speed_10m']:.1f}km/h",
-    )
-    left(
-        printer,
-        f"PRESS {current['surface_pressure']:.0f}hPa  DIR {current['wind_direction_10m']:.0f}deg",
-    )
+    for row in _table_rows(
+        ("Temperature", "Feels like", "Humidity", "Wind"),
+        [(f"{current_temperature:.1f}C", f"{current['apparent_temperature']:.1f}C",
+          f"{current['relative_humidity_2m']:.0f}%", f"{current['wind_speed_10m']:.1f}km/h")],
+    ):
+        left(printer, row)
     print_line(printer)
     printer.set(bold=True)
     print_heading(printer, "TEMPERATURE GRAPH", write=left)
@@ -150,8 +164,6 @@ def print_weather(
     printer.set(bold=True)
     print_heading(printer, "HOURLY WEATHER", write=left)
     printer.set(bold=False)
-    left(printer, "TIME  TEMP  HUM  WIND(km/h)  WEATHER")
-    left(printer, "> marks the current reading hour")
     current_time = current.get("time")
     try:
         current_hour = (
@@ -161,12 +173,22 @@ def print_weather(
         )
     except (TypeError, ValueError):
         current_hour = deps.now().strftime("%H:00")
-    for reading in text_readings:
-        condition = weather_description(reading["code"])
-        line = f"{reading['time']} {reading['temperature']:4.1f}C {reading['humidity']:3.0f}% {reading['wind']:4.1f} {condition}"
-        print_wrapped(
-            printer, (">" if reading["time"] == current_hour else "") + line, width=COLUMNS
-        )
+    rows = [(reading["time"], f"{reading['temperature']:.1f}C",
+             f"{reading['humidity']:.0f}%", f"{reading['wind']:.1f}km/h",
+             weather_description(reading["code"])) for reading in text_readings]
+    table = iter(_table_rows(("Time", "Temp", "Humidity", "Wind", "Weather"), rows))
+    left(printer, next(table))
+    bold = False
+    try:
+        for row in table:
+            # Continuations inherit their reading's emphasis, without a marker column.
+            time = row.lstrip().split(maxsplit=1)[0]
+            if len(time) == 5 and time[2] == ":":
+                bold = time == current_hour
+            printer.set(bold=bold)
+            left(printer, row)
+    finally:
+        printer.set(bold=False)
     print_line(printer)
 
 

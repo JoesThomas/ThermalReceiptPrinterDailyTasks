@@ -80,6 +80,7 @@ class LocalGigsTests(unittest.TestCase):
         lines=gigs.receipt_lines(result,2)
         self.assertTrue(all(len(line)<= COLUMNS for line in lines))
         self.assertIn('+8 MORE ON WEB GIGS PAGE',lines)
+        self.assertEqual(lines[:3], ['-' * COLUMNS, 'GIGS TODAY'.center(COLUMNS), '-' * COLUMNS])
         result['events']=[]
         self.assertEqual(gigs.receipt_lines(result), [])
     def test_geohash_reference(self):

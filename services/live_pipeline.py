@@ -4781,16 +4781,14 @@ def run_live_pipeline(
             except Exception as error:
                 print("Sport news error:", repr(error))
 
-        from services.local_gigs import get_gigs, options as gig_options, receipt_lines as gig_lines
+        from services.local_gigs import get_gigs, options as gig_options, print_receipt as print_gigs_receipt
         gig_settings = gig_options()
         if gig_settings["enabled"]:
             preview_progress("Checking today's local gigs", 0, 5)
             try:
                 gigs = get_gigs(location, datetime.now(ZoneInfo("Europe/London")).date(),
                                 int(gig_settings.get("radius_km", 25)))
-                printer.text("\n")
-                for row in gig_lines(gigs, int(gig_settings.get("receipt_limit", 8))):
-                    left(printer, printer_safe_text(row))
+                print_gigs_receipt(printer, gigs, int(gig_settings.get("receipt_limit", 8)))
             except Exception:
                 left(printer, "GIG LISTINGS UNAVAILABLE")
 

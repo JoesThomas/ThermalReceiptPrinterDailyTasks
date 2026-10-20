@@ -180,7 +180,7 @@ def receipt_lines(result, limit=8):
     from textwrap import wrap
     if result["status"] == "ok" and not result["events"] and not result["truncated"]:
         return []
-    lines = ['GIGS TODAY', '-'*COLUMNS, f"{result['location']} / {result['radius']} KM"]
+    lines = ['-'*COLUMNS, 'GIGS TODAY'.center(COLUMNS), '-'*COLUMNS, f"{result['location']} / {result['radius']} KM"]
     if result['status'] == 'not_configured':
         lines.append('SET UP TICKETMASTER IN WEB GIGS PAGE')
     elif result['status'] == 'unavailable':
@@ -196,4 +196,19 @@ def receipt_lines(result, limit=8):
         lines.append('LISTINGS INCOMPLETE')
     lines.append('TICKETMASTER LISTINGS / CHECK DETAILS')
     lines.append('-'*COLUMNS)
-    return [part for line in lines for part in wrap(line,width=COLUMNS)]
+    return [part for line in lines for part in (
+        [line] if len(line) <= COLUMNS else wrap(line, width=COLUMNS))]
+
+
+def print_receipt(printer, result, limit=8):
+    """Use the same centred, bold section heading as the other daily sections."""
+    from receipt import output
+    rows = receipt_lines(result, limit)
+    if not rows:
+        return
+    output.line(printer)
+    printer.set(bold=True)
+    output.heading(printer, "GIGS TODAY")
+    printer.set(bold=False)
+    for row in rows[2:]:
+        output.left(printer, row)
