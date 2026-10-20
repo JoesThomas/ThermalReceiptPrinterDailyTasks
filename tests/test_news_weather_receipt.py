@@ -18,6 +18,66 @@ def renderer(name, namespace):
 
 
 class NewsWeatherReceiptTests(unittest.TestCase):
+    def test_rules_reset_physical_justification_after_centred_titles(self):
+        from escpos.printer import Dummy
+        from receipt import output
+        from receipt.capture import RecordingPrinter
+        for render_line in (output.line, renderer("print_line", {})):
+            for deferred in (False, True):
+                with self.subTest(renderer=render_line, deferred=deferred):
+                    device = Dummy()
+                    printer = RecordingPrinter(device, defer=deferred)
+                    output.centre(printer, "WEATHER")
+                    render_line(printer, "=")
+                    output.left(printer, "TODAY")
+                    output.centre(printer, "LIGHT RAIN")
+                    render_line(printer)
+                    if deferred:
+                        printer.send()
+                    raw = device.output
+                    # Test actual ESC/POS alignment bytes, not just the 42-column
+                    # web capture which hides the physical printer's extra space.
+                    reset_rule = b"\x1ba\x00" + b"-" * 42 + b"\n"
+                    self.assertEqual(raw.count(reset_rule), 2)
+                    self.assertEqual(printer.align, "left")
+                    self.assertEqual([row for row in ''.join(printer.lines).splitlines()
+                                      if row.startswith('-')], ['-' * 42] * 2)
+                    self.assertIn(b"\x1ba\x01", raw)
+
+    def test_weather_rules_share_body_margin_on_wider_printer(self):
+        from datetime import datetime
+        from receipt.weather_renderers import print_weather, WeatherDependencies
+        class WidePrinter:
+            def __init__(self):
+                self.align = 'left'
+                self.rows = []
+            def set(self, **kwargs):
+                self.align = kwargs.get('align', self.align)
+            def text(self, value):
+                for row in value.splitlines():
+                    offset = (48 - len(row)) // 2 if self.align == 'center' else 0
+                    self.rows.append((row, offset))
+        printer = WidePrinter()
+        weather = {
+            'current': {'temperature_2m': 10.7, 'weather_code': 61,
+                        'apparent_temperature': 9.8, 'relative_humidity_2m': 98,
+                        'wind_speed_10m': 7.6, 'surface_pressure': 997,
+                        'wind_direction_10m': 69},
+            'daily': {'temperature_2m_max': [11.1], 'temperature_2m_min': [9.3],
+                      'precipitation_probability_max': [100],
+                      'sunrise': ['2026-10-20T07:41'], 'sunset': ['2026-10-20T18:02']},
+        }
+        deps = WeatherDependencies(get_hourly_weather=lambda *a, **kw: [],
+                                   print_temperature_graph=lambda *a: None,
+                                   now=lambda: datetime(2026, 10, 20, 9))
+        print_weather(printer, weather, {'name': 'Stirchley', 'region': 'Birmingham, UK'}, deps=deps)
+        rules = [offset for row, offset in printer.rows if row == '-' * 42]
+        self.assertGreater(len(rules), 4)
+        self.assertEqual(set(rules), {0})
+        self.assertTrue(all(offset == 0 for row, offset in printer.rows
+                            if row.startswith(('TODAY', 'MAX ', 'CURRENT CONDITIONS', 'TEMP '))))
+        self.assertTrue(any(row == 'WEATHER' and offset > 0 for row, offset in printer.rows))
+
     def test_temperature_graph_fits_receipt_and_centres_image(self):
         sizes = []
         alignment = []
