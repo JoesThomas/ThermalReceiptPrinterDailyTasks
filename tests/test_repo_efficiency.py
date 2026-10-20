@@ -57,6 +57,7 @@ class RepoEfficiencyTests(TestCase):
         rendered = []
         weather_details = []
         weather_coordinates = []
+        headline_counts = []
 
         def collect(name):
             barrier.wait(timeout=3)
@@ -92,7 +93,7 @@ class RepoEfficiencyTests(TestCase):
             LOCAL_NEWS_HEADLINES=3,
             SPORT_NEWS_HEADLINES=3,
             get_weather=lambda *args: (weather_coordinates.append(args), collect("weather"))[1],
-            get_top_news_headlines=lambda *args: collect("national"),
+            get_top_news_headlines=lambda count: (headline_counts.append(count), collect("national"))[1],
             get_local_news_headlines=lambda *args: collect("local"),
             get_sport_news_headlines=lambda *args: collect("sport"),
             print_weather=lambda p, value, *args, **kwargs: (rendered.append(value), weather_details.append(kwargs["detail"])),
@@ -120,6 +121,8 @@ class RepoEfficiencyTests(TestCase):
         self.assertEqual(set(collected), {"weather", "national", "local", "sport"})
         self.assertEqual(rendered, ["weather", "national", "local", "sport"])
         self.assertEqual(weather_details, ["full"])
+        self.assertEqual(headline_counts, [settings["display"]["news_count"]])
+        self.assertEqual(headline_counts, [3])  # Legacy compact no longer caps headlines.
         self.assertEqual(weather_coordinates, [(55.95, -3.19)])
 
     def test_printer_cleaner_keeps_pounds_and_removes_control_sequences(self):

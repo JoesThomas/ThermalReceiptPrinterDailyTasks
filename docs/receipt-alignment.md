@@ -36,3 +36,22 @@ conditions wrap inside their final column, with the current reading hour bold
 on the physical printer and no extra marker or legend. Plain-text captures
 retain the table spacing but do not store printer bold styling. The gigs
 heading uses the same centred, bold style and dividers as other sections.
+
+Daily settings, preview and print planning no longer offer compact/full detail.
+Use the headline-count settings to control news length; Test finance retains
+its separate compact/detailed selector. Old saved daily detail fields and CLI
+`--detail` arguments remain accepted but have no effect.
+
+There is no opening feed or cut. Blank lines at the beginning of each physical
+page are discarded, and footer/section renderers no longer add three blank
+lines before cutting. On profiles that support ESC/POS cutting, `ContentPrinter`
+uses GS V Function B with zero extra feed, preserving full/partial cutter
+capabilities. This feeds to the cutter position without the library's extra six
+lines. Explicit cut options and unknown profiles retain the library behavior.
+The last text/raster line is completed before cutting. This applies to live,
+reordered and saved-receipt prints as well as the short paper test.
+
+The gap between print head and cutter still sets a physical minimum margin;
+no reverse feed is used. Verify the final footer and cut on a fresh physical
+receipt, since compatible printer firmware varies.
+Reference: https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/gs_cv.html

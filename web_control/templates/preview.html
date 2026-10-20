@@ -71,13 +71,6 @@
                             {% endfor %}
                         </select>
                     </label>
-                    <label>
-                        Receipt detail
-                        <select name="detail">
-                            <option value="compact">Daily summary · less paper</option>
-                            <option value="detailed">Full detail</option>
-                        </select>
-                    </label>
                     <a class="button" href="{{ url_for('index',view='receipt') }}">Receipt options</a>
                     <a class="button" href="{{ url_for('archive_list') }}">Past receipts</a>
                     <button class="primary"

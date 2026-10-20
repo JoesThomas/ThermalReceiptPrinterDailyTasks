@@ -120,7 +120,6 @@ def print_random_document_lines(printer, text, *, _context):
 def print_footer(printer, *, _context):
     left = _context.get('left')
     print_line = _context.get('print_line')
-    printer_text = _context.get('printer_text')
     from receipt.local_time import uk_now
     from receipt.freshness import snapshot
     print_line(printer, '-')
@@ -130,7 +129,6 @@ def print_footer(printer, *, _context):
         left(printer, 'Includes cached information')
     if any((state in ('partial', 'unavailable') for state in states)):
         left(printer, 'Some information incomplete')
-    printer_text(printer, '\n\n\n')
 
 def print_vehicle_expiry_checks(printer, vehicles, dvla_api_key, *, _context):
     ZoneInfo = _context.get('ZoneInfo')

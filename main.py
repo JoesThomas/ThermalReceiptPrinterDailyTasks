@@ -26,7 +26,7 @@ def parse_args():
         help="Print only one live receipt page for debugging/testing.",
     )
     parser.add_argument('--pages', nargs='+', choices=('information','actions','food','finance'), help='Generate selected live sections in your configured order.')
-    parser.add_argument('--detail',choices=('compact','detailed'),help='Override receipt detail for this run only.')
+    parser.add_argument('--detail',choices=('compact','detailed'),help=argparse.SUPPRESS)
     args=parser.parse_args()
     if args.pages and args.only: parser.error('Use either --pages or --only.')
     if args.pages and len(set(args.pages)) != len(args.pages): parser.error('Choose each section once.')
@@ -72,9 +72,7 @@ def build_demo_documents(day: date, finance_requested: bool) -> list[ReceiptDocu
 def main():
     args = parse_args()
     logger = configure_logging()
-    if args.detail:
-        import os
-        os.environ['RECEIPT_DETAIL_OVERRIDE']=args.detail
+    # Legacy --detail arguments remain accepted for existing launch scripts.
 
     if args.finance_debug:
         from finance_debug import run_finance_debug

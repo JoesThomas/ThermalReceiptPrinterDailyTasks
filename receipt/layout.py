@@ -3,17 +3,18 @@ from receipt.profile import COLUMNS
 from io import BytesIO
 
 PAGES = ('information', 'actions', 'food', 'finance')
-DEFAULT = {'order': list(PAGES), 'detail': 'compact', 'paper_saver': True}
+DEFAULT = {'order': list(PAGES), 'paper_saver': True}
 
 
 def validate(value):
-    if not isinstance(value, dict) or not isinstance(value.get('detail', 'detailed'), str) or value.get('detail', 'detailed') not in {'compact', 'detailed'}:
-        raise ValueError('Choose compact or detailed receipts.')
+    if not isinstance(value, dict):
+        raise ValueError('Receipt layout must be an object.')
+    # Old saved detail preferences are accepted but no longer affect daily output.
     order = value.get('order', list(PAGES))
     if not isinstance(order, list) or len(order) != 4 or any(not isinstance(x, str) for x in order) or set(order) != set(PAGES):
         raise ValueError('Choose each receipt page once.')
     if type(value.get('paper_saver',True)) is not bool: raise ValueError('Choose paper-saving spacing on or off.')
-    return {'order': order, 'detail': value.get('detail', 'detailed'), 'paper_saver': value.get('paper_saver',True)}
+    return {'order': order, 'paper_saver': value.get('paper_saver',True)}
 
 
 class OrderedPrinter:

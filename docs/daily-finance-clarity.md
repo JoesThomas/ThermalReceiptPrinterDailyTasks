@@ -32,7 +32,7 @@ Prepare print explains why sections and date-triggered reminders appear. These e
 
 New installations default to daily summary; an existing explicit detail preference is preserved. Paper-saving spacing is enabled by default, including when older settings have no spacing preference. It can be disabled under Receipt options. It removes repeated blank lines, adjacent repeated rules and blank lines between news stories, without removing headlines, warning text, amounts, tasks, weather graphs or illustrations. The captured preview and physical printer receive the same shortened text.
 
-Finance also omits a second, identical accessible-savings runway when accessible savings are zero, and repeats each identical projection warning only once. Daily summary caps headlines at two per news section; full detail remains available per generation or print without changing saved preferences.
+Finance also omits a second, identical accessible-savings runway when accessible savings are zero, and repeats each identical projection warning only once. Daily receipts use the configured headline counts. The daily compact/full switch has been removed; the separate compact/detailed selector in Test finance remains available.
 
 Preview and Prepare print estimate length from saved text and image dimensions. The estimate assumes 42 columns, 3.75 mm text line pitch, 203-dpi images and 15 mm cutter feed per page. It is approximate: actual printer spacing, wrapping and newly collected content can differ. Annual use assumes this same receipt length every day.
 

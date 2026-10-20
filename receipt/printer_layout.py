@@ -5,6 +5,7 @@ one-space inset only as text is sent to hardware. Native-centred headings
 and full-width bitmaps retain their shared paper midpoint.
 """
 from receipt.profile import COLUMNS, FONT_A_DOTS, printable_width
+import re
 
 
 class ContentPrinter:
@@ -14,6 +15,7 @@ class ContentPrinter:
         self.align = 'left'
         self.line_start = True
         self.image_pending = False
+        self.page_start = True
 
     def __getattr__(self, name):
         return getattr(self.printer, name)
@@ -22,6 +24,7 @@ class ContentPrinter:
         self.printer.hw(command)
         if command == 'init':
             self.align, self.line_start, self.image_pending = 'left', True, False
+            self.page_start = True
 
     def set(self, *args, **kwargs):
         if kwargs.get('align'):
@@ -42,8 +45,11 @@ class ContentPrinter:
         value = str(value)
         if self._finish_image() and value.startswith('\n'):
             value = value[1:]
+        if self.page_start:
+            value = re.sub(r'^(?:[ \t]*\r?\n)+', '', value)
         if not value:
             return
+        self.page_start = False
         padding = max(0, (printable_width(self.printer) // FONT_A_DOTS - self.columns) // 2)
         rows = []
         for row in value.splitlines(keepends=True):
@@ -60,8 +66,26 @@ class ContentPrinter:
         self.printer.set(align='center')
         self.printer.image(*args, **kwargs)
         self.image_pending = True
+        self.page_start = False
 
     def cut(self, *args, **kwargs):
         self._finish_image()
-        self.printer.cut(*args, **kwargs)
+        if not self.line_start:
+            self.printer.text('\n')
+        profile = getattr(self.printer, 'profile', None)
+        supports = getattr(profile, 'supports', None)
+        raw = getattr(self.printer, '_raw', None)
+        # GS V Function B advances the final print line to the cutter, with no
+        # extra feed. Preserve full/partial support and explicit caller options.
+        shape = None
+        if callable(supports):
+            if supports('paperFullCut') is True:
+                shape = 65
+            elif supports('paperPartCut') is True:
+                shape = 66
+        if not args and not kwargs and callable(raw) and shape is not None:
+            raw(b'\x1dV' + bytes((shape, 0)))
+        else:
+            self.printer.cut(*args, **kwargs)
         self.line_start = True
+        self.page_start = True
