@@ -403,6 +403,9 @@
                     </form>
                 </section>
             {% endif %}
+            {% if active_view == 'settings' %}
+                {% include 'printer_paper.html' %}
+            {% endif %}
             {% if active_view in ['receipt','settings'] %}
                 <!-- RECEIPT SETTINGS -->
 

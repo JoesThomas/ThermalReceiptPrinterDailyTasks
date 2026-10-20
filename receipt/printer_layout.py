@@ -1,10 +1,10 @@
 """Physical-only text positioning, independent of raster margin side effects.
 
-Keep saved content at 46 columns. On the 48-column Font A printer, add the
-one-space inset only as text is sent to hardware. Native-centred headings
+Keep saved content at the configured column width. On the default 48-column
+Font A printer, add the one-space inset only as text is sent to hardware. Native-centred headings
 and full-width bitmaps retain their shared paper midpoint.
 """
-from receipt.profile import COLUMNS, FONT_A_DOTS, printable_width
+from receipt.profile import COLUMNS, FONT_A_DOTS, printable_width, fit_text
 import re
 
 
@@ -42,7 +42,7 @@ class ContentPrinter:
         return pending
 
     def text(self, value):
-        value = str(value)
+        value = fit_text(value, self.columns)
         if self._finish_image() and value.startswith('\n'):
             value = value[1:]
         if self.page_start:
@@ -64,6 +64,21 @@ class ContentPrinter:
     def image(self, *args, **kwargs):
         self._finish_image()
         self.printer.set(align='center')
+        from PIL import Image
+        from io import BytesIO
+        if args and hasattr(args[0], 'read'):
+            source = args[0]
+            position = source.tell()
+            source.seek(0)
+            bitmap = Image.open(source)
+            width = printable_width(self.printer)
+            if bitmap.width > width:
+                bitmap = bitmap.resize((width, round(bitmap.height * width / bitmap.width)))
+                buffer = BytesIO()
+                bitmap.save(buffer, format='PNG')
+                buffer.seek(0)
+                args = (buffer, *args[1:])
+            source.seek(position)
         self.printer.image(*args, **kwargs)
         self.image_pending = True
         self.page_start = False

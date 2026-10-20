@@ -22,6 +22,7 @@ def open_printer(*, initial_cut=False):
     if connection == "usb":
         printer = Usb(USB_VENDOR_ID, USB_PRODUCT_ID)
         try:
+            printer.profile.profile_data["media"]["width"]["pixels"] = PRINTABLE_PIXELS
             if initial_cut: printer.cut()
         except Exception:
             printer.close()
@@ -34,6 +35,7 @@ def open_printer(*, initial_cut=False):
             raise ValueError("Network printer host or port is invalid")
         printer = Network(host, port=port, timeout=10)
         try:
+            printer.profile.profile_data["media"]["width"]["pixels"] = PRINTABLE_PIXELS
             # Connect before receipt generation; Network otherwise connects lazily.
             printer.open()
             # Only separate leftover paper when explicitly requested.

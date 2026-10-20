@@ -111,8 +111,8 @@ def reprint(identifier, page='all'):
         for name in names:
             # Historical captures retain their original columns and indentation.
             widths = [len(row) for row in item['pages'][name].splitlines()
-                      if row and set(row) <= {'-', '='} and len(row) in (40, 42, COLUMNS)]
-            printer.columns = max(widths) if widths else COLUMNS
+                      if row and set(row) <= {'-', '='} and 20 <= len(row) <= 80]
+            printer.columns = min(COLUMNS, max(widths)) if widths else COLUMNS
             printer.set(align='left')
             for block in receipt_blocks(item['pages'][name], item.get('page_images', {}).get(name, [])):
                 if 'text' in block:

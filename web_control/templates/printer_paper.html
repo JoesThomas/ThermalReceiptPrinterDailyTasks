@@ -1,0 +1,87 @@
+<section id="printer-paper" class="panel">
+    <h2>Printer size &amp; paper rolls</h2>
+    <form method="post" action="{{ url_for('save_printer_paper') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <fieldset>
+            <legend>Roll use estimate</legend>
+            <p>
+                Generate a receipt preview to see yearly roll usage, replacement changes and days per roll. Estimates appear on <a href="{{ url_for('preview') }}">Receipt preview</a> and Prepare print.
+            </p>
+            <p>
+                Double Dragon 80 × 80 mm describes paper width and roll diameter, not paper length. The initial 80 m value below is an editable assumption, not a confirmed length for your rolls. Use the length on your packaging or supplier specification.
+            </p>
+            <label>
+                Paper length per roll (metres)
+                <input type="number"
+                       name="roll_length_m"
+                       min="1"
+                       max="1000"
+                       step="0.1"
+                       value="{{ paper_settings.roll_length_m }}"
+                       required>
+            </label>
+            <label>
+                Prints of the saved page bundle per week
+                <input type="number"
+                       name="prints_per_week"
+                       min="0"
+                       max="70"
+                       step="0.1"
+                       value="{{ paper_settings.prints_per_week }}"
+                       required>
+            </label>
+            <label>
+                Allowance for unusable paper (%)
+                <input type="number"
+                       name="waste_percent"
+                       min="0"
+                       max="50"
+                       step="0.1"
+                       value="{{ paper_settings.waste_percent }}"
+                       required>
+            </label>
+        </fieldset>
+        <fieldset>
+            <legend>Printer size</legend>
+            <label>
+                Printer profile
+                <select name="preset">
+                    <option value="80mm"
+                            {% if paper_settings.preset == '80mm' %}selected{% endif %}>
+                        80 mm · 46 columns · 576 dots · 203 dpi
+                    </option>
+                    <option value="58mm"
+                            {% if paper_settings.preset == '58mm' %}selected{% endif %}>
+                        58 mm · 30 columns · 384 dots · 203 dpi
+                    </option>
+                    <option value="custom"
+                            {% if paper_settings.preset == 'custom' %}selected{% endif %}>
+                        Custom printer dimensions
+                    </option>
+                </select>
+            </label>
+            <p>
+                Changing printer dimensions requires restarting Receipt Control. Paper length and usage assumptions update immediately. The printer must support ESC/POS; changing paper size cannot add hardware compatibility.
+            </p>
+            <details>
+                <summary>Custom dimensions and estimate calibration</summary>
+                <p>
+                    Custom dimensions apply only with the Custom profile. Use your printer manual's printable width and Font A character width, rather than the roll diameter.
+                </p>
+                {% for key,label,minimum,maximum in [('paper_width_mm','Paper width (mm)',40,120),('columns','Text columns per line',20,80),('printable_pixels','Printable width (dots, multiple of 8)',256,1024),('dpi','Printer resolution (dpi)',180,600),('font_dots','Font A character width (dots)',8,32),('line_mm','Estimated line height (mm)',1,10),('cutter_mm','Estimated cutter allowance per page (mm)',0,50)] %}
+                    <label>
+                        {{ label }}
+                        <input type="number"
+                               name="{{ key }}"
+                               min="{{ minimum }}"
+                               max="{{ maximum }}"
+                               step="{{ '0.01' if key in ['paper_width_mm','line_mm','cutter_mm'] else '1' }}"
+                               value="{{ paper_settings[key] }}"
+                               required>
+                    </label>
+                {% endfor %}
+            </details>
+        </fieldset>
+        <button>Save printer &amp; paper settings</button>
+    </form>
+</section>

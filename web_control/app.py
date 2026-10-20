@@ -914,6 +914,9 @@ def _job_active(path):
 
 
 def _start_print_command_locked(command_args):
+    from receipt.profile import restart_required
+    if restart_required():
+        return False, 'Restart Receipt Control to apply the new printer size before printing.'
     from flask import has_request_context
     if '--only' in command_args and command_args[command_args.index('--only')+1] == 'food' and not load_receipt_settings()['features'].get('meals', True):
         return False, 'Meals on receipt is turned off. Enable it in Settings before generating a food page.'
@@ -1394,6 +1397,9 @@ def meal_skip():
 
 from web_control.test_finance_tools import register as register_test_finance
 register_test_finance(app, login_required, _start_print_command)
+
+from web_control.paper_settings import register as register_paper_settings
+register_paper_settings(app, login_required)
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

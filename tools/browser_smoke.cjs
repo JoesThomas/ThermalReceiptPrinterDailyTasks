@@ -459,6 +459,20 @@ process.on('exit', () => child.kill());
   assert.match(await page.locator('main').innerText(), /Tiny paper test queued/);
   assert.deepEqual(await page.evaluate(async () => (await fetch('/__fixture_last_print')).json()), ['--paper-test']);
 
+  await page.goto('http://receipt.test/?view=settings');
+  const paperForm=page.locator('#printer-paper form');
+  assert.equal(Number(await paperForm.locator('input[name=roll_length_m]').inputValue()),80);
+  await paperForm.locator('input[name=roll_length_m]').fill('65');
+  await paperForm.locator('select[name=preset]').selectOption('58mm');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),paperForm.getByRole('button',{name:'Save printer & paper settings',exact:true}).click()]);
+  assert.match(await page.locator('body').innerText(), /Restart Receipt Control/);
+  assert.equal(Number(await page.locator('#printer-paper input[name=roll_length_m]').inputValue()),65);
+  await page.locator('#printer-paper select[name=preset]').selectOption('80mm');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.locator('#printer-paper').getByRole('button',{name:'Save printer & paper settings',exact:true}).click()]);
+  await page.goto('http://receipt.test/preview?source=live');
+  assert.match(await page.locator('body').innerText(), /rolls per year/);
+  assert.match(await page.locator('body').innerText(), /65.0 m roll/);
+
   const accessibilityFailures = [];
   let checks = 0;
   for (const width of [360,390,768,1280]) {

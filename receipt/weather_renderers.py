@@ -49,13 +49,41 @@ def _table_rows(headers, rows):
               for i in range(len(headers) - 1)]
     last_width = COLUMNS - sum(widths) - len(widths)
     if last_width < len(headers[-1]):
-        raise ValueError("Weather columns exceed receipt width")
+        # Narrow rolls keep all summary fields in smaller header/value groups.
+        middle = max(1, len(headers) // 2)
+        yield from _table_rows(headers[:middle], [row[:middle] for row in rows])
+        yield from _table_rows(headers[middle:], [row[middle:] for row in rows])
+        return
     table_width = sum(widths) + len(widths) + min(last_width, max(len(str(row[-1])) for row in [headers, *rows]))
     padding = " " * ((COLUMNS - table_width) // 2)
     for row in [headers, *rows]:
         prefix = " ".join(str(value).ljust(width) for value, width in zip(row, widths)) + " "
         for index, tail in enumerate(wrap(str(row[-1]), width=last_width) or [""]):
             yield padding + (prefix if index == 0 else " " * len(prefix)) + tail
+
+
+def _hourly_rows(rows):
+    if COLUMNS >= 40:
+        yield from _table_rows(("Time", "Temp", "Humidity", "Wind", "Weather"), rows)
+        return
+    headers = ("Time", "Temp", "Hum.", "Wind")
+    numbers = [row[:4] for row in rows]
+    widths = [max(len(str(row[i])) for row in [headers, *numbers]) for i in range(4)]
+    if sum(widths) + 3 <= COLUMNS:
+        padding = " " * ((COLUMNS - sum(widths) - 3) // 2)
+        def numeric_row(row):
+            return padding + " ".join(str(value).ljust(width) for value, width in zip(row, widths)).rstrip()
+        yield numeric_row(headers)
+        for row in rows:
+            yield numeric_row(row[:4])
+            for condition in wrap(row[-1], width=COLUMNS - len(padding) - 2):
+                yield padding + "  " + condition
+    else:
+        # Very narrow custom printers trade more lines for complete readings.
+        for row in rows:
+            yield from _table_rows(("Time", "Temperature"), [(row[0], row[1])])
+            yield from _table_rows(("Humidity", "Wind"), [(row[2], row[3])])
+            yield from wrap(row[4], width=COLUMNS)
 
 
 def _weather_title(location):
@@ -176,8 +204,7 @@ def print_weather(
     rows = [(reading["time"], f"{reading['temperature']:.1f}C",
              f"{reading['humidity']:.0f}%", f"{reading['wind']:.1f}km/h",
              weather_description(reading["code"])) for reading in text_readings]
-    table = iter(_table_rows(("Time", "Temp", "Humidity", "Wind", "Weather"), rows))
-    left(printer, next(table))
+    table = iter(_hourly_rows(rows))
     bold = False
     try:
         for row in table:
@@ -185,6 +212,8 @@ def print_weather(
             time = row.lstrip().split(maxsplit=1)[0]
             if len(time) == 5 and time[2] == ":":
                 bold = time == current_hour
+            elif time in {"Time", "Humidity"}:
+                bold = False
             printer.set(bold=bold)
             left(printer, row)
     finally:
