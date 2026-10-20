@@ -448,7 +448,6 @@ def save_receipt_layout():
     from receipt.layout import validate as validate_layout
     try:
         layout = validate_layout({'order': [request.form.get(f'page_{n}', '') for n in range(4)],
-                                  'detail': request.form.get('detail', 'detailed'),
                                   'paper_saver': 'on' in request.form.getlist('paper_saver') if 'paper_saver' in request.form else True})
         settings = load_receipt_settings()
         settings['layout'] = layout
@@ -1121,7 +1120,6 @@ def _generate_live_preview_locked():
                 args += ['--only', page]
             if retry:
                 args += ['--refresh-source', retry]
-            if request.form.get('detail'):args += ['--detail',request.form['detail']]
             process = subprocess.Popen(
                 [sys.executable, str(PROJECT_ROOT / "web_control" / "preview_job.py"), *args],
                 cwd=PROJECT_ROOT, stdout=log_handle, stderr=subprocess.STDOUT,

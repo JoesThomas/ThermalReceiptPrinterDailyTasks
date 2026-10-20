@@ -389,21 +389,8 @@
                                 </select>
                             </label>
                         {% endfor %}
-                        <label>
-                            Detail
-                            <select name="detail">
-                                <option value="detailed"
-                                        {% if settings.layout.detail == 'detailed' %}selected{% endif %}>
-                                    Full detail
-                                </option>
-                                <option value="compact"
-                                        {% if settings.layout.detail == 'compact' %}selected{% endif %}>
-                                    Compact
-                                </option>
-                            </select>
-                        </label>
                         <p class="muted">
-                            Daily summary uses at most two headlines per news section. Weather graphs, tasks, exercise instructions and finance amounts stay complete.
+                            Daily receipts use your configured headline counts and include all enabled sections. Compact and detailed output remain available in Test finance.
                         </p>
                         <input type="hidden" name="paper_saver" value="off">
                         <label>

@@ -119,7 +119,6 @@ def reprint(identifier, page='all'):
                     printer.text(block['text'])
                 else:
                     printer.image(BytesIO(base64.b64decode(block['image'].split(',', 1)[1], validate=True)))
-            printer.text('\n')
             printer.cut()
         from receipt.recovery import mark
         mark(identifier,'sent_at')

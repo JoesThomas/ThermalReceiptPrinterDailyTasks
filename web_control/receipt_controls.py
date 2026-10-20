@@ -43,7 +43,7 @@ def register(app, login_required, start_print, root):
         except ValueError: abort(400)
         detail=request.form.get('detail','')
         if detail not in {'','compact','detailed'}:abort(400)
-        args=['--pages', *pages]+(['--detail',detail] if detail else [])
+        args=['--pages', *pages]
         started, error = start_print(args)
         flash('Selected receipt pages queued.' if started else error)
         return redirect(url_for('preview'))

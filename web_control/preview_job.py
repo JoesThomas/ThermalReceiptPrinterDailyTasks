@@ -36,7 +36,7 @@ def main():
         parser.add_argument('--pages', nargs='+', choices=['information','actions','food','finance'])
         from web_control.receipt_controls import RETRIES
         parser.add_argument('--refresh-source', choices=list(RETRIES))
-        parser.add_argument('--detail',choices=('compact','detailed'))
+        parser.add_argument('--detail',choices=('compact','detailed'), help=argparse.SUPPRESS)
         options = parser.parse_args()
         args = ['--finance'] if options.finance or options.only == 'finance' else []
         if options.pages:
@@ -45,7 +45,6 @@ def main():
             args += ['--pages', *options.pages]
         elif options.only:
             args += ['--only', options.only]
-        if options.detail:args += ['--detail',options.detail]
         job_id = json.loads(STATUS.read_text())['job_id']
         log_event(job_id, 'preview started')
         code = run_bounded([sys.executable, str(ROOT / "main.py"), "--live-preview", *args],

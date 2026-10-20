@@ -12,7 +12,6 @@ DEFAULT_SETTINGS = {
     "api_health": {"enabled": True, "interval_minutes": 60},
     "layout": {
         "order": ["information", "actions", "food", "finance"],
-        "detail": "compact",
         "paper_saver": True,
     },
     "print_schedule": {"enabled": True, "time": "03:00"},
@@ -107,7 +106,7 @@ def settings_diagnosis(raw):
     """Return a safe validator reason, never a supplied value or traceback."""
     allowed = {
         "Receipt settings must be an object.", "Unsupported private schema version",
-        "Choose compact or detailed receipts.", "Choose each receipt page once.",
+        "Receipt layout must be an object.", "Choose each receipt page once.",
         "Invalid daily print time.", "Invalid backup retention.",
         "Invalid integration check interval.", "Invalid headline count.",
         "Invalid weather detail.", "Invalid therapy payment provider.",
