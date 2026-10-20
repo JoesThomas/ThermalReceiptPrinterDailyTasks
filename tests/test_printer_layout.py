@@ -64,7 +64,8 @@ class PrinterLayoutTests(TestCase):
                     self.assertEqual(device.printed, [])
                     recorder.send()
                 rows = [(align, row) for align, value in device.printed for row in value.splitlines() if row]
-                self.assertEqual([row for align, row in rows if not row.startswith(' ')], ['CENTRED HEADING'])
+                self.assertEqual(rows[0], ('left', 'CURRENT CONDITIONS'))
+                self.assertTrue(all(not row.startswith(' ') for align, row in rows))
                 self.assertEqual(rows[-1], ('center', 'CENTRED HEADING'))
                 self.assertTrue(all(align == 'left' for align, row in rows[:-1]))
                 self.assertEqual(device.images, 4)
@@ -73,7 +74,7 @@ class PrinterLayoutTests(TestCase):
 
     def test_split_text_keeps_columns_currency_and_one_inset(self):
         device = RasterResetPrinter()
-        printer = ContentPrinter(device)
+        printer = ContentPrinter(device, columns=46)
         printer.text('[ ] A ')
         printer.text('task\n\nHSBC'.ljust(10) + ' £1,000.00\n')
         text = ''.join(value for _, value in device.printed)
@@ -99,7 +100,7 @@ class PrinterLayoutTests(TestCase):
         printer.flush()
         recorder.send()
         rows = [value for _, value in device.printed if value.strip()]
-        self.assertEqual(rows, [' [ ] Task\n', ' Before graph\n', ' After graph\n'])
+        self.assertEqual(rows, ['[ ] Task\n', 'Before graph\n', 'After graph\n'])
         self.assertEqual(device.cuts, 2)
 
     def test_archive_reprint_and_lazy_hardware_connection(self):
@@ -111,12 +112,12 @@ class PrinterLayoutTests(TestCase):
         self.assertEqual(calls, [])
         lazy.text('Lazy line\n')
         self.assertEqual(calls, ['open'])
-        self.assertEqual(device.printed[-1], ('left', ' Lazy line\n'))
+        self.assertEqual(device.printed[-1], ('left', 'Lazy line\n'))
         encoded = 'data:image/png;base64,' + base64.b64encode(bitmap().getvalue()).decode()
         item = {'pages': {'information': 'Before\n[[RECEIPT_IMAGE_0]]\n\nAfter\n'},
                 'page_images': {'information': [encoded]}}
         with patch.object(archive, 'load', return_value=item), patch('receipt.printer.open_printer', return_value=device), patch('receipt.recovery.mark'):
             archive.reprint('example', 'information')
-        self.assertIn(' After\n', ''.join(value for _, value in device.printed))
+        self.assertIn('After\n', ''.join(value for _, value in device.printed))
         self.assertEqual(device.images, 1)
         self.assertEqual(device.cuts, 1)

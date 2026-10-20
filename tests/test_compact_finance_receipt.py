@@ -109,14 +109,14 @@ class CompactFinanceTests(TestCase):
             self.assertIn("£2,100.00", section)
             self.assertIn("£400.00", section)
             self.assertIn("MONZO: first account default; check", section)
-            self.assertIn("Combined bank balance                £2,500.00", text)
+            self.assertIn("Combined bank balance                  £2,500.00", text)
             self.assertIn("Checked: 15 Oct 2026, 18:00 BST", text)
             self.assertNotIn("Starting Monzo override", text)
             self.assertTrue(all(len(line) <= COLUMNS for line in text.splitlines()))
         self.assertEqual(original, result)
         overridden = build(base, values(), TODAY)
         text = receipt(overridden, TODAY, detail="compact")
-        self.assertIn("Starting Monzo override                £200.00", text)
+        self.assertIn("Starting Monzo override                  £200.00", text)
         self.assertIn("combined bank cash unchanged", " ".join(text.split()))
 
     def test_collection_preserves_selected_balance_sources_and_manual_override(self):
@@ -177,9 +177,9 @@ class CompactFinanceTests(TestCase):
         for detail in ("compact", "detailed"):
             text = receipt(result, TODAY, detail=detail)
             self.assertNotIn("CONNECTED BANK BALANCES", text)
-            self.assertIn("HSBC (scenario)                      £2,300.00", text)
-            self.assertIn("Monzo (scenario)                       £200.00", text)
-            self.assertIn("Combined bank cash used              £2,500.00", text)
+            self.assertIn("HSBC (scenario)                        £2,300.00", text)
+            self.assertIn("Monzo (scenario)                         £200.00", text)
+            self.assertIn("Combined bank cash used                £2,500.00", text)
             self.assertIn("Manual starting cash", text)
 
     def test_compact_receipt_orders_actions_before_outcomes_and_keeps_money_correct(

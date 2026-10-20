@@ -87,6 +87,14 @@ class PaperProfileTests(TestCase):
         self.assertEqual(Image.open(sent).size,(384,80))
         self.assertEqual(stream.tell(),0)
 
+    def test_standard_80mm_upgrades_to_48_but_custom_46_is_preserved(self):
+        legacy = dict(paper.DEFAULT, preset='80mm', columns=46)
+        upgraded = paper.validate(legacy)
+        self.assertEqual(upgraded['columns'],48)
+        self.assertEqual(legacy['columns'],46)  # No mutation during a read.
+        self.assertEqual(paper.validate(dict(legacy,preset='custom'))['columns'],46)
+        self.assertEqual(paper.validate(dict(paper.DEFAULT,**paper.PRESETS['58mm'],preset='58mm'))['columns'],30)
+
     def test_fit_preserves_indent_and_values_and_reflows_rules(self):
         value=fit_text('  A very long account description with £50,000.00\n'+'-'*46+'\n',30)
         self.assertIn('£50,000.00',value)

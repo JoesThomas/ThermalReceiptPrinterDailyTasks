@@ -279,7 +279,7 @@ def register(app, login_required, start_print):
             try:
                 item = load(identifier)
                 candidate = item["pages"].get("finance", "")
-                if any(candidate.startswith("-" * n + "\n") for n in (42, COLUMNS)) and (
+                if any(candidate.startswith("-" * n + "\n") for n in (42, 46, COLUMNS)) and (
                     "SIMULATION - POTENTIAL SALARY" in candidate
                     or "SIMULATION - LUMP SUM ONLY" in candidate
                 ):

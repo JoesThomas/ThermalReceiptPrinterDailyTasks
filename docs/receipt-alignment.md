@@ -1,15 +1,15 @@
 # Centred receipt content
 
-The 80mm, 203dpi printer has a 576-dot printable line. Font A has a 12-dot
-character cell: the existing 46-column content fits within a 48-column physical
-line. `ContentPrinter` adds a one-space inset at the hardware boundary for
-left-aligned body lines, giving the 46-column block equal one-character side margins.
-Native-centred headings and full-width graphs share its midpoint.
+The default 80mm, 203dpi printer has a 576-dot printable line. Font A has a
+12-dot character cell: the standard profile now uses all 48 columns, based on
+the physical alignment test with both end markers visible. It adds no leading
+character inset. Narrower custom and historical layouts retain their balancing
+inset inside the physical print area. Hardware margins remain printer-dependent.
 
 This physical adapter is used by the deferred live printer, including custom
 page ordering, saved-receipt reprints and short printer tests. It preserves
 partial text writes, list indentation, amounts and blank lines. Saved text and
-web previews remain at 46 columns, so reprinting never adds the inset twice.
+web previews use the configured columns, so reprinting never adds the inset twice.
 
 Earlier positioning used GS L / GS W and switched the native area around raster
 images. Some ESC/POS-compatible devices do not reliably restore that state at
@@ -26,7 +26,7 @@ that raster line is finished, across immediate/deferred/reordered/archive paths.
 The layout assumes the configured 80mm/203dpi Font A profile. A fresh physical
 receipt remains the final check on a particular printer's firmware.
 
-Section headings are explicitly centred within that same 46-column block.
+Section headings are explicitly centred within that same configured column block.
 Historical archive pages retain their recorded rule width when reprinted.
 
 Weather uses one local heading, followed by centred two-line tables: column

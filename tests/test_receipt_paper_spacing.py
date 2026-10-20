@@ -20,11 +20,11 @@ class PaperSpacingTests(TestCase):
         printer.text('\n  \nFinal footer')
         printer.cut()
         raw = device.output
-        self.assertIn(b' Final footer\n\x1dVA\x00', raw)
+        self.assertIn(b'Final footer\n\x1dVA\x00', raw)
         self.assertNotIn(b'\x1bd\x06', raw)  # No library six-line feed.
         self.assertNotIn(b'\n\n', raw)
         printer.text('\n\nNext receipt\n')
-        self.assertTrue(device.output.endswith(b' Next receipt\n'))
+        self.assertTrue(device.output.endswith(b'Next receipt\n'))
 
     def test_partial_only_profile_and_unknown_profile_fallback(self):
         device = Mock()

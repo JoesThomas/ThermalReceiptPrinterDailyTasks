@@ -27,4 +27,4 @@ class FutureTasksTests(unittest.TestCase):
         namespace = dict(print_line=lambda *a: None, centre=lambda p,t: lines.append(t), left=lambda p,t: lines.append(t), print_wrapped=lambda p,t,width: lines.append((t,width)), printer_safe_text=lambda t:t)
         exec(compile(ast.Module(body=[node], type_ignores=[]), '<receipt>', 'exec'), namespace)
         namespace['print_future_tasks'](SimpleNamespace(set=lambda **kw:None), [{'title':'Pending', 'next_step':'Start here', 'done':False}, {'title':'Finished','next_step':'','done':True}])
-        self.assertEqual(lines, ['FUTURE TASKS', ('[ ] Pending',46), ('Next: Start here',46)])
+        self.assertEqual(lines, ['FUTURE TASKS', ('[ ] Pending',48), ('Next: Start here',48)])

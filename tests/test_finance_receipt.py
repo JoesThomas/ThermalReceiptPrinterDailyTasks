@@ -139,7 +139,7 @@ class FinanceReceiptTests(unittest.TestCase):
 
     def test_negative_amount_puts_minus_before_pound_sign(self):
         self.assertEqual(_amount_rows('Known cash change', -500)[0],
-                         'KNOWN CASH CHANGE                     -£500.00')
+                         'KNOWN CASH CHANGE                       -£500.00')
         self.assertEqual(_amount_rows('Credit', 0)[0][-5:], '£0.00')
 
     def test_monthly_payday_and_bill_roll_without_losing_day_31(self):

@@ -20,7 +20,7 @@ previews do not invent a consumption figure. Zero prints/week gives zero usage.
 
 ## Printer geometry
 
-- 80 mm preset: 46 text columns, 576 printable dots, 203 dpi, 12-dot Font A.
+- 80 mm preset: 48 text columns, 576 printable dots, 203 dpi, 12-dot Font A.
 - 58 mm preset: 30 text columns, 384 printable dots, 203 dpi, 12-dot Font A.
 - Custom: paper width, text columns, printable dots, resolution and Font A dot
   width from the printer manual. Width must be byte-aligned, columns must fit
@@ -49,3 +49,8 @@ commands. Some margin remains between the print head and cutter.
 Only ESC/POS-compatible printers using the existing USB/network connections are
 supported. A paper preset does not add a driver, change a printer's physical paper
 size or validate its firmware. Use the short paper test after changing printers.
+
+The standard 80 mm preset now uses all 48 columns, following the physical
+alignment strip with both end markers visible. Previously saved standard
+46-column/576-dot presets upgrade to 48 on startup; custom widths are preserved.
+Old 46-column archive captures remain valid and retain their original layout.
