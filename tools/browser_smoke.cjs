@@ -471,7 +471,7 @@ process.on('exit', () => child.kill());
         const edges = await page.evaluate(() => {
           const image = document.querySelector('.paper-image');
           const columns = Number(getComputedStyle(document.documentElement).getPropertyValue('--receipt-columns').trim());
-          const text = [...document.querySelectorAll('.paper-text')].find(node => node.textContent.includes('-'.repeat(columns)));
+          const text = [...image.closest('.paper-roll').querySelectorAll('.paper-text')].find(node => node.textContent.includes('-'.repeat(columns)));
           const offset = text.firstChild.textContent.indexOf('-'.repeat(columns));
           const range = document.createRange();
           range.setStart(text.firstChild, offset); range.setEnd(text.firstChild, offset+columns);
