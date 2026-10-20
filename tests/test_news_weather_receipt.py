@@ -76,8 +76,8 @@ class NewsWeatherReceiptTests(unittest.TestCase):
         self.assertGreater(len(rules), 4)
         self.assertEqual(set(rules), {0})
         self.assertTrue(all(offset == 0 for row, offset in printer.rows
-                            if row.startswith(('MAX ', 'TEMP '))))
-        self.assertTrue(any(row == 'WEATHER' and offset > 0 for row, offset in printer.rows))
+                            if row.lstrip().startswith(('Maximum ', 'Temperature '))))
+        self.assertTrue(any(row == 'Weather - Stirchley, Birmingham'.center(COLUMNS) for row, offset in printer.rows))
 
     def test_temperature_graph_fits_receipt_and_centres_image(self):
         sizes = []
@@ -206,15 +206,16 @@ class NewsWeatherReceiptTests(unittest.TestCase):
                     'print_weather_graphic':lambda printer,code:drawings.append(code),
                     'print_temperature_graph':lambda printer,rows:graphs.append(rows)}
                 print_weather(SimpleNamespace(set=lambda **kwargs:None), weather, location, detail, _context=context)
-                self.assertIn('EDINBURGH',text); self.assertIn('SCOTLAND',text)
-                self.assertEqual([s.strip() for s in text[text.index('SCOTLAND')+1:text.index('SCOTLAND')+5]],
-                    ['TODAY','MAX 17.0C  MIN 12.0C','RAIN 0%','SUNRISE/SUNSET 07:00-18:00'])
+                self.assertIn('Weather - Edinburgh, Scotland'.center(COLUMNS), text)
+                today = text.index('TODAY'.center(COLUMNS))
+                self.assertEqual([s.strip() for s in text[today+1:today+3]],
+                    ['Maximum Minimum Rain Sunrise Sunset', '17.0C   12.0C   0%   07:00   18:00'])
                 self.assertEqual([s.strip() for s in text].count('TODAY'),1)
                 self.assertIn('HOURLY WEATHER'.center(COLUMNS),text); self.assertEqual(drawings,[0])
                 self.assertLess(text.index('TEMPERATURE GRAPH'.center(COLUMNS)), text.index('HOURLY WEATHER'.center(COLUMNS)))
                 self.assertEqual(len(graphs[0]),24)
                 for hour in range(24):
-                    self.assertTrue(any(line.lstrip('>').startswith(f'{hour:02d}:00 ') for line in text))
+                    self.assertTrue(any(line.lstrip().startswith(f'{hour:02d}:00 ') for line in text))
 
 
 class WeatherIllustrationTests(unittest.TestCase):

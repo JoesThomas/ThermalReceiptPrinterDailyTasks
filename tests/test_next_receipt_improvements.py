@@ -19,17 +19,15 @@ import email
 
 
 class WeatherAndProfileTests(TestCase):
-    def test_clarity_marker_and_unchanged_order(self):
+    def test_compact_tables_and_unchanged_order(self):
         text, images = weather_capture()
-        self.assertIn("SUNRISE/SUNSET 07:25-18:22", text)
-        self.assertNotIn("SUNSET/SUNRISE", text)
-        self.assertIn("TIME  TEMP  HUM  WIND(km/h)  WEATHER", text)
-        self.assertIn(">12:00 13.2C", text)
-        rows = [
-            row
-            for row in text.splitlines()
-            if ":" in row[:6] and row[:1].isdigit() or row.startswith(">12:00")
-        ]
+        self.assertIn("Maximum Minimum Rain Sunrise Sunset", text)
+        self.assertIn("14.1C   7.3C    0%   07:25   18:22", text)
+        self.assertIn("Time  Temp  Humidity Wind    Weather", text)
+        self.assertNotIn("marks the current", text)
+        rows = [row.lstrip() for row in text.splitlines()
+                if row.lstrip()[:5].replace(":", "").isdigit() and ":" in row.lstrip()[:5]]
+        self.assertTrue(any(row.startswith("12:00 13.2C") for row in rows))
         self.assertEqual(len(rows), 24)
         self.assertLess(text.index("TODAY"), text.index("TEMPERATURE GRAPH"))
         self.assertLess(text.index("TEMPERATURE GRAPH"), text.index("HOURLY WEATHER"))

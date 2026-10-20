@@ -32,4 +32,4 @@ def print_local_news(printer, stories, label=None, *, _context):
 
 def print_sport_news(printer, stories, *, _context):
     _print_news_stories = _context.get('_print_news_stories')
-    _print_news_stories(printer, 'SPORT', stories)
+    _print_news_stories(printer, 'SPORT', stories, include_summary=False)

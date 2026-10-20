@@ -28,3 +28,11 @@ receipt remains the final check on a particular printer's firmware.
 
 Section headings are explicitly centred within that same 46-column block.
 Historical archive pages retain their recorded rule width when reprinted.
+
+Weather uses one local heading, followed by centred two-line tables: column
+names and aligned values. Current conditions keep temperature, feels like,
+humidity and wind; pressure and direction are omitted to save paper. Hourly
+conditions wrap inside their final column, with the current reading hour bold
+on the physical printer and no extra marker or legend. Plain-text captures
+retain the table spacing but do not store printer bold styling. The gigs
+heading uses the same centred, bold style and dividers as other sections.
