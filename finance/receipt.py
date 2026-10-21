@@ -285,6 +285,14 @@ def print_integrated_finance(
         transactions or []
     )
 
+    from finance.amex_interest import detect, visible, receipt_warning
+    try:
+        alerts = visible(transactions, today=today)
+    except (ValueError, OSError):
+        alerts = list(detect(transactions, today).values())
+        left(printer, 'Amex interest alerts unavailable; check app.')
+    receipt_warning(printer, left, line, alerts)
+
     # ==========================================
     # BALANCES
     # ==========================================

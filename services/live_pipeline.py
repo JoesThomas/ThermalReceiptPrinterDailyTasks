@@ -4647,6 +4647,12 @@ def run_live_pipeline(
     if print_information_page:
         begin_page(printer, "information")
         print_header(printer, location)
+        if not (print_finance_page and should_run_finance):
+            from finance.amex_interest import pending, receipt_warning
+            try:
+                receipt_warning(printer, left, print_line, pending())
+            except (ValueError, OSError):
+                left(printer, 'Amex interest alerts unavailable; check app.')
 
     if print_information_page:
         from services.parallel import collect_independent

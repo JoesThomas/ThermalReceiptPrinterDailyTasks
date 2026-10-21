@@ -29,6 +29,22 @@ process.on('exit', () => child.kill());
   await page.goto('http://receipt.test/__fixture_login');
   await page.getByText('Advanced: edit schedule as text', {exact:true}).click();
   await page.locator('#manual-collections').fill('2026-10-06 | Recycling | 14');
+  // New bank evidence must appear without discarding an unfinished form.
+  assert.equal(await page.locator('#amex-interest-alert').isVisible(), false);
+  await page.evaluate(async () => {
+    await fetch('/__fixture_amex_interest');
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.locator('#amex-interest-alert').waitFor({state:'visible'});
+  await page.getByText(/£12.34 interest charged/).waitFor();
+  assert.equal(await page.locator('#manual-collections').inputValue(), '2026-10-06 | Recycling | 14');
+  await page.evaluate(async () => {
+    const form = document.querySelector('#amex-interest-alert form');
+    await fetch(form.action, {method:'POST', body:new URLSearchParams(new FormData(form))});
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.locator('#amex-interest-alert').waitFor({state:'hidden'});
+
   await Promise.all([page.waitForURL('**/bins'), page.getByRole('button', {name: 'Use manual schedule'}).click()]);
   await page.locator('main').getByText('Manual schedule saved and selected.', {exact:true}).waitFor();
   await page.locator('input[name=collection_date]').last().fill('2027-10-07');

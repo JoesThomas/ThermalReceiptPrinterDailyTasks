@@ -1401,5 +1401,9 @@ register_test_finance(app, login_required, _start_print_command)
 from web_control.paper_settings import register as register_paper_settings
 register_paper_settings(app, login_required)
 
+from web_control.amex_interest import register as register_amex_interest
+register_amex_interest(app, login_required)
+
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

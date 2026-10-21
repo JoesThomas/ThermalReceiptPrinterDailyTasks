@@ -138,7 +138,7 @@ def collect(dependencies: FinanceDependencies, *, persist=True):
                 fetch_attempted += 1
                 card_transactions = dependencies._truelayer_transactions(amex_token, 'cards', card_id, from_date, today, range_info=transaction_range_info)
                 for transaction in card_transactions:
-                    all_transactions.append({**transaction, '_source_provider': 'AMEX'})
+                    all_transactions.append({**transaction, '_source_provider': 'AMEX', '_source_account': card_id})
                 source_coverage.append({'provider': 'AMEX', 'source': f'Card {source_number}', 'status': 'Loaded', 'count': len(card_transactions)})
                 fetch_succeeded += 1
             except requests.RequestException as error:
@@ -155,6 +155,11 @@ def collect(dependencies: FinanceDependencies, *, persist=True):
     last_30_days = dependencies._last_n_day_spend(all_transactions, 30)
     salary_incomings, other_incomings = dependencies.analyse_incoming_payments(all_transactions, salary_payee=dependencies.load_receipt_settings().get('finance', {}).get('salary_payee', ''))
     if persist:
+        from finance.amex_interest import capture as capture_interest
+        try:
+            capture_interest(all_transactions, today=today)
+        except (ValueError, OSError):
+            event('amex_interest_save', status='failed')
         from finance.premium_bonds import capture as capture_bond_prizes
         try:
             capture_bond_prizes(all_transactions, dependencies._other_incoming_category, dependencies._is_incoming_transaction, dependencies._looks_like_internal_transfer, dependencies._transaction_date)

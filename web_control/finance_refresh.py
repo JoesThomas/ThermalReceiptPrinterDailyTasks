@@ -214,6 +214,8 @@ class FinanceRefresh:
                     encoded = encode(snapshot)
                     if len(json.dumps(encoded).encode()) > 20_000_000:
                         raise ValueError("Bank snapshot size limit reached")
+                    from finance.amex_interest import capture as capture_interest
+                    capture_interest(snapshot['data'][0], path=self.root / 'data' / 'amex_interest_alerts.json')
                     write_json(self.snapshot_file, encoded)
                     progress("Bank data retrieved; preparing the review")
                     if self.on_success:
