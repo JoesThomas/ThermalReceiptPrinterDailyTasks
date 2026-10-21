@@ -224,3 +224,6 @@ data/vehicles.lock
 
 data/printer_paper.json
 data/printer_paper.lock
+
+data/amex_interest_alerts.json
+data/amex_interest_alerts.lock

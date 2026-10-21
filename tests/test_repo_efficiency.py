@@ -87,6 +87,7 @@ class RepoEfficiencyTests(TestCase):
             ZoneInfo=ZoneInfo,
             one_shot_requested=lambda *args: False,
             print_header=lambda *args: None,
+            print_line=lambda *args: None,
             feature_enabled=feature_enabled,
             display_value=display_value,
             NEWS_HEADLINES=3,

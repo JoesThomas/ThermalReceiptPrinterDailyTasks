@@ -32,6 +32,9 @@
         . <a href="{{ url_for('preferences_page') }}#away">Manage dates</a>
     </p>
 {% endif %}
+{% if amex_interest_alert is defined %}
+    {% include 'amex_interest_alert.html' %}
+{% endif %}
 <div class="utility-strip">
     <details class="accessibility-settings">
         <summary>Display & accessibility</summary>

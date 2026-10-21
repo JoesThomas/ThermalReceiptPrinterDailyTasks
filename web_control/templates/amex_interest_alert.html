@@ -1,0 +1,34 @@
+<aside id="amex-interest-alert"
+       class="flash"
+       role="alert"
+       aria-live="assertive"
+       data-status-url="{{ url_for('amex_interest_status') }}"
+       {% if not amex_interest_alert.charges and not amex_interest_alert.error %}hidden{% endif %}>
+    <strong>Amex interest alert</strong>
+    <p id="amex-interest-error">{{ amex_interest_alert.error or '' }}</p>
+    <ul id="amex-interest-charges" data-private>
+        {% for charge in amex_interest_alert.charges %}
+            <li>
+                {{ charge.date }}: {{ '£' if charge.currency == 'GBP' else charge.currency ~ ' ' }}{{ charge.amount }} interest charged
+            </li>
+        {% endfor %}
+    </ul>
+    <p>
+        Review your Amex statement. Detected from posted transactions at the last bank check; this is not a live bank notification.
+    </p>
+    <a href="{{ url_for('finance_review') }}">Review or refresh bank data</a>
+    <form method="post" action="{{ url_for('acknowledge_amex_interest') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <span id="amex-interest-ids">
+            {% for charge in amex_interest_alert.charges %}
+                <input type="hidden" name="charge_id" value="{{ charge.id }}">
+            {% endfor %}
+        </span>
+        <button type="submit"
+                id="amex-interest-acknowledge"
+                {% if not amex_interest_alert.charges %}hidden{% endif %}>Acknowledge these charges</button>
+    </form>
+</aside>
+<!-- djlint:off -->
+<script src="{{ url_for('static', filename='amex-interest.js') }}" defer></script>
+<!-- djlint:on -->

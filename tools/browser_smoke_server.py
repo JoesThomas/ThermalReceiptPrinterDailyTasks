@@ -48,6 +48,17 @@ def fixture_login():
     return redirect('/bins')
 
 
+@web.app.get('/__fixture_amex_interest')
+def fixture_amex_interest():
+    from datetime import date
+    from finance.amex_interest import capture
+    capture([{'_source_provider': 'AMEX', '_source_account': 'fixture-card',
+              'date': date.today().isoformat(), 'amount': 12.34, 'currency': 'GBP',
+              'transaction_type': 'DEBIT', 'transaction_category': 'INTEREST',
+              'description': 'INTEREST CHARGE', 'provider_transaction_id': 'fixture-interest'}])
+    return 'ok'
+
+
 @web.app.get('/__fixture_backup_data')
 def fixture_backup_data():
     from flask import request

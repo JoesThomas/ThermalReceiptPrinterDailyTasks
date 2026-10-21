@@ -158,7 +158,8 @@ section, .panel { border-color: var(--border); box-shadow: 0 4px 16px #27548b09;
 .settings-directory a:hover { background: #faedf3; }
 .receipt-width-key { color: var(--sub); font-size: .85rem; }
 .reprint-choice { font-size: .78rem; color: var(--sub); margin-top: 12px; }
-html[data-privacy=true] main [data-private] { visibility: hidden; }
+html[data-privacy=true] main [data-private],
+html[data-privacy=true] #amex-interest-alert [data-private] { visibility: hidden; }
 html[data-privacy=true] main section[data-private]::before { content: 'Private details hidden — use Show private details to continue'; visibility: visible; display: block; padding: 12px; color: var(--sub); font-weight: 600; }
 @media (max-width:700px) { .utility-strip { flex-wrap: wrap; } .away-banner { margin: 12px 16px; } }
 html[data-high-contrast=true] body { background: #fff; }
