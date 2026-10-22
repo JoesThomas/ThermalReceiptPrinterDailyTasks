@@ -142,7 +142,7 @@
     {% endfor %}
     <a href="{{ url_for('bin_settings') }}">Change address or check bin dates</a>
 </section>
-<section>
+<section class="home-support">
     <h2>Data freshness</h2>
     <p class="muted">
         These are source check times from saved receipts, not observation times. Older checks may be out of date.
@@ -155,7 +155,7 @@
         <p>No saved source checks yet.</p>
     {% endfor %}
 </section>
-<section>
+<section class="home-support">
     <h2>Changes since the previous generated receipt</h2>
     {% if today_view.changes.compared %}
         {% for change in today_view.changes.changes %}

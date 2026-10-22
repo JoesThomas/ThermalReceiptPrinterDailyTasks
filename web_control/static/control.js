@@ -261,3 +261,21 @@
     main.focus();
   });
 })();
+
+// Header menus work without JavaScript; Escape and outside clicks are conveniences.
+(() => {
+  const menus = [...document.querySelectorAll('.app-header .header-disclosure')];
+  for (const menu of menus) {
+    menu.addEventListener('toggle', () => {
+      if (menu.open) for (const other of menus) if (other !== menu) other.open = false;
+    });
+  }
+  document.addEventListener('click', event => {
+    for (const menu of menus) if (menu.open && !menu.contains(event.target)) menu.open = false;
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    const menu = menus.find(item => item.open && item.contains(document.activeElement)) || menus.find(item => item.open);
+    if (menu) { menu.open = false; menu.querySelector('summary').focus(); }
+  });
+})();
