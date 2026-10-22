@@ -544,6 +544,41 @@ process.on('exit', () => child.kill());
   await Promise.all([page.waitForNavigation({waitUntil:'load'}),potForm.getByRole('button',{name:'Save expense pot'}).click()]);
   assert.match(await page.locator('main').innerText(), /Insurance fund/);
 
+  // Keep the shared frame aligned, usable by keyboard and reachable on small screens.
+  for (const width of [320,390,768,1440]) {
+    await page.setViewportSize({width,height:900});
+    await page.goto('http://receipt.test/');
+    assert.equal(await page.locator('body > nav').count(), 0, 'No detached navigation outside the shared header');
+    const frame = await page.evaluate(() => {
+      const header = document.querySelector('.app-header-inner').getBoundingClientRect();
+      const main = document.querySelector('main').getBoundingClientRect();
+      const overview = document.querySelector('#overview').getBoundingClientRect();
+      const attention = document.querySelector('#needs-attention').getBoundingClientRect();
+      return {headerLeft:header.left,headerRight:header.right,mainLeft:main.left,mainRight:main.right,overviewTop:overview.top,attentionTop:attention.top};
+    });
+    assert.ok(Math.abs(frame.headerLeft-frame.mainLeft)<1 && Math.abs(frame.headerRight-frame.mainRight)<1, `Header and main frame differ at ${width}`);
+    assert.ok(frame.overviewTop<frame.attentionTop, 'Daily actions precede supporting checks');
+    const tools = page.locator('.utility-menu');
+    await tools.locator('summary').click();
+    await tools.getByRole('link',{name:'Documents',exact:false}).waitFor({state:'visible'});
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `Tools overflow at ${width}`);
+    await page.keyboard.press('Escape');
+    assert.equal(await tools.evaluate(el=>el.open), false);
+    assert.equal(await tools.locator('summary').evaluate(el=>el===document.activeElement), true);
+    const display = page.locator('.accessibility-settings');
+    await display.locator('summary').click();
+    await page.locator('#accessibility-text').selectOption('larger');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `Large text overflows at ${width}`);
+    await page.locator('#accessibility-reset').click();
+    await page.keyboard.press('Escape');
+    await page.locator('#privacy-toggle').click();
+    assert.equal(await page.locator('#privacy-toggle').getAttribute('aria-pressed'),'true');
+    await page.locator('#privacy-toggle').click();
+    await tools.locator('summary').click();
+    await Promise.all([page.waitForURL('**/documents'),tools.getByRole('link',{name:'Documents',exact:false}).click()]);
+    assert.equal(await page.locator('h1').innerText(),'Private documents');
+  }
+
   const accessibilityFailures = [];
   let checks = 0;
   for (const width of [360,390,768,1280]) {

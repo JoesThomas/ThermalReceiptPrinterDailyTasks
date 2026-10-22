@@ -221,7 +221,8 @@
     <body data-control-view="{{ active_view }}">
         {% include "navigation.html" %}
 
-        <main id="main-content">
+        <main id="main-content"
+              {% if active_view == 'dashboard' %}class="home-page"{% endif %}>
 
             <!-- HEADER -->
 
@@ -251,108 +252,113 @@
 
 
             {% if active_view == 'dashboard' %}
-                {% include 'renewal_reminders.html' %}
-                <section id="needs-attention" data-private>
-                    <h2>Needs attention</h2>
-                    {% for item in attention_items %}
-                        <article class="card">
-                            <h3>{{ item.title }}</h3>
-                            <p>{{ item.detail }}</p>
-                            <a href="{{ url_for(item.endpoint,**item.params) }}">{{ item.label }}</a>
-                        </article>
-                    {% else %}
-                        <p>No issues reported by the saved checks. This page does not contact banks, integrations or the printer.</p>
-                    {% endfor %}
-                </section>
-                <section id="overview">
-                    <p class="eyebrow">At a glance</p>
-                    <h2>Make room for the day</h2>
-                    <div class="dashboard-stats">
-                        <div>
-                            <span>Next scheduled print</span><strong>{{ scheduled_at.strftime('%H:%M') if scheduled_at else 'Off' }}</strong><small>
-                                {% if scheduled_at %}
-                                    {{ scheduled_at.strftime('%a %d %b · %Z') }} · while the server runs
+                <div class="home-grid">
+                    {% include 'renewal_reminders.html' %}
+                    <section id="overview">
+                        <p class="eyebrow">At a glance</p>
+                        <h2>Make room for the day</h2>
+                        <div class="quick-actions">
+                            <form method="post" action="{{ url_for('print_now') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="primary">Print receipt</button>
+                            </form>
+                            <form method="post" action="{{ url_for('printer_paper_test') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="allow_repeat" value="on">
+                                <button>Test after refilling paper</button>
+                            </form>
+                            <a class="button" href="{{ url_for('preview') }}">Open receipt</a>
+                            <a class="button"
+                               id="finance-review-link"
+                               href="{{ url_for('finance_review') }}">Review finances</a>
+                        </div>
+                        <div class="dashboard-stats">
+                            <div>
+                                <span>Next scheduled print</span><strong>{{ scheduled_at.strftime('%H:%M') if scheduled_at else 'Off' }}</strong><small>
+                                    {% if scheduled_at %}
+                                        {{ scheduled_at.strftime('%a %d %b · %Z') }} · while the server runs
+                                    {% else %}
+                                        Automatic printing is disabled
+                                    {% endif %}
+                                · <a href="{{ url_for('index',view='settings') }}#printing">Change time</a></small>
+                            </div>
+                            <div>
+                                <span>Receipt location</span><strong>{{ settings.location.name }}</strong><small>{{ settings.location.region }}</small>
+                            </div>
+                            <div>
+                                <span>Daily routines</span><strong>{{ routines|length }}</strong><small><a href="{{ url_for('index',view='tasks') }}">Manage your routines</a></small>
+                            </div>
+                        </div>
+                        <div class="status-line" role="status">
+                            <strong>Today's scheduled receipt:</strong> {{ daily_print.today.label }}
+                            {% if daily_print.today.preview_saved %}
+                                <a href="{{ url_for('archive_list',date=daily_print.date) }}">Find saved daily preview</a>
+                            {% endif %}
+                            {% if daily_print.today.state in ['failed','timed_out','cancelled','interrupted','missed'] %}
+                                <span>Review the saved receipt before requesting another print.</span>
+                            {% endif %}
+                        </div>
+                        <details class="print-history">
+                            <summary>Print history & status</summary>
+                            <div class="status-line" aria-live="polite">
+                                <strong>Last print:</strong>
+                                {% if print_status %}
+                                    <span class="badge {{ print_status.state }}">{{ "Sent to printer" if print_status.state == "completed" else print_status.state|title }}</span>
+                                    <span>{{ print_status.page|replace('_', ' ')|title }} · {{ last_print_local or 'Time unavailable' }}</span>
                                 {% else %}
-                                    Automatic printing is disabled
+                                    <span class="muted">No recent web print.</span>
                                 {% endif %}
-                            · <a href="{{ url_for('index',view='settings') }}#printing">Change time</a></small>
-                        </div>
-                        <div>
-                            <span>Receipt location</span><strong>{{ settings.location.name }}</strong><small>{{ settings.location.region }}</small>
-                        </div>
-                        <div>
-                            <span>Daily routines</span><strong>{{ routines|length }}</strong><small><a href="{{ url_for('index',view='tasks') }}">Manage your routines</a></small>
-                        </div>
-                    </div>
-                    <div class="status-line" role="status">
-                        <strong>Today's scheduled receipt:</strong> {{ daily_print.today.label }}
-                        {% if daily_print.today.preview_saved %}
-                            <a href="{{ url_for('archive_list',date=daily_print.date) }}">Find saved daily preview</a>
+                            </div>
+                            {% if print_status and print_status.state == "completed" %}
+                                <p class="muted">Sending completed successfully. The app cannot confirm that paper was physically printed.</p>
+                            {% endif %}
+                            <h3>Recent scheduled receipts</h3>
+                            {% for day in daily_print.recent %}
+                                <p>{{ day.date }} · {{ day.label }}{{ ' · Preview saved' if day.preview_saved else '' }}</p>
+                            {% else %}
+                                <p>No daily outcomes recorded yet.</p>
+                            {% endfor %}
+                        </details>
+                        {% if print_status and print_status.state in ('failed','interrupted','timed_out','cancelled') %}
+                            <p class="helper">
+                                {{ "The job reached the 10-minute limit." if print_status.state == "timed_out" else "The job was cancelled." if print_status.state == "cancelled" else "The job did not finish." }} Last step: {{ print_status.stage or 'unavailable' }}. Check the receipt before printing again, as it may be partly printed. <a href="{{ url_for('preview') }}">Open receipt</a>.
+                            </p>
+                            <form method="post" action="{{ url_for('print_now') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button>Retry print</button>
+                            </form>
                         {% endif %}
-                        {% if daily_print.today.state in ['failed','timed_out','cancelled','interrupted','missed'] %}
-                            <span>Review the saved receipt before requesting another print.</span>
-                        {% endif %}
-                    </div>
-                    <details>
-                        <summary>Recent scheduled receipts</summary>
-                        {% for day in daily_print.recent %}
-                            <p>{{ day.date }} · {{ day.label }}{{ ' · Preview saved' if day.preview_saved else '' }}</p>
-                        {% else %}
-                            <p>No daily outcomes recorded yet.</p>
-                        {% endfor %}
-                    </details>
-                    <div class="quick-actions">
-                        <form method="post" action="{{ url_for('print_now') }}">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="primary">Print receipt</button>
-                        </form>
-                        <form method="post" action="{{ url_for('printer_paper_test') }}">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="allow_repeat" value="on">
-                            <button>Test after refilling paper</button>
-                        </form>
-                        <a class="button" href="{{ url_for('preview') }}">Open receipt</a>
-                        <a class="button"
-                           id="finance-review-link"
-                           href="{{ url_for('finance_review') }}">Review finances</a>
-                    </div>
-                    <p class="muted">Open your saved live receipt, generate a fresh preview or print a new copy.</p>
-                    <div class="status-line" aria-live="polite">
-                        <strong>Last print:</strong>
-                        {% if print_status %}
-                            <span class="badge {{ print_status.state }}">{{ "Sent to printer" if print_status.state == "completed" else print_status.state|title }}</span>
-                            <span>{{ print_status.page|replace('_', ' ')|title }} · {{ last_print_local or 'Time unavailable' }}</span>
-                        {% else %}
-                            <span class="muted">No recent web print.</span>
-                        {% endif %}
-                    </div>
-                    {% if print_status and print_status.state == "completed" %}
-                        <p class="muted">Sending completed successfully. The app cannot confirm that paper was physically printed.</p>
-                    {% endif %}
-                    {% if print_status and print_status.state in ('failed','interrupted','timed_out','cancelled') %}
-                        <p class="helper">
-                            {{ "The job reached the 10-minute limit." if print_status.state == "timed_out" else "The job was cancelled." if print_status.state == "cancelled" else "The job did not finish." }} Last step: {{ print_status.stage or 'unavailable' }}. Check the receipt before printing again, as it may be partly printed. <a href="{{ url_for('preview') }}">Open receipt</a>.
-                        </p>
-                        <form method="post" action="{{ url_for('print_now') }}">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button>Retry print</button>
-                        </form>
-                    {% endif %}
-                </section>
+                    </section>
 
-                {% include "today.html" %}
-                <section>
-                    <h2>Connections</h2>
-                    <p class="muted">Review recent API checks and connection issues.</p>
-                    <a href="{{ url_for('api_health_page') }}">View integration health</a>
-                </section>
-                <section id="live-data">
-                    <p class="eyebrow">Live data</p>
-                    <h2>Plan and review</h2>
-                    <div class="quick-actions">
-                        <a class="button" href="{{ url_for('delivery_checklist') }}">Confirm deliveries</a><a class="button" href="{{ url_for('gigs_page') }}">Gigs today</a><a class="button" href="{{ url_for('calendar_map') }}">Calendar map</a><a class="button" href="{{ url_for('meals_page') }}">Meals & recipes</a><a class="button" href="{{ url_for('tesco_list') }}">Tesco shopping review</a>
-                    </div>
-                </section>
+                    <section id="needs-attention" data-private aria-labelledby="attention-heading">
+                        <div class="section-heading">
+                            <h2 id="attention-heading">Needs attention</h2>
+                            <span class="count-badge">{{ attention_items|length }}</span>
+                        </div>
+                        {% for item in attention_items %}
+                            <article class="card">
+                                <h3>{{ item.title }}</h3>
+                                <p>{{ item.detail }}</p>
+                                <a href="{{ url_for(item.endpoint,**item.params) }}">{{ item.label }}</a>
+                            </article>
+                        {% else %}
+                            <p>No issues reported by the saved checks. This page does not contact banks, integrations or the printer.</p>
+                        {% endfor %}
+                    </section>
+                    {% include "today.html" %}
+                    <section class="home-support">
+                        <h2>Connections</h2>
+                        <p class="muted">Review recent API checks and connection issues.</p>
+                        <a href="{{ url_for('api_health_page') }}">View integration health</a>
+                    </section>
+                    <section id="live-data" class="home-support">
+                        <p class="eyebrow">Live data</p>
+                        <h2>Explore your day</h2>
+                        <div class="quick-actions">
+                            <a class="button" href="{{ url_for('delivery_checklist') }}">Confirm deliveries</a><a class="button" href="{{ url_for('gigs_page') }}">Gigs today</a><a class="button" href="{{ url_for('calendar_map') }}">Calendar map</a><a class="button" href="{{ url_for('meals_page') }}">Meals & recipes</a><a class="button" href="{{ url_for('tesco_list') }}">Tesco shopping review</a>
+                        </div>
+                    </section>
+                </div>
 
             {% endif %}
 
