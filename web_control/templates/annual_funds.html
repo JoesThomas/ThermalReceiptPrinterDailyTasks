@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Tax & annual funds · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <h1>Tax & annual funds</h1>
+            {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            <p>
+                Cash pots are funded from money already available after bills, Amex repayments and bank reserves. Salary is not required. These are planning records, not bank accounts created or transfers sent by the app. Keep actual balances up to date.
+            </p>
+            {% if fund_view.error %}
+                <p class="flash">
+                    {{ fund_view.error }} <a href="{{ url_for('finance_review') }}">Refresh Finance</a>
+                </p>
+            {% endif %}
+            {% if fund_view.fund_plan.error %}<p role="alert">{{ fund_view.fund_plan.error }}</p>{% endif %}
+            <section data-private>
+                <h2>Safe to spend until payday</h2>
+                {% if fund_view.safe is not none %}
+                    <p>
+                        <strong>£{{ '%.2f'|format(fund_view.safe) }}</strong> after bills, repayment protection, bank reserves and suggested cash-pot funding.
+                    </p>
+                    <p>
+                        Remaining daily budget: £{{ '%.2f'|format(fund_view.per_day) }} · estimated recent everyday spending: £{{ '%.2f'|format(fund_view.observed_daily) }} per day.
+                    </p>
+                    {% if fund_view.observed_daily > fund_view.per_day %}
+                        <p class="flash">Recent spending pace is above the remaining daily budget.</p>
+                    {% endif %}
+                    <p>
+                        Based on bank check {{ fund_view.checked_at }} and your recorded costs. Unlisted bills or new spending can change this estimate.
+                    </p>
+                {% else %}
+                    <p>Set the next payday and refresh complete bank data to see a reliable estimate.</p>
+                {% endif %}
+            </section>
+            <section data-private>
+                <h2>Suggested cash-pot funding</h2>
+                {% if not fund_view.settings.enabled %}
+                    <p>Enable funding below after confirming your tax estimate and pot balances.</p>
+                {% endif %}
+                {% for pot in fund_view.fund_plan.rows %}
+                    <article class="panel">
+                        <h3>{{ pot.name }}</h3>
+                        <p>
+                            Target £{{ '%.2f'|format(pot.target) }} · already reserved £{{ '%.2f'|format(pot.balance) }} · still needed £{{ '%.2f'|format(pot.gap) }}.
+                        </p>
+                        <p>
+                            Fund by {{ pot.due }} · monthly need £{{ '%.2f'|format(pot.monthly) }} · suggested now £{{ '%.2f'|format(pot.suggested) }} · monthly shortfall £{{ '%.2f'|format(pot.shortfall) }}.
+                        </p>
+                        <p>
+                            Destination: {{ pot.destination }} · {{ 'earmarked within included bank cash' if pot.inside else 'held outside included bank cash' }}.
+                        </p>
+                        {% if pot.id == 'tax' %}
+                            <p>
+                                Estimate last checked: {{ pot.checked or 'not recorded — review tax assumptions' }}. Funding deadline is a savings goal, not a statement of your HMRC payment deadline.
+                            </p>
+                        {% endif %}
+                        {% if pot.suggested > 0 and fund_view.fund_plan.valid %}
+                            <form action="{{ url_for('annual_fund_complete') }}" method="post">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="transfer_id" value="{{ pot.transfer_id }}">
+                                <button type="submit">
+                                    I completed the £{{ '%.2f'|format(pot.suggested) }} {{ 'earmark' if pot.inside else 'transfer' }} for {{ pot.name }}
+                                </button>
+                            </form>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+            </section>
+            <details data-private>
+                <summary>Tax pot and funding settings</summary>
+                <form action="{{ url_for('annual_funds_settings') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label>
+                        <input type="checkbox"
+                               name="enabled"
+                               {% if fund_view.settings.enabled %}checked{% endif %}>
+                        Enable priority cash-pot funding
+                    </label>
+                    <label>
+                        <input type="checkbox"
+                               name="tax_enabled"
+                               {% if fund_view.settings.tax_enabled %}checked{% endif %}>
+                        Include the Tax reserve pot first
+                    </label>
+                    <label>
+                        Tax source
+                        <select name="tax_source">
+                            <option value="rental"
+                                    {% if fund_view.settings.tax_source == 'rental' %}selected{% endif %}>
+                                Existing rental-tax estimate
+                            </option>
+                            <option value="manual"
+                                    {% if fund_view.settings.tax_source == 'manual' %}selected{% endif %}>
+                                Manual total tax still payable after withholding
+                            </option>
+                        </select>
+                    </label>
+                    <p>
+                        <a href="{{ url_for('rental_tax_page') }}">Update rental tax assumptions</a>. The automatic estimate covers the supported rental-tax calculation only. For other liabilities enter a manual total after PAYE/withholding; do not add the rental estimate a second time.
+                    </p>
+                    <label>
+                        Manual total liability after withholding (£)
+                        <input type="number"
+                               name="tax_target"
+                               min="0"
+                               max="10000000"
+                               step="0.01"
+                               value="{{ fund_view.settings.tax_target }}">
+                    </label>
+                    <label>
+                        Tax already paid towards this liability (£)
+                        <input type="number"
+                               name="tax_paid"
+                               min="0"
+                               max="10000000"
+                               step="0.01"
+                               value="{{ fund_view.settings.tax_paid }}">
+                    </label>
+                    <label>
+                        Tax pot balance (£)
+                        <input type="number"
+                               name="tax_balance"
+                               min="0"
+                               max="10000000"
+                               step="0.01"
+                               value="{{ fund_view.settings.tax_balance }}">
+                    </label>
+                    <p>
+                        Existing rental-tax money reserved is treated as this same pot: the larger balance is used, not their sum. Update the old reserve when paying tax or changing the pot balance.
+                    </p>
+                    <label>
+                        Funding deadline
+                        <input type="date" name="tax_due" value="{{ fund_view.settings.tax_due }}">
+                    </label>
+                    <p>
+                        If automatic mode leaves this blank, the savings deadline defaults to the supported tax year's end. Check your actual payment deadline with HMRC.
+                    </p>
+                    <label>
+                        Estimate checked on
+                        <input type="date"
+                               name="tax_checked"
+                               value="{{ fund_view.settings.tax_checked }}">
+                    </label>
+                    <label>
+                        Tax destination / bank pot name
+                        <input name="tax_destination"
+                               maxlength="100"
+                               value="{{ fund_view.settings.tax_destination }}"
+                               required>
+                    </label>
+                    <label>
+                        <input type="checkbox"
+                               name="tax_inside"
+                               {% if fund_view.settings.tax_inside %}checked{% endif %}>
+                        Tax pot money is already included in HSBC/Monzo cash balances
+                    </label>
+                    <p>
+                        Included cash is protected once as an earmark. External pot money is not deducted from cash again. Unmatched external transfers stay protected until the bank debit is confirmed.
+                    </p>
+                    <button type="submit">Save tax and fund settings</button>
+                </form>
+            </details>
+            <section data-private>
+                <h2>Other annual expenses</h2>
+                <p>
+                    Lower priority numbers fund first, after tax. Examples: insurance, MOT costs, Christmas or annual subscriptions. Link the exact bill name (or use the same pot name) to protect an included cash earmark once when that bill is already scheduled. These records fund savings pots; they do not create duplicate bill payments in your forecast.
+                </p>
+                {% set pots = fund_view.settings.pots + [none] %}
+                {% for pot in pots %}
+                    <details {% if not pot %}open{% endif %}>
+                        <summary>{{ 'Edit ' ~ pot.name if pot else 'Add an annual expense pot' }}</summary>
+                        <form action="{{ url_for('annual_pot_save') }}" method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            {% if pot %}<input type="hidden" name="id" value="{{ pot.id }}">{% endif %}
+                            <label>
+                                Name
+                                <input name="name"
+                                       maxlength="100"
+                                       value="{{ pot.name if pot else '' }}"
+                                       required>
+                            </label>
+                            <label>
+                                Destination
+                                <input name="destination"
+                                       maxlength="100"
+                                       value="{{ pot.destination if pot else '' }}"
+                                       required>
+                            </label>
+                            <label>
+                                Target (£)
+                                <input type="number"
+                                       name="target"
+                                       min="0"
+                                       max="10000000"
+                                       step="0.01"
+                                       value="{{ pot.target if pot else '' }}"
+                                       required>
+                            </label>
+                            <label>
+                                Current pot balance (£)
+                                <input type="number"
+                                       name="balance"
+                                       min="0"
+                                       max="10000000"
+                                       step="0.01"
+                                       value="{{ pot.balance if pot else '0' }}"
+                                       required>
+                            </label>
+                            <label>
+                                Fund by
+                                <input type="date" name="due" value="{{ pot.due if pot else '' }}" required>
+                            </label>
+                            <label>
+                                Priority
+                                <input type="number"
+                                       name="priority"
+                                       min="1"
+                                       max="100"
+                                       value="{{ pot.priority if pot else '1' }}"
+                                       required>
+                            </label>
+                            <label>
+                                <input type="checkbox"
+                                       name="inside"
+                                       {% if pot and pot.inside %}checked{% endif %}>
+                                Balance is included in bank cash
+                            </label>
+                            <button type="submit">Save expense pot</button>
+                        </form>
+                        {% if pot %}
+                            <form action="{{ url_for('annual_pot_delete',identifier=pot.id) }}"
+                                  method="post">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit">Remove {{ pot.name }}</button>
+                            </form>
+                        {% endif %}
+                    </details>
+                {% endfor %}
+            </section>
+            <details data-private>
+                <summary>Completed transfers and bank matching</summary>
+                <p>
+                    Completion credits the pot once. Match an external transfer only after checking the recipient: matching amounts and dates alone do not prove its destination.
+                </p>
+                {% for transfer in fund_view.settings.transfers|reverse %}
+                    <p>{{ transfer.date }} · {{ transfer.pot }} · £{{ transfer.amount }} · {{ transfer.status }}</p>
+                    {% if transfer.status == 'completed' %}
+                        <form action="{{ url_for('annual_fund_match') }}" method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="transfer_id" value="{{ transfer.id }}">
+                            <label>
+                                Posted bank debit
+                                <select name="bank_key">
+                                    {% for candidate in candidates if candidate.amount|string == transfer.amount %}
+                                        <option value="{{ candidate.key }}">{{ candidate.date }} · £{{ candidate.amount }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <label>
+                                <input type="checkbox" name="confirm_destination" required>
+                                I checked this debit went to the correct savings pot
+                            </label>
+                            <button type="submit">Confirm bank match</button>
+                        </form>
+                    {% endif %}
+                {% endfor %}
+            </details>
+        </main>
+    </body>
+</html>

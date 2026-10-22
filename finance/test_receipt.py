@@ -264,7 +264,7 @@ def receipt(result, today, *, detail="detailed"):
             base["buffer"] - reserve["gap"] - reserve["tax_reserve"],
         )
         if reserve["tax_reserve"]:
-            amount("Tax reserve", reserve["tax_reserve"])
+            amount(reserve.get("reserve_label", "Tax reserve"), reserve["tax_reserve"])
     amount("TOTAL PROTECTED", base["buffer"])
     amount(
         "Existing cash above reserves", max(Decimal(0), base["cash"] - base["buffer"])

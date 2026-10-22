@@ -151,7 +151,7 @@ def receipt(result, today):
     if data.get("monzo_target"):
         amount("Monzo reserve target", data["monzo_target"])
     if reserve.get("tax_reserve"):
-        amount("Tax reserve", reserve["tax_reserve"])
+        amount(reserve.get("reserve_label", "Tax reserve"), reserve["tax_reserve"])
     if first.get("retained_in_bank"):
         amount("No savings room - stays in bank", first["retained_in_bank"])
 

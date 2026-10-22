@@ -230,3 +230,11 @@ data/amex_interest_alerts.lock
 
 data/amex_payment_protection.json
 data/amex_payment_protection.lock
+
+# Private planning records and encrypted documents
+data/organiser.json
+data/organiser.lock
+data/annual_funds.json
+data/annual_funds.lock
+data/document_vault/
+*.key

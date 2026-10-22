@@ -20,7 +20,7 @@ process.on('exit', () => child.kill());
     const req=route.request(), url=new URL(req.url());
     if (url.hostname !== 'receipt.test') return route.abort();
     const headers=req.headers(); delete headers.host; delete headers.cookie;
-    const result=await request({path:url.pathname+url.search, method:req.method(), body:req.postData() || '', headers});
+    const result=await request({path:url.pathname+url.search, method:req.method(), body_base64:req.postDataBuffer()?.toString('base64') || '', headers});
     if (result.status >= 300 && result.status < 400 && result.headers.Location) {
       return route.fulfill({status:200, contentType:'text/html', body:`<script>location.replace(${JSON.stringify(result.headers.Location)})</script>`});
     }
@@ -505,11 +505,50 @@ process.on('exit', () => child.kill());
   assert.match(await page.locator('body').innerText(), /rolls per year/);
   assert.match(await page.locator('body').innerText(), /65.0 m roll/);
 
+  await page.goto('http://receipt.test/organiser');
+  const organiserForm = page.locator('form[action="/organiser/item"]').first();
+  await organiserForm.locator('select[name="kind"]').selectOption('job');
+  await organiserForm.locator('input[name="title"]').fill('Example application follow-up');
+  await organiserForm.locator('input[name="due"]').fill(new Date(Date.now()+86400000).toISOString().slice(0,10));
+  await organiserForm.locator('input[name="notes"]').fill('Awaiting response');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}), organiserForm.getByRole('button',{name:'Add organiser item'}).click()]);
+  await page.getByRole('heading',{name:'Example application follow-up',exact:true}).waitFor();
+  await page.goto('http://receipt.test/documents');
+  await page.locator('input[name="password"]').fill('fixture-only-password');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}), page.getByRole('button',{name:'Unlock documents',exact:true}).click()]);
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}), page.getByRole('button',{name:'Initialise encrypted document storage'}).click()]);
+  const uploadForm = page.locator('form[action="/documents/upload"]');
+  await uploadForm.locator('input[name="title"]').fill('Example certificate');
+  await uploadForm.locator('input[type="file"]').setInputFiles({name:'certificate.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAAFUlEQVR4nGP8//8/A27AhEduBEsDAKXjAxF9kqZqAAAAAElFTkSuQmCC','base64')});
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}), uploadForm.getByRole('button',{name:'Encrypt and store document'}).click()]);
+  await page.getByRole('heading',{name:'Example certificate',exact:true}).waitFor();
+  const encryptedDownload = await page.getByRole('link',{name:'Download document',exact:true}).getAttribute('href');
+  assert.equal(await page.evaluate(async path => (await fetch(path)).headers.get('Cache-Control'), encryptedDownload),'no-store');
+  await page.goto('http://receipt.test/organiser');
+  await organiserForm.locator('select[name="kind"]').selectOption('document');
+  await organiserForm.locator('input[name="title"]').fill('Bring certificate');
+  await organiserForm.locator('input[name="due"]').fill(new Date().toISOString().slice(0,10));
+  await organiserForm.locator('select[name="document_id"]').selectOption({label:'Example certificate'});
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}), organiserForm.getByRole('button',{name:'Add organiser item'}).click()]);
+  await page.getByRole('link',{name:'Open attached document 1',exact:true}).waitFor();
+  await page.goto('http://receipt.test/documents');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.getByRole('button',{name:'Lock documents now'}).click()]);
+  assert.equal(await page.getByRole('heading',{name:'Example certificate',exact:true}).count(),0);
+  await page.goto('http://receipt.test/finance/funds');
+  await page.locator('details').evaluateAll(nodes=>nodes.forEach(node=>node.open=true));
+  const potForm = page.locator('form[action="/finance/funds/pot"]').last();
+  await potForm.locator('input[name="name"]').fill('Insurance fund');
+  await potForm.locator('input[name="destination"]').fill('Insurance savings');
+  await potForm.locator('input[name="target"]').fill('600');
+  await potForm.locator('input[name="due"]').fill(new Date(Date.now()+180*86400000).toISOString().slice(0,10));
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),potForm.getByRole('button',{name:'Save expense pot'}).click()]);
+  assert.match(await page.locator('main').innerText(), /Insurance fund/);
+
   const accessibilityFailures = [];
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
-    for (const path of ['/','/printer-diagnostics','/backup','/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/vehicles','/birthdays','/tasks','/finance/test','/savings/goals','/receipts','/finance-review']) {
+    for (const path of ['/','/printer-diagnostics','/backup','/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/vehicles','/birthdays','/tasks','/finance/test','/savings/goals','/receipts','/finance-review','/organiser','/documents','/finance/funds']) {
       await page.goto('http://receipt.test'+path);
       await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `${path} overflows at ${width}`);

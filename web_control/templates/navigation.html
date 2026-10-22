@@ -48,6 +48,13 @@
 {% if amex_interest_alert is defined %}
     {% include 'amex_interest_alert.html' %}
 {% endif %}
+{% if life_planning_available %}
+    <nav aria-label="Planning and private documents">
+        <a class="button" href="{{ url_for('organiser_page') }}">Organiser</a>
+        <a class="button" href="{{ url_for('annual_funds_page') }}">Tax & annual funds</a>
+        <a class="button" href="{{ url_for('document_list') }}">Documents</a>
+    </nav>
+{% endif %}
 <div class="utility-strip">
     <details class="accessibility-settings">
         <summary>Display & accessibility</summary>
