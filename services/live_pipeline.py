@@ -4976,6 +4976,13 @@ def run_live_pipeline(
         def assistant_section(title, lines):
             print_section(printer, title, lines, line=print_line, left=left,
                           wrap=print_wrapped, safe=printer_safe_text)
+        try:
+            from organiser.records import receipt_lines as organisation_lines
+            assistant_section('WEEKLY REVIEW' if today.weekday() == 6 else 'FOLLOW UPS', organisation_lines(upcoming_events, today))
+            from web_control.life_planning import daily_financial_lines
+            assistant_section('MONEY TO CHECK', daily_financial_lines(today))
+        except (ValueError, OSError):
+            left(printer, 'ORGANISER UNAVAILABLE - CHECK APP')
         focus_titles = {row['title'] for row in assistant_brief['focus']}
         try:
             from actions.birthdays import receipt_lines as birthday_lines

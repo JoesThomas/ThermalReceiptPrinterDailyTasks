@@ -280,9 +280,10 @@ from future commitments.
 `web_control/run_waitress.py` listens on `127.0.0.1:5050` by default, so the
 control page is available only on this computer. To access it from another
 device, put it behind an HTTPS reverse proxy with authentication and set
-`RECEIPT_WEB_SECURE_COOKIE=1`. If you deliberately bind to a LAN address,
-set `RECEIPT_WEB_HOST` explicitly; plain HTTP on a shared network can expose
-the password and session. The control page requires a form token for each
+`RECEIPT_TRUST_PROXY=1` for a TLS proxy on the same machine. Secure cookies
+are used on HTTPS. Plain HTTP from other devices is now rejected; loopback HTTP
+still works. See [document security and planning setup](docs/life-planning-and-documents.md)
+for proxy buffering, key backups and the new Organiser / Tax & annual funds tools. The control page requires a form token for each
 change and limits failed sign-ins to five per client address in 15 minutes.
 The limit is held in the server process and resets when it restarts.
 

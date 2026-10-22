@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Organiser · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <h1>Organiser</h1>
+            {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            <p>
+                Track replies, refunds, money owed, applications, decisions and documents to bring. Due items appear on daily receipts; Sunday's review includes the next seven days. Receivables never count as spendable income.
+            </p>
+            {% if document_error %}<p role="alert">{{ document_error }}</p>{% endif %}
+            <section>
+                <h2>Calendar and travel checks</h2>
+                <p>
+                    Uses the saved calendar · checked {{ calendar_checked or 'not yet' }}. Open Calendar to refresh it. Travel warnings use a buffer, not live journey times; events without a known end time are not guessed.
+                </p>
+                {% for warning in clashes %}<p class="flash">{{ warning }}</p>{% endfor %}
+                <form action="{{ url_for('organiser_travel') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label>
+                        Minimum time between different locations (minutes)
+                        <input type="number"
+                               name="minutes"
+                               min="0"
+                               max="240"
+                               value="{{ organiser.travel_buffer }}"
+                               required>
+                    </label>
+                    <button type="submit">Save travel buffer</button>
+                </form>
+            </section>
+            <section data-private>
+                <h2>Add a follow-up or deadline</h2>
+                <form action="{{ url_for('organiser_save') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label>
+                        Type
+                        <select name="kind">
+                            {% for key,label in kinds.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Title / employer / appointment
+                        <input name="title" maxlength="160" required>
+                    </label>
+                    <label>
+                        Follow-up, assessment or interview date
+                        <input type="date" name="due" required>
+                    </label>
+                    <label>
+                        Amount owed or refundable (£, optional)
+                        <input type="number" min="0" max="10000000" step="0.01" name="amount">
+                    </label>
+                    <label>
+                        Next action / application stage / documents to bring
+                        <input name="notes" maxlength="500">
+                    </label>
+                    <label>
+                        Attach unlocked documents
+                        <select name="document_id" multiple>
+                            {% for doc in documents %}<option value="{{ doc.id }}">{{ doc.title }}</option>{% endfor %}
+                        </select>
+                    </label>
+                    <p>
+                        <a href="{{ url_for('document_list') }}">Unlock Documents</a> to attach encrypted files. You can also add a document reminder with no uploaded file.
+                    </p>
+                    <button type="submit">Add organiser item</button>
+                </form>
+            </section>
+            <section data-private>
+                <h2>Needs a decision / follow-up</h2>
+                {% for item in organiser['items']|sort(attribute='due') if not item.done %}
+                    <article class="panel">
+                        <h3>{{ item.title }}</h3>
+                        <p>
+                            {{ kinds[item.kind] }} · due {{ item.due }}
+                            {% if item.due < today.isoformat() %}· overdue{% endif %}
+                            {% if item.amount %}· £{{ item.amount }}{% endif %}
+                        </p>
+                        {% if item.notes != '-' %}<p>{{ item.notes }}</p>{% endif %}
+                        {% for identifier in item.documents %}
+                            <p>
+                                <a href="{{ url_for('document_download',identifier=identifier) }}">Open attached document {{ loop.index }}</a> (unlock required; expired/deleted documents are unavailable)
+                            </p>
+                        {% endfor %}
+                        <form action="{{ url_for('organiser_action',identifier=item.id,action='done') }}"
+                              method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit">Complete {{ item.title }}</button>
+                        </form>
+                        <form action="{{ url_for('organiser_action',identifier=item.id,action='defer') }}"
+                              method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <label>
+                                Follow up later
+                                <input type="date" name="due" required>
+                            </label>
+                            <button type="submit">Defer {{ item.title }}</button>
+                        </form>
+                        <details>
+                            <summary>Edit {{ item.title }}</summary>
+                            <form action="{{ url_for('organiser_save') }}" method="post">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="id" value="{{ item.id }}">
+                                <label>
+                                    Type
+                                    <select name="kind">
+                                        {% for key,label in kinds.items() %}
+                                            <option value="{{ key }}" {% if key == item.kind %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <label>
+                                    Title
+                                    <input name="title" maxlength="160" value="{{ item.title }}" required>
+                                </label>
+                                <label>
+                                    Due
+                                    <input type="date" name="due" value="{{ item.due }}" required>
+                                </label>
+                                <label>
+                                    Amount (£)
+                                    <input type="number"
+                                           name="amount"
+                                           min="0"
+                                           max="10000000"
+                                           step="0.01"
+                                           value="{{ item.amount or '' }}">
+                                </label>
+                                <label>
+                                    Notes
+                                    <input name="notes"
+                                           maxlength="500"
+                                           value="{{ '' if item.notes == '-' else item.notes }}">
+                                </label>
+                                <label>
+                                    Documents
+                                    <select name="document_id" multiple>
+                                        {% for doc in documents %}
+                                            <option value="{{ doc.id }}"
+                                                    {% if doc.id in item.documents %}selected{% endif %}>
+                                                {{ doc.title }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <label>
+                                    <input type="checkbox" name="clear_documents">
+                                    Clear existing document links
+                                </label>
+                                <button type="submit">Save organiser changes</button>
+                            </form>
+                        </details>
+                        <form action="{{ url_for('organiser_action',identifier=item.id,action='delete') }}"
+                              method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit">Drop {{ item.title }}</button>
+                        </form>
+                    </article>
+                {% else %}
+                    <p>No open organiser items.</p>
+                {% endfor %}
+            </section>
+            <details data-private>
+                <summary>Completed items</summary>
+                {% for item in organiser['items'] if item.done %}
+                    <p>{{ item.title }} · {{ item.due }}</p>
+                    <form action="{{ url_for('organiser_action',identifier=item.id,action='reopen') }}"
+                          method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit">Reopen {{ item.title }}</button>
+                    </form>
+                {% endfor %}
+            </details>
+        </main>
+    </body>
+</html>

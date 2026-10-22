@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Private documents · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <h1>Private documents</h1>
+            {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            {% if vault_error %}<p role="alert">{{ vault_error }}</p>{% endif %}
+            <p>
+                Documents and their titles are encrypted. The key is stored separately from the project. Save a secure copy of that key independently of document backups: losing it prevents recovery.
+            </p>
+            {% if not vault_unlocked %}
+                <section>
+                    <h2>Unlock for 15 minutes</h2>
+                    <form action="{{ url_for('document_unlock') }}" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <label>
+                            App password
+                            <input type="password"
+                                   name="password"
+                                   autocomplete="current-password"
+                                   required>
+                        </label>
+                        <button type="submit">Unlock documents</button>
+                    </form>
+                </section>
+            {% else %}
+                <form action="{{ url_for('document_lock') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit">Lock documents now</button>
+                </form>
+                {% if not vault_ready %}
+                    <form action="{{ url_for('document_initialise') }}" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit">Initialise encrypted document storage</button>
+                    </form>
+                {% else %}
+                    <section data-private>
+                        <h2>Add a document</h2>
+                        <p>
+                            PDF, JPEG or PNG · up to 5 MiB each · 100 documents / 100 MiB total. Images have metadata removed. Active or malformed PDFs are rejected; PDFs download as attachments and are never shown inline. These checks are not antivirus scanning.
+                        </p>
+                        <form action="{{ url_for('document_upload') }}"
+                              method="post"
+                              enctype="multipart/form-data">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <label>
+                                Private title
+                                <input name="title" maxlength="100" required>
+                            </label>
+                            <label>
+                                Document
+                                <input type="file"
+                                       name="document"
+                                       accept="application/pdf,image/jpeg,image/png"
+                                       required>
+                            </label>
+                            <label>
+                                Delete on this date (optional)
+                                <input type="date" name="expires">
+                            </label>
+                            <button type="submit">Encrypt and store document</button>
+                        </form>
+                    </section>
+                    <section data-private>
+                        <h2>Stored documents</h2>
+                        {% for document in documents %}
+                            <article class="panel">
+                                <h3>{{ document.title }}</h3>
+                                <p>
+                                    {{ document.suffix|upper }} · {{ document.size }} bytes · saved {{ document.created }}
+                                    {% if document.expires %}· deleted from live storage on {{ document.expires }}{% endif %}
+                                </p>
+                                <a href="{{ url_for('document_download',identifier=document.id) }}">Download document</a>
+                                {% if document.suffix != 'pdf' %}
+                                    <a href="{{ url_for('document_preview',identifier=document.id) }}">Preview image</a>
+                                {% endif %}
+                                <form action="{{ url_for('document_delete',identifier=document.id) }}"
+                                      method="post">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit">Delete {{ document.title }}</button>
+                                </form>
+                            </article>
+                        {% else %}
+                            <p>No documents stored.</p>
+                        {% endfor %}
+                    </section>
+                    <section>
+                        <h2>Encrypted backup and retention</h2>
+                        <a class="button" href="{{ url_for('document_backup') }}">Download encrypted document backup</a>
+                        <p>
+                            Document backups contain encrypted files and an encrypted index, without the key. They are separate from ordinary settings backups. You control retention of downloaded copies; live deletion cannot erase your backups. Expired documents are removed at the next document access. Linked organiser reminders keep only random IDs and do not reveal document contents.
+                        </p>
+                    </section>
+                {% endif %}
+            {% endif %}
+        </main>
+    </body>
+</html>

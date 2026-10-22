@@ -16,6 +16,11 @@ print("Fixture files ready", file=sys.stderr, flush=True)
 import app as web
 print("Web app imported", file=sys.stderr, flush=True)
 from flask import redirect, session
+from organiser import vault
+vault.KEY_FILE = Path(folder.name) / 'separate-keys' / 'vault.key'
+from werkzeug.security import generate_password_hash
+fixture_password_hash = generate_password_hash('fixture-only-password')
+web.load_password_hash = lambda: fixture_password_hash
 from actions import delivery_state
 from services import bin_collections
 from storage import write_json
@@ -175,7 +180,7 @@ if '--stdio' in sys.argv:
             request = json.loads(line)
             with contextlib.redirect_stdout(sys.stderr):
                 response = client.open(request['path'], method=request['method'],
-                                       data=request.get('body', ''), headers=request.get('headers', {}),
+                                       data=base64.b64decode(request['body_base64']) if 'body_base64' in request else request.get('body', ''), headers=request.get('headers', {}),
                                        base_url='http://receipt.test')
             print(json.dumps({'status': response.status_code, 'headers': dict(response.headers),
                               'body': base64.b64encode(response.data).decode()}), flush=True)

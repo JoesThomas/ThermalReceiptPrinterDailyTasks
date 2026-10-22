@@ -668,6 +668,14 @@ def print_integrated_finance(
             from finance.salary_plan import build as build_salary_plan
             salary_goals=goal_review(wealth,on=today)
             allocation=build_salary_plan(spending_summary.get('salary_incomings',[]),transactions,balances,projection,finance_settings,salary_goals,today)
+            if allocation['fund_plan']['enabled']:
+                print_heading(printer, 'TAX & ANNUAL CASH POTS', write=left)
+                if allocation['fund_plan']['valid']:
+                    for row in allocation['fund_plan']['rows']:
+                        left(printer, _amount_line(row['name'][:25], row['suggested']))
+                    left(printer, 'Suggestions only; record completed moves in app.')
+                else:
+                    left(printer, 'Funding suggestions unavailable; refresh finance.')
             printer.text("\n")
             print_heading(printer, 'SALARY ALLOCATION [E]', write=left)
             print_line(printer)

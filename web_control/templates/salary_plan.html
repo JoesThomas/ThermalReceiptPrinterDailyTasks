@@ -1,3 +1,16 @@
+{% if salary_plan and salary_plan.fund_plan and salary_plan.fund_plan.enabled %}
+    <section class="helper">
+        <h2>Tax and annual funds before other savings</h2>
+        {% if salary_plan.fund_plan.valid %}
+            <p>
+                Suggested earmarks: £{{ '%.2f'|format(salary_plan.fund_plan.total) }} from cash already available after bills, repayments and reserves. No salary is required for these cash pots.
+            </p>
+        {% else %}
+            <p>Funding suggestions are withheld until the finance inputs are complete.</p>
+        {% endif %}
+        <a href="{{ url_for('annual_funds_page') }}">Review priorities and record transfers</a>
+    </section>
+{% endif %}
 {% if salary_plan %}
     <details class="section-disclosure">
         <summary>Salary plan · bills, savings & spending</summary>
@@ -27,7 +40,7 @@
             {% endif %}
             {% if salary_plan.reserve.tax_reserve %}
                 <p>
-                    Protected rental-tax reserve: £{{ '%.2f'|format(salary_plan.reserve.tax_reserve) }}. This is excluded from money available to allocate, spend or save.
+                    Protected {{ salary_plan.reserve.reserve_label|default("Tax reserve") }}: £{{ '%.2f'|format(salary_plan.reserve.tax_reserve) }}. This is excluded from money available to allocate, spend or save.
                 </p>
             {% endif %}
             <h3>Suggested savings before payday</h3>

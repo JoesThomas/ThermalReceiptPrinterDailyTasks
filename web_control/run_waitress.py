@@ -58,7 +58,13 @@ def main(serve_fn=None, application=None, environ=None):
             start_monitor()
             from web_control.maintenance import start_monitor as start_backups
             start_backups()
-        serve_fn(application, host=host, port=port, threads=4)
+        options = dict(host=host, port=port, threads=4,
+                       inbuf_overflow=6*1024*1024, outbuf_overflow=6*1024*1024,
+                       max_request_body_size=6*1024*1024)
+        if (os.environ if environ is None else environ).get('RECEIPT_TRUST_PROXY') == '1':
+            options.update(trusted_proxy='127.0.0.1', trusted_proxy_headers={'x-forwarded-proto'},
+                           clear_untrusted_proxy_headers=True)
+        serve_fn(application, **options)
     except OSError as exc:
         raise SystemExit(bind_error_message(exc, host, port)) from exc
 

@@ -7,11 +7,19 @@ from web_control.run_waitress import main, server_address, bind_error_message
 
 
 class WebServerStartupTests(unittest.TestCase):
+    def test_proxy_headers_are_trusted_only_when_explicitly_enabled(self):
+        calls=[]
+        main(serve_fn=lambda app, **kwargs: calls.append(kwargs), application=object(),
+             environ={'RECEIPT_TRUST_PROXY':'1'})
+        self.assertEqual(calls[0]['trusted_proxy'], '127.0.0.1')
+        self.assertEqual(calls[0]['trusted_proxy_headers'], {'x-forwarded-proto'})
+        self.assertTrue(calls[0]['clear_untrusted_proxy_headers'])
+
     def test_port_can_be_changed_without_editing_code(self):
         calls = []
         main(serve_fn=lambda app, **kwargs: calls.append(kwargs), application=object(),
              environ={'RECEIPT_WEB_HOST': '127.0.0.1', 'RECEIPT_WEB_PORT': '5051'})
-        self.assertEqual(calls, [{'host': '127.0.0.1', 'port': 5051, 'threads': 4}])
+        self.assertEqual(calls, [{'host': '127.0.0.1', 'port': 5051, 'threads': 4, 'inbuf_overflow': 6*1024*1024, 'outbuf_overflow': 6*1024*1024, 'max_request_body_size': 6*1024*1024}])
         self.assertEqual(server_address({}), ('127.0.0.1', 5050))
 
     def test_invalid_port_fails_before_binding(self):

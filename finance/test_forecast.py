@@ -158,8 +158,8 @@ def simulate(base, inputs, today):
                 )
             costs = noncard + scheduled
             variable = daily * (next_pay - on).days
-            protected_later = sum((e['amount'] for e in base['events']
-                                   if e.get('amex_statement_protection') and e['date'] >= next_pay), ZERO)
+            protected_later = sum((e['amount'] if e.get('amex_statement_protection') else e.get('cash_fund_reserved', ZERO)
+                                   for e in base['events'] if e['date'] >= next_pay), ZERO)
             override = inputs.get("regular_override")
             if override and salary > 0:
                 linked = [

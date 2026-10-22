@@ -254,6 +254,8 @@ def build_projection(balances, transactions, monthly, yearly, settings, today,
             cash += value
     from finance.salary_plan import reserves
     buffer = reserves(settings)['buffer']
+    from finance.annual_funds import link_earmarks
+    buffer -= link_earmarks(events)
     recent = [tx for tx in external_payments(transactions)
               if (d := _parse_date(tx)) and today - timedelta(days=29) <= d <= today]
     # Remove actual configured bill matches before averaging variable spending.
@@ -307,7 +309,8 @@ def build_projection(balances, transactions, monthly, yearly, settings, today,
     before = [e for e in events if payday and e['date'] < payday]
     before_total = sum((e['amount'] for e in before), Decimal(0))
     days_to_payday = (payday - today).days if payday else None
-    safe = cash - buffer - before_total if payday else None
+    linked_later = sum((e.get('cash_fund_reserved', Decimal(0)) for e in events if payday and e['date'] >= payday), Decimal(0))
+    safe = cash - buffer - before_total - linked_later if payday else None
     valid = balances_ok and bank_status == 'complete' and protection['valid']
     if protection['enabled']:
         warnings.extend(protection['warnings'])
