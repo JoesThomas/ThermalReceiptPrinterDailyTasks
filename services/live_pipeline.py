@@ -4653,6 +4653,11 @@ def run_live_pipeline(
                 receipt_warning(printer, left, print_line, pending())
             except (ValueError, OSError):
                 left(printer, 'Amex interest alerts unavailable; check app.')
+            from finance.amex_protection import assess, print_status
+            try:
+                print_status(printer, left, print_line, assess(today=today))
+            except (ValueError, OSError):
+                left(printer, 'Amex payment protection unavailable; check app.')
 
     if print_information_page:
         from services.parallel import collect_independent
@@ -5373,6 +5378,8 @@ def run_live_pipeline(
                 subscriptions = []
                 spending_summary = {}
 
+            from finance.amex_protection import capture as capture_protection
+            capture_protection(balances, transactions, spending_summary)
             # Read the existing instalment balances before printing the summary.
             subscriptions_data = load_subscriptions()
             preview_progress("Building finance summary", 3, 5)
@@ -5421,6 +5428,11 @@ def run_live_pipeline(
             finance_success = True
 
         except Exception as error:
+            from finance.amex_protection import mark_failed
+            try:
+                mark_failed()
+            except (ValueError, OSError):
+                pass
             print(
                 "Finance check error:",
                 repr(error),

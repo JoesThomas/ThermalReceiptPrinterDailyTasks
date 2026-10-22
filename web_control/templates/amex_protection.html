@@ -1,0 +1,168 @@
+<section id="amex-payment-protection" class="helper" data-private>
+    <h2>Prevent Amex interest</h2>
+    <p>
+        Protect the unpaid statement balance before suggesting savings. Your current card balance can include newer spending that is not due on this statement.
+    </p>
+    {% if amex_protection.error %}<p role="alert">{{ amex_protection.error }}</p>{% endif %}
+    {% if amex_protection.enabled and amex_protection.statement %}
+        <dl>
+            <dt>Statement balance · {{ amex_protection.statement.date }}</dt>
+            <dd>
+                £{{ '%.2f'|format(amex_protection.statement.balance) }}
+            </dd>
+            <dt>Payment due date</dt>
+            <dd>
+                {{ amex_protection.statement.due }}
+            </dd>
+            <dt>Confirmed repayments</dt>
+            <dd>
+                £{{ '%.2f'|format(amex_protection.confirmed) }}
+            </dd>
+            <dt>Still to pay</dt>
+            <dd>
+                £{{ '%.2f'|format(amex_protection.remaining) }}
+            </dd>
+            <dt>Protected for repayment</dt>
+            <dd>
+                £{{ '%.2f'|format(amex_protection.reserve) }}
+            </dd>
+            <dt>Expected Direct Debit · {{ amex_protection.config.dd_mode }}</dt>
+            <dd>
+                {% if amex_protection.scheduled is not none %}
+                    £{{ '%.2f'|format(amex_protection.scheduled) }}
+                {% else %}
+                    Not confirmed
+                {% endif %}
+            </dd>
+        </dl>
+        <p>{{ amex_protection.coverage }}. Planned collections do not count as paid.</p>
+        {% if amex_protection.dd_caution %}<p>{{ amex_protection.dd_caution }}</p>{% endif %}
+    {% endif %}
+    {% for warning in amex_protection.warnings %}<p class="flash">{{ warning }}</p>{% endfor %}
+    <details {% if not amex_protection.enabled %}open{% endif %}>
+        <summary>Statement and Direct Debit settings</summary>
+        <form method="post" action="{{ url_for('save_amex_protection') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label>
+                <input type="checkbox"
+                       name="enabled"
+                       {% if amex_protection.enabled %}checked{% endif %}>
+                Enable Amex payment protection
+            </label>
+            <p>
+                Uses the first Amex card returned by your connection. Bank details are captured during finance refreshes. Enable this after checking your statement and payment arrangement.
+            </p>
+            <label>
+                Statement source
+                <select name="source">
+                    <option value="auto"
+                            {% if amex_protection.config.source == 'auto' %}selected{% endif %}>
+                        Bank statement fields
+                    </option>
+                    <option value="manual"
+                            {% if amex_protection.config.source == 'manual' %}selected{% endif %}>
+                        Manual statement fallback
+                    </option>
+                </select>
+            </label>
+            <p>
+                Automatic mode needs the bank's statement date, full statement balance and due date. Missing fields produce a warning; they are never replaced with the current balance.
+            </p>
+            <label>
+                Manual statement date
+                <input type="date"
+                       name="statement_date"
+                       value="{{ amex_protection.config.manual_statement.date|default('') }}">
+            </label>
+            <label>
+                Manual full statement balance (£)
+                <input type="number"
+                       name="statement_balance"
+                       min="0"
+                       max="10000000"
+                       step="0.01"
+                       value="{{ amex_protection.config.manual_statement.balance|default('') }}">
+            </label>
+            <label>
+                Manual payment due date
+                <input type="date"
+                       name="due_date"
+                       value="{{ amex_protection.config.manual_statement.due|default('') }}">
+            </label>
+            <label>
+                Direct Debit arrangement in Amex
+                <select name="dd_mode">
+                    {% for value,label in [('unknown','Not confirmed'),('none','No Direct Debit'),('minimum','Minimum payment'),('fixed','Fixed amount'),('full','Full statement balance')] %}
+                        <option value="{{ value }}"
+                                {% if amex_protection.config.dd_mode == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                Expected collection amount (£)
+                <input type="number"
+                       name="dd_amount"
+                       min="0"
+                       max="10000000"
+                       step="0.01"
+                       value="{{ amex_protection.config.dd_amount if amex_protection.config.dd_amount is not none else '' }}">
+            </label>
+            <p>
+                Required for a fixed amount. Otherwise leave blank to use the bank's minimum or unpaid statement balance. Confirm the collection amount in Amex after any manual payment.
+            </p>
+            <label>
+                Collection date for this statement
+                <input type="date"
+                       name="dd_date"
+                       value="{{ amex_protection.config.dd_date or '' }}">
+            </label>
+            <p>If blank, the payment due date is used for planning. Check your actual collection date in Amex.</p>
+            <label>
+                Account used to pay Amex
+                <select name="paying_account">
+                    {% for provider in ['HSBC','MONZO'] %}
+                        <option value="{{ provider }}"
+                                {% if amex_protection.config.paying_account == provider %}selected{% endif %}>
+                            {{ provider }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                Was a balance carried over from the previous statement?
+                <select name="carried_balance">
+                    {% for value,label in [('unknown','Not sure'),('no','No'),('yes','Yes — residual interest may apply')] %}
+                        <option value="{{ value }}"
+                                {% if amex_protection.config.carried_balance == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                Total repayments confirmed by Amex since this statement (£)
+                <input type="number"
+                       name="confirmed_total"
+                       min="0"
+                       max="10000000"
+                       step="0.01"
+                       value="{{ amex_protection.config.confirmed_total }}">
+            </label>
+            <label>
+                Confirmed through
+                <input type="date"
+                       name="confirmed_through"
+                       value="{{ amex_protection.config.confirmed_through or '' }}">
+            </label>
+            <p>
+                Optional fallback when the feed misses payments. Enter the total credited to this statement, excluding refunds and planned transfers. This is compared with bank-confirmed payments, never added to them. Check or reset it when changing statements.
+            </p>
+            <button type="submit">Save Amex payment protection</button>
+        </form>
+    </details>
+    <p>
+        These controls do not change your Amex Direct Debit or send money. Full statement payment helps avoid purchase interest, subject to your card terms and previous balances; it cannot guarantee that no interest is due.
+    </p>
+</section>

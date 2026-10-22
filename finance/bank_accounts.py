@@ -51,7 +51,7 @@ def first(get,token,resource):
     if not rows or not rows[0].get('account_id'): raise RuntimeError('No account was returned by the bank connection.')
     result=get(token,f"/{resource}/{rows[0]['account_id']}/balance").get('results',[])
     if not result: raise RuntimeError('No balance was returned by the bank connection.')
-    return result[0]
+    return {**result[0], '_account_id': rows[0]['account_id']}
 
 
 def collect(refresh,initial,get):
@@ -88,4 +88,8 @@ def collect(refresh,initial,get):
     token=refresh('AMEX',initial('AMEX'));amex=first(get,token,'cards')
     result['AMEX']={'current':float(number(amex.get('current'))),'available':float(number(amex.get('available',0))),
                     'credit_limit':float(number(amex.get('credit_limit',0))),'currency':amex.get('currency','GBP')}
+    from finance.amex_protection import card_key
+    result['AMEX'].update({key: amex[key] for key in ('last_statement_balance', 'last_statement_date', 'payment_due', 'payment_due_date') if key in amex})
+    result['AMEX']['statement_card_key'] = card_key(amex.get('_account_id'))
+    result['AMEX']['checked_at'] = stamp
     return result

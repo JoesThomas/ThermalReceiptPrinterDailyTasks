@@ -238,8 +238,11 @@ def payment_schedule(monthly, yearly, transactions, settings, today, horizon=182
 
 
 def build_projection(balances, transactions, monthly, yearly, settings, today,
-                     savings=0, bank_status='complete', horizon=1826):
+                     savings=0, bank_status='complete', horizon=1826, *, protection_override=None):
     events, undated, warnings = payment_schedule(monthly, yearly, transactions, settings, today, horizon)
+    from finance.amex_protection import assess, protected_events
+    protection = protection_override if protection_override is not None else assess(today=today)
+    events = protected_events(events, protection, today, horizon)
     cash = Decimal(0)
     balances_ok = True
     for provider in ('HSBC', 'MONZO'):
@@ -305,7 +308,9 @@ def build_projection(balances, transactions, monthly, yearly, settings, today,
     before_total = sum((e['amount'] for e in before), Decimal(0))
     days_to_payday = (payday - today).days if payday else None
     safe = cash - buffer - before_total if payday else None
-    valid = balances_ok and bank_status == 'complete'
+    valid = balances_ok and bank_status == 'complete' and protection['valid']
+    if protection['enabled']:
+        warnings.extend(protection['warnings'])
     if any(e['basis'] == 'Estimated from last payment' for e in events):
         warnings.append('Some dates are estimated from a past payment. Confirm the usual payment days.')
     planned_names = {key(i.get('monthly_commitment_name') or i.get('name'))
@@ -317,7 +322,7 @@ def build_projection(balances, transactions, monthly, yearly, settings, today,
             valid = False
     card_debt = money((balances or {}).get('AMEX', {}).get('current'), Decimal(0))
     configured_cards = monthly + settings.get('commitments', []) + settings.get('forecast_events', [])
-    if card_debt > 0 and not any('amex' in key(i.get('name')) or 'americanexpress' in key(i.get('name')) for i in configured_cards):
+    if card_debt > 0 and protection_override is None and not protection['statement'] and not any('amex' in key(i.get('name')) or 'americanexpress' in key(i.get('name')) for i in configured_cards):
         warnings.append('An Amex balance is owed but no repayment is scheduled. Add its payment amount and due date.')
         valid = False
     if not balances_ok:
@@ -329,7 +334,7 @@ def build_projection(balances, transactions, monthly, yearly, settings, today,
     if not recent and override is None:
         warnings.append('No variable spending history is available; add a daily spending estimate.')
         valid = False
-    return {'cash': cash if balances_ok else None, 'buffer': buffer, 'daily_cost':daily, 'daily': daily.quantize(Decimal('0.01')),
+    return {'amex_protection': protection, 'cash': cash if balances_ok else None, 'buffer': buffer, 'daily_cost':daily, 'daily': daily.quantize(Decimal('0.01')),
             'cash_days': cash_days if valid else None, 'total_days': total_days if valid else None,
             'cash_duration': format_runway(cash_days, today) if valid and cash_days is not None else None,
             'total_duration': format_runway(total_days, today) if valid and total_days is not None else None,

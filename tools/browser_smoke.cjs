@@ -432,6 +432,22 @@ process.on('exit', () => child.kill());
   await expectedForm.locator('select[name="repeat"]').selectOption('month_end');
   await Promise.all([page.waitForNavigation({waitUntil:'load'}), expectedForm.getByRole('button',{name:'Add expected payment',exact:true}).click()]);
   await page.locator('p.flash').filter({hasText:'Expected non-salary income saved privately.'}).waitFor();
+  const protectionForm = page.locator('#amex-payment-protection form');
+  await protectionForm.locator('input[name="enabled"]').check();
+  await protectionForm.locator('select[name="source"]').selectOption('manual');
+  await protectionForm.locator('input[name="statement_date"]').fill(new Date(Date.now()-14*86400000).toISOString().slice(0,10));
+  await protectionForm.locator('input[name="statement_balance"]').fill('500');
+  await protectionForm.locator('input[name="due_date"]').fill(new Date(Date.now()+3*86400000).toISOString().slice(0,10));
+  await protectionForm.locator('select[name="dd_mode"]').selectOption('fixed');
+  await protectionForm.locator('input[name="dd_amount"]').fill('50');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}), protectionForm.getByRole('button',{name:'Save Amex payment protection'}).click()]);
+  assert.match(await page.locator('#amex-protection-alert').innerText(), /£450.00.*uncovered/);
+  assert.match(await page.locator('#amex-payment-protection').innerText(), /Planned collections do not count as paid/);
+  // Restore the default for the remaining, independent finance fixtures.
+  await protectionForm.evaluate(form => form.closest('details').open=true);
+  await protectionForm.locator('input[name="enabled"]').uncheck();
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}), protectionForm.getByRole('button',{name:'Save Amex payment protection'}).click()]);
+  assert.equal(await page.locator('#amex-protection-alert').isVisible(), false);
   // This fixture retains incomplete commitments from earlier finance checks.
   // Expectations remain editable, but numeric forecasts must stay withheld.
   assert.match(await page.locator('#expected-income').innerText(), /Complete, fresh bank balances and spending estimates are needed/);
