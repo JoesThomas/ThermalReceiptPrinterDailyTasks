@@ -355,6 +355,8 @@ def print_integrated_finance(
     projection = build_projection(balances, transactions, status["monthly"], status.get("yearly", []),
                                   finance_settings, today, st["runway_accessible"],
                                   spending_summary.get("bank_data_status", "complete"))
+    from finance.amex_protection import print_status
+    print_status(printer, left, line, projection['amex_protection'], detailed=True)
     if projection["valid"] and projection["payday"]:
         debt_summary.update(payday=projection["payday"], days=(projection["payday"] - today).days,
                             committed=projection["before_payday_total"], buffer=projection["buffer"],

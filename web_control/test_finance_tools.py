@@ -130,6 +130,13 @@ def collect(values, today, *, shared_snapshot=None, local=None):
         today,
         bank_status=coverage,
     )
+    if projection.get('amex_protection', {}).get('enabled') and projection['amex_protection']['statement']:
+        # The statement reserve replaces the old whole-card fallback for this cycle.
+        full_reserved = False
+        scheduled = True
+        if card is not None and projection['amex_protection']['reserve'] > card:
+            projection['valid'] = False
+            projection['warnings'].append('The Amex balance override is below the protected statement repayment. Confirm statement and collection amounts before forecasting.')
     from finance.savings_goals import load as load_goals
     if values.get("respect_isa_allowance") == "on" and values.get("use_saved_accounts") == "on":
         projection["isa_records"] = deepcopy(local["isa_records"] if local and "isa_records" in local else load_goals())

@@ -32,6 +32,9 @@ def build(salary,transactions,balances,projection,settings,goals,today):
     end=projection['payday']-timedelta(days=1) if projection.get('payday') else today+timedelta(days=30)
     bills=[e for e in projection['events'] if e['date']<=end]
     bills_cost=sum((e['amount'] for e in bills),Decimal(0))
+    # Statement money stays protected even if its due date is after the next payday.
+    protected_later=sum((e['amount'] for e in projection['events'] if e.get('amex_statement_protection') and e['date']>end),Decimal(0))
+    bills_cost += protected_later
     variable=projection.get('daily_cost',projection['daily'])*(end-today).days
     manual=money(settings.get('salary_savings_target'))
     priorities=[];planning_error=False

@@ -216,6 +216,8 @@ class FinanceRefresh:
                         raise ValueError("Bank snapshot size limit reached")
                     from finance.amex_interest import capture as capture_interest
                     capture_interest(snapshot['data'][0], path=self.root / 'data' / 'amex_interest_alerts.json')
+                    from finance.amex_protection import capture as capture_protection
+                    capture_protection(snapshot['balances'], snapshot['data'][0], snapshot['data'][4], path=self.root / 'data' / 'amex_payment_protection.json', checked_at=snapshot['checked_at'])
                     write_json(self.snapshot_file, encoded)
                     progress("Bank data retrieved; preparing the review")
                     if self.on_success:
@@ -232,6 +234,11 @@ class FinanceRefresh:
                     )
                     write_json(self.status_file, state)
                 except Exception as error:
+                    from finance.amex_protection import mark_failed
+                    try:
+                        mark_failed(path=self.root / 'data' / 'amex_payment_protection.json')
+                    except (ValueError, OSError):
+                        pass  # Preserve damaged private state for repair.
                     event(
                         "finance_refresh",
                         status="failed",

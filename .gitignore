@@ -227,3 +227,6 @@ data/printer_paper.lock
 
 data/amex_interest_alerts.json
 data/amex_interest_alerts.lock
+
+data/amex_payment_protection.json
+data/amex_payment_protection.lock

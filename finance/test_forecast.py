@@ -158,6 +158,8 @@ def simulate(base, inputs, today):
                 )
             costs = noncard + scheduled
             variable = daily * (next_pay - on).days
+            protected_later = sum((e['amount'] for e in base['events']
+                                   if e.get('amex_statement_protection') and e['date'] >= next_pay), ZERO)
             override = inputs.get("regular_override")
             if override and salary > 0:
                 linked = [
@@ -178,7 +180,7 @@ def simulate(base, inputs, today):
                         room = (
                             max(
                                 ZERO,
-                                min(income - costs - variable, cash - costs - variable),
+                                min(income - costs - variable, cash - costs - variable - protected_later),
                             )
                             if eligible
                             else ZERO
@@ -243,10 +245,10 @@ def simulate(base, inputs, today):
                 (e["amount"] for e in current_events if e.get("savings_account")), ZERO
             )
             surplus = income - costs - variable
-            income_budget = rounded(max(ZERO, min(surplus, cash - costs - variable)))
+            income_budget = rounded(max(ZERO, min(surplus, cash - costs - variable - protected_later)))
             use_spare_cash = inputs.get("invest_spare_cash") and salary > 0
             budget = (
-                rounded(max(ZERO, cash - costs - variable), rounding=ROUND_DOWN)
+                rounded(max(ZERO, cash - costs - variable - protected_later), rounding=ROUND_DOWN)
                 if use_spare_cash
                 else income_budget
             )
@@ -276,7 +278,7 @@ def simulate(base, inputs, today):
             income_savings = min(saving, max(ZERO, income_budget - extra))
             cash_repaid = max(ZERO, extra - income_budget)
             remaining_cash = (
-                rounded(max(ZERO, cash - costs - variable), rounding=ROUND_DOWN)
+                rounded(max(ZERO, cash - costs - variable - protected_later), rounding=ROUND_DOWN)
                 if use_spare_cash
                 else ZERO
             )

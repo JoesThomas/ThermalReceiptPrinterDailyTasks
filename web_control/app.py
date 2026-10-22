@@ -1405,5 +1405,9 @@ from web_control.amex_interest import register as register_amex_interest
 register_amex_interest(app, login_required)
 
 
+from web_control.amex_protection import register as register_amex_protection
+register_amex_protection(app, login_required)
+
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

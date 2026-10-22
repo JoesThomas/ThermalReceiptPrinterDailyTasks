@@ -34,6 +34,7 @@ with app.test_client() as client:
         assert client.post('/login', data={'csrf_token': token, 'password': 'wrong'}).status_code == 429
     with client.session_transaction() as session:
         session['authenticated'] = True
+    assert client.post('/finance/amex-protection').status_code == 403
     assert client.post('/finance/amex-interest/acknowledge').status_code == 403
     assert client.post('/logout').status_code == 403
     assert client.post('/logout', data={'csrf_token': 'invalid'}).status_code == 403

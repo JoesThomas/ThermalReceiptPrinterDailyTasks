@@ -11,6 +11,13 @@
       if (!response.ok) return;
       const state = await response.json();
       const charges = state.charges || [];
+      const protection = document.getElementById('amex-protection-alert');
+      if (protection && state.protection) {
+        protection.hidden = !state.protection.length;
+        document.getElementById('amex-protection-warnings').replaceChildren(...state.protection.map(text => {
+          const li = document.createElement('li'); li.textContent = text; return li;
+        }));
+      }
       panel.hidden = !charges.length && !state.error;
       document.getElementById('amex-interest-error').textContent = state.error || '';
       document.getElementById('amex-interest-charges').replaceChildren(...charges.map(row => {

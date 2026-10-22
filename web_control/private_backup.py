@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 MAX_BYTES = 900_000
-OBJECT_FILES = {'amex_interest_alerts.json','printer_paper.json','finance_check_changes.json','expected_income.json','bank_overdrafts.json','vehicles.json','birthdays.csv','finance_scenarios.json', 'receipt_settings.last-good.json','receipt_archive_settings.json','finance_reviews.json','assets.json','rental_tax.json','finance_explanations.json','lifestyle.json','transaction_sources.json','finance_planning.json','bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
+OBJECT_FILES = {'amex_payment_protection.json','amex_interest_alerts.json','printer_paper.json','finance_check_changes.json','expected_income.json','bank_overdrafts.json','vehicles.json','birthdays.csv','finance_scenarios.json', 'receipt_settings.last-good.json','receipt_archive_settings.json','finance_reviews.json','assets.json','rental_tax.json','finance_explanations.json','lifestyle.json','transaction_sources.json','finance_planning.json','bank_account_selection.json','calendar_location_overrides.json','receipt_recovery.json','savings_goals.json', 'bin_collections.json', 'daily_lists.json', 'premium_bonds.json', 'receipt_settings.json', 'subscriptions.json', 'savings.json',
                 'investments.json', 'finance_settings.json', 'finance_categories.json',
                 'food_shop_override.json', 'tesco_progress.json', 'meals_eaten.json'}
 LIST_FILES = {'finance_monthly_snapshots.json','routines.json', 'future_tasks.json', 'wealth_history.json'}
@@ -52,6 +52,9 @@ def _validate_file(name, content):
     if name == 'assets.json':
         from finance.assets import validate as validate_assets
         validate_assets(content)
+    if name == 'amex_payment_protection.json':
+        from finance.amex_protection import validate
+        validate(content)
     if name == 'amex_interest_alerts.json':
         from finance.amex_interest import validate
         validate(content)

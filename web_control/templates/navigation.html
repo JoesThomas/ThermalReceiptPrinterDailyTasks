@@ -32,6 +32,19 @@
         . <a href="{{ url_for('preferences_page') }}#away">Manage dates</a>
     </p>
 {% endif %}
+{% if amex_protection is defined %}
+    <aside id="amex-protection-alert"
+           class="flash"
+           role="alert"
+           aria-live="polite"
+           {% if not amex_protection.warnings %}hidden{% endif %}>
+        <strong>Amex payment check</strong>
+        <ul id="amex-protection-warnings" data-private>
+            {% for warning in amex_protection.warnings %}<li>{{ warning }}</li>{% endfor %}
+        </ul>
+        <a href="{{ url_for('finance_review') }}#amex-payment-protection">Review statement and repayment</a>
+    </aside>
+{% endif %}
 {% if amex_interest_alert is defined %}
     {% include 'amex_interest_alert.html' %}
 {% endif %}
