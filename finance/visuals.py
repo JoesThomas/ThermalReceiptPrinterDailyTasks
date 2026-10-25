@@ -282,12 +282,14 @@ def allocation(result):
             "Retained bank cash",
             max(
                 ZERO,
-                p["cash_after_allocation"] + b["buffer"] - reserve.get("gap", ZERO),
+                p["cash_after_allocation"] + b["buffer"] - (p.get("cash_topups_total", ZERO) if b.get("repayment_priority") else reserve.get("gap", ZERO)),
             ),
         ),
     ]
     if p.get("instalment_settled"):
         rows.insert(3, ("Early instalment settlements", p["instalment_settled"]))
+    if p.get('reserve_targets', {}).get('cash_transfer'):
+        rows.insert(3, ('Physical cash top-up', p['reserve_targets']['cash_transfer']))
     total = sum((max(ZERO, v) for _, v in rows), ZERO)
     return dict(
         rows=[
@@ -306,7 +308,8 @@ def allocation(result):
 def test_charts(result, today, cases):
     b = result["projection"]
     f = result["forecast"]
-    floor = b["buffer"] - f["reserved_total"]
+    policy = b.get("repayment_priority")
+    floor = policy["hard"] if policy else b["buffer"] - f["reserved_total"]
     charts = [
         line_chart(
             "test-bank",
@@ -314,7 +317,7 @@ def test_charts(result, today, cases):
             [
                 dict(name="Selected forecast", values=bank_path(result)),
                 dict(
-                    name="Protected buffer after reserved top-ups",
+                    name="Other protected reserves; top-up goals follow Amex" if policy else "Protected buffer after reserved top-ups",
                     values=[(today, floor), (f["end"], floor)],
                     reference=True,
                 ),

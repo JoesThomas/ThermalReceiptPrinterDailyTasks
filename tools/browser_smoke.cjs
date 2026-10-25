@@ -287,6 +287,26 @@ process.on('exit', () => child.kill());
   assert.match(await page.locator('.test-finance-paper').innerText(),/EARLY INSTALMENT PAYOFFS/);
   assert.equal(await testFinance.locator('input[name=early_payoff]').isChecked(),true);
 
+  // A realistic owed-card case uses the monthly necessities ceiling before repayment.
+  await testFinance.locator('input[name=salary]').fill('3000');
+  await testFinance.locator('input[name=other_income]').fill('900');
+  await testFinance.locator('select[name=receipt_detail]').selectOption('compact');
+  await testFinance.locator('details').evaluateAll(rows=>rows.forEach(row=>row.open=true));
+  await testFinance.locator('input[name=opening_cash]').fill('480');
+  await testFinance.locator('input[name=daily_spend]').fill('55');
+  await testFinance.locator('input[name=amex_owed]').fill('1600');
+  await testFinance.locator('input[name=monzo_target]').fill('500');
+  await testFinance.locator('input[name=early_payoff]').uncheck();
+  await testFinance.locator('input[name=limit_spending_when_owed]').check();
+  await testFinance.locator('input[name=debt_spending_cap]').fill('700');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),testFinance.getByRole('button',{name:'Generate test receipt',exact:true}).click()]);
+  const owedReceipt=await page.locator('.test-finance-paper').innerText();
+  assert.match(owedReceipt,/Everyday spending incl\. necessities\s+£700\.00/);
+  assert.match(owedReceipt,/Amex - extra repayment/);
+  assert.equal(owedReceipt.includes('Cash top-up (from reserves)'),false);
+  assert.equal(await testFinance.locator('input[name=debt_spending_cap]').inputValue(),'700');
+  assert.equal(await testFinance.locator('input[name=limit_spending_when_owed]').isChecked(),true);
+
   await page.goto('http://receipt.test/finance/assets');
   let mortgage = page.locator('form[action$="/finance/assets"]').filter({has:page.locator('input[name=kind][value=mortgages]')}).last();
   await mortgage.locator('input[name=name]').fill('Test mortgage');

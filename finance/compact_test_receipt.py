@@ -52,10 +52,17 @@ def receipt(result, today):
         amount("Monthly salary when active", data["salary"] + data["existing"])
         if first["salary"] != data["salary"] + data["existing"]:
             amount("Salary this payday", first["salary"])
+    if first.get('spending_limited'):
+        amount('Debt/overdraft spending ceiling', first['spending_cap'])
+        text('Monthly maximum; food and necessities kept before repayments.')
     if data["other"]:
         amount("Other monthly income", data["other"])
     if data["lump"]:
         amount("One-off lump sum", data["lump"])
+    if base.get('repayment_priority'):
+        text('Bills, food/necessities -> Amex -> reserve top-ups -> extra savings/investments.')
+        if base.get('amex', {}).get('balance') is None:
+            text('Amex balance unknown: confirm it before extra savings or top-ups.')
     if forecast["run_out"]:
         text(
             "FUNDING WARNING: this pathway breaches protected reserves. Review costs before making transfers."
@@ -71,6 +78,7 @@ def receipt(result, today):
     moved = sum((value for _, value in destinations), ZERO)
     if first["savings"] - moved:
         destinations.append(("Savings - choose an account", first["savings"] - moved))
+    investment_destinations = list(destinations)
     if first["extra"]:
         debt = ("Amex - extra repayment", first["extra"])
         destinations.insert(0, debt) if data[
@@ -79,8 +87,16 @@ def receipt(result, today):
     early_destinations = [(item['name'] + ' - settle early', item['amount']) for item in first.get('instalment_payoffs', [])]
     index = 1 if first['extra'] and data['strategy'] == 'amex_first' else 0
     destinations[index:index] = early_destinations
-    for label, value in destinations:
-        amount(label, value)
+    from finance.reserve_targets_receipt import transfers as target_transfers
+    if base.get('repayment_priority'):
+        if first['extra']:
+            amount('Amex - extra repayment', first['extra'])
+        target_transfers(page, base, first)
+        for label, value in early_destinations + investment_destinations:
+            amount(label, value)
+    else:
+        for label, value in destinations:
+            amount(label, value)
     if (
         not destinations
         and not reserve.get("gap")
@@ -88,32 +104,33 @@ def receipt(result, today):
             ZERO, data.get("monzo_target", ZERO) - base.get("monzo_balance", ZERO)
         )
     ):
-        text("No transfers needed this payday.")
-    reserved_topups = False
-    if reserve.get("gap"):
-        funded = not base.get("cash_topup") or any(
-            e["date"] <= first["end"] for e in forecast["reserve_transfers"]
+        text("No extra transfers available this payday." if base.get("repayment_priority") else "No transfers needed this payday.")
+    if not base.get("repayment_priority"):
+        reserved_topups = False
+        if reserve.get("gap"):
+            funded = not base.get("cash_topup") or any(
+                e["date"] <= first["end"] for e in forecast["reserve_transfers"]
+            )
+            amount(
+                "Cash top-up (from reserves)" if funded else "Cash top-up - funding needed",
+                reserve["gap"],
+            )
+            reserved_topups = funded
+            if not funded:
+                text("Not credited to the cash goal this period.")
+        monzo_gap = max(
+            ZERO, data.get("monzo_target", ZERO) - base.get("monzo_balance", ZERO)
         )
-        amount(
-            "Cash top-up (from reserves)" if funded else "Cash top-up - funding needed",
-            reserve["gap"],
-        )
-        reserved_topups = funded
-        if not funded:
-            text("Not credited to the cash goal this period.")
-    monzo_gap = max(
-        ZERO, data.get("monzo_target", ZERO) - base.get("monzo_balance", ZERO)
-    )
-    if monzo_gap:
-        amount(
-            "Monzo top-up (from reserves)"
-            if first["opening"] >= base["buffer"]
-            else "Monzo top-up - funding needed",
-            monzo_gap,
-        )
-        reserved_topups = reserved_topups or first["opening"] >= base["buffer"]
-    if reserved_topups:
-        text("Top-ups use reserves, not extra income.")
+        if monzo_gap:
+            amount(
+                "Monzo top-up (from reserves)"
+                if first["opening"] >= base["buffer"]
+                else "Monzo top-up - funding needed",
+                monzo_gap,
+            )
+            reserved_topups = reserved_topups or first["opening"] >= base["buffer"]
+        if reserved_topups:
+            text("Top-ups use reserves, not extra income.")
     spare = first["cash_repaid"] + first["cash_invested"] + first.get("instalment_cash", ZERO)
     if spare:
         amount("Spare cash (included above)", spare)
@@ -144,28 +161,32 @@ def receipt(result, today):
 
     section("WHAT TO KEEP")
     amount("Bills / regular payments", first["costs"])
-    amount("Everyday spending this period", result["variable"])
-    bank_reserve = (
-        base["buffer"]
-        - money(reserve.get("gap"), ZERO)
-        - money(reserve.get("tax_reserve"), ZERO)
-    )
-    amount(
-        "HSBC reserve" if base.get("primary_bank") == "HSBC" else "Main bank reserve",
-        max(ZERO, bank_reserve - data.get("monzo_target", ZERO)),
-    )
-    if data.get("monzo_target"):
-        amount("Monzo reserve target", data["monzo_target"])
-    if reserve.get("tax_reserve"):
-        amount(reserve.get("reserve_label", "Tax reserve"), reserve["tax_reserve"])
+    amount("Everyday spending incl. necessities", result["variable"])
+    from finance.reserve_targets_receipt import keep as target_keep
+    if not target_keep(page, base, first):
+        bank_reserve = (
+            base["buffer"]
+            - money(reserve.get("gap"), ZERO)
+            - money(reserve.get("tax_reserve"), ZERO)
+        )
+        amount(
+            "HSBC reserve" if base.get("primary_bank") == "HSBC" else "Main bank reserve",
+            max(ZERO, bank_reserve - data.get("monzo_target", ZERO)),
+        )
+        if data.get("monzo_target"):
+            amount("Monzo reserve target", data["monzo_target"])
+        if reserve.get("tax_reserve"):
+            amount(reserve.get("reserve_label", "Tax reserve"), reserve["tax_reserve"])
     if first.get("retained_in_bank"):
         amount("No savings room - stays in bank", first["retained_in_bank"])
 
     section("BALANCES AT FORECAST END")
     text(f"On {forecast['end']:%d %b %Y}")
-    bank_total = forecast["end_cash"] + base["buffer"] - forecast["reserved_total"]
-    monzo_end = min(data.get("monzo_target", ZERO), max(ZERO, bank_total))
-    amount(base.get("primary_bank", "Bank cash"), bank_total - monzo_end)
+    if forecast.get('reserve_targets_pending'):
+        amount('Reserve targets still unfilled', forecast['reserve_targets_pending'])
+    from finance.repayment_priority import bank_balances as projected_bank_balances
+    hsbc_end, monzo_end = projected_bank_balances(base, forecast, data.get('monzo_target', Decimal(0)))
+    amount(base.get('primary_bank', 'Bank cash'), hsbc_end)
     if data.get("monzo_target"):
         amount("Monzo", monzo_end)
     if forecast["card_end"] is None:
@@ -236,9 +257,9 @@ def receipt(result, today):
     if forecast["run_out"]:
         text(f"Reserves breached: {forecast['run_out']:%d %b %Y}")
     else:
-        text(f"Reserves stay protected through {forecast['end']:%d %b %Y}.")
+        text(f"Bills / necessities funded through {forecast['end']:%d %b %Y}." if base.get("repayment_priority") else f"Reserves stay protected through {forecast['end']:%d %b %Y}.")
     amount("Lowest projected bank balance", forecast["minimum_bank"])
-    if forecast["end_cash"] < ZERO:
+    if forecast["end_cash"] < ZERO and not forecast.get('priority_reserves'):
         amount("Funding shortfall at forecast end", -forecast["end_cash"])
 
     section("PLAN NOTES")
@@ -252,7 +273,7 @@ def receipt(result, today):
         text("ISA tax-year contribution limits enabled; uses recorded subscriptions.")
     if data["invest_spare_cash"]:
         text(
-            "Spare bank cash follows the strategy only after salary. No salary: spare-cash investment paused."
+            "Extra investments from spare bank cash require salary. Amex repayment can use available cash after necessities." if base.get("repayment_priority") else "Spare bank cash follows the strategy only after salary. No salary: spare-cash investment paused."
         )
     if card.get("balance") and forecast["apr"] is None:
         text("Amex APR unknown: interest excluded.")

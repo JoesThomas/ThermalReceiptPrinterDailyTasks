@@ -20,13 +20,13 @@ def values(**extra):
 
 class DailyFinanceTests(TestCase):
     def test_strategies_use_each_pound_once(self):
-        for strategy,extra,saving in [('amex_first',950,0),('savings_first',0,950),('split',475,475)]:
+        for strategy,extra,saving in [('amex_first',1050,0),('savings_first',0,950),('split',475,475)]:
             result=build(source(),values(strategy=strategy),TODAY)
             period=result['forecast']['payments'][0]
             self.assertEqual(period['extra'],extra)
             self.assertEqual(period['savings'],saving)
-            self.assertEqual(period['extra']+period['savings']+period['costs'],1000)
-            self.assertEqual(result['forecast']['end_cash'],0)
+            self.assertEqual(period['extra']+period['savings']+period['costs'],1100 if strategy == 'amex_first' else 1000)
+            self.assertEqual(result['forecast']['end_cash'],-100 if strategy == 'amex_first' else 0)
 
     def test_payoff_stops_future_payments_and_savings_increase(self):
         base=source('150'); before=deepcopy(base)

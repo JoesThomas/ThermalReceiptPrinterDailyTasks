@@ -35,7 +35,7 @@ class ForecastScenariosTests(TestCase):
         self.assertEqual([p['rent'] for p in periods],[100]*3)
         self.assertEqual(periods[0]['cash_invested'],0)
         self.assertEqual(periods[2]['cash_invested'],0)
-        self.assertEqual(periods[0]['cash_repaid'],0)
+        self.assertGreater(periods[0]['cash_repaid'],0)  # Debt may use bank cash without salary; investments may not.
 
     def test_one_missed_salary_pauses_spare_cash(self):
         result=build(source(),values(missed_salary_dates='2026-11-11'),TODAY)
@@ -52,7 +52,8 @@ class ForecastScenariosTests(TestCase):
 
     def test_expense_named_after_card_is_not_a_repayment_or_savings_credit(self):
         result=build(source(),values(salary='0',one_off_expenses='2026-10-20 | 300 | Amex holiday'),TODAY)
-        self.assertEqual(result['forecast']['card_end'],1000)
+        self.assertEqual(result['forecast']['extra_total'],1000)
+        self.assertEqual(result['forecast']['card_end'],0)
         self.assertEqual(result['forecast']['payments'][0]['costs'],300)
         base=source();base['savings_accounts'][0]['name']='Hargreaves Lansdown'
         hl=build(base,values(one_off_expenses='2026-10-20 | 30 | Hargreaves Lansdown'),TODAY)

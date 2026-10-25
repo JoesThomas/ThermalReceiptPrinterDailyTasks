@@ -24,21 +24,21 @@ class AmexPeriodSummaryTests(TestCase):
     def test_user_figures_show_complete_current_and_forecast_repayments(self):
         result=build(source(),values(),TODAY)
         first=result['forecast']['payments'][0]
-        self.assertEqual(first['extra'],D('3302.41'))
-        self.assertEqual(first['closing_card'],D('197.53'))
-        self.assertEqual(result['forecast']['extra_total'],D('3449.94'))
-        self.assertEqual(result['forecast']['payoff'],date(2026,11,25))
+        self.assertEqual(first['extra'],D('3499.94'))
+        self.assertEqual(first['closing_card'],D(0))
+        self.assertEqual(result['forecast']['extra_total'],D('3499.94'))
+        self.assertEqual(result['forecast']['payoff'],date(2026,10,25))
         text=receipt(result,TODAY).split('AMEX PLAN')[1].split('SAVINGS PROJECTION')[0]
         period,forecast=text.split('WHOLE FORECAST')
         for label,value in [('Balance at period start','£3,549.94'),
                             ('Scheduled repayment via direct debit this period','£50.00'),
-                            ('Extra repayment this period','£3,302.41'),
-                            ('Balance at period end','£197.53')]:
+                            ('Extra repayment this period','£3,499.94'),
+                            ('Balance at period end','£0.00')]:
             self.assertIn(label,' '.join(period.split()))
             self.assertIn(value,period)
         self.assertIn('Scheduled repayments via direct debit over forecast',' '.join(forecast.split()))
-        self.assertIn('£100.00',forecast)
-        self.assertIn('£3,449.94',forecast)
+        self.assertIn('£50.00',forecast)
+        self.assertIn('£3,499.94',forecast)
         self.assertNotIn('Savings redirected',text)
         self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))
 
@@ -53,7 +53,7 @@ class AmexPeriodSummaryTests(TestCase):
     def test_interest_reconciles_the_period_balance(self):
         result=build(source(),values(amex_apr='24'),TODAY)
         first=result['forecast']['payments'][0]
-        self.assertGreater(first['closing_card'],D('197.53'))
+        self.assertGreater(first['closing_card'],D(0))
         text=receipt(result,TODAY).split('THIS PAY PERIOD')[1].split('WHOLE FORECAST')[0]
         self.assertIn('Estimated interest this period',text)
         self.assertTrue(all(len(line)<= COLUMNS for line in text.splitlines()))

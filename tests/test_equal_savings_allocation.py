@@ -70,7 +70,7 @@ class EqualSavingsTests(TestCase):
     def test_amex_first_still_precedes_equal_savings(self):
         base=source();base['amex']={'balance':D(1000),'full_reserved':False}
         result=build(base,values(strategy='amex_first'),TODAY)
-        self.assertEqual(result['forecast']['payments'][0]['extra'],100)
+        self.assertEqual(result['forecast']['payments'][0]['extra'],1000)
         self.assertEqual([r['first'] for r in result['account_plan']['accounts']],[0,0,0,0])
 
     def test_extended_goal_dates_use_equal_split_too(self):

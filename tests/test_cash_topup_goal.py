@@ -17,7 +17,7 @@ def source():
 
 
 def inputs():
-    return {'salary':'100','start':str(TODAY),'months':'12','strategy':'amex_first','save_all':'on',
+    return {'salary':'100','start':str(TODAY),'months':'12','strategy':'savings_first','save_all':'on',
             'use_saved_accounts':'on','savings_goal':'500'}
 
 

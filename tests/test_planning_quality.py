@@ -227,8 +227,8 @@ class TransferExplanationTests(TestCase):
         explanation = explain(result)
         first = result["forecast"]["payments"][0]
         rows = {row["label"]: row["amount"] for row in explanation["rows"]}
-        self.assertEqual(rows["Protected bank reserve"], "£1,000.00")
-        self.assertEqual(rows["Spare bank cash used for extra transfers"], "£200.00")
+        self.assertEqual(rows["Reserve targets still to fill"], "£1,000.00")
+        self.assertEqual(rows["Spare bank cash used for extra transfers"], "£1,200.00")
         self.assertEqual(rows["Extra savings transfers"], "£0.00")
         self.assertEqual(
             first["opening"]
@@ -243,7 +243,7 @@ class TransferExplanationTests(TestCase):
         self.assertEqual(len(explanation["destinations"]), 1)
         self.assertIn("Amex", explanation["destinations"][0]["name"])
 
-    def test_no_salary_retains_cash_and_reports_pause(self):
+    def test_no_salary_can_repay_debt_while_investments_remain_paused(self):
         result = build(base(), values(salary="0", other_income="1000"), TODAY)
         explanation = explain(result)
         self.assertFalse(explanation["salary_active"])
@@ -253,7 +253,7 @@ class TransferExplanationTests(TestCase):
                 for row in explanation["rows"]
                 if row["label"] == "Spare bank cash used for extra transfers"
             ),
-            "£0.00",
+            "£1,200.00",
         )
         self.assertGreater(result["forecast"]["payments"][0]["extra"], 0)
 
@@ -263,11 +263,11 @@ class TransferExplanationTests(TestCase):
         source["buffer"] = D(1380)
         result = build(source, values(salary="0"), TODAY)
         explanation = explain(result)
-        self.assertFalse(explanation["funded"])
+        self.assertTrue(explanation["funded"])
+        self.assertIsNotNone(result["forecast"]["run_out"])
         rows = {row["label"]: row["amount"] for row in explanation["rows"]}
-        self.assertEqual(rows["Protected bank reserve"], "£1,000.00")
-        self.assertEqual(rows["Protected cash top-up reserve"], "£280.00")
-        self.assertEqual(rows["Protected tax reserve"], "£100.00")
+        self.assertEqual(rows["Other protected reserves"], "£100.00")
+        self.assertEqual(rows["Reserve targets still to fill"], "£1,280.00")
 
 
 class VersionedRecordsTests(TestCase):

@@ -40,6 +40,8 @@ def snapshot(result, today):
         "savings_end": pounds(forecast["savings_end"]),
         "minimum_bank": pounds(forecast["minimum_bank"]),
         "minimum_date": forecast["minimum_date"].isoformat(),
+        "reserve_goals_after_amex": bool(result["projection"].get("repayment_priority")),
+        "reserve_targets_pending": pounds(forecast.get('reserve_targets_pending', ZERO)),
         "bank_reserve": pounds(
             result["projection"]["buffer"]
             - (result["projection"].get("reserve_details") or {}).get("gap", ZERO)

@@ -5,7 +5,7 @@ from finance.money import format_pounds as pounds
 
 ZERO = Decimal(0)
 STRATEGIES = {
-    "amex_first": "Amex first: extra repayment takes priority; remaining money goes to savings.",
+    "amex_first": "Bills and food/necessities → Amex → HSBC/Cash/Monzo top-ups → extra savings/investments.",
     "savings_first": "Savings first: the savings allocation takes priority; remaining money can repay Amex.",
     "split": "Split: the selected percentage goes to extra Amex repayment, limited to the debt remaining.",
 }
@@ -19,7 +19,8 @@ def explain(result):
     tax = reserve.get("tax_reserve", ZERO)
     income = first["salary"] + data["other"]
     lump = data["lump"]
-    available = first["opening"] - base["buffer"] - first["costs"] - first["variable"]
+    policy = base.get("repayment_priority")
+    available = first["opening"] - (policy["hard"] if policy else base["buffer"]) - first["costs"] - first["variable"]
     rows = [
         ("Bank cash before this period's income", first["opening"] - income - lump),
         ("Salary received this period", first["salary"]),
@@ -41,9 +42,14 @@ def explain(result):
         ("Extra savings transfers", first["savings"]),
         (
             "Cash left above protected reserves after allocation",
-            first["cash_after_allocation"],
+            first.get("essentials_cash_after", first["cash_after_allocation"]) if policy else first["cash_after_allocation"],
         ),
     ]
+    if policy:
+        rows = [row for row in rows if row[0] not in {'Protected bank reserve', 'Protected cash top-up reserve', 'Protected tax reserve'}]
+        rows.insert(5, ('Other protected reserves', policy['hard']))
+        rows += [('Reserve targets still to fill', first['reserve_targets']['pending']),
+                 ('Cash top-up funded', first['reserve_targets']['cash_transfer'])]
     if first.get('instalment_settled'):
         index = next(i for i, row in enumerate(rows) if row[0] == 'Extra Amex repayment')
         rows.insert(index, ('Instalment balances settled early', first['instalment_settled']))
@@ -63,17 +69,34 @@ def explain(result):
                 "amount": pounds(first["savings"] - moved),
             }
         )
+    investment_destinations = list(destinations)
     if first["extra"]:
         destinations.append(
             {"name": "Amex — extra repayment", "amount": pounds(first["extra"])}
         )
+    if policy:
+        if first['reserve_targets']['cash_transfer']:
+            destinations.append({'name': 'Cash — funded top-up', 'amount': pounds(first['reserve_targets']['cash_transfer'])})
+        if first['reserve_targets']['monzo_transfer']:
+            destinations.append({'name': 'Monzo — funded top-up', 'amount': pounds(first['reserve_targets']['monzo_transfer'])})
     for item in first.get('instalment_payoffs', []):
         destinations.append({'name': item['name'] + ' — early settlement', 'amount': pounds(item['amount'])})
+    if policy:
+        ordered = []
+        if first['extra']:
+            ordered.append({'name': 'Amex — extra repayment', 'amount': pounds(first['extra'])})
+        for key, label in [('cash_transfer', 'Cash — funded top-up'), ('monzo_transfer', 'Monzo — funded top-up')]:
+            if first['reserve_targets'][key]:
+                ordered.append({'name': label, 'amount': pounds(first['reserve_targets'][key])})
+        ordered.extend({'name': item['name'] + ' — early settlement', 'amount': pounds(item['amount'])}
+                       for item in first.get('instalment_payoffs', []))
+        destinations = ordered + investment_destinations
     return {
         "rows": [{"label": label, "amount": pounds(value)} for label, value in rows],
         "destinations": destinations,
         "strategy": STRATEGIES[data["strategy"]],
         "salary_active": first["salary"] > ZERO,
+        "reserve_goals_after_amex": bool(policy),
         "spare_cash_enabled": data["invest_spare_cash"],
         "scheduled_savings": pounds(first["automatic_savings"]),
         "funded": first["funded"] and available >= ZERO,

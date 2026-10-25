@@ -160,7 +160,12 @@ def validate(values, today):
     early_payoff = values.get('early_payoff') == 'on'
     if early_payoff and not payoff_plans:
         raise ValueError('Select at least one instalment plan confirmed eligible for fee-free early payoff.')
+    debt_spending_cap = money(values.get('debt_spending_cap', '700') or '700')
+    if debt_spending_cap is None or not 0 < debt_spending_cap <= 100000:
+        raise ValueError('Choose a monthly necessities spending maximum above £0 and up to £100,000.')
     return dict(
+        limit_spending_when_owed=values.get('limit_spending_when_owed') == 'on',
+        debt_spending_cap=debt_spending_cap,
         early_payoff=early_payoff,
         payoff_plans=payoff_plans,
         respect_isa_allowance=values.get("respect_isa_allowance") == "on"

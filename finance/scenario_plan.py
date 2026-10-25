@@ -73,6 +73,8 @@ def build_validated(
             [row for row in accounts if row["balance"] is not None],
             inputs.get("payment_accounts", {}),
         )
+    from finance.repayment_priority import configure
+    base['repayment_priority'] = configure(base, inputs)
     from finance.isa_forecast import allowance_snapshot
 
     isa_limits = (
@@ -150,6 +152,6 @@ def build_validated(
         payday_cash=first["opening"],
         savings=first["savings"],
         spend=max(Decimal(0), first["cash_after_allocation"]),
-        shortfall=max(Decimal(0), -first["cash_after_allocation"]),
+        shortfall=max(Decimal(0), -first.get("essentials_cash_after", first["cash_after_allocation"])),
         cycle_end=first["end"],
     )
