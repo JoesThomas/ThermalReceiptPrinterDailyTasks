@@ -151,7 +151,18 @@ def validate(values, today):
         for key, identifier in mappings.items()
     ):
         raise ValueError("Choose valid scheduled savings destinations.")
+    from finance.early_payoff import PREFIX
+    payoff_plans = [key.removeprefix(PREFIX) for key, value in values.items()
+                    if key.startswith(PREFIX) and value == 'on']
+    import re
+    if len(payoff_plans) > 50 or any(not re.fullmatch(r'[a-f0-9]{32}', key) for key in payoff_plans):
+        raise ValueError('Choose valid instalment plans for early payoff.')
+    early_payoff = values.get('early_payoff') == 'on'
+    if early_payoff and not payoff_plans:
+        raise ValueError('Select at least one instalment plan confirmed eligible for fee-free early payoff.')
     return dict(
+        early_payoff=early_payoff,
+        payoff_plans=payoff_plans,
         respect_isa_allowance=values.get("respect_isa_allowance") == "on"
         and values.get("use_saved_accounts") == "on",
         isa_over_65=values.get("isa_over_65") == "on",

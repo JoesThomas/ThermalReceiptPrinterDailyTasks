@@ -76,6 +76,9 @@ def receipt(result, today):
         destinations.insert(0, debt) if data[
             "strategy"
         ] == "amex_first" else destinations.append(debt)
+    early_destinations = [(item['name'] + ' - settle early', item['amount']) for item in first.get('instalment_payoffs', [])]
+    index = 1 if first['extra'] and data['strategy'] == 'amex_first' else 0
+    destinations[index:index] = early_destinations
     for label, value in destinations:
         amount(label, value)
     if (
@@ -111,7 +114,7 @@ def receipt(result, today):
         reserved_topups = reserved_topups or first["opening"] >= base["buffer"]
     if reserved_topups:
         text("Top-ups use reserves, not extra income.")
-    spare = first["cash_repaid"] + first["cash_invested"]
+    spare = first["cash_repaid"] + first["cash_invested"] + first.get("instalment_cash", ZERO)
     if spare:
         amount("Spare cash (included above)", spare)
     regular = [
@@ -135,6 +138,9 @@ def receipt(result, today):
         text(
             "Scheduled savings are capped in this plan; adjust standing orders to match."
         )
+
+    from finance.early_payoff_receipt import overview
+    overview(page, forecast, data)
 
     section("WHAT TO KEEP")
     amount("Bills / regular payments", first["costs"])

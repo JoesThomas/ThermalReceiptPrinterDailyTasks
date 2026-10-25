@@ -6,6 +6,7 @@ from finance.test_scenarios import snapshot
 from finance.transfer_explanation import explain
 
 LABELS = {
+    "early_payoff": "Pay selected instalments off early",
     "salary": "Monthly salary",
     "other_income": "Other income",
     "strategy": "Repayment strategy",
@@ -53,12 +54,18 @@ def compare(left, right, today, collect):
         for projection in projections
         for account in projection.get("savings_accounts", [])
     }
+    from finance.early_payoff import options, PREFIX
+    payoff_names = {PREFIX + row['id']: row['name'] for projection in projections
+                    for row in options(projection.get('repayment_options', []))}
     money_fields = set(
         "salary existing_salary other_income lump_sum savings_target savings_goal starting_savings opening_cash daily_spend amex_owed".split()
     )
 
     def display(key, value):
+        if key.startswith(PREFIX):
+            return "Confirmed" if value == "on" else "Not selected"
         if key in {
+            "early_payoff",
             "save_all",
             "invest_spare_cash",
             "equal_savings",
@@ -87,7 +94,7 @@ def compare(left, right, today, collect):
         {
             "label": LABELS.get(
                 key,
-                key.replace("_", " ").replace(
+                ("Early payoff: " + payoff_names.get(key, "Plan unavailable; review selection")) if key.startswith(PREFIX) else key.replace("_", " ").replace(
                     "payment account ", "Scheduled destination "
                 ),
             ),

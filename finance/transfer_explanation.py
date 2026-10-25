@@ -35,7 +35,7 @@ def explain(result):
         ("Available allocation from this period's income", first["income_budget"]),
         (
             "Spare bank cash used for extra transfers",
-            first["cash_repaid"] + first["cash_invested"],
+            first["cash_repaid"] + first["cash_invested"] + first.get("instalment_cash", ZERO),
         ),
         ("Extra Amex repayment", first["extra"]),
         ("Extra savings transfers", first["savings"]),
@@ -44,6 +44,9 @@ def explain(result):
             first["cash_after_allocation"],
         ),
     ]
+    if first.get('instalment_settled'):
+        index = next(i for i, row in enumerate(rows) if row[0] == 'Extra Amex repayment')
+        rows.insert(index, ('Instalment balances settled early', first['instalment_settled']))
     moved = ZERO
     destinations = []
     if data["use_accounts"]:
@@ -64,6 +67,8 @@ def explain(result):
         destinations.append(
             {"name": "Amex — extra repayment", "amount": pounds(first["extra"])}
         )
+    for item in first.get('instalment_payoffs', []):
+        destinations.append({'name': item['name'] + ' — early settlement', 'amount': pounds(item['amount'])})
     return {
         "rows": [{"label": label, "amount": pounds(value)} for label, value in rows],
         "destinations": destinations,

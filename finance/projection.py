@@ -318,7 +318,8 @@ def build_projection(balances, transactions, monthly, yearly, settings, today,
         warnings.append('Some dates are estimated from a past payment. Confirm the usual payment days.')
     planned_names = {key(i.get('monthly_commitment_name') or i.get('name'))
                      for i in monthly + settings.get('commitments', []) + settings.get('forecast_events', [])}
-    for debt in settings.get('debts', []):
+    from finance.repayment_identity import unique_repayments
+    for debt in unique_repayments(monthly, settings.get('debts', [])):
         alias = key(debt.get('monthly_commitment_name') or debt.get('name'))
         if money(debt.get('balance'), Decimal(0)) > 0 and alias not in planned_names:
             warnings.append('A listed debt has no scheduled repayment: ' + str(debt.get('name', 'Debt')))
