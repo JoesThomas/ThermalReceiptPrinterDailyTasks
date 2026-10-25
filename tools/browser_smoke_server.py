@@ -94,6 +94,9 @@ def fixture_instalment_plan():
     from receipt.local_time import uk_today
     target = copy / 'data' / 'subscriptions.json'
     data = json.loads(target.read_text())
+    if not any('amex' in row.get('name','').casefold() for row in data.get('monthly',[])):
+        data.setdefault('monthly',[]).append(dict(name='Amex payment',amount=50,category='repayment',
+                                                due_day=min(28,uk_today().day+1)))
     data['instalments'] = [dict(name='Example Amazon headphones', balance='100', monthly_payment='25',
                                 next_payment=(uk_today()+timedelta(days=7)).isoformat(), type='payment_plan')]
     write_json(target, data)
