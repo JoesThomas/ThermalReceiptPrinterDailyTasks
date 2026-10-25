@@ -279,6 +279,39 @@
                             </label>
                         </div>
                     </fieldset>
+                    <details class="section-disclosure">
+                        <summary>Pay instalments off early</summary>
+                        <div class="early-payoff-settings">
+                            <label class="finance-toggle">
+                                <input type="checkbox"
+                                       name="early_payoff"
+                                       {% if values.get('early_payoff') == 'on' %}checked{% endif %}>
+                                Pay selected instalment plans off early when affordable
+                            </label>
+                            <p>
+                                Uses the same available allocation as your transfer plan. Bills, everyday spending and protected reserves come first. Amex first still clears Amex before these plans; selected instalments then take priority over extra savings.
+                            </p>
+                            <p>
+                                Select only plans you have confirmed can be settled early without fees. The estimate uses the recorded outstanding balance; check the provider's actual settlement amount before paying.
+                            </p>
+                            {% for option in early_payoff_options %}
+                                <label class="finance-toggle">
+                                    <input type="checkbox"
+                                           name="payoff_plan_{{ option.id }}"
+                                           {% if values.get('payoff_plan_' ~ option.id) == 'on' %}checked{% endif %}>
+                                    {{ option.name }} · recorded balance £{{ '%.2f'|format(option.balance) }}
+                                    <small>I have confirmed fee-free early settlement is allowed.</small>
+                                </label>
+                            {% else %}
+                                <p class="muted">
+                                    No eligible payment plans with a known balance and monthly payment. Add or update the instalment details in account settings first. Ordinary bills and credit cards are excluded.
+                                </p>
+                            {% endfor %}
+                            <p class="muted">
+                                Smallest affordable whole balance first. Unaffordable plans keep their normal payments. Settlements are withheld if the resulting forecast breaches reserves. This test never makes payments or changes live balances.
+                            </p>
+                        </div>
+                    </details>
                     <fieldset class="finance-input-group">
                         <legend>4. Savings accounts & goals</legend>
                         <p class="muted">Account balances, interest rates, shares and maximum balances are managed on Savings goals.</p>
@@ -485,6 +518,32 @@
                 {% endif %}
                 {% for assumption in scenario_details.stress_assumptions %}<p class="muted">{{ assumption }}</p>{% endfor %}
             {% endif %}
+            {% if scenario_details and scenario_details.early_payoff %}
+                <section data-private id="early-payoff-results">
+                    <h2>Early instalment payoff plan</h2>
+                    <p>
+                        {{ scenario_details.early_payoff.warning or 'Recorded balances, assuming fee-free settlement. Replaced instalments are removed from bills in this forecast.' }}
+                    </p>
+                    <dl>
+                        {% for item in scenario_details.early_payoff.plans %}
+                            <dt>{{ item.name }}</dt>
+                            <dd>
+                                {% if item.date %}
+                                    Settle {{ item.amount }} on {{ item.date }}; {{ item.replaced }} of this replaces already-budgeted payments that period.
+                                {% else %}
+                                    No early settlement in this forecast.
+                                {% endif %}
+                                Projected balance at end: {{ item.remaining }}.
+                            </dd>
+                        {% else %}
+                            <dt>Early settlements</dt>
+                            <dd>
+                                None — normal instalment payments retained.
+                            </dd>
+                        {% endfor %}
+                    </dl>
+                </section>
+            {% endif %}
             {% if result_text %}
                 <section data-private>
                     <h2>Simulation receipt</h2>
@@ -599,7 +658,7 @@
                                     <summary>Calculated period allocations</summary>
                                     {% for period in scenario.periods %}
                                         <p>
-                                            <strong>{{ period.date }}</strong>: salary {{ period.salary }}; bills/one-offs {{ period.costs }}; everyday spending {{ period.spending }}; extra Amex {{ period.extra }}; extra savings {{ period.savings }}; scheduled savings {{ period.automatic }} (included in bills).
+                                            <strong>{{ period.date }}</strong>: salary {{ period.salary }}; bills/one-offs {{ period.costs }}; everyday spending {{ period.spending }}; extra Amex {{ period.extra }}; early instalment settlements {{ period.instalments }}; extra savings {{ period.savings }}; scheduled savings {{ period.automatic }} (included in bills).
                                         </p>
                                     {% endfor %}
                                 </details>

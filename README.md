@@ -520,3 +520,5 @@ Daily print outcomes, retry delays, printer sensor diagnostics and exact release
 For Home attention items, named-plan comparisons and the small refill test, see
 [daily usability](docs/daily-usability.md). The explicit prepared update/rollback
 helper is described in [deployment updates](deployment/updates.md).
+
+Test-finance instalment settlements: [early payoff setup and assumptions](docs/early-instalment-payoff.md).

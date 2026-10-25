@@ -35,8 +35,9 @@ def explain(result):
         ("Available allocation from this period's income", first["income_budget"]),
         (
             "Spare bank cash used for extra transfers",
-            first["cash_repaid"] + first["cash_invested"],
+            first["cash_repaid"] + first["cash_invested"] + first.get("instalment_cash", ZERO),
         ),
+        ("Instalment balances settled early", first.get("instalment_settled", ZERO)),
         ("Extra Amex repayment", first["extra"]),
         ("Extra savings transfers", first["savings"]),
         (
@@ -64,6 +65,8 @@ def explain(result):
         destinations.append(
             {"name": "Amex — extra repayment", "amount": pounds(first["extra"])}
         )
+    for item in first.get('instalment_payoffs', []):
+        destinations.append({'name': item['name'] + ' — early settlement', 'amount': pounds(item['amount'])})
     return {
         "rows": [{"label": label, "amount": pounds(value)} for label, value in rows],
         "destinations": destinations,

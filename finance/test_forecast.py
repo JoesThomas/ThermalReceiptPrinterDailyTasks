@@ -25,12 +25,26 @@ def strategy_allows_increase(strategy, known, balance):
 
 
 def simulate(base, inputs, today):
+    result = _simulate(base, inputs, today)
+    # Do not recommend accelerating debt while this pathway runs out of protected cash.
+    if result['run_out'] and result.get('early_payoffs'):
+        result = _simulate(base, dict(inputs, early_payoff=False), today)
+        result['early_payoff_warning'] = 'Early settlements withheld: the selected pathway breaches protected reserves. Review income and costs.'
+    return result
+
+
+def _simulate(base, inputs, today):
     end = occurs(inputs["start"], inputs["months"])
     base = (
         dict(base, events=deepcopy(base["events"]))
-        if inputs.get("regular_override") or inputs.get("use_accounts")
+        if inputs.get("regular_override") or inputs.get("use_accounts") or inputs.get("early_payoff")
         else base
     )
+    from finance.early_payoff import prepare, settle, summary
+    instalments = prepare(base, inputs, today)
+    instalments_by_id = {row['id']: row for row in instalments}
+    early_payoffs = []
+    early_total = ZERO
     accounts = base.get("savings_accounts", [])
     capped_savings_events = False
     if inputs.get("use_accounts"):
@@ -266,16 +280,25 @@ def simulate(base, inputs, today):
             else:
                 extra = ZERO
             available = budget - extra
+            settlements, replaced, settled = settle(instalments, on, current_events, available, run_out is None)
+            early_extra = settled - replaced
+            early_payoffs.extend(settlements)
+            early_total += settled
+            costs -= replaced
+            surplus += replaced
+            # A full settlement includes this period's already-reserved instalments.
+            cash -= settled
+            available -= early_extra
             saving = (
                 available
                 if inputs["save_all"]
                 else min(available, max(ZERO, inputs["savings"] - automatic))
             )
             if strategy == "savings_first":
-                extra = min(budget - saving, debt_budget)
+                extra = min(available - saving, debt_budget)
             balance = max(ZERO, balance - extra)
             cash -= extra + saving
-            income_savings = min(saving, max(ZERO, income_budget - extra))
+            income_savings = min(saving, max(ZERO, income_budget - extra - early_extra))
             cash_repaid = max(ZERO, extra - income_budget)
             remaining_cash = (
                 rounded(max(ZERO, cash - costs - variable - protected_later), rounding=ROUND_DOWN)
@@ -381,6 +404,11 @@ def simulate(base, inputs, today):
                     rent=inputs["other"],
                     opening=opening,
                     costs=costs,
+                    instalment_payoffs=settlements,
+                    instalment_settled=settled,
+                    instalment_extra=early_extra,
+                    instalment_cash=max(ZERO, early_extra - max(ZERO, income_budget - extra)),
+                    instalment_replaced=replaced,
                     variable=variable,
                     surplus=surplus,
                     budget=budget,
@@ -403,6 +431,10 @@ def simulate(base, inputs, today):
             )
         for event in events.get(on, []):
             amount = event["amount"]
+            instalment = instalments_by_id.get(event.get('instalment_plan'))
+            if instalment:
+                amount = min(amount, instalment['remaining'])
+                instalment['remaining'] -= amount
             growing_account = growing_by_id.get(event.get("savings_account"))
             if (
                 has_interest
@@ -493,6 +525,9 @@ def simulate(base, inputs, today):
         if on in checkpoint_dates:
             checkpoints.append((checkpoint_dates[on], cash))
     result = dict(
+        early_payoffs=early_payoffs,
+        early_payoff_total=early_total,
+        instalment_balances=summary(instalments),
         capped_savings_events=capped_savings_events,
         minimum_bank=minimum_bank,
         minimum_cash=minimum_cash,

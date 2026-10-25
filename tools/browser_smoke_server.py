@@ -87,6 +87,19 @@ def fixture_reviews():
     return redirect('/finance/results')
 
 
+@web.app.get('/__fixture_instalment_plan')
+def fixture_instalment_plan():
+    import json
+    from datetime import timedelta
+    from receipt.local_time import uk_today
+    target = copy / 'data' / 'subscriptions.json'
+    data = json.loads(target.read_text())
+    data['instalments'] = [dict(name='Example Amazon headphones', balance='100', monthly_payment='25',
+                                next_payment=(uk_today()+timedelta(days=7)).isoformat(), type='payment_plan')]
+    write_json(target, data)
+    return redirect('/finance/test')
+
+
 def fixture_preview():
     # Replace external collection, retaining the production capture/save/render path.
     printer = RecordingPrinter(VirtualPrinter(), defer=True)

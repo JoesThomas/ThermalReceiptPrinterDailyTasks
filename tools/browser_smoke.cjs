@@ -579,6 +579,31 @@ process.on('exit', () => child.kill());
     assert.equal(await page.locator('h1').innerText(),'Private documents');
   }
 
+  await page.goto('http://receipt.test/__fixture_instalment_plan');
+  await testFinance.locator('input[name=salary]').fill('1000');
+  await testFinance.locator('input[name=other_income]').fill('0');
+  await testFinance.locator('input[name=months]').fill('3');
+  await testFinance.locator('select[name=strategy]').selectOption('amex_first');
+  await testFinance.locator('input[name=use_saved_accounts]').uncheck();
+  await testFinance.locator('input[name=invest_spare_cash]').uncheck();
+  await testFinance.locator('input[name=savings_goal]').fill('0');
+  await testFinance.locator('input[name=monzo_target]').fill('0');
+  await testFinance.locator('details').evaluateAll(rows=>rows.forEach(row=>row.open=true));
+  await testFinance.locator('input[name=opening_cash]').fill('1500');
+  await testFinance.locator('input[name=daily_spend]').fill('0');
+  await testFinance.locator('input[name=amex_owed]').fill('0');
+  await testFinance.locator('input[name=hl_monthly]').fill('');
+  await testFinance.locator('textarea[name=one_off_expenses]').fill('');
+  await testFinance.locator('input[name=early_payoff]').check();
+  await testFinance.locator('input[name^=payoff_plan_]').check();
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),testFinance.getByRole('button',{name:'Generate test receipt',exact:true}).click()]);
+  await page.locator('#early-payoff-results').waitFor();
+  assert.match(await page.locator('#early-payoff-results').innerText(),/Example Amazon headphones/);
+  assert.match(await page.locator('#early-payoff-results').innerText(),/Settle £100.00/);
+  assert.match(await page.locator('#early-payoff-results').innerText(),/Projected balance at end: £0.00/);
+  assert.match(await page.locator('.test-finance-paper').innerText(),/EARLY INSTALMENT PAYOFFS/);
+  assert.equal(await testFinance.locator('input[name=early_payoff]').isChecked(),true);
+
   const accessibilityFailures = [];
   let checks = 0;
   for (const width of [360,390,768,1280]) {

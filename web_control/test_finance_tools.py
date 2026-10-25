@@ -273,6 +273,15 @@ def payment_options():
     return [{"key": key, "name": name} for key, name in sorted(names.items())]
 
 
+def early_payoff_options():
+    from finance.early_payoff import options
+    from finance.repayment_identity import unique_repayments
+    from finance.receipt import load_finance_settings
+    from services.subscriptions import load_subscriptions
+    return options(unique_repayments(load_subscriptions().get('instalments', []),
+                                     load_finance_settings().get('debts', [])))
+
+
 def register(app, login_required, start_print):
     @app.get("/finance/test")
     @login_required
@@ -352,6 +361,7 @@ def register(app, login_required, start_print):
             values=defaults,
             saved_savings=saved_savings,
             payment_options=payment_options(),
+            early_payoff_options=early_payoff_options(),
             scenario_details=details,
         )
 
@@ -408,6 +418,7 @@ def register(app, login_required, start_print):
                 values=request.form.to_dict(),
                 saved_savings=[],
                 payment_options=payment_options(),
+                early_payoff_options=early_payoff_options(),
                 error=str(error),
                 result_text=None,
                 presets=[],
@@ -431,6 +442,7 @@ def register(app, login_required, start_print):
     def generate_test_finance():
         today = uk_today()
         values = request.form.to_dict()
+        values.setdefault("early_payoff", "")
         values.setdefault("respect_isa_allowance", "")
         values.setdefault("isa_over_65", "")
         values.setdefault("save_all", "")
@@ -482,6 +494,7 @@ def register(app, login_required, start_print):
                 values=values,
                 saved_savings=[],
                 payment_options=payment_options(),
+                early_payoff_options=early_payoff_options(),
                 error=str(error),
             ), 400
 

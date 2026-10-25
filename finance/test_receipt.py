@@ -157,10 +157,14 @@ def receipt(result, today, *, detail="detailed"):
         amount("No eligible savings room - keep in bank", first["retained_in_bank"])
     if first["extra"]:
         amount("Amex - extra repayment", first["extra"])
+    for item in first.get('instalment_payoffs', []):
+        amount(item['name'] + ' - settle early', item['amount'])
     if first["cash_repaid"]:
         text(
             f"Includes £{first['cash_repaid']:,.2f} from spare bank cash in the Amex repayment above."
         )
+    if first.get('instalment_cash'):
+        text(f"Includes £{first['instalment_cash']:,.2f} from spare bank cash in early instalment settlements above.")
     if first["cash_invested"]:
         text(
             f"Includes £{first['cash_invested']:,.2f} from spare bank cash in the savings transfers above."
@@ -176,7 +180,7 @@ def receipt(result, today, *, detail="detailed"):
                 text(
                     f"Cash goal credited on {forecast['reserve_transfers'][0]['date']:%d %b %Y} in this plan."
                 )
-    if not moved and not unassigned and not first["extra"] and not reserve.get("gap"):
+    if not moved and not unassigned and not first["extra"] and not first.get("instalment_settled") and not reserve.get("gap"):
         text("No extra transfers in this period.")
     regular = [
         bill
@@ -203,7 +207,7 @@ def receipt(result, today, *, detail="detailed"):
     amount("Keep for everyday spending", result["variable"])
     amount(
         "Income left in bank",
-        max(Decimal(0), first["budget"] - first["extra"] - first["savings"]),
+        max(Decimal(0), first["budget"] - first["extra"] - first["savings"] - first.get("instalment_extra", Decimal(0))),
     )
     if reserve.get("gap"):
         text("Cash top-up uses protected reserves; do not deduct it again.")
@@ -328,14 +332,17 @@ def receipt(result, today, *, detail="detailed"):
                 text(f"APR assumption: {forecast['apr']}%")
                 amount("Estimated interest over forecast", forecast["interest"])
 
+    from finance.early_payoff import options as payoff_options
+    selected = {row['id'] for row in forecast.get('instalment_balances', [])}
+    selected_records = [row['record'] for row in payoff_options(base.get('repayment_options', [])) if row['id'] in selected]
     options = [
         item
         for item in base.get("repayment_options", [])
-        if not is_amex(item.get("name"))
+        if not is_amex(item.get("name")) and item not in selected_records
     ]
     if options:
         section("OTHER REPAYMENTS")
-    budget = max(Decimal(0), first["budget"] - first["extra"] - first["savings"])
+    budget = max(Decimal(0), first["budget"] - first["extra"] - first["savings"] - first.get("instalment_extra", Decimal(0)))
     for item in options:
         text(str(item.get("name") or "Repayment").upper())
         balance = money(item.get("remaining_balance", item.get("balance")))
@@ -460,6 +467,8 @@ def receipt(result, today, *, detail="detailed"):
         amount("One-off cash top-up from reserves", forecast["reserved_total"])
     if forecast.get("savings_interest"):
         amount("Estimated savings interest", forecast["savings_interest"])
+    from finance.early_payoff_receipt import overview
+    overview(page, forecast, data, detailed=True)
     section("BALANCES AT FORECAST END")
     bank_total = forecast["end_cash"] + base["buffer"] - forecast["reserved_total"]
     monzo_end = min(data.get("monzo_target", Decimal(0)), max(Decimal(0), bank_total))

@@ -62,6 +62,7 @@ def snapshot(result, today):
                 "costs": pounds(p["costs"]),
                 "spending": pounds(p["variable"]),
                 "extra": pounds(p["extra"]),
+                "instalments": pounds(p.get("instalment_settled", ZERO)),
                 "savings": pounds(p["savings"]),
                 "automatic": pounds(p["automatic_savings"]),
             }
@@ -187,6 +188,14 @@ def compare(projection, values, today, *, current=None):
             f"Extra expense: {pounds(difference)} on the first payday.",
             "First salary missed: salary resumes on the next scheduled payday; other income is unchanged.",
         ],
+        "early_payoff": {
+            "warning": current['forecast'].get('early_payoff_warning'),
+            "plans": [dict(name=row['name'], remaining=pounds(row['remaining']),
+                           date=row['settlement']['date'].isoformat() if row['settlement'] else None,
+                           amount=pounds(row['settlement']['amount']) if row['settlement'] else None,
+                           replaced=pounds(row['settlement']['scheduled_replaced']) if row['settlement'] else None)
+                      for row in current['forecast'].get('instalment_balances', [])],
+        } if current['inputs'].get('early_payoff') else None,
         "transfers": explain(current),
         "contribution": contribution_plan(projection, current, today),
         "scenarios": [

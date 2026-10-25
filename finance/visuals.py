@@ -286,6 +286,8 @@ def allocation(result):
             ),
         ),
     ]
+    if p.get("instalment_settled"):
+        rows.insert(3, ("Early instalment settlements", p["instalment_settled"]))
     total = sum((max(ZERO, v) for _, v in rows), ZERO)
     return dict(
         rows=[
