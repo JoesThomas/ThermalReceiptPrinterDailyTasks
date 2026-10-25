@@ -317,7 +317,7 @@ def test_charts(result, today, cases):
             [
                 dict(name="Selected forecast", values=bank_path(result)),
                 dict(
-                    name="Other protected reserves; top-up goals follow Amex" if policy else "Protected buffer after reserved top-ups",
+                    name="Minimum bank balance and other protected reserves" if policy else "Protected buffer after reserved top-ups",
                     values=[(today, floor), (f["end"], floor)],
                     reference=True,
                 ),

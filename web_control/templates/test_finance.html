@@ -287,12 +287,23 @@
                                        value="{{ values.get('savings_target', '0') }}">
                                 <small>Includes linked regular savings payments. The receipt shows the extra transfers needed after those payments.</small>
                             </label>
+                            <label>
+                                Minimum bank balance to keep (£)
+                                <input type="number"
+                                       name="minimum_bank_balance"
+                                       min="0"
+                                       max="10000000"
+                                       step="0.01"
+                                       required
+                                       value="{{ values.get('minimum_bank_balance', '500') }}">
+                                <small>Keep this much combined bank cash before extra Amex payments, early repayments or transfers. Included within your HSBC/Monzo targets, not added on top. Bills and food/necessities still come first; a warning shows if these costs breach the minimum. £0 disables this floor.</small>
+                            </label>
                             <label class="finance-toggle">
                                 <input type="checkbox"
                                        name="invest_spare_cash"
                                        {% if values.get('invest_spare_cash') == 'on' %}checked{% endif %}>
                                 Use spare bank cash above £1,000 after salary
-                                <small>Extra investments from spare bank cash require salary. Under Amex first, bills and food/necessities come first, then Amex, then HSBC/Cash/Monzo targets, then extra investments. Other earmarked obligations remain protected.</small>
+                                <small>Extra investments from spare bank cash require salary. Under Amex first, bills and food/necessities come first, then Amex, eligible early repayments, HSBC/Cash/Monzo targets, then extra investments. Other earmarked obligations remain protected.</small>
                             </label>
                         </div>
                     </fieldset>
@@ -653,6 +664,10 @@
                                     <dd>
                                         {{ scenario.savings_end }}
                                     </dd>
+                                    <dt>Minimum bank balance to keep</dt>
+                                    <dd>
+                                        {{ scenario.minimum_bank_balance|default('£0.00') }}
+                                    </dd>
                                     <dt>Lowest projected bank balance</dt>
                                     <dd>
                                         {{ scenario.minimum_bank }} on {{ scenario.minimum_date }}
@@ -677,6 +692,9 @@
                                         </dd>
                                     {% endif %}
                                 </dl>
+                                {% with month_rows=scenario.monthly_balances|default([]) %}
+                                    {% include 'finance_monthly_balances.html' %}
+                                {% endwith %}
                                 <h4>Account targets</h4>
                                 {% for account in scenario.accounts %}
                                     <p>

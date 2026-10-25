@@ -184,6 +184,8 @@ def receipt(result, today):
     if first.get("retained_in_bank"):
         amount("No savings room - stays in bank", first["retained_in_bank"])
 
+    from finance.monthly_balances import render as month_end_balances
+    month_end_balances(page, forecast)
     section("BALANCES AT FORECAST END")
     text(f"On {forecast['end']:%d %b %Y}")
     if forecast.get('reserve_targets_pending'):
@@ -270,6 +272,8 @@ def receipt(result, today):
         text(f"Reserves breached: {forecast['run_out']:%d %b %Y}")
     else:
         text(f"Bills / necessities funded through {forecast['end']:%d %b %Y}." if base.get("repayment_priority") else f"Reserves stay protected through {forecast['end']:%d %b %Y}.")
+    if data.get("minimum_bank_balance"):
+        amount("Minimum bank balance to keep", data["minimum_bank_balance"])
     amount("Lowest projected bank balance", forecast["minimum_bank"])
     if forecast["end_cash"] < ZERO and not forecast.get('priority_reserves'):
         amount("Funding shortfall at forecast end", -forecast["end_cash"])

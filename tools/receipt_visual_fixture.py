@@ -97,6 +97,7 @@ def full_capture():
         source,
         {
             "salary": "3000",
+            "minimum_bank_balance": "500",
             "other_income": "0",
             "start": str(TODAY),
             "months": "2",

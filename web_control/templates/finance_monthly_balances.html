@@ -1,0 +1,21 @@
+{% if month_rows %}
+    <details>
+        <summary>Calendar month-end account balances</summary>
+        <p>
+            Projected balances after that date's income, payments, transfers and estimated savings interest. Bank cash excludes transferred savings; Amex is money owed.
+        </p>
+        {% for month in month_rows %}
+            <h4>{{ month.title }}</h4>
+            <p>{{ month.date }}</p>
+            <dl>
+                {% for account in month.accounts %}
+                    <dt>{{ account.name }}</dt>
+                    <dd>
+                        {{ account.balance }}
+                    </dd>
+                {% endfor %}
+            </dl>
+            {% if not month.funded %}<p class="warning">Hypothetical balances after a protected balance breach.</p>{% endif %}
+        {% endfor %}
+    </details>
+{% endif %}

@@ -63,3 +63,31 @@ model future changes to income, bills, rates, tax allowances or redistribution
 when other goals finish. The receipt and webpage label that distinction.
 No estimate is offered for a failing pathway, an explicit salary end date,
 a one-off lump sum, an incompatible account limit, or a non-growing balance.
+
+## Editable minimum bank balance
+
+Test finance defaults **Minimum bank balance to keep** to £500. It protects that
+much combined bank cash before extra Amex repayments, selected early repayments,
+physical cash top-ups or extra savings. The floor is included within the bank
+reserve targets, not added to them. Tax and other earmarks remain additional.
+£0 disables this floor. Other strategies retain any stronger existing reserve.
+Bills, food and necessities remain commitments: if income cannot cover them and
+the minimum, the forecast shows the actual lower balance and a funding warning,
+not an invented £500. **Lowest projected bank balance** remains a calculated
+result; the configured minimum is printed next to it.
+
+The setting persists with generated and named scenarios. Older archived inputs
+without this field keep their historical assumptions in comparisons; opening the
+current form defaults the new field to £500 until reviewed and regenerated.
+
+## Calendar month-end balances
+
+Both receipt detail modes show **Balances at [month/year] end** for each calendar
+month-end within the selected forecast, alongside final forecast balances. These
+are end-of-day snapshots after actual forecast income, payments, extra debt
+payments, savings transfers, physical cash top-ups and estimated savings interest.
+Bank splits follow the existing HSBC/Monzo target allocation rule; savings are
+excluded from bank cash and Amex is shown as debt owed. Unavailable balances stay
+unavailable. Unassigned savings are shown separately if saved accounts are off.
+The webpage and named comparisons provide the same snapshots in an expandable
+list. Beyond any funding breach, the snapshots are explicitly hypothetical.

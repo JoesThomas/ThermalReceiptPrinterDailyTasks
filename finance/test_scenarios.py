@@ -34,12 +34,15 @@ def snapshot(result, today):
             }
         )
     reached = forecast["goal_date"] or forecast.get("extended_goal_date")
+    from finance.monthly_balances import snapshot as month_end_snapshot
     return {
+        "monthly_balances": month_end_snapshot(forecast),
         "end": forecast["end"].isoformat(),
         "payoff": forecast["payoff"].isoformat() if forecast["payoff"] else None,
         "amex_end": pounds(forecast["card_end"]),
         "savings_end": pounds(forecast["savings_end"]),
         "minimum_bank": pounds(forecast["minimum_bank"]),
+        "minimum_bank_balance": pounds(inputs.get("minimum_bank_balance", ZERO)),
         "minimum_date": forecast["minimum_date"].isoformat(),
         "reserve_goals_after_amex": bool(result["projection"].get("repayment_priority")),
         "reserve_targets_pending": pounds(forecast.get('reserve_targets_pending', ZERO)),

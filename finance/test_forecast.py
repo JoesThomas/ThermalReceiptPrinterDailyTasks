@@ -117,6 +117,7 @@ def _simulate(base, inputs, today):
         if months <= inputs["months"]
     }
     periods = []
+    calendar_months = []
     points = []
     actual = []
     transfers = ZERO
@@ -578,11 +579,16 @@ def _simulate(base, inputs, today):
             periods[-1]["closing_card"] = balance if known else None
         if available_cash < ZERO and run_out is None:
             run_out = on
+        if on >= inputs['start'] and (on + timedelta(days=1)).month != on.month:
+            calendar_months.append(dict(date=on, end_cash=cash, reserved_total=reserved_total,
+                                        card_end=balance if known else None, funded=run_out is None,
+                                        savings_end=inputs['starting_savings'] + transfers + automatic_total + reserved_total))
         if offset % 7 == 0 or on == end - timedelta(days=1):
             points.append({"date": on, "scenario": cash})
         if on in checkpoint_dates:
             checkpoints.append((checkpoint_dates[on], cash))
     result = dict(
+        calendar_months=calendar_months,
         reserve_targets_pending=max(ZERO, -cash) if priority else ZERO,
         priority_reserves=bool(priority),
         early_payoffs=early_payoffs,

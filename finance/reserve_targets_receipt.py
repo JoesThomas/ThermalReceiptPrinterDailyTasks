@@ -32,6 +32,7 @@ def keep(page, base, first):
     if policy['monzo']:
         page.amount('Monzo target funded', status['monzo'])
         page.text('Monzo target: ' + format_pounds(policy['monzo']))
-    if policy['hard']:
-        page.amount('Other protected reserves', policy['hard'])
+    other = policy['hard'] - policy.get('minimum', ZERO)
+    if other:
+        page.amount('Other protected reserves', other)
     return True

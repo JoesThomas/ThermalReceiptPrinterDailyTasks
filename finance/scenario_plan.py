@@ -30,6 +30,9 @@ def build_validated(
             "The finance forecast is incomplete. Refresh Finance review and confirm balances, repayment dates and a daily spending estimate first."
         )
     base = deepcopy(projection)
+    reserve = base.get("reserve_details") or {}
+    separate = money(reserve.get("gap"), Decimal(0)) + money(reserve.get("tax_reserve"), Decimal(0))
+    base["buffer"] = max(base["buffer"], inputs.get("minimum_bank_balance", Decimal(0)) + separate)
     if inputs["invest_spare_cash"] and inputs["salary"] + inputs["existing"] > 0:
         reserve = base.get("reserve_details") or {}
         separate = money(reserve.get("gap"), Decimal(0)) + money(
@@ -131,6 +134,8 @@ def build_validated(
             if not full["goal_date"] and inputs["use_accounts"]:
                 from finance.long_term_goals import estimate
                 row["estimated_goal_date"] = estimate(full, extended, extended_inputs)
+    from finance.monthly_balances import build as month_end_balances
+    forecast['monthly_balances'] = month_end_balances(base, inputs, forecast, account_plan, today)
     first = forecast["payments"][0]
     bills = [
         event

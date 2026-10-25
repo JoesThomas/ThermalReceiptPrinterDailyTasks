@@ -163,7 +163,12 @@ def validate(values, today):
     debt_spending_cap = money(values.get('debt_spending_cap', '700') or '700')
     if debt_spending_cap is None or not 0 < debt_spending_cap <= 100000:
         raise ValueError('Choose a monthly necessities spending maximum above £0 and up to £100,000.')
+    # Missing field preserves archived scenarios; the current web form defaults to £500.
+    minimum_bank_balance = money(values.get('minimum_bank_balance', '0'))
+    if minimum_bank_balance is None or not 0 <= minimum_bank_balance <= 10000000:
+        raise ValueError('Choose a minimum bank balance between £0 and £10,000,000.')
     return dict(
+        minimum_bank_balance=minimum_bank_balance,
         limit_spending_when_owed=values.get('limit_spending_when_owed') == 'on',
         debt_spending_cap=debt_spending_cap,
         early_payoff=early_payoff,
