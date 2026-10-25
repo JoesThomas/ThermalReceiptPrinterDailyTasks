@@ -496,6 +496,8 @@ def receipt(result, today, *, detail="detailed"):
         amount("Estimated savings interest", forecast["savings_interest"])
     from finance.early_payoff_receipt import overview
     overview(page, forecast, data, detailed=True)
+    from finance.monthly_balances import render as month_end_balances
+    month_end_balances(page, forecast)
     section("BALANCES AT FORECAST END")
     if forecast.get('reserve_targets_pending'):
         amount('Still needed for HSBC / Monzo / Cash targets', forecast['reserve_targets_pending'])
@@ -586,6 +588,8 @@ def receipt(result, today, *, detail="detailed"):
     amount("Bank cash above reserves at end", max(Decimal(0), forecast["end_cash"]))
     if forecast["end_cash"] < 0:
         amount("Still needed for HSBC / Monzo / Cash targets" if base.get('repayment_priority') else "Funding shortfall at forecast end", -forecast["end_cash"])
+    if data.get("minimum_bank_balance"):
+        amount("Minimum bank balance to keep", data["minimum_bank_balance"])
     amount("Lowest projected bank balance", forecast["minimum_bank"])
     text(
         "Bills and necessities funded; reserve goals follow Amex and eligible early repayments." if base.get("repayment_priority") else "Protected reserves hold through forecast."

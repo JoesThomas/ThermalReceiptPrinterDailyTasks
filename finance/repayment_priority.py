@@ -12,8 +12,10 @@ def configure(base, inputs):
     gap = parse(reserve.get('gap'), ZERO)
     monzo = inputs.get('monzo_target', ZERO)
     bank = max(ZERO, base['buffer'] - gap - parse(reserve.get('tax_reserve'), ZERO) - monzo)
-    soft = bank + monzo + gap
-    return dict(bank=bank, monzo=monzo, gap=gap, soft=soft,
+    minimum = inputs.get('minimum_bank_balance', ZERO)
+    # The minimum is part of the bank target, not an additional savings goal.
+    soft = bank + monzo + gap - minimum
+    return dict(bank=bank, monzo=monzo, gap=gap, soft=soft, minimum=minimum,
                 hard=max(ZERO, base['buffer'] - soft))
 
 
@@ -35,7 +37,7 @@ def topup(cash, policy, moved, remaining_card, metadata, on):
 def period_targets(cash_after_costs, policy, moved, cash_added, previous_monzo):
     if not policy:
         return {}
-    available = max(ZERO, free_cash(cash_after_costs, policy, moved))
+    available = max(ZERO, free_cash(cash_after_costs, policy, moved) + policy.get("minimum", ZERO))
     hsbc = min(policy['bank'], available)
     monzo = min(policy['monzo'], max(ZERO, available - hsbc))
     return dict(hsbc=hsbc, monzo=monzo, monzo_transfer=max(ZERO, monzo - previous_monzo),
@@ -47,7 +49,7 @@ def bank_balances(base, forecast, monzo_target=ZERO):
     total = forecast['end_cash'] + base['buffer'] - forecast['reserved_total']
     policy = base.get('repayment_priority')
     if policy:
-        monzo = min(monzo_target, max(ZERO, total - policy['hard'] - policy['bank']))
+        monzo = min(monzo_target, max(ZERO, total - (policy['hard'] - policy.get('minimum', ZERO)) - policy['bank']))
     else:
         monzo = min(monzo_target, max(ZERO, total))
     return total - monzo, monzo

@@ -47,7 +47,7 @@ def explain(result):
     ]
     if policy:
         rows = [row for row in rows if row[0] not in {'Protected bank reserve', 'Protected cash top-up reserve', 'Protected tax reserve'}]
-        rows.insert(5, ('Other protected reserves', policy['hard']))
+        rows.insert(5, ('Protected minimum and earmarked reserves' if policy.get('minimum') else 'Other protected reserves', policy['hard']))
         rows += [('Still needed for HSBC / Monzo / Cash targets', first['reserve_targets']['pending']),
                  ('Cash top-up funded', first['reserve_targets']['cash_transfer'])]
     if first.get('instalment_settled'):

@@ -299,12 +299,18 @@ process.on('exit', () => child.kill());
   await testFinance.locator('input[name=early_payoff]').uncheck();
   await testFinance.locator('input[name=limit_spending_when_owed]').check();
   await testFinance.locator('input[name=debt_spending_cap]').fill('700');
+  assert.equal(await testFinance.locator('input[name=minimum_bank_balance]').inputValue(),'500');
+  await testFinance.locator('input[name=minimum_bank_balance]').fill('600');
   await Promise.all([page.waitForNavigation({waitUntil:'load'}),testFinance.getByRole('button',{name:'Generate test receipt',exact:true}).click()]);
   const owedReceipt=await page.locator('.test-finance-paper').innerText();
   assert.match(owedReceipt,/Everyday spending incl\. necessities\s+£700\.00/);
   assert.match(owedReceipt,/Amex - extra repayment/);
   assert.equal(owedReceipt.includes('Cash top-up (from reserves)'),false);
   assert.equal(await testFinance.locator('input[name=debt_spending_cap]').inputValue(),'700');
+  assert.equal(await testFinance.locator('input[name=minimum_bank_balance]').inputValue(),'600');
+  assert.match(owedReceipt,/Minimum bank balance to keep\s+£600\.00/);
+  assert.match(owedReceipt,/BALANCES AT [A-Z]+ \d{4} END/);
+  assert.ok(await page.getByText('Calendar month-end account balances',{exact:true}).count());
   assert.equal(await testFinance.locator('input[name=limit_spending_when_owed]').isChecked(),true);
 
   await page.goto('http://receipt.test/finance/assets');

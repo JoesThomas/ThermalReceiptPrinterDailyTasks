@@ -350,6 +350,7 @@ def register(app, login_required, start_print):
             preset_error = str(error)
         defaults["start"] = uk_today().isoformat()
         defaults.setdefault("monzo_target", "500")
+        defaults.setdefault("minimum_bank_balance", "500")
         defaults.setdefault('limit_spending_when_owed', 'on')
         defaults.setdefault('debt_spending_cap', '700')
         defaults.setdefault("respect_isa_allowance", "on")
@@ -444,6 +445,7 @@ def register(app, login_required, start_print):
     def generate_test_finance():
         today = uk_today()
         values = request.form.to_dict()
+        values.setdefault("minimum_bank_balance", "500")
         values.setdefault('limit_spending_when_owed', '')
         values.setdefault("early_payoff", "")
         values.setdefault("respect_isa_allowance", "")

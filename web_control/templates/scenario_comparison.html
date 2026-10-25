@@ -46,6 +46,10 @@
                                 <dd>
                                     {{ result.goal_date or ('Not reached in planning horizon' if result.has_goal else 'No overall goal set') }}{{ ' (extended estimate)' if result.goal_extended else '' }}
                                 </dd>
+                                <dt>Minimum bank balance to keep</dt>
+                                <dd>
+                                    {{ result.minimum_bank_balance|default('£0.00') }}
+                                </dd>
                                 <dt>Lowest bank balance</dt>
                                 <dd>
                                     {{ result.minimum_bank }} on {{ result.minimum_date }}
@@ -80,6 +84,9 @@
                                 {% endfor %}
                             </dl>
                             <p>Scheduled savings: {{ result.transfers.scheduled_savings }}. Already included in bills; do not send again.</p>
+                            {% with month_rows=result.monthly_balances|default([]) %}
+                                {% include 'finance_monthly_balances.html' %}
+                            {% endwith %}
                             {% for account in result.accounts %}
                                 <h3>{{ account.name }}</h3>
                                 <p>

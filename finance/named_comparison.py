@@ -6,6 +6,7 @@ from finance.test_scenarios import snapshot
 from finance.transfer_explanation import explain
 
 LABELS = {
+    "minimum_bank_balance": "Minimum bank balance",
     "limit_spending_when_owed": "Limit spending while owed/overdrawn",
     "debt_spending_cap": "Debt/overdraft spending maximum per month",
     "early_payoff": "Pay selected instalments off early",
