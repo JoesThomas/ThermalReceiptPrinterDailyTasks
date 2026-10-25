@@ -61,6 +61,7 @@ class EarlyPayoffTests(TestCase):
 
     def test_insufficient_allocation_retains_payments_and_can_settle_later(self):
         base = source('150')
+        base['cash'] = D(0)
         result = build(base, values(base, salary='100'), TODAY)
         first, second = result['forecast']['payments'][:2]
         self.assertEqual(first['instalment_settled'], 0)
@@ -71,12 +72,13 @@ class EarlyPayoffTests(TestCase):
     def test_amex_first_precedes_instalments_and_savings(self):
         base = source('200')
         base['amex']['balance'] = D(300)
+        base['cash'] = D(50)
         result = build(base, values(base), TODAY)
         self.assertEqual(result['forecast']['payments'][0]['extra'], 300)
         self.assertEqual(result['forecast']['payments'][0]['instalment_settled'], 0)
         self.assertEqual(result['forecast']['early_payoffs'][0]['date'], occurs(TODAY, 1))
 
-    def test_other_income_can_fund_but_no_salary_does_not_enable_spare_cash(self):
+    def test_amex_first_uses_available_cash_for_debt_without_salary_but_not_investment(self):
         base = source()
         base['cash'] = D(3000)
         result = build(base, values(base, salary='0', other_income='300', invest_spare_cash='on'), TODAY)
@@ -85,7 +87,8 @@ class EarlyPayoffTests(TestCase):
         self.assertEqual(first['instalment_cash'], 0)
         self.assertEqual(first['cash_invested'], 0)
         none = build(base, values(base, salary='0', invest_spare_cash='on'), TODAY)
-        self.assertEqual(none['forecast']['early_payoff_total'], 0)
+        self.assertEqual(none['forecast']['early_payoff_total'], 200)
+        self.assertEqual(none['forecast']['cash_invested_total'], 0)
 
     def test_future_shortfall_withholds_settlements(self):
         base = source()

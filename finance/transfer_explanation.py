@@ -5,7 +5,7 @@ from finance.money import format_pounds as pounds
 
 ZERO = Decimal(0)
 STRATEGIES = {
-    "amex_first": "Bills and food/necessities → Amex → HSBC/Cash/Monzo top-ups → extra savings/investments.",
+    "amex_first": "Bills and food/necessities → Amex → repayments → HSBC/Cash/Monzo top-ups → extra savings/investments.",
     "savings_first": "Savings first: the savings allocation takes priority; remaining money can repay Amex.",
     "split": "Split: the selected percentage goes to extra Amex repayment, limited to the debt remaining.",
 }
@@ -48,11 +48,11 @@ def explain(result):
     if policy:
         rows = [row for row in rows if row[0] not in {'Protected bank reserve', 'Protected cash top-up reserve', 'Protected tax reserve'}]
         rows.insert(5, ('Other protected reserves', policy['hard']))
-        rows += [('Reserve targets still to fill', first['reserve_targets']['pending']),
+        rows += [('Still needed for HSBC / Monzo / Cash targets', first['reserve_targets']['pending']),
                  ('Cash top-up funded', first['reserve_targets']['cash_transfer'])]
     if first.get('instalment_settled'):
         index = next(i for i, row in enumerate(rows) if row[0] == 'Extra Amex repayment')
-        rows.insert(index, ('Instalment balances settled early', first['instalment_settled']))
+        rows.insert(index + 1, ('Instalment balances settled early', first['instalment_settled']))
     moved = ZERO
     destinations = []
     if data["use_accounts"]:
@@ -85,11 +85,11 @@ def explain(result):
         ordered = []
         if first['extra']:
             ordered.append({'name': 'Amex — extra repayment', 'amount': pounds(first['extra'])})
+        ordered.extend({'name': item['name'] + ' — early settlement', 'amount': pounds(item['amount'])}
+                       for item in first.get('instalment_payoffs', []))
         for key, label in [('cash_transfer', 'Cash — funded top-up'), ('monzo_transfer', 'Monzo — funded top-up')]:
             if first['reserve_targets'][key]:
                 ordered.append({'name': label, 'amount': pounds(first['reserve_targets'][key])})
-        ordered.extend({'name': item['name'] + ' — early settlement', 'amount': pounds(item['amount'])}
-                       for item in first.get('instalment_payoffs', []))
         destinations = ordered + investment_destinations
     return {
         "rows": [{"label": label, "amount": pounds(value)} for label, value in rows],

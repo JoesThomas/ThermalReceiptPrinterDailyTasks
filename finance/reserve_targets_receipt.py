@@ -15,8 +15,8 @@ def transfers(page, base, first):
     if status['monzo_transfer']:
         page.amount('Monzo top-up funded this period', status['monzo_transfer'])
     if status['pending']:
-        page.amount('Reserve targets still to fill', status['pending'])
-        page.text('Top-ups wait until Amex is covered. Bills and food/everyday spending come first.')
+        page.amount('Still needed for HSBC / Monzo / Cash targets', status['pending'])
+        page.text('Top-ups follow Amex and eligible early repayments. Bills and food/necessities come first.')
     if status['cash_pending'] and status['cash_pending'] != status['pending']:
         page.amount('Cash target still to fill', status['cash_pending'])
     return True

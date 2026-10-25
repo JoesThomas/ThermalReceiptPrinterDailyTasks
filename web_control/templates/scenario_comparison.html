@@ -58,7 +58,9 @@
                                 <dd>
                                     {{ 'Hold throughout forecast' if result.reserves_hold else 'Shortfall: ' ~ result.shortfall_date }}
                                     {% if result.reserve_goals_after_amex %}
-                                        <p>Reserve goals still to fill: {{ result.reserve_targets_pending }}; funded after Amex.</p>
+                                        <p>
+                                            Reserve goals still to fill: {{ result.reserve_targets_pending }}; funded after Amex and eligible early repayments.
+                                        </p>
                                     {% endif %}
                                 </dd>
                             </dl>
@@ -81,7 +83,10 @@
                             {% for account in result.accounts %}
                                 <h3>{{ account.name }}</h3>
                                 <p>
-                                    Projected {{ account.projected }} / target {{ account.target }}. Goal date: {{ account.goal_date or 'No funded date within planning horizon' }}{{ ' (extended)' if account.extended else '' }}.
+                                    Projected {{ account.projected }} / target {{ account.target }}. Goal date: {{ account.goal_date or account.estimated_goal_date or 'No funded date within planning horizon' }}{{ ' (extended)' if account.extended else '' }}.
+                                    {% if account.estimated_goal_date %}
+                                        Not reached within selected forecast. Long-term estimate uses final-year contributions and recorded interest; not a funded forecast.
+                                    {% endif %}
                                 </p>
                             {% endfor %}
                             {% for warning in result.warnings %}<p>{{ warning }}</p>{% endfor %}

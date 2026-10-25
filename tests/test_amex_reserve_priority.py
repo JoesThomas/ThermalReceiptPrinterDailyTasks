@@ -96,6 +96,7 @@ class AmexReservePriorityTests(TestCase):
     def test_partial_cash_topup_credited_only_when_funded_after_bank_targets(self):
         source=base(cash='0',card='0',daily=ZERO)
         source['monzo_balance']=ZERO
+        source['monzo_balance']=ZERO
         source['events']=[dict(name='Bills',date=occurs(TODAY,m),amount=D(500)) for m in range(12)]
         result=build(source,values(salary='2300',other_income='0',months='2'),TODAY)
         first,second=result['forecast']['payments']
@@ -178,3 +179,58 @@ class AmexReservePriorityTests(TestCase):
         expected=source['cash']+total_income-costs-source['daily']*days-f['extra_total']-f['savings_total']-f['reserved_total']-f['early_payoff_total']
         self.assertAlmostEqual(bank,expected,places=8)
         self.assertGreaterEqual(f['minimum_bank'],0)
+
+    def test_selected_repayments_precede_unfilled_reserves_and_conserve_cash(self):
+        from finance.early_payoff import options
+        from finance.transfer_explanation import explain
+        source=base(cash='0',card='100',daily=ZERO)
+        source['monzo_balance']=ZERO
+        source['events']=[dict(name='Amex payment',date=TODAY,amount=D(50)),
+                          *[dict(name='Amazon plan',date=occurs(TODAY,m),amount=D(50)) for m in range(4)]]
+        source['repayment_options']=[dict(name='Amazon plan',balance='200',monthly_payment='50',type='payment_plan')]
+        identifier=options(source['repayment_options'])[0]['id']
+        form=values(salary='900',other_income='0',months='1',early_payoff='on')
+        form['payoff_plan_'+identifier]='on'
+        result=build(source,form,TODAY)
+        first=result['forecast']['payments'][0]
+        self.assertEqual(first['extra'],50)
+        self.assertEqual(first['instalment_settled'],200)
+        self.assertEqual(first['costs'],50)
+        self.assertEqual(first['reserve_targets']['hsbc'],600)
+        self.assertEqual(first['reserve_targets']['pending'],1300)
+        self.assertEqual(first['savings'],0)
+        self.assertIsNone(result['forecast']['run_out'])
+        self.assertEqual(first['extra']+first['instalment_settled']+first['costs']+first['reserve_targets']['hsbc'],900)
+        for detail in ('compact','detailed'):
+            text=receipt(result,TODAY,detail=detail)
+            self.assertLess(text.index('Amex - extra repayment'),text.index('Amazon plan - settle early'))
+            self.assertLess(text.index('Amazon plan - settle early'),text.index('Still needed for HSBC / Monzo / Cash targets'))
+            self.assertNotIn('Reserve targets still to fill',text)
+        destinations=explain(result)['destinations']
+        self.assertEqual([d['name'] for d in destinations],['Amex — extra repayment','Amazon plan — early settlement'])
+
+    def test_early_repayments_precede_physical_cash_topup(self):
+        from finance.early_payoff import options
+        source=base(cash='0',card='0',daily=ZERO)
+        source['monzo_balance']=ZERO
+        source['events']=[dict(name='Amazon plan',date=occurs(TODAY,m),amount=D(50)) for m in range(4)]
+        source['repayment_options']=[dict(name='Amazon plan',balance='200',monthly_payment='50',type='payment_plan')]
+        form=values(salary='1800',other_income='0',months='1',early_payoff='on')
+        form['payoff_plan_'+options(source['repayment_options'])[0]['id']]='on'
+        result=build(source,form,TODAY)
+        first=result['forecast']['payments'][0]
+        self.assertEqual(first['instalment_settled'],200)
+        self.assertEqual(first['reserve_targets']['cash_transfer'],100)
+        self.assertEqual(first['reserve_targets']['cash_pending'],300)
+        self.assertEqual(first['savings'],0)
+        for detail in ('compact','detailed'):
+            text=receipt(result,TODAY,detail=detail)
+            self.assertLess(text.index('Amazon plan - settle early'),text.index('Cash top-up funded this period'))
+
+    def test_compact_unreached_goal_names_the_planning_horizon(self):
+        source=base(card='0',daily=ZERO)
+        source['savings_accounts'][1]['target']=D(10000000)
+        result=build(source,values(months='1'),TODAY)
+        text=receipt(result,TODAY,detail='compact')
+        self.assertIn('60-month planning period',' '.join(text.split()))
+        self.assertNotIn('No funded target date on this pathway',text)

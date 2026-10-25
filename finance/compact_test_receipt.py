@@ -34,6 +34,8 @@ def receipt(result, today):
         return f"About {months} " + ("month" if months == 1 else "months")
 
     def target_date(on, extended=False, label="Projected target date:"):
+        if extended:
+            text("Not reached within selected forecast.")
         text(f"{label} around {on:%B %Y}")
         text("Estimated time to target: " + duration(on))
         if extended:
@@ -60,7 +62,7 @@ def receipt(result, today):
     if data["lump"]:
         amount("One-off lump sum", data["lump"])
     if base.get('repayment_priority'):
-        text('Bills, food/necessities -> Amex -> reserve top-ups -> extra savings/investments.')
+        text('Bills, food/necessities -> Amex -> repayments -> reserve top-ups -> extra savings/investments.')
         if base.get('amex', {}).get('balance') is None:
             text('Amex balance unknown: confirm it before extra savings or top-ups.')
     if forecast["run_out"]:
@@ -91,8 +93,10 @@ def receipt(result, today):
     if base.get('repayment_priority'):
         if first['extra']:
             amount('Amex - extra repayment', first['extra'])
+        for label, value in early_destinations:
+            amount(label, value)
         target_transfers(page, base, first)
-        for label, value in early_destinations + investment_destinations:
+        for label, value in investment_destinations:
             amount(label, value)
     else:
         for label, value in destinations:
@@ -183,7 +187,7 @@ def receipt(result, today):
     section("BALANCES AT FORECAST END")
     text(f"On {forecast['end']:%d %b %Y}")
     if forecast.get('reserve_targets_pending'):
-        amount('Reserve targets still unfilled', forecast['reserve_targets_pending'])
+        amount('Still needed for HSBC / Monzo / Cash targets', forecast['reserve_targets_pending'])
     from finance.repayment_priority import bank_balances as projected_bank_balances
     hsbc_end, monzo_end = projected_bank_balances(base, forecast, data.get('monzo_target', Decimal(0)))
     amount(base.get('primary_bank', 'Bank cash'), hsbc_end)
@@ -231,8 +235,16 @@ def receipt(result, today):
                 text("Target already reached.")
             elif reached:
                 target_date(reached, not row["goal_date"])
+            elif row.get("estimated_goal_date"):
+                text("Not reached within selected forecast.")
+                target_date(row["estimated_goal_date"], label="Long-term estimate:")
+                text("Uses final-year contribution pace and recorded interest; not a funded forecast.")
             else:
-                text("No funded target date on this pathway.")
+                text(
+                    f"Target not reached within the {forecast.get('extended_goal_months', data['months'])}-month planning period."
+                    if data["mode"] != "lump"
+                    else "Target not reached with this one-off lump sum."
+                )
         text("")
     if data["goal"]:
         text("OVERALL SAVINGS GOAL")

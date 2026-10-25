@@ -6,7 +6,12 @@ by default. Eligible choices need a known positive outstanding balance, a positi
 monthly payment, and a uniquely identifiable dated schedule. Ordinary bills,
 mortgages and credit cards are excluded. Amex keeps its existing repayment model.
 
-The forecast uses the same surplus allocation as the existing strategy: recurring
+Under Amex first, available cash after bills, food/necessities and Amex can fund
+selected early settlements before HSBC/Monzo/Cash reserve top-ups, including
+without salary. Tax and other earmarked obligations stay protected. Unaffordable
+plans keep normal payments; only confirmed fee-free plans are considered.
+
+Other strategies use their existing surplus allocation: recurring
 income after bills, spending and reserves, plus spare bank cash only when its
 existing option is enabled and salary is actually paid. Without salary that spare
 cash rule remains paused; other recurring income can still fund settlements.

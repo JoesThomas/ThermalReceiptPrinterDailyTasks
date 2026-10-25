@@ -302,17 +302,8 @@ def _simulate(base, inputs, today):
                 card_uncovered = max(ZERO, balance - scheduled - extra) if known else Decimal('Infinity')
                 if rate and balance > extra:
                     card_uncovered = balance - extra
-                cash_event = fund_cash(cash - extra - costs - variable - protected_later, priority,
-                                       reserved_total, card_uncovered, topup, on) if topup or not inputs.get('use_accounts') else None
-                if cash_event:
-                    cash_added = cash_event['amount']
-                    reserved_total += cash_added
-                    reserve_transfers.append(cash_event)
-                    if has_interest and cash_event.get('savings_account') in growing_by_id:
-                        growing_by_id[cash_event['savings_account']]['projected'] += cash_added
-                # Reserve goals must be fully funded before instalment extras or investments.
-                general_room = max(ZERO, ordinary_budget - extra) if known and card_uncovered <= CENT else ZERO
-                budget = extra + general_room
+                # Eligible debt settlements use cash before soft reserve targets.
+                general_room = budget - extra if known and card_uncovered <= CENT else ZERO
             else:
                 general_room = budget - extra
             available = general_room
@@ -325,6 +316,18 @@ def _simulate(base, inputs, today):
             # A full settlement includes this period's already-reserved instalments.
             cash -= settled
             available -= early_extra
+            if priority:
+                cash_event = fund_cash(cash - extra - costs - variable - protected_later, priority,
+                                       reserved_total, card_uncovered, topup, on) if topup or not inputs.get('use_accounts') else None
+                if cash_event:
+                    cash_added = cash_event['amount']
+                    reserved_total += cash_added
+                    reserve_transfers.append(cash_event)
+                    if has_interest and cash_event.get('savings_account') in growing_by_id:
+                        growing_by_id[cash_event['savings_account']]['projected'] += cash_added
+                # Remaining cash fills reserve goals before extra savings.
+                available = min(available, max(ZERO, ordinary_budget - extra - early_extra),
+                                rounded(max(ZERO, cash - extra - costs - variable - protected_later), rounding=ROUND_DOWN))
             saving = (
                 available
                 if inputs["save_all"]
