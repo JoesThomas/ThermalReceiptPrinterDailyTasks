@@ -227,7 +227,7 @@ class TransferExplanationTests(TestCase):
         explanation = explain(result)
         first = result["forecast"]["payments"][0]
         rows = {row["label"]: row["amount"] for row in explanation["rows"]}
-        self.assertEqual(rows["Reserve targets still to fill"], "£1,000.00")
+        self.assertEqual(rows["Still needed for HSBC / Monzo / Cash targets"], "£1,000.00")
         self.assertEqual(rows["Spare bank cash used for extra transfers"], "£1,200.00")
         self.assertEqual(rows["Extra savings transfers"], "£0.00")
         self.assertEqual(
@@ -267,7 +267,7 @@ class TransferExplanationTests(TestCase):
         self.assertIsNotNone(result["forecast"]["run_out"])
         rows = {row["label"]: row["amount"] for row in explanation["rows"]}
         self.assertEqual(rows["Other protected reserves"], "£100.00")
-        self.assertEqual(rows["Reserve targets still to fill"], "£1,280.00")
+        self.assertEqual(rows["Still needed for HSBC / Monzo / Cash targets"], "£1,280.00")
 
 
 class VersionedRecordsTests(TestCase):

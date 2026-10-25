@@ -4,8 +4,9 @@ In the **Amex first** strategy, allocation now follows:
 
 1. Listed bills, scheduled repayments and everyday spending, including food and necessities.
 2. Extra Amex repayment, using available bank cash after those costs.
-3. The configured HSBC bank target, Monzo bank target, and physical cash top-up.
-4. Optional confirmed instalment settlements, then extra savings/investments.
+3. Optional confirmed fee-free instalment settlements.
+4. The configured HSBC bank target, Monzo bank target, and physical cash top-up.
+5. Extra savings/investments.
 
 Tax and other earmarked obligations stay protected. The HSBC/Cash/Monzo amounts
 are targets, not an untouchable deduction before Amex. A bank target below £1,000
@@ -15,7 +16,7 @@ Other allocation strategies retain their existing reserve-first policy.
 
 Within the target group, bank money first covers the HSBC target, then Monzo.
 Physical cash is withdrawn only from money above those bank targets, after the
-card is covered. Partial cash top-ups are supported; each funded transfer credits
+card and eligible early repayments are covered. Partial cash top-ups are supported; each funded transfer credits
 its savings goal on that date, once. Monzo transfers only redistribute bank money.
 The end-of-forecast bank split uses the same HSBC-first rule.
 
@@ -49,3 +50,16 @@ Older saved inputs keep their recorded assumptions until reviewed and saved agai
 Amex repayment can use available cash without salary. Extra investment of spare
 bank cash retains its salary requirement and waits for funded reserve targets.
 The simulation never sends money or changes live account balances.
+
+## Goal dates beyond the forecast
+
+Accounts not reaching their target within the selected forecast first use the
+existing cash-flow extension (up to five years). If no funded date is found there,
+a separate **Long-term estimate** continues the final simulated year's monthly
+contribution pace and recorded savings AER, for up to 100 additional years.
+Scheduled savings are included; investment market returns are not assumed.
+This is an extrapolation, not an extension of funded cash-flow checks: it does not
+model future changes to income, bills, rates, tax allowances or redistribution
+when other goals finish. The receipt and webpage label that distinction.
+No estimate is offered for a failing pathway, an explicit salary end date,
+a one-off lump sum, an incompatible account limit, or a non-growing balance.

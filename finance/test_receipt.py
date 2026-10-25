@@ -111,7 +111,7 @@ def receipt(result, today, *, detail="detailed"):
     }
     text("Strategy: " + strategies[data["strategy"]])
     if base.get('repayment_priority'):
-        text('Bills and food/necessities first; then Amex, reserve top-ups, then extra savings/investments.')
+        text('Bills and food/necessities first; then Amex, repayments, reserve top-ups, then extra savings/investments.')
         if base.get('amex', {}).get('balance') is None:
             text('Amex balance unknown: confirm it before extra savings or top-ups.')
     if first.get('spending_limited'):
@@ -155,9 +155,9 @@ def receipt(result, today, *, detail="detailed"):
     if base.get('repayment_priority'):
         if first['extra']:
             amount('Amex - extra repayment', first['extra'])
-        target_transfers(page, base, first)
         for item in first.get('instalment_payoffs', []):
             amount(item['name'] + ' - settle early', item['amount'])
+        target_transfers(page, base, first)
     moved = Decimal(0)
     if data["use_accounts"]:
         for account in result["account_plan"]["accounts"]:
@@ -289,7 +289,7 @@ def receipt(result, today, *, detail="detailed"):
             amount(reserve.get("reserve_label", "Tax reserve"), reserve["tax_reserve"])
     amount("RESERVE TARGETS" if base.get('repayment_priority') else "TOTAL PROTECTED", base["buffer"])
     if base.get('repayment_priority'):
-        text('HSBC/Cash/Monzo targets follow Amex. Bills, necessities and other earmarked money remain protected.')
+        text('HSBC/Cash/Monzo targets follow Amex and eligible early repayments. Bills, necessities and other earmarked money remain protected.')
     amount(
         "Existing cash above reserves", max(Decimal(0), base["cash"] - base["buffer"])
     )
@@ -439,11 +439,18 @@ def receipt(result, today, *, detail="detailed"):
                 if reached == "already":
                     text("Target already reached.")
                 elif reached:
+                    if not account["goal_date"]:
+                        text("Not reached within selected forecast.")
                     text(
                         f"Projected target date: around {reached:%B %Y}"
                         + (" (extended)" if not account["goal_date"] else "")
                     )
                     goal_duration(reached)
+                elif account.get("estimated_goal_date"):
+                    text("Not reached within selected forecast.")
+                    text(f"Long-term estimate: around {account['estimated_goal_date']:%B %Y}")
+                    goal_duration(account["estimated_goal_date"])
+                    text("Uses final-year contribution pace and recorded interest; not a funded forecast.")
                 elif not data["use_accounts"]:
                     text("Enable saved account allocation to estimate time to target.")
                 else:
@@ -491,7 +498,7 @@ def receipt(result, today, *, detail="detailed"):
     overview(page, forecast, data, detailed=True)
     section("BALANCES AT FORECAST END")
     if forecast.get('reserve_targets_pending'):
-        amount('Reserve targets still unfilled', forecast['reserve_targets_pending'])
+        amount('Still needed for HSBC / Monzo / Cash targets', forecast['reserve_targets_pending'])
     from finance.repayment_priority import bank_balances as projected_bank_balances
     hsbc_end, monzo_end = projected_bank_balances(base, forecast, data.get('monzo_target', Decimal(0)))
     amount(base.get('primary_bank', 'Bank cash'), hsbc_end)
@@ -578,10 +585,10 @@ def receipt(result, today, *, detail="detailed"):
     )
     amount("Bank cash above reserves at end", max(Decimal(0), forecast["end_cash"]))
     if forecast["end_cash"] < 0:
-        amount("Reserve targets still unfilled" if base.get('repayment_priority') else "Funding shortfall at forecast end", -forecast["end_cash"])
+        amount("Still needed for HSBC / Monzo / Cash targets" if base.get('repayment_priority') else "Funding shortfall at forecast end", -forecast["end_cash"])
     amount("Lowest projected bank balance", forecast["minimum_bank"])
     text(
-        "Bills and necessities funded; reserve goals follow Amex." if base.get("repayment_priority") else "Protected reserves hold through forecast."
+        "Bills and necessities funded; reserve goals follow Amex and eligible early repayments." if base.get("repayment_priority") else "Protected reserves hold through forecast."
         if not forecast["run_out"]
         else "Protected reserves would be breached."
     )
@@ -606,7 +613,7 @@ def receipt(result, today, *, detail="detailed"):
     )
     if data["invest_spare_cash"]:
         text(
-            "Bills and food/necessities first, then Amex, then HSBC/Cash/Monzo targets. Extra investments from spare bank cash require salary and funded reserve targets." if base.get("repayment_priority") else "Spare bank cash follows the selected strategy on salary paydays; Amex first repays Amex before extra savings. Protects £1,000, bills, everyday spending and other reserves. No salary means no spare cash investment. Uses selected account shares and targets."
+            "Bills and food/necessities first, then Amex, eligible early repayments, then HSBC/Cash/Monzo targets. Extra investments from spare bank cash require salary and funded reserve targets." if base.get("repayment_priority") else "Spare bank cash follows the selected strategy on salary paydays; Amex first repays Amex before extra savings. Protects £1,000, bills, everyday spending and other reserves. No salary means no spare cash investment. Uses selected account shares and targets."
         )
     else:
         text(

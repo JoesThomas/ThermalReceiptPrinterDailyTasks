@@ -306,7 +306,7 @@
                                 Pay selected instalment plans off early when affordable
                             </label>
                             <p>
-                                Uses surplus after bills, food/necessities and reserve targets. Under Amex first, Amex is covered before reserve top-ups. Selected instalment settlements then come before extra investments.
+                                Under Amex first: bills and food/necessities, then Amex, selected fee-free early repayments, reserve top-ups, and extra savings/investments. Unaffordable or unselected plans keep their scheduled payments. Other strategies keep reserves before early settlements.
                             </p>
                             <p>
                                 Select only plans you have confirmed can be settled early without fees. The estimate uses the recorded outstanding balance; check the provider's actual settlement amount before paying.
@@ -528,7 +528,12 @@
                                 First shortfall: {{ stress.shortfall_date or 'none in selected forecast' }} · Amex cleared: {{ stress.payoff or 'not within forecast' }} · Savings at end: {{ stress.savings_end }}
                             </p>
                             {% for account in stress.accounts %}
-                                <p>{{ account.name }}: {{ account.projected }} · goal date {{ account.goal_date or 'not within planning horizon' }}</p>
+                                <p>
+                                    {{ account.name }}: {{ account.projected }} · goal date {{ account.goal_date or account.estimated_goal_date or 'not within planning horizon' }}
+                                    {% if account.estimated_goal_date %}
+                                        Not reached within selected forecast. Long-term estimate uses final-year contributions and recorded interest; not a funded forecast.
+                                    {% endif %}
+                                </p>
                             {% endfor %}
                         {% endfor %}
                     </details>
@@ -609,7 +614,7 @@
                     </p>
                     <p>
                         {% if transfers.reserve_goals_after_amex %}
-                            HSBC, Cash and Monzo are targets funded after Amex. Only funded top-ups are suggested. Food and necessities are included in everyday spending; existing scheduled payments remain commitments.
+                            HSBC, Cash and Monzo are targets funded after Amex and eligible early repayments. Only funded top-ups are suggested. Food and necessities are included in everyday spending; existing scheduled payments remain commitments.
                         {% else %}
                             Cash top-up uses its protected reserve and is separate from extra savings. The reserve rows add up to the protected total; they are not additional deductions.
                         {% endif %}
@@ -660,7 +665,9 @@
                                     <dd>
                                         {{ 'Hold throughout forecast' if scenario.reserves_hold else 'First breach: ' ~ scenario.shortfall_date }}
                                         {% if scenario.reserve_goals_after_amex %}
-                                            <p>Reserve goals still to fill: {{ scenario.reserve_targets_pending }}. These follow Amex.</p>
+                                            <p>
+                                                Reserve goals still to fill: {{ scenario.reserve_targets_pending }}. These follow Amex and eligible early repayments.
+                                            </p>
                                         {% endif %}
                                     </dd>
                                     {% if scenario.has_goal %}
@@ -673,7 +680,7 @@
                                 <h4>Account targets</h4>
                                 {% for account in scenario.accounts %}
                                     <p>
-                                        <strong>{{ account.label|default(account.name,true) }}</strong>: {{ account.balance }} now; {{ account.projected }} at forecast end against {{ account.target }}. Goal: {{ account.goal_date or 'No funded target date' }}{{ ' (beyond selected forecast)' if account.extended else '' }}.
+                                        <strong>{{ account.label|default(account.name,true) }}</strong>: {{ account.balance }} now; {{ account.projected }} at forecast end against {{ account.target }}. Goal: {{ account.goal_date or 'Target not reached within planning horizon' }}{{ ' (beyond selected forecast)' if account.extended else '' }}.
                                     </p>
                                 {% else %}
                                     <p>No recorded accounts selected.</p>

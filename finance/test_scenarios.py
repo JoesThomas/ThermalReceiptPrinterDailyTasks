@@ -29,6 +29,7 @@ def snapshot(result, today):
                 "projected": pounds(row["projected"]),
                 "goal_date": reached.isoformat() if reached else None,
                 "extended": bool(reached and reached > forecast["end"]),
+                "estimated_goal_date": row["estimated_goal_date"].isoformat() if row.get("estimated_goal_date") else None,
                 "reached": bool(row["goal_date"]),
             }
         )

@@ -128,6 +128,9 @@ def build_validated(
         )
         for row, full in zip(account_plan["accounts"], extended_accounts["accounts"]):
             row["extended_goal_date"] = full["goal_date"]
+            if not full["goal_date"] and inputs["use_accounts"]:
+                from finance.long_term_goals import estimate
+                row["estimated_goal_date"] = estimate(full, extended, extended_inputs)
     first = forecast["payments"][0]
     bills = [
         event
