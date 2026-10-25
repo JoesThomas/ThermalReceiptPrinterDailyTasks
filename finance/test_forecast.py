@@ -365,7 +365,7 @@ def _simulate(base, inputs, today):
                     retained -= redirected
                     cash_repaid = max(ZERO, extra - income_budget)
                 saving = accepted - remaining_cash
-                income_savings = min(accepted, income_savings)
+                income_savings = min(accepted, income_savings, max(ZERO, income_budget - extra - early_extra))
             cash_invested = max(ZERO, saving + remaining_cash - income_savings)
             cash -= remaining_cash
             saving += remaining_cash

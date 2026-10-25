@@ -658,7 +658,9 @@
                                     <summary>Calculated period allocations</summary>
                                     {% for period in scenario.periods %}
                                         <p>
-                                            <strong>{{ period.date }}</strong>: salary {{ period.salary }}; bills/one-offs {{ period.costs }}; everyday spending {{ period.spending }}; extra Amex {{ period.extra }}; early instalment settlements {{ period.instalments }}; extra savings {{ period.savings }}; scheduled savings {{ period.automatic }} (included in bills).
+                                            <strong>{{ period.date }}</strong>: salary {{ period.salary }}; bills/one-offs {{ period.costs }}; everyday spending {{ period.spending }}; extra Amex {{ period.extra }};
+                                            {% if period.instalments != '£0.00' %}early instalment settlements {{ period.instalments }};{% endif %}
+                                            extra savings {{ period.savings }}; scheduled savings {{ period.automatic }} (included in bills).
                                         </p>
                                     {% endfor %}
                                 </details>

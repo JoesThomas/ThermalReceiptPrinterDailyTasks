@@ -139,6 +139,25 @@ class EarlyPayoffTests(TestCase):
                 self.assertLessEqual(period['extra'] + period['savings'] + period['instalment_extra'], period['budget'])
                 self.assertEqual(period['instalment_cash'] + period['cash_repaid'] + period['cash_invested'], max(D(0), period['extra'] + period['savings'] + period['instalment_extra'] - period['income_budget']))
 
+    def test_capped_savings_and_amex_redirection_keep_cash_sources_consistent(self):
+        base = source('300')
+        small = source('100', '20', 'Amazon kettle')
+        base['events'] += small['events']
+        base['repayment_options'] += small['repayment_options']
+        base['cash'] = D(1200)
+        base['amex']['balance'] = D(150)
+        base['savings_accounts'] = [dict(id='pot', name='Savings', kind='savings', type='savings', balance=D(0),
+                                         date=str(TODAY), target=D(0), balance_limit=D(100), share=D(100))]
+        form = values(base, salary='600', strategy='savings_first', invest_spare_cash='on', use_saved_accounts='on')
+        form['payoff_plan_' + options(base['repayment_options'])[1]['id']] = 'on'
+        period = build(base, form, TODAY)['forecast']['payments'][0]
+        self.assertEqual(period['instalment_settled'], 400)
+        self.assertEqual(period['savings'], 100)
+        self.assertEqual(period['extra'], 150)
+        self.assertEqual(period['cash_invested'], 50)
+        self.assertEqual(period['instalment_cash'] + period['cash_repaid'] + period['cash_invested'],
+                         max(D(0), period['extra'] + period['savings'] + period['instalment_extra'] - period['income_budget']))
+
     def test_manual_collection_deduplicates_amazon_alias_and_finishes_live_schedule(self):
         from web_control.test_finance_tools import collect
         raw = source()['repayment_options'][0]

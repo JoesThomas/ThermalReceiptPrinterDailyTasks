@@ -37,7 +37,6 @@ def explain(result):
             "Spare bank cash used for extra transfers",
             first["cash_repaid"] + first["cash_invested"] + first.get("instalment_cash", ZERO),
         ),
-        ("Instalment balances settled early", first.get("instalment_settled", ZERO)),
         ("Extra Amex repayment", first["extra"]),
         ("Extra savings transfers", first["savings"]),
         (
@@ -45,6 +44,9 @@ def explain(result):
             first["cash_after_allocation"],
         ),
     ]
+    if first.get('instalment_settled'):
+        index = next(i for i, row in enumerate(rows) if row[0] == 'Extra Amex repayment')
+        rows.insert(index, ('Instalment balances settled early', first['instalment_settled']))
     moved = ZERO
     destinations = []
     if data["use_accounts"]:
