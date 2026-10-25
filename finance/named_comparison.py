@@ -6,6 +6,8 @@ from finance.test_scenarios import snapshot
 from finance.transfer_explanation import explain
 
 LABELS = {
+    "limit_spending_when_owed": "Limit spending while owed/overdrawn",
+    "debt_spending_cap": "Debt/overdraft spending maximum per month",
     "early_payoff": "Pay selected instalments off early",
     "salary": "Monthly salary",
     "other_income": "Other income",
@@ -58,7 +60,7 @@ def compare(left, right, today, collect):
     payoff_names = {PREFIX + row['id']: row['name'] for projection in projections
                     for row in options(projection.get('repayment_options', []))}
     money_fields = set(
-        "salary existing_salary other_income lump_sum savings_target savings_goal starting_savings opening_cash daily_spend amex_owed".split()
+        "salary existing_salary other_income lump_sum savings_target savings_goal starting_savings opening_cash daily_spend amex_owed debt_spending_cap".split()
     )
 
     def display(key, value):
@@ -66,6 +68,7 @@ def compare(left, right, today, collect):
             return "Confirmed" if value == "on" else "Not selected"
         if key in {
             "early_payoff",
+            "limit_spending_when_owed",
             "save_all",
             "invest_spare_cash",
             "equal_savings",

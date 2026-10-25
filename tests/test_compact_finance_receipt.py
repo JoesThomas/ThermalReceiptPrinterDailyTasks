@@ -208,7 +208,7 @@ class CompactFinanceTests(TestCase):
         self.assertIn("HOLIDAY POT", short)
         self.assertNotIn("Linked regular savings payment", short)
         self.assertIn("do not resend", short)
-        self.assertIn("Monzo top-up (from reserves)", short)
+        self.assertIn("Monzo top-up funded this period", short)
         self.assertEqual(result, original)
         self.assertEqual(receipt(result, TODAY), full)
 
@@ -219,8 +219,9 @@ class CompactFinanceTests(TestCase):
         base["cash"] = D(1100)
         result = build(base, values(salary="0"), TODAY)
         text = receipt(result, TODAY, detail="compact")
-        self.assertIn("FUNDING WARNING", text)
-        self.assertIn("Reserves breached:", text)
+        self.assertNotIn("FUNDING WARNING", text)
+        self.assertIn("Amex balance unknown", text)
+        self.assertGreater(result["forecast"]["reserve_targets_pending"], 0)
         self.assertIn("Amex balance owed: unavailable", text)
         self.assertIn("Manual estimate: confirm balances.", text)
 
@@ -292,10 +293,10 @@ class CompactFinanceTests(TestCase):
         block = text.split("WHAT TO MOVE THIS PAYDAY")[1].split("WHAT TO KEEP")[0]
         lines = [line for line in block.splitlines() if line and set(line) != {"-"}]
         self.assertLessEqual(len(lines), 9)
-        self.assertEqual(block.count("Top-ups use reserves, not extra income."), 1)
+        self.assertNotIn("Top-ups use reserves, not extra income.", block)
         for label in [
-            "Cash top-up (from reserves)",
-            "Monzo top-up (from reserves)",
+            "Cash top-up funded this period",
+            "Monzo top-up funded this period",
             "Spare cash (included above)",
             "Scheduled savings - do not resend",
         ]:

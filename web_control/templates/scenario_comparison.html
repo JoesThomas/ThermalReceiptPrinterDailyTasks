@@ -50,13 +50,16 @@
                                 <dd>
                                     {{ result.minimum_bank }} on {{ result.minimum_date }}
                                 </dd>
-                                <dt>Bank reserve</dt>
+                                <dt>{{ 'Bank reserve target' if result.reserve_goals_after_amex else 'Bank reserve' }}</dt>
                                 <dd>
                                     {{ result.bank_reserve }}
                                 </dd>
                                 <dt>Protected reserves</dt>
                                 <dd>
                                     {{ 'Hold throughout forecast' if result.reserves_hold else 'Shortfall: ' ~ result.shortfall_date }}
+                                    {% if result.reserve_goals_after_amex %}
+                                        <p>Reserve goals still to fill: {{ result.reserve_targets_pending }}; funded after Amex.</p>
+                                    {% endif %}
                                 </dd>
                             </dl>
                             <h3>First-period extra transfers</h3>

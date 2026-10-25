@@ -131,7 +131,7 @@ class ContributionPlanTests(TestCase):
         settings = values(hl_monthly="100")
         plan = contribution_plan(base, build(base, settings, TODAY), TODAY)
         self.assertEqual(
-            [p["scheduled"] for p in plan["periods"]], ["£25.00", "£25.00", "£100.00"]
+            [p["scheduled"] for p in plan["periods"]], ["£25.00", "£75.00", "£100.00"]
         )
         self.assertEqual(plan["amex_keep"], plan["amex_proposed"])
         self.assertTrue(plan["reserves_hold"])

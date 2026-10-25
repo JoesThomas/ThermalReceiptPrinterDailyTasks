@@ -522,3 +522,5 @@ For Home attention items, named-plan comparisons and the small refill test, see
 helper is described in [deployment updates](deployment/updates.md).
 
 Test-finance instalment settlements: [early payoff setup and assumptions](docs/early-instalment-payoff.md).
+
+Amex-first ordering and the necessities spending ceiling: [forecast allocation rules](docs/amex-first-reserve-goals.md).

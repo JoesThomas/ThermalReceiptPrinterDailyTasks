@@ -72,7 +72,7 @@ class EarlyPayoffTests(TestCase):
         base = source('200')
         base['amex']['balance'] = D(300)
         result = build(base, values(base), TODAY)
-        self.assertEqual(result['forecast']['payments'][0]['extra'], 250)
+        self.assertEqual(result['forecast']['payments'][0]['extra'], 300)
         self.assertEqual(result['forecast']['payments'][0]['instalment_settled'], 0)
         self.assertEqual(result['forecast']['early_payoffs'][0]['date'], occurs(TODAY, 1))
 
@@ -89,7 +89,7 @@ class EarlyPayoffTests(TestCase):
 
     def test_future_shortfall_withholds_settlements(self):
         base = source()
-        base['events'].append(dict(name='Annual insurance', date=date(2026, 12, 1), amount=D(500)))
+        base['events'].append(dict(name='Annual insurance', date=date(2026, 12, 1), amount=D(2000)))
         result = build(base, values(base), TODAY)
         self.assertEqual(result['forecast']['early_payoff_total'], 0)
         self.assertIn('withheld', result['forecast']['early_payoff_warning'])

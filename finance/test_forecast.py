@@ -45,6 +45,9 @@ def _simulate(base, inputs, today):
     instalments_by_id = {row['id']: row for row in instalments}
     early_payoffs = []
     early_total = ZERO
+    from finance.repayment_priority import free_cash, topup as fund_cash, period_targets
+    priority = base.get('repayment_priority')
+    previous_monzo = base.get('monzo_balance', ZERO)
     accounts = base.get("savings_accounts", [])
     capped_savings_events = False
     if inputs.get("use_accounts"):
@@ -132,6 +135,10 @@ def _simulate(base, inputs, today):
     cash_repaid_total = ZERO
     reserve_transfers = []
     reserved_total = ZERO
+    from finance.necessities_budget import recorded_overdraft, limited_daily
+    starting_overdraft = recorded_overdraft(base)
+    daily = limited_daily(daily, inputs, (occurs(today, 1) - today).days,
+                          owed=known and balance > ZERO, overdrawn=starting_overdraft or base['cash'] < ZERO)
     topup = base.get("cash_topup")
     for offset in range((end - today).days):
         on = today + timedelta(days=offset)
@@ -151,12 +158,15 @@ def _simulate(base, inputs, today):
             )
             salary = salary_amount if salary_active else ZERO
             income = salary + inputs["other"]
-            daily = max(
+            normal_daily = max(
                 ZERO,
                 daily_base
                 + inputs.get("spending_adjustment", ZERO)
                 / Decimal((next_pay - on).days),
             )
+            overdrawn = cash + base['buffer'] - reserved_total < ZERO or (month == 0 and starting_overdraft)
+            daily = limited_daily(normal_daily, inputs, (next_pay - on).days,
+                                  owed=known and balance > ZERO, overdrawn=overdrawn)
             cash += income + (inputs["lump"] if month == 0 else ZERO)
             opening = cash + base["buffer"]
             current_events = period_events[on]
@@ -171,6 +181,9 @@ def _simulate(base, inputs, today):
                     scheduled, balance + balance * rate * (next_pay - on).days
                 )
             costs = noncard + scheduled
+            would_overdraw = free_cash(cash, priority, reserved_total) - costs - normal_daily * (next_pay - on).days < ZERO
+            daily = limited_daily(normal_daily, inputs, (next_pay - on).days,
+                                  owed=known and balance > ZERO, overdrawn=overdrawn or would_overdraw)
             variable = daily * (next_pay - on).days
             protected_later = sum((e['amount'] if e.get('amex_statement_protection') else e.get('cash_fund_reserved', ZERO)
                                    for e in base['events'] if e['date'] >= next_pay), ZERO)
@@ -266,6 +279,10 @@ def _simulate(base, inputs, today):
                 if use_spare_cash
                 else income_budget
             )
+            ordinary_budget = budget
+            if priority:
+                income_budget = rounded(max(ZERO, min(surplus, free_cash(cash, priority, reserved_total) - costs - variable - protected_later)), rounding=ROUND_DOWN)
+                budget = rounded(max(ZERO, free_cash(cash, priority, reserved_total) - costs - variable - protected_later), rounding=ROUND_DOWN)
             opening_card = balance if known else None
             debt_budget = (
                 max(ZERO, balance - scheduled)
@@ -279,7 +296,26 @@ def _simulate(base, inputs, today):
                 extra = rounded(min(budget * inputs["split"] / 100, debt_budget))
             else:
                 extra = ZERO
-            available = budget - extra
+            cash_added = ZERO
+            if priority:
+                # Future scheduled card money is already held in costs/protected_later.
+                card_uncovered = max(ZERO, balance - scheduled - extra) if known else Decimal('Infinity')
+                if rate and balance > extra:
+                    card_uncovered = balance - extra
+                cash_event = fund_cash(cash - extra - costs - variable - protected_later, priority,
+                                       reserved_total, card_uncovered, topup, on) if topup or not inputs.get('use_accounts') else None
+                if cash_event:
+                    cash_added = cash_event['amount']
+                    reserved_total += cash_added
+                    reserve_transfers.append(cash_event)
+                    if has_interest and cash_event.get('savings_account') in growing_by_id:
+                        growing_by_id[cash_event['savings_account']]['projected'] += cash_added
+                # Reserve goals must be fully funded before instalment extras or investments.
+                general_room = max(ZERO, ordinary_budget - extra) if known and card_uncovered <= CENT else ZERO
+                budget = extra + general_room
+            else:
+                general_room = budget - extra
+            available = general_room
             settlements, replaced, settled = settle(instalments, on, current_events, available, run_out is None)
             early_extra = settled - replaced
             early_payoffs.extend(settlements)
@@ -302,7 +338,7 @@ def _simulate(base, inputs, today):
             cash_repaid = max(ZERO, extra - income_budget)
             remaining_cash = (
                 rounded(max(ZERO, cash - costs - variable - protected_later), rounding=ROUND_DOWN)
-                if use_spare_cash
+                if use_spare_cash and (not priority or (known and card_uncovered <= CENT))
                 else ZERO
             )
             proposed = saving + remaining_cash
@@ -330,8 +366,10 @@ def _simulate(base, inputs, today):
                     for e in base["events"]
                     if today <= e["date"] < end and e.get("savings_account")
                 ]
-                if topup:
+                if topup and not priority:
                     scheduled_savings.append(topup)
+                if priority:
+                    scheduled_savings.extend(reserve_transfers)
                 allocation = allocate(
                     accounts,
                     planned,
@@ -395,9 +433,16 @@ def _simulate(base, inputs, today):
                 and run_out is None
             ):
                 goal_date = on
+            target_status = period_targets(cash - costs - variable - protected_later, priority,
+                                           reserved_total, cash_added, previous_monzo)
+            if priority:
+                previous_monzo = target_status['monzo']
+                if not known or card_uncovered > CENT:
+                    target_status['monzo_transfer'] = ZERO
             periods.append(
                 dict(
                     funded=run_out is None,
+                    reserve_targets=target_status,
                     date=on,
                     end=next_pay - timedelta(days=1),
                     salary=salary,
@@ -410,6 +455,9 @@ def _simulate(base, inputs, today):
                     instalment_cash=max(ZERO, early_extra - max(ZERO, income_budget - extra)),
                     instalment_replaced=replaced,
                     variable=variable,
+                    daily_spend=daily,
+                    spending_limited=daily < normal_daily,
+                    spending_cap=inputs.get('debt_spending_cap'),
                     surplus=surplus,
                     budget=budget,
                     income_budget=income_budget,
@@ -427,6 +475,8 @@ def _simulate(base, inputs, today):
                     balance_after_extra=balance,
                     savings_total=transfers,
                     cash_after_allocation=cash - costs - variable,
+                    cash_topups_total=reserved_total,
+                    essentials_cash_after=free_cash(cash - costs - variable, priority, reserved_total),
                 )
             )
         for event in events.get(on, []):
@@ -472,7 +522,7 @@ def _simulate(base, inputs, today):
                     dict(
                         event,
                         amount=amount,
-                        funded=run_out is None and cash - daily >= 0,
+                        funded=run_out is None and free_cash(cash, priority, reserved_total) - daily >= 0,
                     )
                 )
                 if event.get("savings_account"):
@@ -486,14 +536,14 @@ def _simulate(base, inputs, today):
                         + reserved_total
                         >= inputs["goal"]
                         and run_out is None
-                        and cash - daily >= 0
+                        and free_cash(cash, priority, reserved_total) - daily >= 0
                     ):
                         goal_date = on
         cash -= daily
         # Monthly spending adjustments can leave sub-penny Decimal division residue.
         if abs(cash) < Decimal("1e-18"):
             cash = ZERO
-        if topup and on == topup["date"] and cash >= 0:
+        if topup and not priority and on == topup["date"] and cash >= 0:
             # The gap was deducted in the starting protected buffer already.
             # Moving that reserved cash to the physical cash goal is one transfer.
             reserved_total = topup["amount"]
@@ -512,19 +562,26 @@ def _simulate(base, inputs, today):
             ):
                 goal_date = on
         bank = cash + base["buffer"] - reserved_total
+        if abs(bank) < Decimal("1e-18"):
+            bank = ZERO
         if minimum_bank is None or bank < minimum_bank:
             minimum_bank = bank
             minimum_date = on
-        minimum_cash = cash if minimum_cash is None else min(minimum_cash, cash)
+        available_cash = free_cash(cash, priority, reserved_total)
+        if abs(available_cash) < Decimal("1e-18"):
+            available_cash = ZERO
+        minimum_cash = available_cash if minimum_cash is None else min(minimum_cash, available_cash)
         if periods:
             periods[-1]["closing_card"] = balance if known else None
-        if cash < 0 and run_out is None:
+        if available_cash < ZERO and run_out is None:
             run_out = on
         if offset % 7 == 0 or on == end - timedelta(days=1):
             points.append({"date": on, "scenario": cash})
         if on in checkpoint_dates:
             checkpoints.append((checkpoint_dates[on], cash))
     result = dict(
+        reserve_targets_pending=max(ZERO, -cash) if priority else ZERO,
+        priority_reserves=bool(priority),
         early_payoffs=early_payoffs,
         early_payoff_total=early_total,
         instalment_balances=summary(instalments),

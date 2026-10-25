@@ -185,13 +185,30 @@
                                        value="{{ values.get('monzo_balance','') }}">
                             </label>
                             <label>
-                                Everyday spending per day (£, optional)
+                                Everyday spending incl. food and necessities per day (£, optional)
                                 <input type="number"
                                        name="daily_spend"
                                        min="0"
                                        max="100000"
                                        step="0.01"
                                        value="{{ values.get('daily_spend', '') }}">
+                            </label>
+                            <label class="finance-toggle">
+                                <input type="checkbox"
+                                       name="limit_spending_when_owed"
+                                       {% if values.get('limit_spending_when_owed', 'on') == 'on' %}checked{% endif %}>
+                                Limit everyday spending while Amex is owed or an account is below £0
+                                <small>Keeps food and necessities ahead of repayments. Applies for the whole pay period when the card is owed or HSBC, Monzo or recorded cash is overdrawn at its start, or the normal estimate would overdraw spendable cash.</small>
+                            </label>
+                            <label>
+                                Maximum everyday spending in those periods (£/month)
+                                <input type="number"
+                                       name="debt_spending_cap"
+                                       min="0.01"
+                                       max="100000"
+                                       step="0.01"
+                                       value="{{ values.get('debt_spending_cap','700') }}">
+                                <small>A ceiling: a lower normal estimate stays lower. Other periods use your normal daily estimate. Unfilled positive reserve targets do not activate this cap.</small>
                             </label>
                             <label>
                                 Amex balance owed (£, optional scenario override)
@@ -275,7 +292,7 @@
                                        name="invest_spare_cash"
                                        {% if values.get('invest_spare_cash') == 'on' %}checked{% endif %}>
                                 Use spare bank cash above £1,000 after salary
-                                <small>Salary paydays only. Keeps £1,000 plus bills, spending and other reserves, then follows your selected strategy. Paused when salary is £0.</small>
+                                <small>Extra investments from spare bank cash require salary. Under Amex first, bills and food/necessities come first, then Amex, then HSBC/Cash/Monzo targets, then extra investments. Other earmarked obligations remain protected.</small>
                             </label>
                         </div>
                     </fieldset>
@@ -289,7 +306,7 @@
                                 Pay selected instalment plans off early when affordable
                             </label>
                             <p>
-                                Uses the same available allocation as your transfer plan. Bills, everyday spending and protected reserves come first. Amex first still clears Amex before these plans; selected instalments then take priority over extra savings.
+                                Uses surplus after bills, food/necessities and reserve targets. Under Amex first, Amex is covered before reserve top-ups. Selected instalment settlements then come before extra investments.
                             </p>
                             <p>
                                 Select only plans you have confirmed can be settled early without fees. The estimate uses the recorded outstanding balance; check the provider's actual settlement amount before paying.
@@ -591,11 +608,15 @@
                         Scheduled savings credited to linked accounts: {{ transfers.scheduled_savings }}. These are already included in bills and scheduled payments; do not send them again.
                     </p>
                     <p>
-                        Cash top-up uses its protected reserve and is separate from extra savings. The reserve rows add up to the protected total; they are not additional deductions.
+                        {% if transfers.reserve_goals_after_amex %}
+                            HSBC, Cash and Monzo are targets funded after Amex. Only funded top-ups are suggested. Food and necessities are included in everyday spending; existing scheduled payments remain commitments.
+                        {% else %}
+                            Cash top-up uses its protected reserve and is separate from extra savings. The reserve rows add up to the protected total; they are not additional deductions.
+                        {% endif %}
                     </p>
                     {% if transfers.spare_cash_enabled and not transfers.salary_active %}
                         <p>
-                            No salary this period: spare bank cash transfers are paused. Scheduled payments still apply; other income can still fund ordinary allocations.
+                            No salary this period: spare bank cash investments are paused. Under Amex first, available cash can still repay Amex after bills and necessities. Scheduled payments continue.
                         </p>
                     {% endif %}
                     <p>
@@ -631,13 +652,16 @@
                                     <dd>
                                         {{ scenario.minimum_bank }} on {{ scenario.minimum_date }}
                                     </dd>
-                                    <dt>Bank reserve kept</dt>
+                                    <dt>{{ 'Bank reserve target' if scenario.reserve_goals_after_amex else 'Bank reserve kept' }}</dt>
                                     <dd>
                                         {{ scenario.bank_reserve }}
                                     </dd>
                                     <dt>Protected reserves</dt>
                                     <dd>
                                         {{ 'Hold throughout forecast' if scenario.reserves_hold else 'First breach: ' ~ scenario.shortfall_date }}
+                                        {% if scenario.reserve_goals_after_amex %}
+                                            <p>Reserve goals still to fill: {{ scenario.reserve_targets_pending }}. These follow Amex.</p>
+                                        {% endif %}
                                     </dd>
                                     {% if scenario.has_goal %}
                                         <dt>Overall savings goal</dt>

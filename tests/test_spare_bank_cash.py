@@ -78,14 +78,15 @@ class SpareBankCashTests(TestCase):
         base=source();base['amex']={'balance':D(5000),'full_reserved':False}
         result=build(base,values(salary='1000',strategy='amex_first'),TODAY)
         first=result['forecast']['payments'][0]
-        self.assertEqual(first['extra'],2500)
-        self.assertEqual(first['cash_repaid'],2000)
+        self.assertEqual(first['extra'],3500)
+        self.assertEqual(first['cash_repaid'],3000)
         self.assertEqual(first['cash_invested'],0)
         self.assertEqual(first['savings'],0)
         self.assertEqual(result['account_plan']['accounts'][0]['first'],0)
         text=' '.join(receipt(result,TODAY).split())
-        self.assertIn('Includes £2,000.00 from spare bank cash in the Amex repayment above.',text)
-        self.assertEqual(result['forecast']['end_cash'],0)
+        self.assertIn('Includes £3,000.00 from spare bank cash in the Amex repayment above.',text)
+        self.assertEqual(result['forecast']['end_cash'],-1000)
+        self.assertIsNone(result['forecast']['run_out'])
 
     def test_future_periods_do_not_transfer_the_starting_cash_twice(self):
         result=build(source(),values(salary='100',months='2'),TODAY)
@@ -162,8 +163,8 @@ class SpareBankCashTests(TestCase):
         base['amex']={'balance':D(10000),'full_reserved':False}
         result=build(base,values(salary='3900',strategy='amex_first',save_all='on'),TODAY)
         first=result['forecast']['payments'][0]
-        self.assertEqual(first['extra'],D('3302.41'))
-        self.assertEqual(first['cash_repaid'],D('2541.90'))
+        self.assertEqual(first['extra'],D('4302.41'))
+        self.assertEqual(first['cash_repaid'],D('3541.90'))
         self.assertEqual(first['savings'],0)
         self.assertEqual(result['account_plan']['accounts'][0]['first'],0)
 
