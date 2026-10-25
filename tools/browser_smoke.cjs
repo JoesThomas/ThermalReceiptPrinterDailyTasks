@@ -597,6 +597,7 @@ process.on('exit', () => child.kill());
   await testFinance.locator('input[name=early_payoff]').check();
   await testFinance.locator('input[name^=payoff_plan_]').check();
   await Promise.all([page.waitForNavigation({waitUntil:'load'}),testFinance.getByRole('button',{name:'Generate test receipt',exact:true}).click()]);
+  assert.equal(await page.locator('#early-payoff-results').count(), 1, (await page.locator('main').innerText()).slice(0,6500));
   await page.locator('#early-payoff-results').waitFor();
   assert.match(await page.locator('#early-payoff-results').innerText(),/Example Amazon headphones/);
   assert.match(await page.locator('#early-payoff-results').innerText(),/Settle £100.00/);
