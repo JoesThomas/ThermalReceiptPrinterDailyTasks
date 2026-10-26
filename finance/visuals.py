@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_FLOOR, ROUND_CEILING
 from finance.money import parse, format_pounds
 from finance.projection import day
 
@@ -29,6 +29,12 @@ def line_chart(key, title, series, note="", markers=None, band=None):
     low, high = min([ZERO] + values), max([Decimal(1)] + values)
     if band is not None:
         low, high = min(low, ZERO, band), max(high, band)
+    raw_step=max(Decimal('0.01'),(high-low)/5)
+    magnitude=Decimal(10)**raw_step.adjusted()
+    step=next(magnitude*n for n in (Decimal(1),Decimal(2),Decimal('2.5'),Decimal(5),Decimal(10)) if magnitude*n>=raw_step)
+    low=(low/step).to_integral_value(rounding=ROUND_FLOOR)*step
+    high=(high/step).to_integral_value(rounding=ROUND_CEILING)*step
+    if high==low:high=low+step
     span = max(Decimal(1), high - low)
 
     def x(on):
@@ -44,10 +50,11 @@ def line_chart(key, title, series, note="", markers=None, band=None):
             dict(
                 name=s["name"],
                 color=COLORS[index % len(COLORS)],
-                dash="5 4" if s.get("reference") else "",
+                dash="6 4" if s.get("reference") else "",
+                reference=bool(s.get("reference")),
                 points=" ".join(f"{x(on)},{y(value)}" for on, value in data),
                 data=[
-                    dict(date=on.isoformat(), value=format_pounds(value))
+                    dict(date=on.isoformat(), value=format_pounds(value), raw=str(value))
                     for on, value in data
                 ],
             )
@@ -60,6 +67,9 @@ def line_chart(key, title, series, note="", markers=None, band=None):
         start=start.isoformat(),
         end=end.isoformat(),
         high=format_pounds(high),
+        axis_low=str(low),axis_high=str(high),band_value=str(band) if band is not None else None,
+        y_ticks=[dict(y=y(low+step*i),label=format_pounds(low+step*i).replace('.00','')) for i in range(int((high-low)/step)+1)],
+        x_ticks=[dict(x=x(start+(end-start)*i/4),label=(start+(end-start)*i/4).strftime('%b %Y')) for i in range(5)],
         low=format_pounds(low),
         zero=y(ZERO),
         band_y=y(band) if band is not None else None,
@@ -334,4 +344,23 @@ def test_charts(result, today, cases):
             "Illustrative changes to the same starting balances and strategy; these are not probability ranges. Exact dates and assumptions are below.",
         ),
     ]
+    cash_chart=charts[0]
+    if cash_chart:
+        cash_chart['stats']=[dict(label='Lowest daily bank balance',value=format_pounds(f['minimum_bank']),note=f['minimum_date'].strftime('%d %b %Y'),warning=f['minimum_bank']<floor),
+                             dict(label='Protected minimum',value=format_pounds(floor),note='Includes other protected earmarks'),
+                             dict(label='Bank balance at forecast end',value=format_pounds(f['end_cash']+b['buffer']-f['reserved_total']),note=f['end'].strftime('%d %b %Y'))]
+        ranges=f.get('monthly_ranges',[])
+        if ranges:
+            monthly=line_chart('test-bank','Bank cash and protected reserves',[
+                dict(name='Monthly lowest balance',values=[(r['date'],r['low']) for r in ranges]),
+                dict(name='Monthly highest balance',values=[(r['date'],r['high']) for r in ranges]),
+                dict(name='Protected minimum',values=[(today,floor),(f['end'],floor)],reference=True)],
+                'Monthly lows/highs use every modelled day. The shaded range shows how cash varies between paydays and bills; it is not an uncertainty interval. Switch to cash-flow samples to inspect the rises and falls.',band=floor)
+            monthly['range_band']=True
+            monthly['stats']=cash_chart['stats']
+            if data_months := result['inputs'].get('months'):
+                if data_months>6:
+                    monthly['alt_model']=cash_chart;monthly['mode']='monthly';charts[0]=monthly
+                else:
+                    cash_chart['alt_model']=monthly;cash_chart['mode']='cashflow'
     return dict(lines=[c for c in charts if c], allocation=allocation(result))

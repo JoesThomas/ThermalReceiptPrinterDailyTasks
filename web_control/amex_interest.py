@@ -7,7 +7,10 @@ def register(app, login_required):
     def state():
         try:
             from web_control.amex_protection import view
-            return {'charges': interest.pending(), 'error': None, 'protection': view()['warnings']}
+            from finance.amex_balance import view as balance_view
+            balance=balance_view()
+            return {'charges': interest.pending(), 'error': None, 'protection': view()['warnings'],
+                    'balance': {key:balance[key] for key in ('show','level','title','message','amount_text','threshold_text','checked','stale')}}
         except (ValueError, OSError):
             return {'charges': [], 'error': 'Amex interest alerts could not be read. Check private data.'}
 

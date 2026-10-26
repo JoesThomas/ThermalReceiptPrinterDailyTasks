@@ -118,6 +118,7 @@ def _simulate(base, inputs, today):
     }
     periods = []
     calendar_months = []
+    monthly_ranges = {}
     points = []
     actual = []
     transfers = ZERO
@@ -577,6 +578,9 @@ def _simulate(base, inputs, today):
         if minimum_bank is None or bank < minimum_bank:
             minimum_bank = bank
             minimum_date = on
+        month_key=on.strftime('%Y-%m')
+        monthly_range=monthly_ranges.setdefault(month_key,dict(date=on,low=bank,high=bank,closing=bank))
+        monthly_range.update(date=on,low=min(monthly_range['low'],bank),high=max(monthly_range['high'],bank),closing=bank)
         available_cash = free_cash(cash, priority, reserved_total)
         if abs(available_cash) < Decimal("1e-18"):
             available_cash = ZERO
@@ -602,6 +606,7 @@ def _simulate(base, inputs, today):
             checkpoints.append((checkpoint_dates[on], cash))
     result = dict(
         calendar_months=calendar_months,
+        monthly_ranges=list(monthly_ranges.values()),
         monzo_balance=previous_monzo if priority else None,
         reserve_targets_pending=max(ZERO, -cash) if priority else ZERO,
         priority_reserves=bool(priority),

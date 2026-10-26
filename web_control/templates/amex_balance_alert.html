@@ -1,0 +1,16 @@
+<aside id="amex-balance-alert"
+       class="flash amex-balance-alert"
+       role="status"
+       aria-live="polite"
+       data-level="{{ amex_balance_alert.level }}"
+       {% if not amex_balance_alert.show %}hidden{% endif %}>
+    <strong id="amex-balance-title">{{ amex_balance_alert.title }}</strong>
+    <p data-private>
+        <span id="amex-balance-amount">{{ amex_balance_alert.amount_text }}</span> · warning threshold <span id="amex-balance-threshold">{{ amex_balance_alert.threshold_text }}</span>
+    </p>
+    <p id="amex-balance-message">{{ amex_balance_alert.message }}</p>
+    <p>
+        Checked: <span id="amex-balance-checked">{{ amex_balance_alert.checked }}</span>
+    </p>
+    <a href="{{ url_for('finance_review') }}#amex-balance-settings">Review balance, threshold and statement</a>
+</aside>

@@ -125,3 +125,23 @@ dd code { overflow-wrap: anywhere; }
 .chart-data { max-height: 20rem; overflow: auto; }
 .allocation-stack { display: flex; height: 2rem; border-radius: .3rem; overflow: hidden; }
 .finance-visuals svg { display: block; }
+
+.amex-balance-alert[data-level="high"]{border:2px solid #a52436;background:#fff1f2;color:#69212b}
+.amex-balance-alert[data-level="outstanding"]{border-left:5px solid #a46b13}
+.finance-line-chart{display:block;width:100%;height:280px;max-height:none;touch-action:pan-y;outline-offset:3px}
+.finance-line-chart:focus-visible{outline:2px solid #365eb0}
+.chart-viewport{width:100%;min-width:0;overflow:hidden}
+.chart-toolbar{display:flex;flex-wrap:wrap;gap:.75rem;margin:.75rem 0}
+.chart-toolbar label{display:flex;flex-direction:column;gap:.25rem;max-width:100%}
+.chart-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:.6rem}
+.chart-stats>div{padding:.6rem .75rem;border:1px solid var(--border,#c4cec8);border-radius:.5rem}
+.chart-stats dd{margin:.25rem 0;font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums}
+.chart-stat-warning{border-color:#a52436!important;background:#fff1f2}
+.chart-reading{min-height:2.7em;font-size:.9rem;font-variant-numeric:tabular-nums}
+@media(max-width:450px){.chart-toolbar{display:grid;grid-template-columns:1fr}.chart-stats{grid-template-columns:1fr}.finance-chart{padding:.5rem}}
+
+.chart-stats dd small{display:block;font-weight:normal;}
+
+.instalment-record{border-top:1px solid var(--line,#c4cec8);padding-top:1rem;margin-top:1rem;}
+.instalment-settle-form{display:grid;gap:.6rem;margin-bottom:1rem;}
+.instalment-settle-form button{justify-self:start;}

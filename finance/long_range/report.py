@@ -121,6 +121,10 @@ def receipt(config, report):
     page = ReceiptText()
     page.section("LONG-TERM PLANNING")
     page.text(config["name"])
+    amex=[a for a in config['accounts'] if a['kind']=='debt' and 'amex' in a['name'].casefold()]
+    if amex:
+        from finance.amex_balance import receipt_status as balance_flag
+        balance_flag(page,sum((Decimal(a['balance']) for a in amex),Decimal(0)),label='Starting Amex balance (modelled)')
     page.text(
         f"{config['years']} years from {config['start']}; assumptions reviewed {config['reviewed']}."
     )

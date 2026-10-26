@@ -102,6 +102,8 @@ def payment_schedule(monthly, yearly, transactions, settings, today, horizon=182
     overrides = {key(i.get('monthly_commitment_name') or i.get('name')): i
                  for i in settings.get('commitments', []) if day(i.get('due_date'))}
     for original in monthly:
+        from finance.instalment_settlement import is_settled
+        if is_settled(original,today):continue
         item = dict(original)
         override = overrides.get(key(item.get('name')))
         if override:

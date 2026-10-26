@@ -812,214 +812,265 @@
                     {% if subscriptions.instalments %}
 
                         {% for item in subscriptions.instalments %}
+                            <article class="instalment-record">
+                                <h3>{{ item.name }}</h3>
 
-                            <form method="post"
-                                  action="{{ url_for( 'instalment_update', index=loop.index0 ) }}"
-                                  class="instalment">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                                <div class="instalment-header">
-
-                                    <div>
-
-                                        <h3>{{ item.name }}</h3>
-
-                                        {% if item.next_payment %}
-
-                                            <small>
-                                                Next payment:
-                                                {{ item.next_payment }}
-                                            </small>
-
-                                        {% endif %}
-
-                                    </div>
-
-
-                                    {% if item.remaining_balance is defined and item.remaining_balance is not none %}
-
-                                        <div class="balance">
-
-                                            <small>Remaining</small>
-
-                                            <strong>
-                                                £{{ "%.2f"|format(
-                                                item.remaining_balance
-                                                ) }}
-                                            </strong>
-
-                                        </div>
-
+                                {% if instalment_settlement_key is defined %}
+                                    {% if item.settled_on %}
+                                        <p>
+                                            <strong>{{ item.name }} — settled {{ item.settled_on }}</strong> · excluded from future instalment forecasts.
+                                        </p>
+                                        <form method="post"
+                                              action="{{ url_for('instalment_reopen',index=loop.index0) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden"
+                                                   name="key"
+                                                   value="{{ instalment_settlement_key(item) }}">
+                                            <button>Reopen this instalment</button>
+                                        </form>
+                                    {% else %}
+                                        <form method="post"
+                                              action="{{ url_for('instalment_settle',index=loop.index0) }}"
+                                              class="instalment-settle-form">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden"
+                                                   name="key"
+                                                   value="{{ instalment_settlement_key(item) }}">
+                                            <label>
+                                                Settlement date
+                                                <input type="date"
+                                                       name="date"
+                                                       value="{{ settlement_today }}"
+                                                       max="{{ settlement_today }}"
+                                                       required>
+                                            </label>
+                                            {% set linked=instalment_settlement_links(item,subscriptions.monthly) %}
+                                            {% if linked %}
+                                                <input type="hidden" name="monthly_key" value="{{ linked[0].key }}">
+                                                <label>
+                                                    <input type="checkbox" name="also_monthly" checked>
+                                                    Also stop the saved monthly entry {{ linked[0].name }} ({{ linked[0].amount }})
+                                                </label>
+                                            {% endif %}
+                                            <button aria-label="Mark {{ item.name }} as settled">Mark as settled</button>
+                                            <p class="muted">
+                                                Use after the provider confirms payment in full. Records settlement locally; does not send money or cancel a Direct Debit. The record and payment history are retained.
+                                            </p>
+                                        </form>
                                     {% endif %}
-
-                                </div>
-
-
-                                {% if item.progress %}
-                                    <figure class="repayment-progress">
-                                        <progress value="{{ item.progress.paid }}"
-                                                  max="{{ item.progress.total }}"
-                                                  aria-label="{{ item.name }} repayment progress: {{ item.progress.percent }} percent paid"></progress>
-                                        <figcaption>
-                                            <span>{{ item.progress.percent }}% repaid · £{{ '%.2f'|format(item.progress.paid) }} paid</span><span>£{{ '%.2f'|format(item.progress.remaining) }} remaining</span>
-                                        </figcaption>
-                                    </figure>
                                 {% endif %}
 
-                                <div class="grid">
+                                {% if not item.settled_on %}
+                                    <form method="post"
+                                          action="{{ url_for( 'instalment_update', index=loop.index0 ) }}"
+                                          class="instalment">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-                                    <label>
-                                        Name
-                                        <br>
+                                        <div class="instalment-header">
 
-                                        <input type="text" name="name" value="{{ item.name }}" required>
-                                    </label>
-
-
-                                    <label>
-                                        Regular payment (£)
-                                        <br>
-
-                                        <input type="number"
-                                               name="amount"
-                                               min="0"
-                                               step="0.01"
-                                               value="{{ item.amount if item.amount is not none else '' }}">
-                                    </label>
+                                            <div>
 
 
-                                    <label>
-                                        Original total (£)
-                                        <br>
 
-                                        <input type="number"
-                                               name="total_price"
-                                               min="0"
-                                               step="0.01"
-                                               value="{{ item.total_price if item.total_price is not none else '' }}">
-                                    </label>
+                                                {% if item.next_payment %}
 
+                                                    <small>
+                                                        Next payment:
+                                                        {{ item.next_payment }}
+                                                    </small>
 
-                                    <label>
-                                        Paid to date (£)
-                                        <br>
-
-                                        <input type="number"
-                                               name="paid_to_date"
-                                               min="0"
-                                               step="0.01"
-                                               value="{{ item.paid_to_date if item.paid_to_date is not none else '' }}">
-                                    </label>
-
-
-                                    <label>
-                                        Remaining balance (£)
-                                        <br>
-
-                                        <input type="number"
-                                               name="remaining_balance"
-                                               min="0"
-                                               step="0.01"
-                                               value="{{ item.remaining_balance if item.remaining_balance is not none else '' }}">
-                                    </label>
-
-
-                                    <label>
-                                        Payments remaining
-                                        <br>
-
-                                        <input type="number"
-                                               name="payments_remaining"
-                                               min="0"
-                                               step="1"
-                                               value="{{ item.payments_remaining if item.payments_remaining is not none else '' }}">
-                                    </label>
-
-
-                                    <label>
-                                        Next payment
-                                        <br>
-
-                                        <input type="date" name="next_payment" value="{{ item.next_payment or '' }}">
-                                    </label>
-
-                                </div>
-
-
-                                <!-- SCHEDULE -->
-
-                                {% if item.schedule %}
-
-                                    <div class="schedule">
-
-                                        <h4>Payment schedule</h4>
-
-                                        {% for payment in item.schedule %}
-
-                                            <div class="schedule-row">
-
-                                                <span>{{ payment.date }}</span>
-
-                                                <strong>
-                                                    £{{ "%.2f"|format(
-                                                    payment.amount
-                                                    ) }}
-                                                </strong>
+                                                {% endif %}
 
                                             </div>
 
-                                        {% endfor %}
 
-                                    </div>
+                                            {% if item.remaining_balance is defined and item.remaining_balance is not none %}
 
-                                {% endif %}
+                                                <div class="balance">
 
-
-                                <!-- HISTORY -->
-
-                                {% if item.history %}
-
-                                    <details class="history">
-
-                                        <summary>
-                                            Payment history
-                                            ({{ item.history|length }})
-                                        </summary>
-
-                                        <div class="schedule">
-
-                                            {% for payment in item.history %}
-
-                                                <div class="schedule-row">
-
-                                                    <span>
-
-                                                        {{ payment.date }}
-
-                                                        {% if payment.type %}· {{ payment.type|title }}{% endif %}
-
-                                                    </span>
+                                                    <small>Remaining</small>
 
                                                     <strong>
                                                         £{{ "%.2f"|format(
-                                                        payment.amount
+                                                        item.remaining_balance
                                                         ) }}
                                                     </strong>
 
                                                 </div>
 
-                                            {% endfor %}
+                                            {% endif %}
 
                                         </div>
 
-                                    </details>
 
+                                        {% if item.progress %}
+                                            <figure class="repayment-progress">
+                                                <progress value="{{ item.progress.paid }}"
+                                                          max="{{ item.progress.total }}"
+                                                          aria-label="{{ item.name }} repayment progress: {{ item.progress.percent }} percent paid"></progress>
+                                                <figcaption>
+                                                    <span>{{ item.progress.percent }}% repaid · £{{ '%.2f'|format(item.progress.paid) }} paid</span><span>£{{ '%.2f'|format(item.progress.remaining) }} remaining</span>
+                                                </figcaption>
+                                            </figure>
+                                        {% endif %}
+
+                                        <div class="grid">
+
+                                            <label>
+                                                Name
+                                                <br>
+
+                                                <input type="text" name="name" value="{{ item.name }}" required>
+                                            </label>
+
+
+                                            <label>
+                                                Regular payment (£)
+                                                <br>
+
+                                                <input type="number"
+                                                       name="amount"
+                                                       min="0"
+                                                       step="0.01"
+                                                       value="{{ item.amount if item.amount is not none else '' }}">
+                                            </label>
+
+
+                                            <label>
+                                                Original total (£)
+                                                <br>
+
+                                                <input type="number"
+                                                       name="total_price"
+                                                       min="0"
+                                                       step="0.01"
+                                                       value="{{ item.total_price if item.total_price is not none else '' }}">
+                                            </label>
+
+
+                                            <label>
+                                                Paid to date (£)
+                                                <br>
+
+                                                <input type="number"
+                                                       name="paid_to_date"
+                                                       min="0"
+                                                       step="0.01"
+                                                       value="{{ item.paid_to_date if item.paid_to_date is not none else '' }}">
+                                            </label>
+
+
+                                            <label>
+                                                Remaining balance (£)
+                                                <br>
+
+                                                <input type="number"
+                                                       name="remaining_balance"
+                                                       min="0"
+                                                       step="0.01"
+                                                       value="{{ item.remaining_balance if item.remaining_balance is not none else '' }}">
+                                            </label>
+
+
+                                            <label>
+                                                Payments remaining
+                                                <br>
+
+                                                <input type="number"
+                                                       name="payments_remaining"
+                                                       min="0"
+                                                       step="1"
+                                                       value="{{ item.payments_remaining if item.payments_remaining is not none else '' }}">
+                                            </label>
+
+
+                                            <label>
+                                                Next payment
+                                                <br>
+
+                                                <input type="date" name="next_payment" value="{{ item.next_payment or '' }}">
+                                            </label>
+
+                                        </div>
+
+
+                                        <!-- SCHEDULE -->
+
+                                        {% if item.schedule %}
+
+                                            <div class="schedule">
+
+                                                <h4>Payment schedule</h4>
+
+                                                {% for payment in item.schedule %}
+
+                                                    <div class="schedule-row">
+
+                                                        <span>{{ payment.date }}</span>
+
+                                                        <strong>
+                                                            £{{ "%.2f"|format(
+                                                            payment.amount
+                                                            ) }}
+                                                        </strong>
+
+                                                    </div>
+
+                                                {% endfor %}
+
+                                            </div>
+
+                                        {% endif %}
+
+
+                                        <!-- HISTORY -->
+
+                                        {% if item.history %}
+
+                                            <details class="history">
+
+                                                <summary>
+                                                    Payment history
+                                                    ({{ item.history|length }})
+                                                </summary>
+
+                                                <div class="schedule">
+
+                                                    {% for payment in item.history %}
+
+                                                        <div class="schedule-row">
+
+                                                            <span>
+
+                                                                {{ payment.date }}
+
+                                                                {% if payment.type %}· {{ payment.type|title }}{% endif %}
+
+                                                            </span>
+
+                                                            <strong>
+                                                                £{{ "%.2f"|format(
+                                                                payment.amount
+                                                                ) }}
+                                                            </strong>
+
+                                                        </div>
+
+                                                    {% endfor %}
+
+                                                </div>
+
+                                            </details>
+
+                                        {% endif %}
+
+
+                                        <button type="submit" class="save-instalment">Save {{ item.name }}</button>
+
+                                    </form>
                                 {% endif %}
 
-
-                                <button type="submit" class="save-instalment">Save {{ item.name }}</button>
-
-                            </form>
+                            </article>
 
                         {% endfor %}
 

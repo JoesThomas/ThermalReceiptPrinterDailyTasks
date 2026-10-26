@@ -118,6 +118,9 @@
             <a href="{{ url_for('finance_review') }}#amex-payment-protection">Review statement and repayment</a>
         </aside>
     {% endif %}
+    {% if amex_balance_alert is defined %}
+        {% include 'amex_balance_alert.html' %}
+    {% endif %}
     {% if amex_interest_alert is defined %}
         {% include 'amex_interest_alert.html' %}
     {% endif %}
