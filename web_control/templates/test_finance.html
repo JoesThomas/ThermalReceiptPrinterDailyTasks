@@ -541,6 +541,9 @@
                             {% for account in stress.accounts %}
                                 <p>
                                     {{ account.name }}: {{ account.projected }} · goal date {{ account.goal_date or account.estimated_goal_date or 'not within planning horizon' }}
+                                    {% if account.estimated_interest is defined and account.estimated_interest is not none %}
+                                        Estimated interest over forecast: {{ account.estimated_interest }} before tax, already included in the balance.
+                                    {% endif %}
                                     {% if account.estimated_goal_date %}
                                         Not reached within selected forecast. Long-term estimate uses final-year contributions and recorded interest; not a funded forecast.
                                     {% endif %}
@@ -699,6 +702,9 @@
                                 {% for account in scenario.accounts %}
                                     <p>
                                         <strong>{{ account.label|default(account.name,true) }}</strong>: {{ account.balance }} now; {{ account.projected }} at forecast end against {{ account.target }}. Goal: {{ account.goal_date or 'Target not reached within planning horizon' }}{{ ' (beyond selected forecast)' if account.extended else '' }}.
+                                        {% if account.estimated_interest is defined and account.estimated_interest is not none %}
+                                            Estimated interest over forecast: {{ account.estimated_interest }} before tax, already included in the balance.
+                                        {% endif %}
                                     </p>
                                 {% else %}
                                     <p>No recorded accounts selected.</p>

@@ -91,6 +91,9 @@
                                 <h3>{{ account.name }}</h3>
                                 <p>
                                     Projected {{ account.projected }} / target {{ account.target }}. Goal date: {{ account.goal_date or account.estimated_goal_date or 'No funded date within planning horizon' }}{{ ' (extended)' if account.extended else '' }}.
+                                    {% if account.estimated_interest is defined and account.estimated_interest is not none %}
+                                        Estimated interest over forecast: {{ account.estimated_interest }} before tax, already included in the balance.
+                                    {% endif %}
                                     {% if account.estimated_goal_date %}
                                         Not reached within selected forecast. Long-term estimate uses final-year contributions and recorded interest; not a funded forecast.
                                     {% endif %}

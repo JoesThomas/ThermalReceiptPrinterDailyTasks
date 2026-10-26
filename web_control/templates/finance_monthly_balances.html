@@ -2,7 +2,7 @@
     <details>
         <summary>Calendar month-end account balances</summary>
         <p>
-            Projected balances after that date's income, payments, transfers and estimated savings interest. Bank cash excludes transferred savings; Amex is money owed.
+            Projected balances after that date's income, payments, transfers and estimated savings interest. Bank cash excludes transferred savings; Amex is money owed. Interest uses the recorded AER for the calendar month or part month modelled.
         </p>
         {% for month in month_rows %}
             <h4>{{ month.title }}</h4>
@@ -12,6 +12,9 @@
                     <dt>{{ account.name }}</dt>
                     <dd>
                         {{ account.balance }}
+                        {% if 'interest_month' in account %}
+                            <small>Estimated interest this month: {{ account.interest_month }}; total since calculation start: {{ account.interest_to_date }}. Before tax, already included.</small>
+                        {% endif %}
                     </dd>
                 {% endfor %}
             </dl>
