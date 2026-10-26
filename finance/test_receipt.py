@@ -513,11 +513,13 @@ def receipt(result, today, *, detail="detailed"):
     else:
         amount("Amex - balance owed", forecast["card_end"])
     if data["use_accounts"]:
+        from finance.savings_interest import render_account_interest
         for account in result["account_plan"]["accounts"]:
             if account["projected"] is not None:
                 amount(account.get("label", account["name"]), account["projected"])
             else:
                 text(account.get("label", account["name"]) + ": balance unavailable")
+            render_account_interest(page, account)
     text("Projected balances only; no money is moved.")
     amount("Projected savings at forecast end", forecast["savings_end"])
     if not forecast["savings_total"]:

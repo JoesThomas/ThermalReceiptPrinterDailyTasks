@@ -9,6 +9,19 @@ ZERO = Decimal(0)
 ONE = Decimal(1)
 
 
+def has_recorded_rate(row):
+    """Accounts whose recorded AER is used by the savings interest model."""
+    return (row['type'] in {'savings', 'cash_isa'}
+            and row.get('interest_rate') is not None
+            and not row.get('cash_reserve_limit'))
+
+
+def render_account_interest(page, row):
+    if has_recorded_rate(row):
+        page.amount('  Interest over forecast',
+                    row.get('estimated_interest') if row['balance'] is not None else None)
+
+
 class Growth:
     def __init__(self, rows, start, goal=None):
         self.rows = rows

@@ -199,10 +199,12 @@ def receipt(result, today):
         text("Amex balance owed: unavailable")
     else:
         amount("Amex - balance owed", forecast["card_end"])
+    from finance.savings_interest import render_account_interest
     for row in accounts:
         amount(name(row), row["projected"]) if row["projected"] is not None else text(
             name(row) + ": balance unavailable"
         )
+        render_account_interest(page, row)
     amount("Projected savings total", forecast["savings_end"])
     if forecast.get("savings_interest"):
         amount("Estimated savings interest", forecast["savings_interest"])

@@ -91,3 +91,21 @@ excluded from bank cash and Amex is shown as debt owed. Unavailable balances sta
 unavailable. Unassigned savings are shown separately if saved accounts are off.
 The webpage and named comparisons provide the same snapshots in an expandable
 list. Beyond any funding breach, the snapshots are explicitly hypothetical.
+
+### Individual savings interest
+
+Each month-end account balance now shows **Interest this month** for savings
+accounts and cash ISAs with a recorded AER. This is the modelled calendar month's
+interest (or the partial month covered), already included in the balance, before
+tax and fees. The website also shows cumulative interest since the calculation
+start. Forecast-end account balances show **Interest over forecast** for each
+eligible account; the existing total remains the sum of individual estimates.
+
+Monthly values are differences of cumulative interest rounded to pennies, so the
+breakdown reconciles without adding interest twice. Contributions earn interest
+only after their transfer date. A later first payday does not move earlier
+calendar interest into that payday's month. Recorded zero rates show £0.00;
+missing balances show unavailable. Physical cash reserves, investment market
+returns and Premium Bonds prizes are not modelled as savings interest. Rates stay
+constant at the recorded AER; provider credit dates and future rate changes are
+not predicted. This disclosure does not change transfer allocations or balances.

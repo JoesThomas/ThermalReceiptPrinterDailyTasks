@@ -19,6 +19,7 @@ def snapshot(result, today):
     forecast = result["forecast"]
     inputs = result["inputs"]
     accounts = []
+    from finance.savings_interest import has_recorded_rate
     for row in result["account_plan"]["accounts"] if inputs["use_accounts"] else []:
         reached = goal_date(row["goal_date"] or row.get("extended_goal_date"), today)
         accounts.append(
@@ -27,6 +28,7 @@ def snapshot(result, today):
                 "balance": pounds(row["balance"]),
                 "target": pounds(row["target"]),
                 "projected": pounds(row["projected"]),
+                "estimated_interest": pounds(row["estimated_interest"] if row["balance"] is not None else None) if has_recorded_rate(row) else None,
                 "goal_date": reached.isoformat() if reached else None,
                 "extended": bool(reached and reached > forecast["end"]),
                 "estimated_goal_date": row["estimated_goal_date"].isoformat() if row.get("estimated_goal_date") else None,

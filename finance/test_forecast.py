@@ -415,7 +415,8 @@ def _simulate(base, inputs, today):
             cash_repaid_total += cash_repaid
             if has_interest and account_allocations:
                 for key, contribution in account_allocations.items():
-                    growing_by_id[key]["projected"] += contribution
+                    if growing_by_id[key]["projected"] is not None:
+                        growing_by_id[key]["projected"] += contribution
             transfers += saving
             extra_total += extra
             if (
