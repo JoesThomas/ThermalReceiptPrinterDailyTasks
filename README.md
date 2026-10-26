@@ -524,3 +524,5 @@ helper is described in [deployment updates](deployment/updates.md).
 Test-finance instalment settlements: [early payoff setup and assumptions](docs/early-instalment-payoff.md).
 
 Amex-first ordering and the necessities spending ceiling: [forecast allocation rules](docs/amex-first-reserve-goals.md).
+
+Long-term planning: [editable multi-year scenarios, assumptions and privacy](docs/long-term-planning.md).

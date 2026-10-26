@@ -10,7 +10,7 @@ from storage import PrivateStore, validate_schema_version
 
 FILE = Path(__file__).resolve().parents[1] / "data" / "finance_scenarios.json"
 FIELDS = frozenset(
-    "minimum_bank_balance limit_spending_when_owed debt_spending_cap early_payoff receipt_detail respect_isa_allowance isa_over_65 monzo_target monzo_balance salary mode lump_sum existing_salary other_income start months strategy amex_split amex_apr savings_target save_all invest_spare_cash savings_goal use_saved_accounts equal_savings starting_savings hl_account hl_monthly salary_start salary_end missed_salary_dates comparison_spend one_off_expenses amex_owed opening_cash daily_spend".split()
+    "print_monthly_balances after_debt_spending minimum_bank_balance limit_spending_when_owed debt_spending_cap early_payoff receipt_detail respect_isa_allowance isa_over_65 monzo_target monzo_balance salary mode lump_sum existing_salary other_income start months strategy amex_split amex_apr savings_target save_all invest_spare_cash savings_goal use_saved_accounts equal_savings starting_savings hl_account hl_monthly salary_start salary_end missed_salary_dates comparison_spend one_off_expenses amex_owed opening_cash daily_spend".split()
 )
 CHECKBOXES = ("respect_isa_allowance", "isa_over_65", "save_all", "invest_spare_cash", "equal_savings", "use_saved_accounts")
 

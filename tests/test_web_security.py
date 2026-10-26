@@ -34,7 +34,7 @@ with app.test_client() as client:
         assert client.post('/login', data={'csrf_token': token, 'password': 'wrong'}).status_code == 429
     with client.session_transaction() as session:
         session['authenticated'] = True
-    for path in ('/finance/funds/settings','/finance/funds/pot','/finance/funds/complete','/finance/funds/match','/organiser/item','/organiser/travel','/documents/unlock','/documents/upload','/documents/initialise'):
+    for path in ('/finance/long-term','/finance/long-term/observe/delete','/finance/long-term/observe','/finance/long-term/delete','/finance/long-term/print','/finance/funds/settings','/finance/funds/pot','/finance/funds/complete','/finance/funds/match','/organiser/item','/organiser/travel','/documents/unlock','/documents/upload','/documents/initialise'):
         assert client.post(path).status_code == 403, path
     assert client.post('/finance/amex-protection').status_code == 403
     assert client.post('/finance/amex-interest/acknowledge').status_code == 403

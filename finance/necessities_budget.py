@@ -18,4 +18,5 @@ def recorded_overdraft(base):
 def limited_daily(normal, inputs, days, *, owed=False, overdrawn=False):
     if inputs.get('limit_spending_when_owed') and (owed or overdrawn):
         return min(normal, inputs['debt_spending_cap'] / Decimal(days))
-    return normal
+    after = inputs.get('after_debt_spending')
+    return after / Decimal(days) if after is not None and not owed and not overdrawn else normal

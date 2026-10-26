@@ -182,7 +182,7 @@ def _simulate(base, inputs, today):
                     scheduled, balance + balance * rate * (next_pay - on).days
                 )
             costs = noncard + scheduled
-            would_overdraw = free_cash(cash, priority, reserved_total) - costs - normal_daily * (next_pay - on).days < ZERO
+            would_overdraw = free_cash(cash, priority, reserved_total) - costs - daily * (next_pay - on).days < ZERO
             daily = limited_daily(normal_daily, inputs, (next_pay - on).days,
                                   owed=known and balance > ZERO, overdrawn=overdrawn or would_overdraw)
             variable = daily * (next_pay - on).days
@@ -441,9 +441,13 @@ def _simulate(base, inputs, today):
             target_status = period_targets(cash - costs - variable - protected_later, priority,
                                            reserved_total, cash_added, previous_monzo)
             if priority:
-                previous_monzo = target_status['monzo']
                 if not known or card_uncovered > CENT:
                     target_status['monzo_transfer'] = ZERO
+                    target_status['monzo'] = min(previous_monzo, target_status['monzo'])
+                previous_monzo = target_status['monzo']
+            post_debt_budget = inputs.get('after_debt_spending') is not None and not (
+                known and opening_card and opening_card > ZERO
+            ) and not (overdrawn or would_overdraw)
             periods.append(
                 dict(
                     funded=run_out is None,
@@ -462,7 +466,8 @@ def _simulate(base, inputs, today):
                     variable=variable,
                     daily_spend=daily,
                     spending_limited=daily < normal_daily,
-                    spending_cap=inputs.get('debt_spending_cap'),
+                    post_debt_budget=post_debt_budget,
+                    spending_cap=inputs.get('after_debt_spending') if post_debt_budget else inputs.get('debt_spending_cap'),
                     surplus=surplus,
                     budget=budget,
                     income_budget=income_budget,
@@ -581,7 +586,14 @@ def _simulate(base, inputs, today):
         if available_cash < ZERO and run_out is None:
             run_out = on
         if on >= inputs['start'] and (on + timedelta(days=1)).month != on.month:
+            remaining_events = [e for e in base['events'] if on < e['date'] <= periods[-1]['end']]
+            remaining_card = sum((e['amount'] for e in remaining_events if is_card_payment(e)), ZERO)
+            remaining_costs = sum((e['amount'] for e in remaining_events if not is_card_payment(e)), ZERO)
+            remaining_costs += min(balance, remaining_card) if known else remaining_card
+            remaining_costs += daily * max(0, (min(periods[-1]['end'], end-timedelta(days=1))-on).days)
             calendar_months.append(dict(date=on, end_cash=cash, reserved_total=reserved_total,
+                                        monzo_balance=previous_monzo if priority else None,
+                                        committed=remaining_costs,
                                         card_end=balance if known else None, funded=run_out is None,
                                         savings_end=inputs['starting_savings'] + transfers + automatic_total + reserved_total))
         if offset % 7 == 0 or on == end - timedelta(days=1):
@@ -590,6 +602,7 @@ def _simulate(base, inputs, today):
             checkpoints.append((checkpoint_dates[on], cash))
     result = dict(
         calendar_months=calendar_months,
+        monzo_balance=previous_monzo if priority else None,
         reserve_targets_pending=max(ZERO, -cash) if priority else ZERO,
         priority_reserves=bool(priority),
         early_payoffs=early_payoffs,

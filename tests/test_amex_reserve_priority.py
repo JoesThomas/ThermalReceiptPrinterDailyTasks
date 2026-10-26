@@ -66,7 +66,7 @@ class AmexReservePriorityTests(TestCase):
         self.assertTrue(first['spending_limited'])
         self.assertEqual(first['extra'],D('1550'))
         self.assertEqual(first['closing_card'],0)
-        self.assertEqual(first['reserve_targets']['hsbc'],D('630'))
+        self.assertEqual(first['reserve_targets']['hsbc'],D('628'))
         self.assertEqual(first['reserve_targets']['cash_transfer'],0)
         self.assertEqual(first['reserve_targets']['monzo_transfer'],0)
         self.assertEqual(first['savings'],0)
@@ -130,7 +130,7 @@ class AmexReservePriorityTests(TestCase):
         self.assertEqual(first['extra'],500)
         self.assertEqual(first['savings'],0)
         self.assertEqual(first['cash_invested'],0)
-        self.assertEqual(first['reserve_targets']['hsbc'],500)
+        self.assertEqual(first['reserve_targets']['hsbc'],498)
 
     def test_unknown_card_balance_withholds_discretionary_moves(self):
         source=base(cash='5000',card=None,daily=ZERO)

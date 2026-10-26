@@ -76,6 +76,13 @@ def receipt(result, today, *, detail="detailed"):
     )
     text(f"Generated {today:%d %b %Y}")
     text(f"Forecast ends {forecast['end']:%d %b %Y} ({data['months']} months)")
+    section("SAVINGS OVERVIEW")
+    amount("Starting savings", data['starting_savings'])
+    amount("Planned additions", forecast['savings_end']-data['starting_savings']-forecast.get('savings_interest', Decimal(0)))
+    if forecast.get('savings_interest'):
+        amount("Estimated interest", forecast['savings_interest'])
+    amount("Savings at forecast end", forecast['savings_end'])
+
     from finance.bank_balance_receipt import bank_balances
 
     bank_balances(page, base)
@@ -114,9 +121,9 @@ def receipt(result, today, *, detail="detailed"):
         text('Bills and food/necessities first; then Amex, repayments, reserve top-ups, then extra savings/investments.')
         if base.get('amex', {}).get('balance') is None:
             text('Amex balance unknown: confirm it before extra savings or top-ups.')
-    if first.get('spending_limited'):
-        amount('Debt/overdraft spending ceiling', first['spending_cap'])
-        text('Monthly maximum; food and necessities kept before repayments.')
+    if first.get('spending_limited') or first.get('post_debt_budget'):
+        amount('Everyday spending after Amex' if first.get('post_debt_budget') else 'Debt/overdraft spending ceiling', first['spending_cap'])
+        text('Monthly budget; food and necessities kept before extra transfers.')
     amount("Per day (expected spending)", first.get("daily_spend", base.get("daily_cost", base["daily"])))
     amount(
         "INCOME SURPLUS" if result["surplus"] >= 0 else "INCOME FUNDING GAP",

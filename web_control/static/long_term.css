@@ -1,0 +1,86 @@
+.long-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+    gap: 1rem
+}
+
+.long-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: .4rem
+}
+
+.long-account {
+    margin-block: 1.2rem
+}
+
+.long-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    margin-block: 1rem
+}
+
+.long-chart {
+    width: 100%;
+    height: auto;
+    max-height: 420px
+}
+
+.long-ledger {
+    border-block-end: 1px solid var(--border, #ccc);
+    padding-block: .8rem
+}
+
+.long-ledger dl {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .3rem 1rem
+}
+
+.long-ledger dd {
+    margin: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums
+}
+
+.long-receipt {
+    white-space: pre;
+    overflow: auto;
+    font-size: .85rem
+}
+
+#long-results details details {
+    margin: .5rem 0
+}
+
+#long-results .panel {
+    min-width: 0
+}
+
+#long-results dl {
+    overflow-wrap: anywhere
+}
+
+@media(max-width:450px) {
+    .long-actions button {
+        width: 100%
+    }
+
+    .long-grid {
+        grid-template-columns: 1fr
+    }
+}
+
+@media print {
+
+    #long-term-form,
+    nav,
+    .app-header {
+        display: none
+    }
+
+    .long-chart {
+        max-height: 250px
+    }
+}

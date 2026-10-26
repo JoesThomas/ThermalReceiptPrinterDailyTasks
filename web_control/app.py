@@ -1417,5 +1417,8 @@ from web_control.life_planning import register as register_life_planning
 register_life_planning(app, login_required)
 
 
+from web_control.long_term import register as register_long_term
+register_long_term(app, login_required, _start_print_command)
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

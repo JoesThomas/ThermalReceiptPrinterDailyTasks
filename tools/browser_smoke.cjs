@@ -168,6 +168,7 @@ process.on('exit', () => child.kill());
   assert.equal(await testFinance.locator('input[name=respect_isa_allowance]').isChecked(),true);
   assert.equal(await testFinance.locator('input[name=isa_over_65]').isChecked(),false);
   assert.equal(await testFinance.locator('select[name=receipt_detail]').inputValue(),'compact');
+  await testFinance.locator('input[name=print_monthly_balances]').check();
   assert.deepEqual((await testFinance.locator('fieldset > legend').allTextContents()).slice(0,4),['1. Income & forecast dates','2. Starting balances & everyday spending','3. Repayment & saving strategy','4. Savings accounts & goals']);
   await testFinance.locator('input[name=salary]').fill('4500');
   await testFinance.locator('input[name=other_income]').fill('800');
@@ -317,6 +318,30 @@ process.on('exit', () => child.kill());
   assert.ok(await page.getByText('Calendar month-end account balances',{exact:true}).count());
   assert.equal(await testFinance.locator('input[name=limit_spending_when_owed]').isChecked(),true);
 
+  // Long-term planning uses real forms, local assumptions and bounded monthly workings.
+  await page.goto('http://receipt.test/finance/long-term');
+  const longForm=page.locator('#long-term-form');
+  await longForm.locator('[name=years]').fill('5');
+  await longForm.locator('[name=salary]').fill('4000');
+  await longForm.locator('[name=bills]').fill('1200');
+  await longForm.locator('[name=spending]').fill('700');
+  await longForm.locator('[name=a_balance]').first().fill('2000');
+  await longForm.getByRole('button',{name:'Add account, pension, property or debt',exact:true}).click();
+  const longAccount=longForm.locator('[data-plan-row=account]').last();
+  await longAccount.locator('[name=a_name]').fill('Future investments');
+  await longAccount.locator('[name=a_kind]').selectOption('investment');
+  await longAccount.locator('summary').click();
+  await longAccount.locator('[name=a_low]').fill('-3');
+  await longAccount.locator('[name=a_expected]').fill('4');
+  await longAccount.locator('[name=a_high]').fill('7');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),longForm.getByRole('button',{name:'Calculate long-term plan',exact:true}).click()]);
+  await page.locator('#long-results').waitFor();
+  assert.match(await page.locator('#long-results').innerText(),/Lower assumptions/);
+  assert.match(await page.locator('#long-results').innerText(),/Could the plan handle a missed or delayed payday/);
+  assert.equal(await page.locator('[data-plan-row=account]').count(),2);
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.getByRole('button',{name:'Save this version',exact:true}).click()]);
+  assert.match(await page.locator('main').innerText(),/Saved an immutable planning baseline/);
+  assert.ok(page.url().includes('plan='));
   await page.goto('http://receipt.test/finance/assets');
   let mortgage = page.locator('form[action$="/finance/assets"]').filter({has:page.locator('input[name=kind][value=mortgages]')}).last();
   await mortgage.locator('input[name=name]').fill('Test mortgage');
@@ -640,7 +665,7 @@ process.on('exit', () => child.kill());
   let checks = 0;
   for (const width of [360,390,768,1280]) {
     await page.setViewportSize({width,height:900});
-    for (const path of ['/','/printer-diagnostics','/backup','/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/vehicles','/birthdays','/tasks','/finance/test','/savings/goals','/receipts','/finance-review','/organiser','/documents','/finance/funds']) {
+    for (const path of ['/','/printer-diagnostics','/backup','/bins','/deliveries','/?view=accounts','/preview?source=live','/preferences','/finance/explanations','/finance/tax','/finance/assets','/finance/planning','/finance/results','/api-health','/exercises','/settings','/print-plan','/setup','/meals','/vehicles','/birthdays','/tasks','/finance/test','/finance/long-term','/savings/goals','/receipts','/finance-review','/organiser','/documents','/finance/funds']) {
       await page.goto('http://receipt.test'+path);
       await page.locator('details').evaluateAll(rows => rows.forEach(row => row.open=true));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+2), false, `${path} overflows at ${width}`);

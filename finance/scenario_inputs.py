@@ -167,7 +167,12 @@ def validate(values, today):
     minimum_bank_balance = money(values.get('minimum_bank_balance', '0'))
     if minimum_bank_balance is None or not 0 <= minimum_bank_balance <= 10000000:
         raise ValueError('Choose a minimum bank balance between £0 and £10,000,000.')
+    after_debt_spending = money(values.get('after_debt_spending')) if values.get('after_debt_spending','').strip() else None
+    if values.get('after_debt_spending','').strip() and (after_debt_spending is None or not 0 <= after_debt_spending <= 100000):
+        raise ValueError('Enter a monthly spending amount after debt clears, or leave blank for normal spending.')
     return dict(
+        after_debt_spending=after_debt_spending,
+        print_monthly_balances=values.get('print_monthly_balances', 'on') == 'on',
         minimum_bank_balance=minimum_bank_balance,
         limit_spending_when_owed=values.get('limit_spending_when_owed') == 'on',
         debt_spending_cap=debt_spending_cap,

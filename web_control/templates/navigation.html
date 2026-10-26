@@ -61,6 +61,9 @@
                     </div>
                     <div class="tool-group">
                         <h2>Money & records</h2>
+                        {% if long_term_available|default(false) %}
+                            <a href="{{ url_for('long_term_page') }}">Long-term planning<span>Goals, life changes and future wealth</span></a>
+                        {% endif %}
                         {% if life_planning_available %}
                             <a href="{{ url_for('annual_funds_page') }}"
                                {% if request.endpoint == 'annual_funds_page' %}aria-current="page"{% endif %}>Tax & annual funds<span>Set money aside for later</span></a>

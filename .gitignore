@@ -238,3 +238,6 @@ data/annual_funds.json
 data/annual_funds.lock
 data/document_vault/
 *.key
+
+data/long_term_plans.json
+data/long_term_plans.lock

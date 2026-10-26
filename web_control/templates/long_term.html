@@ -1,0 +1,539 @@
+{% macro amount(name,label,value,min='0',max='100000000',step='0.01') %}
+    <label>
+        {{ label }}
+        <input type="number"
+               name="{{ name }}"
+               value="{{ value }}"
+               min="{{ min }}"
+               max="{{ max }}"
+               step="{{ step }}">
+    </label>
+{% endmacro %}
+{% macro account_fields(a) %}
+    <fieldset data-plan-row="account" class="long-account">
+        <legend>{{ a.name }}</legend>
+        <input type="hidden" name="a_id" value="{{ a.id }}">
+        <div class="long-grid">
+            <label>
+                Name
+                <input name="a_name" value="{{ a.name }}" maxlength="90" required>
+            </label>
+            <label>
+                Type
+                <select name="a_kind">
+                    {% for kind in kinds %}
+                        <option value="{{ kind }}" {% if a.kind==kind %}selected{% endif %}>{{ kind|replace('_',' ')|title }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            {{ amount('a_balance','Current balance / debt owed (£)',a.balance) }}
+            {{ amount('a_target','Goal balance / bank reserve target (£)',a.target) }}
+            <label>
+                Contribution stop amount (£, optional)
+                <input type="number"
+                       name="a_limit"
+                       min="0"
+                       max="100000000"
+                       step="0.01"
+                       value="{{ a.limit }}">
+            </label>
+            <label>
+                Stop contributions when goal reached?
+                <select name="a_stop">
+                    <option value="no" {% if not a.stop %}selected{% endif %}>No — goal is a milestone</option>
+                    <option value="yes" {% if a.stop %}selected{% endif %}>Yes — use goal as a limit</option>
+                </select>
+            </label>
+        </div>
+        <details>
+            <summary>Contributions, returns, fees and access</summary>
+            <div class="long-grid">
+                <label>
+                    Include in equal extra allocations?
+                    <select name="a_extra">
+                        <option value="no" {% if not a.extra %}selected{% endif %}>No — only entered monthly contributions</option>
+                        <option value="yes" {% if a.extra %}selected{% endif %}>Yes — share remaining eligible surplus</option>
+                    </select>
+                </label>
+                {{ amount('a_monthly','Monthly contribution / debt payment (£)',a.monthly) }}
+                <label>
+                    Existing scheduled contribution?
+                    <select name="a_scheduled">
+                        <option value="no" {% if not a.scheduled %}selected{% endif %}>No — discretionary after reserves</option>
+                        <option value="yes" {% if a.scheduled %}selected{% endif %}>Yes — included with bills</option>
+                    </select>
+                </label>
+                <label>
+                    Confirmed eligible for early repayment?
+                    <select name="a_early">
+                        <option value="no" {% if not a.early %}selected{% endif %}>No — scheduled debt payments only</option>
+                        <option value="yes" {% if a.early %}selected{% endif %}>Yes — Amex first, then affordable whole debts</option>
+                    </select>
+                </label>
+                {{ amount('a_apr','Debt APR assumption (%)',a.apr,'0','100') }}
+                <label>
+                    Pension access date / optional asset access date
+                    <input type="date" name="a_unlock" value="{{ a.unlock }}">
+                </label>
+                {{ amount('a_low','Lower annual return / prize assumption (%)',a.low,'-50','50') }}
+                {{ amount('a_expected','Expected annual return / savings AER / prizes (%)',a.expected,'-50','50') }}
+                {{ amount('a_high','Higher annual return / prize assumption (%)',a.high,'-50','50') }}
+                {{ amount('a_yield_rate','Cash dividend yield INCLUDED in total return (%)',a.yield_rate,'0','100') }}
+                <label>
+                    Prizes / dividends destination
+                    <select name="a_payout" data-account-options data-payout>
+                        <option value="self" {% if a.payout=='self' %}selected{% endif %}>Reinvest in this account</option>
+                        <option value="bank" {% if a.payout=='bank' %}selected{% endif %}>Separate assumed payout cash</option>
+                        {% for other in config.accounts if other.kind not in ['debt','property','pension'] %}
+                            <option value="{{ other.id }}" {% if a.payout==other.id %}selected{% endif %}>{{ other.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                {{ amount('a_fee','Annual fee assumption (% of value)',a.fee,'0','10') }}
+                {{ amount('a_tax','Flat tax assumption on positive returns / withdrawals (%)',a.tax,'0','100') }}
+                {{ amount('a_isa_used','ISA subscriptions already used this tax year (£)',a.isa_used) }}
+            </div>
+            <p>
+                Returns default to 0 until you choose assumptions. Premium Bonds use estimated average prizes, not interest or guaranteed winnings. Existing Bonds are assumed eligible; new purchases wait a full calendar month. Reinvested prizes enter the next draw. Holdings stop at £50,000; excess prizes become separate assumed payout cash.
+            </p>
+            <p>
+                Investment returns include dividends: cash yield splits that return, rather than adding another return. Prizes and dividend payouts are held separately from bill funding unless you explicitly model a withdrawal from an account. Pension and property values are gross until a modelled sale or withdrawal; they are not bank cash. Pension access dates are your assumptions; eligibility and tax relief are not inferred.
+            </p>
+        </details>
+        <button type="button" data-remove-row>Remove account</button>
+    </fieldset>
+{% endmacro %}
+{% macro event_fields(e) %}
+    <fieldset data-plan-row="event">
+        <legend>Life change or future cost</legend>
+        <div class="long-grid">
+            <label>
+                Name
+                <input name="e_name" value="{{ e.name }}" required maxlength="90">
+            </label>
+            <label>
+                Date
+                <input type="date" name="e_date" value="{{ e.date }}" required>
+            </label>
+            <label>
+                Change
+                <select name="e_kind">
+                    {% for kind in event_kinds %}
+                        <option value="{{ kind }}" {% if e.kind==kind %}selected{% endif %}>{{ kind|replace('_',' ')|title }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            {{ amount('e_amount','Amount (£)',e.amount) }}
+            <label>
+                Account for withdrawal / contribution
+                <select name="e_account" data-account-options>
+                    {% for a in config.accounts %}
+                        <option value="{{ a.id }}" {% if e.account==a.id %}selected{% endif %}>{{ a.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            {{ amount('e_repeat','Repeat every months (0 = once)',e.repeat,'0','480','1') }}
+        </div>
+        <button type="button" data-remove-row>Remove event</button>
+    </fieldset>
+{% endmacro %}
+{% macro goal_fields(g) %}
+    <fieldset data-plan-row="goal">
+        <legend>Goal and desired date</legend>
+        <div class="long-grid">
+            <label>
+                Name
+                <input name="g_name" value="{{ g.name }}" required maxlength="90">
+            </label>
+            <label>
+                Target date
+                <input type="date" name="g_date" value="{{ g.date }}" required>
+            </label>
+            {{ amount('g_amount','Target amount (£)',g.amount) }}
+            <label>
+                Account
+                <select name="g_account" data-account-options>
+                    {% for a in config.accounts %}
+                        <option value="{{ a.id }}" {% if g.account==a.id %}selected{% endif %}>{{ a.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                Increase target with inflation?
+                <select name="g_inflates">
+                    <option value="no" {% if not g.inflates %}selected{% endif %}>No — fixed future amount</option>
+                    <option value="yes" {% if g.inflates %}selected{% endif %}>Yes — amount is in today's money</option>
+                </select>
+            </label>
+        </div>
+        <button type="button" data-remove-row>Remove goal</button>
+    </fieldset>
+{% endmacro %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Long-term planning · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='long_term.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content" class="finance-page">
+            <header>
+                <p class="eyebrow">Your future, with editable assumptions</p>
+                <h1>Long-term planning</h1>
+                <p>
+                    Compare 1–40 years of income, costs, debt, accessible savings, investments, pensions and property. This monthly model is separate from the dated payday test; it does not send money or change live balances.
+                </p>
+                <a href="{{ url_for('test_finance_page') }}">Back to payday test finance</a>
+            </header>
+            {% with messages=get_flashed_messages() %}
+                {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            {% endwith %}
+            {% if error %}<p class="flash" role="alert">{{ error }}</p>{% endif %}
+            <details>
+                <summary>Saved planning baselines ({{ plans|length }})</summary>
+                <p>
+                    Every save creates a separate baseline. Opening one fills the form; edits do not change it until you save a new version.
+                </p>
+                {% for key,row in plans.items() %}
+                    <article><a href="{{ url_for('long_term_page',plan=key) }}">{{ row.config.name }}</a> · {{ row.saved_at }}
+                        <form method="post" action="{{ url_for('long_term_delete') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="plan" value="{{ key }}">
+                            <button>Remove this saved baseline</button>
+                        </form>
+                    </article>
+                {% endfor %}
+            </details>
+            <details class="section-disclosure" {% if not report %}open{% endif %}>
+                <summary>Edit planning assumptions and accounts</summary>
+                <form method="post"
+                      action="{{ url_for('long_term_generate') }}"
+                      id="long-term-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden"
+                           name="baseline"
+                           value="{{ request.args.get('plan','') }}">
+                    <fieldset>
+                        <legend>1. Income, essentials and planning dates</legend>
+                        <div class="long-grid">
+                            <label>
+                                Plan name
+                                <input name="name" value="{{ config.name }}" maxlength="90" required>
+                            </label>
+                            <label>
+                                Start date
+                                <input type="date" name="start" value="{{ config.start }}" required>
+                            </label>
+                            {{ amount('years','Planning years',config.years,'1','40','1') }}
+                            {{ amount('salary','Monthly take-home salary (£)',config.salary) }}
+                            {{ amount('other_income','Other monthly cash income after tax (£)',config.other_income) }}
+                            {{ amount('bills','Monthly bills and fixed necessities (£)',config.bills) }}
+                            {{ amount('spending','Normal monthly food / everyday spending (£)',config.spending) }}
+                            {{ amount('debt_spending','Maximum everyday spending while Amex owed / overdrawn (£)',config.debt_spending) }}
+                            {{ amount('minimum','Minimum combined bank cash (£)',config.minimum) }}
+                        </div>
+                        <p>
+                            Bills remain covered before debt. Everyday spending uses the debt maximum while Amex is owed or bank cash is overdrawn, then returns to the normal amount. First partial-month income and regular costs are pro-rated. Events apply in their named calendar month; use the payday test for exact payment dates.
+                        </p>
+                    </fieldset>
+                    <details>
+                        <summary>2. Inflation, fees, tax and salary assumptions</summary>
+                        <div class="long-grid">
+                            {{ amount('inflation','Annual inflation assumption (%)',config.inflation,'-20','30') }}
+                            {{ amount('income_growth','Annual salary / other income growth (%)',config.income_growth,'-20','30') }}
+                            {{ amount('spending_growth','Annual everyday spending growth (%)',config.spending_growth,'-20','30') }}
+                            {{ amount('isa_allowance','Assumed future shared annual ISA allowance (£)',config.isa_allowance) }}
+                            {{ amount('cash_isa_limit','Assumed future annual cash ISA limit (£)',config.cash_isa_limit) }}
+                            <label>
+                                Assumptions last reviewed
+                                <input type="date" name="reviewed" value="{{ config.reviewed }}" required>
+                            </label>
+                        </div>
+                        <label>
+                            <input type="checkbox"
+                                   name="isa_enabled"
+                                   {% if config.isa_enabled %}checked{% endif %}>
+                            Apply shared ISA subscription limits (April tax-year reset)
+                        </label>
+                        <label>
+                            <input type="checkbox"
+                                   name="invest_without_salary"
+                                   {% if config.invest_without_salary %}checked{% endif %}>
+                            Allow extra investment without salary
+                        </label>
+                        <p>
+                            £20,000 is the 2026/27 shared ISA allowance. Future allowances and cash ISA restrictions are editable assumptions, not a promise of future rules. This planner does not model Lifetime ISA bonuses, pension tax relief or detailed income/capital-gains tax. Income is entered after tax; optional flat account tax estimates are separate. Inflation starts at an illustrative 2%; all growth defaults to 0. Review dates do not verify a rate automatically.
+                        </p>
+                        <p>
+                            <a href="https://www.gov.uk/individual-savings-accounts/overview">ISA rules</a> · <a href="https://www.nsandi.com/products/premium-bonds">Premium Bonds rules</a> · <a href="https://www.moneyhelper.org.uk/en/savings/investing/thinking-about-investing-make-sure-you-understand-the-risks">Investment uncertainty</a>
+                        </p>
+                    </details>
+                    <section>
+                        <h2>3. Accounts, debts and assets</h2>
+                        <p>
+                            A goal is a milestone unless you switch on a contribution stop. Income enters the first bank account; reserve targets redistribute it to other banks at allocation time. The monthly contribution field applies to savings, investments, pensions and debts. Use asset-purchase or withdrawal events for property. Explicit account limits and the Premium Bonds £50,000 cap still apply. Enter property ownership value and mortgage debt separately; pension balances need your chosen access date.
+                        </p>
+                        <div id="long-accounts">
+                            {% for a in config.accounts %}{{ account_fields(a) }}{% endfor %}
+                        </div>
+                        <button type="button" data-add="account">Add account, pension, property or debt</button>
+                        <button name="action" value="import" formnovalidate>Copy local recorded savings into this form</button>
+                        <p>
+                            Copying local savings does not fetch bank data, overwrite live records or infer pension/property ownership. Enter bank cash and debts explicitly, excluding unused overdrafts.
+                        </p>
+                    </section>
+                    <details>
+                        <summary>4. Life changes and recurring replacement costs</summary>
+                        <p>
+                            Salary, other income and spending set a new monthly amount. Income and cost are one-off cash changes. Withdrawals move money from an asset into bank cash, subject to its access date and your flat tax assumption. Contribution changes set an account's monthly contribution. Realise payout explicitly moves separate assumed payout cash into the bank. Asset purchase moves bank cash into an asset at the entered value. Goal tests use the last model point on or before your chosen date; they never borrow a later month’s income. For a vehicle replacement every five years, choose Cost and repeat every 60 months. Future costs increase with the inflation assumption.
+                        </p>
+                        <div id="long-events">
+                            {% for e in config.events %}{{ event_fields(e) }}{% endfor %}
+                        </div>
+                        <button type="button" data-add="event">Add life change or future cost</button>
+                    </details>
+                    <details>
+                        <summary>5. Goals and required monthly saving</summary>
+                        <p>
+                            Choose the account, desired amount and date. The result shows its shortfall and an additional monthly contribution estimate using a constant net return after the entered flat tax/fee assumptions. This estimate does not override limits or guarantee that income can fund it. Compare with available surplus; changing contributions can redirect money from other goals.
+                        </p>
+                        <div id="long-goals">
+                            {% for g in config.goals %}{{ goal_fields(g) }}{% endfor %}
+                        </div>
+                        <button type="button" data-add="goal">Add goal</button>
+                    </details>
+                    <div class="long-actions">
+                        <button name="action" value="forecast">Calculate long-term plan</button>
+                        <button name="action" value="save">Save new planning baseline</button>
+                        <button name="action" value="receipt">Create concise receipt summary</button>
+                        <button name="action" value="rebase">Start a new plan from latest actual balances</button>
+                    </div>
+                    <p id="long-status" role="status" hidden>Calculating monthly balances, assumption ranges and salary stress tests…</p>
+                </form>
+            </details>
+            {% if report %}
+                <section id="long-results">
+                    <h2>Where the plan could lead</h2>
+                    <div class="long-actions">
+                        <button form="long-term-form" name="action" value="save">Save this version</button>
+                        <button form="long-term-form" name="action" value="receipt">Archive concise summary</button>
+                    </div>
+                    <p>
+                        These are assumption cases, not statistical probabilities. No market forecast or prize winnings are guaranteed. Assumed payout cash is displayed separately and never automatically funds bills or extra transfers. Accessible investments can fluctuate; they are not the same as spendable bank cash.
+                    </p>
+                    <div class="long-grid">
+                        {% for case in report.cases %}
+                            <article class="panel">
+                                <h3>{{ case.case|title }} assumptions</h3>
+                                <p>On {{ case.final.date }}</p>
+                                <dl>
+                                    {% for label,key in [('Net worth','net_worth'),("In today's money",'real_worth'),('Accessible assets','accessible'),('Locked / property assets','locked'),('Debt owed','debts'),('Assumed payout cash','payout_cash')] %}
+                                        <dt>{{ label }}</dt>
+                                        <dd>
+                                            {{ money(case.final[key]) }}
+                                        </dd>
+                                    {% endfor %}
+                                </dl>
+                                <p>{{ 'First minimum breach: ' ~ case.first_breach if case.first_breach else 'Minimum bank balance maintained' }}</p>
+                            </article>
+                        {% endfor %}
+                    </div>
+                    {% set chart=report.chart %}
+                    {% if chart %}
+                        <figure>
+                            <h3>{{ chart.title }}</h3>
+                            <svg viewBox="0 0 720 260"
+                                 role="img"
+                                 aria-label="{{ chart.title }}"
+                                 class="long-chart">
+                                <text x="4" y="20">{{ chart.high }}</text><text x="4" y="248">{{ chart.low }}</text>
+                                {% for series in chart.series %}
+                                    <polyline points="{{ series.points }}" fill="none" stroke="{{ series.color }}" stroke-width="3" />
+                                {% endfor %}
+                            </svg>
+                            <figcaption>{{ chart.note }}</figcaption>
+                            <ul>
+                                {% for series in chart.series %}<li>{{ series.name }}</li>{% endfor %}
+                            </ul>
+                        </figure>
+                    {% endif %}
+                    <h3>Milestones in today's money</h3>
+                    <div class="long-grid">
+                        {% for milestone in report.milestones %}
+                            <article class="panel">
+                                <h4>Year {{ milestone.year }} · {{ milestone.point.date }}</h4>
+                                <p>{{ money(milestone.point.real_worth) }} in today's money · {{ money(milestone.point.net_worth) }} future pounds</p>
+                            </article>
+                        {% endfor %}
+                    </div>
+                    <h3>Goals and milestone dates</h3>
+                    {% for goal in report.expected.goals %}
+                        <article class="panel">
+                            <h4>{{ goal.name }} · {{ goal.due }}</h4>
+                            <dl>
+                                <dt>Target at that date</dt>
+                                <dd>
+                                    {{ money(goal.target) }}
+                                </dd>
+                                <dt>Projected balance ({{ goal.as_of }})</dt>
+                                <dd>
+                                    {{ money(goal.projected) }}
+                                </dd>
+                                <dt>Shortfall</dt>
+                                <dd>
+                                    {{ money(goal.shortfall) }}
+                                </dd>
+                                <dt>
+                                    {{ "One-off shortfall before first month-end" if goal.lump_required else "Additional monthly saving / repayment estimate" }}
+                                </dt>
+                                <dd>
+                                    {{ money(goal.extra_monthly) }}
+                                </dd>
+                            </dl>
+                            <p>
+                                First estimated crossing: {{ goal.reached or 'Outside planning horizon' }}. {{ 'No additional monthly contribution needed under these assumptions.' if not goal.shortfall else 'Fits modelled unallocated surplus through the goal date.' if goal.affordable else 'Needs redirected contributions, lower costs or extra income; not an affordable transfer instruction.' }}
+                            </p>
+                        </article>
+                    {% else %}
+                        <p>Add a desired goal date to work backwards from it.</p>
+                    {% endfor %}
+                    <h3>Could the plan handle a missed or delayed payday?</h3>
+                    <div class="long-grid">
+                        {% for case,label in [(report.expected,'Expected plan'),(report.missed,'First salary missed'),(report.late,'First salary one month late')] %}
+                            <article class="panel">
+                                <h4>{{ label }}</h4>
+                                <p>{{ 'Minimum breached: ' ~ case.first_breach if case.first_breach else 'Minimum maintained throughout' }}</p>
+                                <p>
+                                    Final net worth {{ money(case.final.net_worth) }}. Extra allocations pause when the monthly budget cannot fund them.
+                                </p>
+                            </article>
+                        {% endfor %}
+                    </div>
+                    <h3>What changes the outcome?</h3>
+                    <ul>
+                        {% for lever in report.levers %}
+                            <li>
+                                {{ lever.name }}: {{ money(lever.gain) }} change in final purchasing power, with the same later growth assumptions.
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <p>
+                        Review the first minimum breach, goal shortfalls and monthly surplus below. Use salary, spending, contribution and access-date changes above to compare a new saved baseline. Lower / expected / higher return cases isolate the return assumptions; income and cost settings are shared.
+                    </p>
+                    <details>
+                        <summary>Why did each balance change? Full monthly workings</summary>
+                        <p>
+                            Every account follows opening + money in − money out + interest + investment growth + prizes − fees − tax = closing. Bank income, bills and transfers are included once. Values shown to pennies may have rounding differences. Goals and returns are conditional on your assumptions.
+                        </p>
+                        <label>
+                            Inspect planning year
+                            <select name="inspection_year" form="long-term-form">
+                                {% for year in range(1,config.years|int+1) %}
+                                    <option value="{{ year }}" {% if year==inspection_year %}selected{% endif %}>Year {{ year }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <button form="long-term-form" name="action" value="forecast">Show selected year</button>
+                        {% for point in display_points %}
+                            <details>
+                                <summary>{{ point.date }} · net worth {{ money(point.net_worth) }} · bank {{ money(point.bank) }}</summary>
+                                <p>
+                                    Cash income {{ money(point.income) }}; bills/everyday costs {{ money(point.spending) }}; bank surplus after targets {{ money(point.unallocated) }}.
+                                </p>
+                                {% for key,ledger in point.accounts.items() %}
+                                    {% set a=config.accounts|selectattr('id','equalto',key)|first %}<article class="long-ledger">
+                                    <h4>{{ a.name }}</h4>
+                                    <dl>
+                                        {% for label,key in [('Opening','opening'),('Money in','transfers_in'),('Money out','transfers_out'),('Savings / debt interest','interest'),('Investment growth/loss','growth'),('Estimated prizes','prizes'),('Fees','fees'),('Tax assumption','tax'),('Closing','closing')] %}
+                                            <dt>{{ label }}</dt>
+                                            <dd>
+                                                {{ money(ledger[key]) }}
+                                            </dd>
+                                        {% endfor %}
+                                    </dl>
+                                </article>
+                            {% endfor %}
+                            {% for note in point.notes %}<p>{{ note }}</p>{% endfor %}
+                        </details>
+                    {% endfor %}
+                </details>
+                <h3>Plan versus actual month-end balances</h3>
+                <p>
+                    Record an actual valuation below. Exact matching month-end dates compare against the saved plan; other dates stay recorded for rebasing. Differences are not automatically attributed to market returns or spending. Load an older baseline to compare it with today's records.
+                </p>
+                {% for change in report.changes %}
+                    <p>
+                        {{ change.date }} · {{ change.name }}: planned {{ money(change.planned) }}, actual {{ money(change.actual) }}, difference {{ money(change.difference) }}. {{ change.note }}
+                    </p>
+                {% else %}
+                    <p>No exact month-end observations match this plan yet.</p>
+                {% endfor %}
+            </section>
+        {% endif %}
+        {% if plans %}
+            <details>
+                <summary>Record an actual account balance</summary>
+                <form method="post" action="{{ url_for('long_term_observe') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="plan" value="{{ request.args.get('plan','') }}">
+                    <label>
+                        Account
+                        <select name="account">
+                            {% for a in config.accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Valuation date
+                        <input type="date"
+                               name="date"
+                               value="{{ today }}"
+                               max="{{ today }}"
+                               required>
+                    </label>
+                    {{ amount('balance','Actual balance (£)','0') }}
+                    <label>
+                        Explanation (optional)
+                        <input name="note" maxlength="90">
+                    </label>
+                    <button>Save actual valuation</button>
+                </form>
+                <p>{{ observations|length }} observations stored privately.</p>
+                {% for observation in observations|reverse %}
+                    <form method="post" action="{{ url_for('long_term_observation_delete') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="account" value="{{ observation.account }}">
+                        <input type="hidden" name="date" value="{{ observation.date }}">
+                        <input type="hidden" name="plan" value="{{ request.args.get('plan','') }}">
+                        <p>{{ observation.date }} · {{ observation.balance }} · {{ observation.note }}</p>
+                        <button>Remove this observation</button>
+                    </form>
+                {% endfor %}
+            </details>
+        {% endif %}
+        {% if result_text %}
+            <details>
+                <summary>Concise planning receipt preview</summary>
+                <pre class="long-receipt">{{ result_text }}</pre>
+            </details>
+        {% endif %}
+        {% if session.get('long_term_receipt') %}
+            <form method="post" action="{{ url_for('long_term_print') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button>Print last archived long-term summary</button>
+            </form>
+        {% endif %}
+        <template id="long-account-template">{{ account_fields(account_template) }}</template>
+        <template id="long-event-template">{{ event_fields({'name':'Future cost','date':today.isoformat(),'kind':'cost','amount':'0','repeat':'0','account':''}) }}</template>
+        <template id="long-goal-template">{{ goal_fields({'name':'New goal','date':today.isoformat(),'amount':'0','account':'','inflates':False}) }}</template>
+    </main>
+    <script src="{{ url_for('static',filename='long_term.js') }}" defer></script>
+</body>
+</html>
