@@ -28,3 +28,11 @@ when unavailable, a fingerprint of the transaction fields is used.
 
 Reference: [TrueLayer card transactions](https://docs.truelayer.com/reference/getcardtransactions)
 and [account and card data](https://docs.truelayer.com/docs/account-and-card-data).
+
+Outstanding balances have a separate flag throughout the interface and on daily
+and finance receipts. Any positive GBP debt is flagged; above £1,000 by default
+it receives a stronger warning. Finance → Amex balance alerts lets you edit the
+threshold or switch this flag off. A balance is not evidence of arrears or interest.
+A failed/stale refresh retains the last known debt and asks for a refresh; only a
+successful fresh check can clear it. Forecast flags use simulated balances and do
+not change live warnings.

@@ -2443,6 +2443,9 @@ def subscription_was_paid(
 
 def monthly_contract_ended(subscription, today):
     """The month containing the end date is the final scheduled month."""
+    from finance.instalment_settlement import is_settled
+    if is_settled(subscription, today):
+        return True
     value = subscription.get("end_date")
     if not value:
         return False
@@ -4653,6 +4656,8 @@ def run_live_pipeline(
                 receipt_warning(printer, left, print_line, pending())
             except (ValueError, OSError):
                 left(printer, 'Amex interest alerts unavailable; check app.')
+            from finance.amex_balance import view as balance_view, print_status as print_balance_status
+            print_balance_status(printer,left,print_line,balance_view())
             from finance.amex_protection import assess, print_status
             try:
                 print_status(printer, left, print_line, assess(today=today))

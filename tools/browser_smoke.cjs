@@ -27,6 +27,15 @@ process.on('exit', () => child.kill());
     await route.fulfill({status:result.status, headers:result.headers, body:Buffer.from(result.body,'base64')});
   });
   await page.goto('http://receipt.test/__fixture_login');
+  // Live balance flags refresh without replacing forms, and fresh zero clears them.
+  for (const [amount,level] of [['1500','high'],['500','outstanding'],['0','clear']]) {
+    await page.evaluate(async amount=>{
+      await fetch('/__fixture_amex_balance?amount='+amount);
+      document.dispatchEvent(new Event('visibilitychange'));
+    },amount);
+    await page.waitForFunction(level=>document.querySelector('#amex-balance-alert')?.dataset.level===level,level);
+    assert.equal(await page.locator('#amex-balance-alert').isVisible(),level!=='clear');
+  }
   await page.getByText('Advanced: edit schedule as text', {exact:true}).click();
   await page.locator('#manual-collections').fill('2026-10-06 | Recycling | 14');
   // New bank evidence must appear without discarding an unfinished form.
@@ -253,6 +262,24 @@ process.on('exit', () => child.kill());
   assert.equal(await page.locator('#forecast-comparison h3').filter({hasText:/^(Lower spending|Current plan|Higher spending)$/}).count(),3);
   assert.match(await page.locator('#forecast-comparison').innerText(), /Lowest projected bank balance/);
   assert.equal(await page.locator('textarea[name=one_off_expenses]').inputValue(), new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'})+' | 30 | One-off test cost');
+  const bankChart=page.locator('[data-finance-line-chart]').filter({has:page.locator('[data-chart-mode]')}).first();
+  await bankChart.evaluate(node=>node.open=true);
+  await bankChart.locator('[data-chart-mode]').selectOption('monthly');
+  await bankChart.locator('[data-chart-period]').selectOption('3');
+  await bankChart.locator('svg').focus();
+  await page.keyboard.press('Home');
+  assert.match(await bankChart.locator('.chart-reading').innerText(),/£/);
+  await page.keyboard.press('ArrowRight');
+  await bankChart.locator('[data-chart-mode]').selectOption('cashflow');
+  await bankChart.locator('[data-chart-period]').selectOption('all');
+  for(const width of [390,1280]){
+    await page.setViewportSize({width,height:900});
+    assert.equal(await bankChart.locator('svg').evaluate(node=>node.getBoundingClientRect().right>innerWidth+2),false);
+  }
+  if(process.env.RECEIPT_FINANCE_SCREENSHOT){
+    await bankChart.locator('[data-chart-mode]').selectOption('monthly');
+    await bankChart.screenshot({path:process.env.RECEIPT_FINANCE_SCREENSHOT});
+  }
   await Promise.all([page.waitForResponse(r => r.url().endsWith('/finance/test/print') && r.request().method()==='POST'), page.getByRole('button',{name:'Print test receipt'}).click()]);
   assert.match(await page.locator('main').innerText(), /Test finance receipt queued/);
   await page.goto('http://receipt.test/finance/test');
@@ -291,6 +318,19 @@ process.on('exit', () => child.kill());
   assert.match(await page.locator('#early-payoff-results').innerText(),/Projected balance at end: £0.00/);
   assert.match(await page.locator('.test-finance-paper').innerText(),/EARLY INSTALMENT PAYOFFS/);
   assert.equal(await testFinance.locator('input[name=early_payoff]').isChecked(),true);
+
+  // Actual settlement is a separate owner confirmation, with a reversible record.
+  await page.goto('http://receipt.test/?view=accounts');
+  const settleForm=page.locator('form[action="/instalment/0/settle"]');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),settleForm.getByRole('button',{name:/Mark .* as settled/}).click()]);
+  assert.match(await page.locator('#instalments').innerText(),/Example Amazon headphones — settled/,await page.locator('main').innerText());
+  assert.equal(await page.locator('form[action="/instalment/0/settle"]').count(),0);
+  await page.goto('http://receipt.test/finance/test');
+  assert.equal(await page.locator('input[name^=payoff_plan_]').count(),0);
+  await page.goto('http://receipt.test/?view=accounts');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.getByRole('button',{name:'Reopen this instalment'}).click()]);
+  await page.goto('http://receipt.test/finance/test');
+  assert.equal(await page.locator('input[name^=payoff_plan_]').count(),1);
 
   // A realistic owed-card case uses the monthly necessities ceiling before repayment.
   await testFinance.locator('input[name=salary]').fill('3000');

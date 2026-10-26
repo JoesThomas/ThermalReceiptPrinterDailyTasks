@@ -267,6 +267,9 @@ def instalment_update(index):
         return ("Instalment not found", 404)
 
     item = instalments[index]
+    if item.get("settled_on"):
+        flash("Reopen this instalment before editing its recorded balance or schedule.")
+        return redirect(url_for("index", view="accounts") + "#instalments")
 
     item["name"] = request.form.get(
         "name",
@@ -1419,6 +1422,12 @@ register_life_planning(app, login_required)
 
 from web_control.long_term import register as register_long_term
 register_long_term(app, login_required, _start_print_command)
+
+from web_control.amex_balance import register as register_amex_balance
+register_amex_balance(app, login_required)
+
+from web_control.instalment_settlement import register as register_instalment_settlement
+register_instalment_settlement(app, login_required, lambda: SUBSCRIPTIONS_FILE)
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

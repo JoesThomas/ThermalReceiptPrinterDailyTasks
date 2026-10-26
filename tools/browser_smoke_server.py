@@ -87,6 +87,19 @@ def fixture_reviews():
     return redirect('/finance/results')
 
 
+@web.app.get('/__fixture_amex_balance')
+def fixture_amex_balance():
+    from flask import request
+    from finance.amex_protection import store
+    from datetime import datetime, timezone
+    def change(value):
+        value['evidence'] = dict(current=request.args.get('amount', '1500'), currency='GBP',
+                                checked_at=datetime.now(timezone.utc).isoformat(), amex_ok=True,
+                                balances={}, payments=[])
+    store().update(change)
+    return 'ok'
+
+
 @web.app.get('/__fixture_instalment_plan')
 def fixture_instalment_plan():
     import json

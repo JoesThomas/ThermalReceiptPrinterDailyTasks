@@ -83,6 +83,10 @@ def receipt(result, today, *, detail="detailed"):
         amount("Estimated interest", forecast['savings_interest'])
     amount("Savings at forecast end", forecast['savings_end'])
 
+    from finance.amex_balance import receipt_status as balance_flag
+    if base.get('amex') is not None:
+        balance_flag(page, (base.get('amex') or {}).get('balance'))
+
     from finance.bank_balance_receipt import bank_balances
 
     bank_balances(page, base)

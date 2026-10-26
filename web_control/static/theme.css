@@ -267,3 +267,5 @@ main > header h1 { font-size: clamp(1.8rem,3vw,2.4rem); }
 .early-payoff-settings > label input { vertical-align: middle; margin-right: 8px; }
 .early-payoff-settings small { display: block; margin: 6px 0 0; }
 .early-payoff-settings p { font-size: .88rem; }
+
+html[data-privacy=true] #amex-balance-alert [data-private]{visibility:hidden}

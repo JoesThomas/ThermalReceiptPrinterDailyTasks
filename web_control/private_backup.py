@@ -129,6 +129,8 @@ def _validate_file(name, content):
         from actions.checklists import validate_state
         validate_state(content)
     elif name == 'subscriptions.json':
+        from finance.subscription_store import validate as validate_subscriptions
+        validate_subscriptions(content)
         for key in ('monthly', 'yearly', 'instalments'):
             for row in content.get(key, []):
                 if not isinstance(row, dict) or not isinstance(row.get('name'), str):

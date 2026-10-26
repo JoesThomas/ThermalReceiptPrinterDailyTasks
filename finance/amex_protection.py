@@ -14,7 +14,7 @@ MODES = ('unknown', 'none', 'minimum', 'fixed', 'full')
 
 
 def defaults():
-    return {'version': 1, 'enabled': False, 'source': 'auto', 'manual_statement': {},
+    return {'version': 1, 'enabled': False, 'balance_alert_enabled': True, 'balance_alert_threshold': '1000.00', 'source': 'auto', 'manual_statement': {},
             'dd_mode': 'unknown', 'dd_amount': None, 'dd_date': None,
             'paying_account': 'HSBC', 'carried_balance': 'unknown',
             'confirmed_statement': None, 'confirmed_total': '0.00',
@@ -36,6 +36,9 @@ def validate(value):
         raise ValueError('Invalid Amex payment protection settings.')
     if value.get('source') not in ('auto', 'manual') or value.get('dd_mode') not in MODES or value.get('paying_account') not in ('HSBC', 'MONZO') or value.get('carried_balance') not in ('unknown', 'yes', 'no'):
         raise ValueError('Invalid Amex payment protection option.')
+    threshold=money(value.get('balance_alert_threshold','1000'))
+    if type(value.get('balance_alert_enabled',True)) is not bool or threshold is None or not 0<threshold<=10000000:
+        raise ValueError('Choose an Amex balance warning threshold above £0 and up to £10,000,000.')
     for name in ('dd_amount', 'confirmed_total'):
         number = money(value.get(name))
         if (name == 'confirmed_total' or value.get(name) is not None) and (number is None or not 0 <= number <= 10000000):
@@ -52,6 +55,10 @@ def validate(value):
     if not isinstance(evidence, dict) or not isinstance(evidence.get('payments', []), list):
         raise ValueError('Invalid Amex payment evidence.')
     if evidence:
+        if evidence.get('last_known_current') is not None and money(evidence['last_known_current']) is None:
+            raise ValueError('Invalid retained Amex balance.')
+        if evidence.get('last_known_checked_at') is not None and not day(evidence['last_known_checked_at']):
+            raise ValueError('Invalid retained Amex check date.')
         if not isinstance(evidence.get('balances'), dict) or not day(evidence.get('checked_at')):
             raise ValueError('Invalid Amex balance evidence.')
         if evidence.get('statement') and statement(evidence['statement']) is None:
@@ -143,7 +150,19 @@ def capture(balances, transactions, summary, *, path=None, checked_at=None):
         observed['funding_complete'] = baseline['valid']
     except (ValueError, OSError, KeyError, TypeError, RuntimeError):
         observed['funding_complete'] = False
-    store(path).update(lambda value: value.update(evidence=observed))
+    def update(value):
+        previous=value.get('evidence',{})
+        current=money(observed.get('current'))
+        if observed.get('amex_ok') and observed.get('currency','GBP')=='GBP' and current is not None:
+            observed['last_known_current']=str(current)
+            observed['last_known_checked_at']=observed['checked_at']
+        else:
+            last=money(previous.get('last_known_current',previous.get('current')))
+            if last is not None and previous.get('currency','GBP')=='GBP':
+                observed['last_known_current']=str(last)
+                observed['last_known_checked_at']=previous.get('last_known_checked_at',previous.get('checked_at'))
+        value.update(evidence=observed)
+    store(path).update(update)
 
 
 def mark_failed(*, path=None):

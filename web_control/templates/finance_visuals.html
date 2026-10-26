@@ -5,29 +5,72 @@
             Turn lines on or off to compare accounts and assumptions. Exact chart values are available underneath. Charts describe estimates, not guarantees.
         </p>
         {% for chart in chart_bundle.lines %}
-            <details class="finance-chart" {% if loop.first %}open{% endif %}>
+            <details class="finance-chart"
+                     data-finance-line-chart
+                     {% if loop.first %}open{% endif %}>
                 <summary>{{ chart.title }}</summary>
-                <p class="muted">{{ chart.note }}</p>
-                <svg viewBox="0 0 730 270"
-                     role="img"
-                     aria-label="{{ chart.title }}"
-                     style="width:100%;
-                            height:auto;
-                            max-height:360px">
-                    <title>{{ chart.title }} · {{ chart.start }} to {{ chart.end }}</title>
-                    {% if chart.band_y is not none %}
-                        <rect x="58" y="{{ chart.band_y }}" width="620" height="{{ 220-chart.band_y }}" fill="#e9c991" opacity="0.35" />
+                <p class="muted chart-note">{{ chart.note }}</p>
+                {% if chart.stats %}
+                    <p class="muted">Whole-forecast summary · period controls change only the plot.</p>
+                    <dl class="chart-stats">
+                        {% for stat in chart.stats %}
+                            <div {% if stat.warning %}class="chart-stat-warning"{% endif %}>
+                                <dt>{{ stat.label }}</dt>
+                                <dd>
+                                    {{ stat.value }}
+                                    <small>{{ stat.note }}</small>
+                                </dd>
+                            </div>
+                        {% endfor %}
+                    </dl>
+                {% endif %}
+                <div class="chart-toolbar">
+                    {% if chart.alt_model %}
+                        <label>
+                            View
+                            <select data-chart-mode>
+                                <option value="monthly" {% if chart.mode=='monthly' %}selected{% endif %}>Monthly low / high range</option>
+                                <option value="cashflow" {% if chart.mode=='cashflow' %}selected{% endif %}>Cash-flow samples</option>
+                            </select>
+                        </label>
                     {% endif %}
-                    <line x1="58" y1="{{ chart.zero }}" x2="678" y2="{{ chart.zero }}" stroke="#88978e" />
-                    {% for marker in chart.markers %}
-                        <line x1="{{ marker.x }}" y1="35" x2="{{ marker.x }}" y2="220" stroke="#aeb9b0" stroke-dasharray="2 5"><title>{{ marker.date }} · {{ marker.label }}</title></line>
-                    {% endfor %}
-                    {% for line in chart.series %}
-                        <polyline id="{{ chart.key }}-series-{{ loop.index0 }}" points="{{ line.points }}" fill="none" stroke="{{ line.color }}" stroke-width="2.5" stroke-dasharray="{{ line.dash }}"><title>{{ line.name }}</title></polyline>
-                    {% endfor %}
-                    <text x="58" y="20" font-size="12" fill="currentColor">{{ chart.high }}</text><text x="58" y="238" font-size="12" fill="currentColor">{{ chart.low }}</text>
-                    <text x="58" y="260" font-size="12" fill="currentColor">{{ chart.start }}</text><text x="678" y="260" text-anchor="end" font-size="12" fill="currentColor">{{ chart.end }}</text>
-                </svg>
+                    <label>
+                        Period
+                        <select data-chart-period>
+                            <option value="all">Entire forecast</option>
+                            <option value="3">First 3 calendar months</option>
+                            <option value="6">First 6 calendar months</option>
+                            <option value="12">First 12 calendar months</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="chart-viewport">
+                    <svg viewBox="0 0 730 280"
+                         role="img"
+                         aria-label="{{ chart.title }}"
+                         class="finance-line-chart">
+                        <title>{{ chart.title }} · {{ chart.start }} to {{ chart.end }}</title>
+                        {% if chart.band_y is not none %}
+                            <rect x="58" y="{{ chart.band_y }}" width="620" height="{{ 220-chart.band_y }}" fill="#e9c991" opacity="0.35" />
+                        {% endif %}
+                        {% for tick in chart.y_ticks %}
+                            <line x1="58" y1="{{ tick.y }}" x2="678" y2="{{ tick.y }}" stroke="#c4cec8" stroke-dasharray="3 4" /><text x="51" y="{{ tick.y+4 }}" text-anchor="end" font-size="12" fill="currentColor">{{ tick.label }}</text>
+                        {% endfor %}
+                        {% for tick in chart.x_ticks %}
+                            <text x="{{ tick.x }}" y="250" text-anchor="middle" font-size="12" fill="currentColor">{{ tick.label }}</text>
+                        {% endfor %}
+                        {% for marker in chart.markers %}
+                            <line x1="{{ marker.x }}" y1="35" x2="{{ marker.x }}" y2="220" stroke="#aeb9b0" stroke-dasharray="2 5"><title>{{ marker.date }} · {{ marker.label }}</title></line>
+                        {% endfor %}
+                        {% for line in chart.series %}
+                            <polyline id="{{ chart.key }}-series-{{ loop.index0 }}" points="{{ line.points }}" fill="none" stroke="{{ line.color }}" stroke-width="2.5" stroke-dasharray="{{ line.dash }}"><title>{{ line.name }}</title></polyline>
+                        {% endfor %}
+                    </svg>
+                </div>
+                <p class="chart-reading" role="status" aria-live="polite">
+                    Hover, tap, or focus the chart and use the arrow keys to inspect values.
+                </p>
+                <script type="application/json" class="chart-model">{{ chart|tojson }}</script>
                 <div class="chart-legend">
                     {% for line in chart.series %}
                         <label>

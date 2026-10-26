@@ -292,6 +292,12 @@ def print_integrated_finance(
         alerts = list(detect(transactions, today).values())
         left(printer, 'Amex interest alerts unavailable; check app.')
     receipt_warning(printer, left, line, alerts)
+    from finance.amex_balance import assess as assess_balance, print_status as balance_warning
+    try:
+        balance_warning(printer,left,line,assess_balance())
+    except (ValueError,OSError):
+        left(printer,'Amex balance alerts unavailable; check app.')
+
 
     # ==========================================
     # BALANCES

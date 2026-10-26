@@ -1,0 +1,32 @@
+<section id="amex-balance-settings" class="helper" data-private>
+    <h2>Amex balance alerts</h2>
+    <p>
+        Flag any outstanding Amex balance, with a stronger warning when it exceeds your chosen amount. Uses the last checked card balance, not a forecast or unused credit limit.
+    </p>
+    <p>
+        <strong>{{ amex_balance_alert.title }}</strong> · {{ amex_balance_alert.amount_text }} · checked {{ amex_balance_alert.checked }}
+    </p>
+    <form method="post" action="{{ url_for('save_amex_balance_settings') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>
+            <input type="checkbox"
+                   name="enabled"
+                   {% if amex_balance_alert.enabled %}checked{% endif %}>
+            Show outstanding-balance flags on the website and receipts
+        </label>
+        <label>
+            Stronger warning above (£)
+            <input type="number"
+                   name="threshold"
+                   min="0.01"
+                   max="10000000"
+                   step="0.01"
+                   value="{{ amex_balance_alert.threshold }}"
+                   required>
+        </label>
+        <button>Save Amex balance alerts</button>
+    </form>
+    <p>
+        An outstanding balance may include spending not yet due. It is not automatically overdue or interest-bearing. Statement and detected-interest warnings remain separate; simulated repayments do not clear the live alert.
+    </p>
+</section>
