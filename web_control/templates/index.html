@@ -836,7 +836,7 @@
                                     </div>
 
 
-                                    {% if item.remaining_balance is not none %}
+                                    {% if item.remaining_balance is defined and item.remaining_balance is not none %}
 
                                         <div class="balance">
 

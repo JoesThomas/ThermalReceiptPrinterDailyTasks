@@ -54,11 +54,21 @@ def build(base, inputs, forecast, plan, today):
             balances.append(account)
         if not inputs['use_accounts']:
             balances.append(dict(name='Savings (unassigned)', balance=point['savings_end']))
-        snapshots.append(dict(date=point['date'], funded=point['funded'], accounts=balances))
+        total_bank = hsbc + monzo
+        committed = point.get('committed', ZERO)
+        reserve = base.get('reserve_details') or {}
+        target = base['buffer'] - reserve.get('gap', ZERO)
+        kept = min(max(ZERO, total_bank-committed), target)
+        snapshots.append(dict(date=point['date'], funded=point['funded'], accounts=balances,
+                              bank_total=rounded(total_bank), committed=rounded(committed),
+                              reserves=rounded(kept), unallocated=rounded(max(ZERO,total_bank-committed-kept))))
     return snapshots
 
 
 def render(page, forecast):
+    if forecast.get('print_monthly_balances') is False:
+        page.text('Monthly balances and workings are available on the website.')
+        return
     interest_note_shown = False
     for month in forecast.get('monthly_balances', []):
         page.section(f"BALANCES AT {month['date']:%B %Y} END".upper())
@@ -70,6 +80,9 @@ def render(page, forecast):
             page.amount(row['name'], row['balance'])
             if 'interest_month' in row:
                 page.amount('  Interest this month', row['interest_month'])
+        page.amount('Bank money for upcoming costs', month.get('committed', ZERO))
+        page.amount('Bank reserves held', month.get('reserves', ZERO))
+        page.amount('Unallocated bank surplus', month.get('unallocated', ZERO))
         if not month['funded']:
             page.text('Funding warning: hypothetical balances after a protected balance breach.')
 
@@ -77,6 +90,7 @@ def render(page, forecast):
 def snapshot(forecast):
     return [dict(date=row['date'].isoformat(), title=f"Balances at {row['date']:%B %Y} end",
                  funded=row['funded'],
+                 **{key: format_pounds(row.get(key, ZERO)) for key in ('bank_total','committed','reserves','unallocated')},
                  accounts=[dict(name=a['name'], balance=format_pounds(a['balance']),
                                 **({key: format_pounds(a[key]) for key in ('interest_month', 'interest_to_date')}
                                    if 'interest_month' in a else {})) for a in row['accounts']])

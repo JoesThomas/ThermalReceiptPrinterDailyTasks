@@ -17,7 +17,7 @@ class MinimumBankTests(TestCase):
             f=result['forecast']; first=f['payments'][0]
             self.assertEqual(first['extra'],D(extra))
             self.assertAlmostEqual(f['minimum_bank'],D(minimum),places=8)
-            self.assertEqual(first['reserve_targets']['hsbc'],D(minimum))
+            self.assertEqual(first['reserve_targets']['hsbc']+first['reserve_targets']['monzo'],D(minimum))
             self.assertEqual(first['savings'],0)
             self.assertIsNone(f['run_out'])
             self.assertEqual(result['projection']['buffer'],1900)
@@ -84,3 +84,21 @@ class CalendarMonthBalanceTests(TestCase):
         bank=balances['HSBC']+balances['Monzo']
         self.assertAlmostEqual(bank,f['end_cash']+result['projection']['buffer']-f['reserved_total'],places=2)
         self.assertGreater(f['savings_interest'],0)
+
+    def test_monthly_monzo_is_funded_balance_not_a_split_of_bill_money(self):
+        source=base(card='600')
+        result=build(source,values(months='1',minimum_bank_balance='500'),TODAY)
+        first=result['forecast']['payments'][0]
+        month=result['forecast']['monthly_balances'][0]
+        monzo=next(a['balance'] for a in month['accounts'] if a['name']=='Monzo')
+        self.assertEqual(monzo,first['reserve_targets']['monzo'])
+        self.assertEqual(monzo,source['monzo_balance']+first['reserve_targets']['monzo_transfer'])
+        self.assertLess(monzo,500)
+        self.assertAlmostEqual(month['bank_total'],month['committed']+month['reserves']+month['unallocated'],places=2)
+
+    def test_receipt_monthly_toggle_and_after_debt_budget(self):
+        source=base(card='0',daily=D(50))
+        result=build(source,values(months='1',print_monthly_balances='',after_debt_spending='700'),TODAY)
+        self.assertEqual(result['forecast']['payments'][0]['variable'],700)
+        self.assertTrue(result['forecast']['monthly_balances'])
+        self.assertNotIn('BALANCES AT OCTOBER',receipt(result,TODAY,detail='compact'))

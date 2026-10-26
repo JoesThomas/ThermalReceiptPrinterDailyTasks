@@ -6,6 +6,8 @@ from finance.test_scenarios import snapshot
 from finance.transfer_explanation import explain
 
 LABELS = {
+    "after_debt_spending": "Monthly spending after Amex clears",
+    "print_monthly_balances": "Print all month-end balances",
     "minimum_bank_balance": "Minimum bank balance",
     "limit_spending_when_owed": "Limit spending while owed/overdrawn",
     "debt_spending_cap": "Debt/overdraft spending maximum per month",

@@ -12,7 +12,12 @@ def overview(page, forecast, inputs, detailed=False):
         page.text('No selected plan can be settled early within the available allocation. Normal payments continue.')
     else:
         page.amount('Early settlements over forecast', forecast['early_payoff_total'])
-    for item in entries if detailed else entries[:3]:
+    current=[e for e in entries if e['date']==inputs['start']]
+    future=[e for e in entries if e['date']>inputs['start']]
+    if current:page.text('This payday - included in transfers above:')
+    shown=current+(future if detailed else future[:max(0,3-len(current))])
+    for item in shown:
+        if future and item is future[0]:page.text('Later planned settlements - do not send today:')
         page.amount(f"{item['date']:%d %b %Y} {item['name']}", item['amount'])
         if detailed:
             page.amount('Replaces bills in that period', item['scheduled_replaced'])

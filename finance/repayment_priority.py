@@ -38,8 +38,8 @@ def period_targets(cash_after_costs, policy, moved, cash_added, previous_monzo):
     if not policy:
         return {}
     available = max(ZERO, free_cash(cash_after_costs, policy, moved) + policy.get("minimum", ZERO))
-    hsbc = min(policy['bank'], available)
-    monzo = min(policy['monzo'], max(ZERO, available - hsbc))
+    monzo = min(available, max(previous_monzo, min(policy['monzo'], max(ZERO, available - policy['bank']))))
+    hsbc = min(policy['bank'], max(ZERO, available - monzo))
     return dict(hsbc=hsbc, monzo=monzo, monzo_transfer=max(ZERO, monzo - previous_monzo),
                 cash_transfer=cash_added, cash_pending=max(ZERO, policy['gap'] - moved),
                 pending=max(ZERO, -cash_after_costs), moved=moved)
@@ -48,7 +48,9 @@ def period_targets(cash_after_costs, policy, moved, cash_added, previous_monzo):
 def bank_balances(base, forecast, monzo_target=ZERO):
     total = forecast['end_cash'] + base['buffer'] - forecast['reserved_total']
     policy = base.get('repayment_priority')
-    if policy:
+    if policy and forecast.get('monzo_balance') is not None:
+        monzo = min(forecast['monzo_balance'], max(ZERO, total))
+    elif policy:
         monzo = min(monzo_target, max(ZERO, total - (policy['hard'] - policy.get('minimum', ZERO)) - policy['bank']))
     else:
         monzo = min(monzo_target, max(ZERO, total))

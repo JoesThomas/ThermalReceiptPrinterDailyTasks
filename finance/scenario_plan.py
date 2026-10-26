@@ -92,6 +92,7 @@ def build_validated(
     )
     inputs["isa_limits"] = isa_limits
     forecast = simulate(base, inputs, today)
+    forecast["print_monthly_balances"] = inputs.get("print_monthly_balances", True)
     account_plan = forecast.get("account_plan") or allocate(
         accounts,
         forecast["payments"] if inputs["use_accounts"] else [],

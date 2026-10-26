@@ -39,7 +39,7 @@ def receipt(result, today):
         text(f"{label} around {on:%B %Y}")
         text("Estimated time to target: " + duration(on))
         if extended:
-            text("Beyond selected forecast; same pathway.")
+            pass
 
     section("TEST FINANCE")
     text(
@@ -54,9 +54,9 @@ def receipt(result, today):
         amount("Monthly salary when active", data["salary"] + data["existing"])
         if first["salary"] != data["salary"] + data["existing"]:
             amount("Salary this payday", first["salary"])
-    if first.get('spending_limited'):
-        amount('Debt/overdraft spending ceiling', first['spending_cap'])
-        text('Monthly maximum; food and necessities kept before repayments.')
+    if first.get('spending_limited') or first.get('post_debt_budget'):
+        amount('Everyday spending after Amex' if first.get('post_debt_budget') else 'Debt/overdraft spending ceiling', first['spending_cap'])
+        text('Monthly budget; food and necessities kept before extra transfers.')
     if data["other"]:
         amount("Other monthly income", data["other"])
     if data["lump"]:
@@ -69,6 +69,13 @@ def receipt(result, today):
         text(
             "FUNDING WARNING: this pathway breaches protected reserves. Review costs before making transfers."
         )
+
+    section("SAVINGS OVERVIEW")
+    amount("Starting savings", data['starting_savings'])
+    amount("Planned additions", forecast['savings_end']-data['starting_savings']-forecast.get('savings_interest', Decimal(0)))
+    if forecast.get('savings_interest'):
+        amount("Estimated interest", forecast['savings_interest'])
+    amount("Savings at forecast end", forecast['savings_end'])
 
     from finance.bank_balance_receipt import bank_balances
 
@@ -205,12 +212,15 @@ def receipt(result, today):
             name(row) + ": balance unavailable"
         )
         render_account_interest(page, row)
+        if row.get('interest_rate') is not None and row['type'] in {'savings','cash_isa'} and not row.get('cash_reserve_limit'):
+            text(f"Interest assumption: {row['interest_rate']:.2f}% AER")
     amount("Projected savings total", forecast["savings_end"])
     if forecast.get("savings_interest"):
         amount("Estimated savings interest", forecast["savings_interest"])
         text("Included in savings balances; not a transfer.")
 
     section("PROGRESS TOWARDS GOALS")
+    text("Dates beyond the forecast are estimates using this pathway; long-term estimates use final-year pace.")
     card = base.get("amex") or {}
     if card.get("balance"):
         amount("Amex owed now", card["balance"])
@@ -219,37 +229,24 @@ def receipt(result, today):
         elif forecast["card_end"]:
             text("Amex not cleared in selected forecast.")
     for row in accounts:
-        text(name(row).upper())
-        if row["balance"] is None:
-            text("Record a current balance to estimate progress.")
+        if not row['target']:
             continue
-        amount("Current balance", row["balance"])
-        if row["target"]:
-            amount("Target balance", row["target"])
-            current = min(Decimal(100), row["balance"] / row["target"] * 100)
-            future = min(Decimal(100), row["projected"] / row["target"] * 100)
-            text(f"Progress: {current:.0f}% now -> {future:.0f}% at end")
-        amount("Planned contributions", row["added"])
-        if row.get("estimated_interest"):
-            amount("Estimated interest (before tax)", row["estimated_interest"])
-            text(f"Interest assumption: {row['interest_rate']:.2f}% AER")
-        if row["target"]:
-            reached = row["goal_date"] or row.get("extended_goal_date")
-            if reached == "already":
-                text("Target already reached.")
-            elif reached:
-                target_date(reached, not row["goal_date"])
-            elif row.get("estimated_goal_date"):
-                text("Not reached within selected forecast.")
-                target_date(row["estimated_goal_date"], label="Long-term estimate:")
-                text("Uses final-year contribution pace and recorded interest; not a funded forecast.")
-            else:
-                text(
-                    f"Target not reached within the {forecast.get('extended_goal_months', data['months'])}-month planning period."
-                    if data["mode"] != "lump"
-                    else "Target not reached with this one-off lump sum."
-                )
-        text("")
+        text(name(row).upper())
+        if row['balance'] is None:
+            text('Record a current balance to estimate progress.')
+            continue
+        text(f"{format_pounds(row['balance'])} now -> {format_pounds(row['projected'])} at end")
+        text(f"Goal {format_pounds(row['target'])}; {min(Decimal(100), row['balance']/row['target']*100):.0f}% -> {min(Decimal(100), row['projected']/row['target']*100):.0f}%")
+        reached = row['goal_date'] or row.get('extended_goal_date')
+        if reached=='already':
+            text('Target already reached.')
+        elif reached:
+            text(f"Goal around {reached:%b %Y} ({duration(reached)})." + (' Beyond selected forecast.' if not row['goal_date'] else ''))
+        elif row.get('estimated_goal_date'):
+            text(f"Long-term estimate around {row['estimated_goal_date']:%b %Y} ({duration(row['estimated_goal_date'])}); beyond selected forecast.")
+        else:
+            text(f"Target not reached within the {forecast.get('extended_goal_months', data['months'])}-month planning period.")
+        text('')
     if data["goal"]:
         text("OVERALL SAVINGS GOAL")
         amount("Target savings balance", data["goal"])

@@ -18,6 +18,20 @@
                     </dd>
                 {% endfor %}
             </dl>
+            <dl>
+                <dt>Bank money for upcoming costs</dt>
+                <dd>
+                    {{ month.committed }}
+                </dd>
+                <dt>Bank reserves held</dt>
+                <dd>
+                    {{ month.reserves }}
+                </dd>
+                <dt>Unallocated bank surplus</dt>
+                <dd>
+                    {{ month.unallocated }}
+                </dd>
+            </dl>
             {% if not month.funded %}<p class="warning">Hypothetical balances after a protected balance breach.</p>{% endif %}
         {% endfor %}
     </details>
