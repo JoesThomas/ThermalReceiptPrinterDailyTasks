@@ -741,6 +741,17 @@ process.on('exit', () => child.kill());
     }
     checks++;
   }
+  await page.goto('http://receipt.test/__fixture_villa_calendar');
+  assert.equal(await page.getByRole('heading',{name:'Bournemouth vs Aston Villa',exact:true}).count(),1);
+  assert.equal(await page.getByRole('heading',{name:'Aston Villa v Fulham (home)',exact:true}).count(),1);
+  assert.match(await page.locator('main').innerText(),/My saved location/);
+  assert.equal(await page.getByRole('heading',{name:/Aston Villa v Bournemouth/}).count(),0);
+  for (const width of [390,1280]) {
+    await page.setViewportSize({width,height:900});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,'Villa calendar overflows');
+  }
+  const calendarA11y = await require('./browser_accessibility.cjs')(page,'/calendar-map');
+  if(calendarA11y) accessibilityFailures.push(calendarA11y);
   await page.goto('http://receipt.test/bins');
   await page.keyboard.press('Tab');
   assert.equal(await page.locator('.skip-link').evaluate(node => node === document.activeElement), true);

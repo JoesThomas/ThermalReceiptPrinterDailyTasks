@@ -1119,14 +1119,14 @@ def get_random_lines(number_of_lines):
 # GOOGLE CALENDAR
 # ============================================================
 
-def get_calendar_events(ical_url, days_ahead=0):
-    from services.source_cache import get
-    from services.calendar_source import collect
-    today = uk_today()
-    if not isinstance(days_ahead, int) or not 0 <= days_ahead <= 31:
+def get_calendar_events(ical_url, days_ahead=0, *, include_villa=None):
+    from services.calendar_agenda import collect
+    if type(days_ahead) is not int or not 0 <= days_ahead <= 31:
         raise ValueError('Calendar range must be 0–31 days')
-    from services.calendar_locations import apply
-    return apply(get('Calendar', f'{ical_url}|{today}|{days_ahead}', lambda: collect(ical_url, today, days_ahead)))
+    if include_villa is None:
+        include_villa = feature_enabled(load_receipt_settings(), 'villa')
+    return collect(ical_url, uk_today(), days_ahead, include_villa=include_villa,
+                   api_key=FOOTBALL_DATA_API_KEY)
 
 
 # ============================================================
@@ -4873,6 +4873,7 @@ def run_live_pipeline(
                         printer,
                         villa_match,
 
+                        include_match=not feature_enabled(settings, 'calendar'),
                         include_trains=(
                             feature_enabled(
                                 settings,
@@ -4897,7 +4898,7 @@ def run_live_pipeline(
             except Exception as error:
                 print(
                     "Villa match-day error:",
-                    repr(error),
+                    type(error).__name__,
                 )
 
         # ==========================================
@@ -4917,7 +4918,7 @@ def run_live_pipeline(
                     "Downloading Google Calendar..."
                 )
 
-                upcoming_events = get_calendar_events(CALENDAR_ICAL_URL, days_ahead=3)
+                upcoming_events = get_calendar_events(CALENDAR_ICAL_URL, days_ahead=3, include_villa=feature_enabled(settings, 'villa'))
                 from receipt.freshness import mark
                 from web_control.today_summary import save_calendar
                 save_calendar(upcoming_events)
@@ -4925,6 +4926,8 @@ def run_live_pipeline(
                 if snapshot().get('Calendar', {}).get('status', '').startswith('cached'):
                     left(printer, 'CALENDAR: CACHED DATA')
                 events = [event for event in upcoming_events if event["date"] == today]
+                for warning in snapshot().get('Calendar agenda', {}).get('warnings', []):
+                    left(printer, warning)
 
             except Exception as error:
                 print(

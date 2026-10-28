@@ -634,12 +634,18 @@ def calendar_map():
     try:
         private = json.loads(PROJECT_PASSWORDS_FILE.read_text(encoding="utf-8"))
         ical_url = private.get("calendar", {}).get("ical_url")
-        if not ical_url:
-            raise ValueError("Calendar iCal URL is not configured.")
-        from services.live_pipeline import get_calendar_events
-        events = get_calendar_events(ical_url, days_ahead=7)
+        from services.calendar_agenda import collect
+        from receipt.local_time import uk_today
+        from receipt_settings import feature_enabled
+        events = collect(ical_url, uk_today(), 7,
+                         include_villa=feature_enabled(load_receipt_settings(), 'villa'),
+                         api_key=private.get('football', {}).get('api_key', ''))
         from web_control.today_summary import save_calendar
         save_calendar(events)
+        from receipt.freshness import snapshot
+        warnings = snapshot().get('Calendar agenda', {}).get('warnings', [])
+        if warnings:
+            error = ' '.join(warnings)
         for event in events:
             event["map_url"] = map_embed_url(event.get("location", ""))
             event["map_link"] = map_link_url(event.get("location", ""))

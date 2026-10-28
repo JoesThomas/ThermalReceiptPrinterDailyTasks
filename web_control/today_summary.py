@@ -14,14 +14,14 @@ from storage import read_json_object as read
 
 
 def save_calendar(events):
-    rows = [{**{key: str(row.get(key, '')) for key in ('uid', 'date', 'time', 'title', 'location')},
+    rows = [{**{key: str(row.get(key, '')) for key in ('uid', 'date', 'time', 'title', 'location', 'source', 'fixture_id', 'competition')},
              'start_dt': row['start_dt'].isoformat() if isinstance(row.get('start_dt'), datetime) else row.get('start_dt'),
              'end_dt': row['end_dt'].isoformat() if isinstance(row.get('end_dt'), datetime) else row.get('end_dt'),
              'all_day': bool(row.get('all_day'))} for row in events]
     from receipt.freshness import snapshot
-    check = snapshot().get('Calendar', {})
+    check = snapshot().get('Calendar agenda', snapshot().get('Calendar', {}))
     write_json(CALENDAR, {'checked_at': check.get('source_checked_at') or check.get('checked_at') or datetime.now(timezone.utc).isoformat(),
-                          'status': check.get('status', 'checked'), 'events': rows})
+                          'status': check.get('status', 'checked'), 'warnings': check.get('warnings', []), 'events': rows})
 
 
 def snapshot_changes(pages):
@@ -72,6 +72,7 @@ def dashboard():
         tasks, exercises = [], []
         errors.append('Saved task lists could not be read.')
     calendar = read(CALENDAR)
+    errors.extend(str(w) for w in calendar.get('warnings', []) if isinstance(w, str))
     deliveries = [r for r in delivery_state.checklist() if not r.get('confirmed') and not r.get('dismissed') and r.get('skipped_on') != checklists.today()]
     from receipt.capture import CAPTURE_FILE, LIVE_PREVIEW_FILE, load_capture
     checks = {}

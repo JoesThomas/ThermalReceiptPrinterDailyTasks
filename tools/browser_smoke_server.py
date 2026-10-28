@@ -100,6 +100,26 @@ def fixture_amex_balance():
     return 'ok'
 
 
+@web.app.get('/__fixture_villa_calendar')
+def fixture_villa_calendar():
+    from datetime import datetime, time, timedelta
+    from receipt.local_time import uk_today
+    from services.villa_fixtures import UK
+    from services import calendar_source, villa_fixtures
+    today = uk_today()
+    kickoff = datetime.combine(today, time(19,45), UK)
+    rows = [dict(id='example-cup',kickoff=kickoff,home_team='Bournemouth',away_team='Aston Villa',
+                 home_code='BOU',away_code='AVL',is_home=False,venue='Vitality Stadium',competition='English League Cup'),
+            dict(id='example-home',kickoff=kickoff+timedelta(days=3),home_team='Aston Villa',away_team='Fulham',
+                 home_code='AVL',away_code='FUL',is_home=True,venue='Villa Park',competition='Premier League')]
+    personal = [dict(uid='existing-google-event',date=today,time='19:00',title='Bournemouth vs Aston Villa',
+                     location='My saved location',start_dt=kickoff,end_dt=kickoff,all_day=False)]
+    patch.object(villa_fixtures,'collect_club',return_value=rows).start()
+    patch.object(calendar_source,'collect',return_value=personal).start()
+    write_json(copy/'passwords.json',dict(calendar={'ical_url':'https://calendar.example.test/fixture.ics'}))
+    return redirect('/calendar-map')
+
+
 @web.app.get('/__fixture_instalment_plan')
 def fixture_instalment_plan():
     import json

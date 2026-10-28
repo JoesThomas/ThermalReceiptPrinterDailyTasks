@@ -22,60 +22,62 @@
                 <p class="eyebrow">Next eight days</p>
                 <h1>Calendar events</h1>
                 <p class="muted">
-                    Events are read from your iCal feed. Change dates and times in your calendar. You can correct the local map and receipt location below without changing the feed.
+                    Events combine your iCal feed with home and away Villa fixtures when Villa information is enabled. Existing calendar matches appear once. Villa fixtures update from the club schedule; other events are edited in your calendar. You can correct the local map and receipt location below without changing the feed.
                 </p>
             </header>
             {% if error %}
                 <section class="helper">
                     {{ error }}
                 </section>
-            {% else %}
-                {% for event in events %}
-                    <section>
-                        <h2>{{ event.title }}</h2>
+            {% endif %}
+            {% for event in events %}
+                <section>
+                    <h2>{{ event.title }}</h2>
+                    <details>
+                        <summary>Correct location{{ ' (local override)' if event.location_corrected else '' }}</summary>
+                        <form method="post" action="{{ url_for('calendar_location') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="id" value="{{ event.correction_id }}">
+                            <label>
+                                Local location
+                                <input name="location" maxlength="500" value="{{ event.location }}">
+                            </label>
+                            <button>Save local location</button>
+                            <button name="reset" value="1">Use calendar feed location</button>
+                        </form>
+                    </details>
+                    <p>
+                        {{ event.date.strftime('%a %d %b') }} · {{ event.time }}
+                        {% if event.location %}· {{ event.location }}{% endif %}
+                    </p>
+                    {% if event.competition %}<p class="muted">{{ event.competition }}</p>{% endif %}
+                    {% if event.map_url %}
                         <details>
-                            <summary>Correct location{{ ' (local override)' if event.location_corrected else '' }}</summary>
-                            <form method="post" action="{{ url_for('calendar_location') }}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <input type="hidden" name="id" value="{{ event.correction_id }}">
-                                <label>
-                                    Local location
-                                    <input name="location" maxlength="500" value="{{ event.location }}">
-                                </label>
-                                <button>Save local location</button>
-                                <button name="reset" value="1">Use calendar feed location</button>
-                            </form>
+                            <summary>Show location on map</summary>
+                            <iframe title="Map of {{ event.location }}"
+                                    loading="lazy"
+                                    referrerpolicy="no-referrer"
+                                    src="{{ event.map_url }}"
+                                    width="100%"
+                                    height="300"
+                                    style="border:0;
+                                           border-radius:12px"
+                                    allowfullscreen></iframe>
+                            <p>
+                                <a href="{{ event.map_link }}" target="_blank" rel="noopener noreferrer">Open map for directions</a>
+                            </p>
                         </details>
-                        <p>
-                            {{ event.date.strftime('%a %d %b') }} · {{ event.time }}
-                            {% if event.location %}· {{ event.location }}{% endif %}
-                        </p>
-                        {% if event.map_url %}
-                            <details>
-                                <summary>Show location on map</summary>
-                                <iframe title="Map of {{ event.location }}"
-                                        loading="lazy"
-                                        referrerpolicy="no-referrer"
-                                        src="{{ event.map_url }}"
-                                        width="100%"
-                                        height="300"
-                                        style="border:0;
-                                               border-radius:12px"
-                                        allowfullscreen></iframe>
-                                <p>
-                                    <a href="{{ event.map_link }}" target="_blank" rel="noopener noreferrer">Open map for directions</a>
-                                </p>
-                            </details>
-                        {% else %}
-                            <p class="muted">No location supplied for this event.</p>
-                        {% endif %}
-                    </section>
-                {% else %}
+                    {% else %}
+                        <p class="muted">No location supplied for this event.</p>
+                    {% endif %}
+                </section>
+            {% else %}
+                {% if not error %}
                     <section>
                         <p>No events in the next eight days.</p>
                     </section>
-                {% endfor %}
-            {% endif %}
+                {% endif %}
+            {% endfor %}
         </main>
     </body>
 </html>

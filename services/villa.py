@@ -18,123 +18,10 @@ ASTON_CRS = "AST"
 MATCH_TRAIN_WINDOW_HOURS = 2
 
 
-def get_aston_villa_match_today(
-    football_api_key,
-):
-    if not football_api_key:
-        return None
-
-    london = ZoneInfo(
-        "Europe/London"
-    )
-
-    today = datetime.now(
-        london
-    ).date()
-
-    from services.api_health import observed_call
-    response = observed_call("Football API", get,
-        (
-            "https://api.football-data.org/"
-            f"v4/teams/{ASTON_VILLA_TEAM_ID}/"
-            "matches"
-        ),
-        headers={
-            "X-Auth-Token":
-                football_api_key,
-        },
-        params={
-            "dateFrom":
-                today.isoformat(),
-
-            "dateTo":
-                today.isoformat(),
-        },
-        timeout=15,
-    )
-
-    response.raise_for_status()
-
-    for match in (
-        response.json()
-        .get("matches", [])
-    ):
-
-        utc_date = match.get(
-            "utcDate"
-        )
-
-        if not utc_date:
-            continue
-
-        try:
-            kickoff = (
-                datetime
-                .fromisoformat(
-                    str(
-                        utc_date
-                    ).replace(
-                        "Z",
-                        "+00:00",
-                    )
-                )
-                .astimezone(
-                    london
-                )
-            )
-
-        except (
-            TypeError,
-            ValueError,
-        ):
-            continue
-
-        if kickoff.date() != today:
-            continue
-
-        home = (
-            match.get("homeTeam")
-            or {}
-        )
-
-        away = (
-            match.get("awayTeam")
-            or {}
-        )
-
-        competition = (
-            match.get("competition")
-            or {}
-        )
-
-        return {
-            "kickoff": kickoff,
-
-            "home_team":
-                home.get(
-                    "name",
-                    "",
-                ),
-
-            "away_team":
-                away.get(
-                    "name",
-                    "",
-                ),
-
-            "competition":
-                competition.get(
-                    "name",
-                    "",
-                ),
-
-            "is_home": (
-                home.get("id")
-                == ASTON_VILLA_TEAM_ID
-            ),
-        }
-
-    return None
+def get_aston_villa_match_today(football_api_key):
+    from services.villa_fixtures import matches
+    fixtures = matches(football_api_key)
+    return fixtures[0] if fixtures else None
 
 
 from services.rail_time import rail_time as _rail_time
@@ -319,6 +206,7 @@ def print_villa_matchday(
     match,
     *,
     include_trains=False,
+    include_match=True,
     transport_app_id="",
     transport_app_key="",
     left,
@@ -327,15 +215,13 @@ def print_villa_matchday(
     safe_text,
 ):
     """
-    Print today's Aston Villa home match and, optionally,
-    Bournville -> Aston trains before kick-off.
+    Print a home/away fixture, or just home travel when the calendar shows it.
     """
 
     if not match:
         return
 
-    # Only print the match-day section for Villa home games.
-    if not match.get("is_home", False):
+    if not include_match and not (include_trains and match.get("is_home")):
         return
 
     kickoff = match.get("kickoff")
@@ -343,85 +229,89 @@ def print_villa_matchday(
     if not isinstance(kickoff, datetime):
         return
 
-    # ==========================================
-    # MATCH
-    # ==========================================
+    if include_match:
+        # ==========================================
+        # MATCH
+        # ==========================================
 
-    line(
-        printer,
-        "=",
-    )
-
-    printer.set(
-        bold=True,
-    )
-
-    centre(
-        printer,
-        "MATCH DAY",
-    )
-
-    printer.set(
-        bold=False,
-    )
-
-    line(
-        printer,
-        "-",
-    )
-
-    centre(
-        printer,
-        "ASTON VILLA",
-    )
-
-    centre(
-        printer,
-        "v",
-    )
-
-    opposition = safe_text(
-        match.get(
-            "away_team",
-            "OPPOSITION",
+        line(
+            printer,
+            "=",
         )
-    ).upper()
 
-    centre(
-        printer,
-        opposition,
-    )
-
-    competition = safe_text(
-        match.get(
-            "competition",
-            "",
+        printer.set(
+            bold=True,
         )
-    ).upper()
-
-    if competition:
-        printer.text("\n")
 
         centre(
             printer,
-            competition,
+            "MATCH DAY",
         )
 
-    printer.text("\n")
+        printer.set(
+            bold=False,
+        )
 
-    left(
-        printer,
-        (
-            f"{'KICK OFF':<32}"
-            f"{kickoff.strftime('%H:%M'):>10}"
-        ),
-    )
+        line(
+            printer,
+            "-",
+        )
+
+        centre(
+            printer,
+            "ASTON VILLA",
+        )
+
+        centre(
+            printer,
+            "v",
+        )
+
+        if not match.get("is_home"):
+            centre(printer, "AWAY")
+
+        opposition = safe_text(
+            match.get(
+                "away_team" if match.get("is_home") else "home_team",
+                "OPPOSITION",
+            )
+        ).upper()
+
+        centre(
+            printer,
+            opposition,
+        )
+
+        competition = safe_text(
+            match.get(
+                "competition",
+                "",
+            )
+        ).upper()
+
+        if competition:
+            printer.text("\n")
+
+            centre(
+                printer,
+                competition,
+            )
+
+        printer.text("\n")
+
+        left(
+            printer,
+            (
+                f"{'KICK OFF':<32}"
+                f"{kickoff.strftime('%H:%M'):>10}"
+            ),
+        )
 
     # ==========================================
     # TRAINS
     # ==========================================
 
-    if include_trains:
+    if include_trains and match.get("is_home"):
 
         failed = False
         try:
