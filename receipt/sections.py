@@ -62,5 +62,8 @@ def print_calendar(printer, events, *, print_line, left, print_wrapped):
             print_wrapped(printer, f"LOCATION: {location}", width=COLUMNS)
 
 
+        if event.get("competition"):
+            print_wrapped(printer, str(event["competition"]), width=COLUMNS)
+
         for note in event.get("receipt_notes", []):
             print_wrapped(printer, str(note), width=COLUMNS)
