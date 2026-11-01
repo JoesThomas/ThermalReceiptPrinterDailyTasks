@@ -1,6 +1,7 @@
 /* Accessibility checks use only the same synthetic pages as browser form tests. */
 module.exports = async (page, path) => {
-  await page.addScriptTag({content:require('axe-core').source});
+  // DevTools evaluation allows auditing pages that correctly forbid inline script tags.
+  await page.evaluate(require('axe-core').source);
   const results = await page.evaluate(async () => window.axe.run(document, {
     runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}
   }));

@@ -100,6 +100,29 @@ def fixture_amex_balance():
     return 'ok'
 
 
+@web.app.get('/__fixture_smart_device')
+def fixture_smart_device():
+    from smart_home import devices
+    camera = {'active':True}
+    def run(row,action='status',value=None):
+        if row['kind']=='yale_alarm':
+            auth={'access':'fixture-yale-access-token','step':''} if row.get('yale_auth',{}).get('access') or action=='yale_verify' else {'step':'fixture-yale-step-token'}
+            stage='verify' if not auth.get('access') else 'connected' if row.get('alarm_id') else 'choose'
+            return dict(model='Yale Smart Alarm fixture',mac='FIXTURE-SERIAL' if stage=='connected' else '',
+                        fingerprint='b'*64 if stage=='connected' else '',identity_label='Hub serial',yale_stage=stage,
+                        readings=[dict(id='alarm_state',label='Alarm area',value='Armed away',unit='')] if stage=='connected' else [],
+                        controls=[dict(action='alarm_arm_away',label='Arm away',confirmation='ARM AWAY',alarm=True)] if stage=='connected' else [],
+                        sensors=[dict(id='c'*64,name='Front door fixture',state='open',label='Door/window open',flags=[]),dict(id='d'*64,name='Hall motion fixture',state='unknown',label='Trigger status unavailable',flags=[]) ] if stage=='connected' else [],sensor_warning='',
+                        choices=[dict(alarm_id='alarm-fixture',area_id='area-fixture',label='Fixture alarm area')],_yale_auth=auth)
+        if action == 'privacy_on':camera['active']=False
+        if action == 'privacy_off':camera['active']=True
+        return dict(model='C212 fixture',mac='AA:BB:CC:DD:EE:FF',fingerprint='a'*64,
+                    readings=[dict(id='state',label='State',value=camera['active'],unit='')],
+                    controls=[dict(action='privacy_on',label='Enable privacy'),dict(action='privacy_off',label='Disable privacy')])
+    patch.object(devices,'run',side_effect=run).start()
+    return 'Fixture ready'
+
+
 @web.app.get('/__fixture_villa_calendar')
 def fixture_villa_calendar():
     from datetime import datetime, time, timedelta
@@ -230,7 +253,7 @@ if '--stdio' in sys.argv:
             with contextlib.redirect_stdout(sys.stderr):
                 response = client.open(request['path'], method=request['method'],
                                        data=base64.b64decode(request['body_base64']) if 'body_base64' in request else request.get('body', ''), headers=request.get('headers', {}),
-                                       base_url='http://receipt.test')
+                                       base_url='https://receipt.test' if request.get('secure') is True else 'http://receipt.test')
             print(json.dumps({'status': response.status_code, 'headers': dict(response.headers),
                               'body': base64.b64encode(response.data).decode()}), flush=True)
 else:

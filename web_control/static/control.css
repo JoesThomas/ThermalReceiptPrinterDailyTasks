@@ -145,3 +145,38 @@ dd code { overflow-wrap: anywhere; }
 .instalment-record{border-top:1px solid var(--line,#c4cec8);padding-top:1rem;margin-top:1rem;}
 .instalment-settle-form{display:grid;gap:.6rem;margin-bottom:1rem;}
 .instalment-settle-form button{justify-self:start;}
+
+.smart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:1rem;}
+.smart-command{border-top:1px solid var(--line,#c4cec8);padding-top:.7rem;margin-top:.7rem;}
+.smart-secret{overflow-wrap:anywhere;user-select:all;}
+#smart-home-private code{overflow-wrap:anywhere;}
+
+.smart-plan-panel{margin-top:1rem;min-width:0;}
+.smart-floor{margin:1rem 0;}
+.smart-house-plan{display:block;width:100%;height:auto;max-height:520px;background:#f5f7fa;border:1px solid #b5c1ce;border-radius:8px;}
+.smart-room{fill:#e8eef4;stroke:#54677c;stroke-width:3;}
+.smart-room-label{font-size:21px;fill:#213345;}
+.smart-sensor circle{fill:#687887;stroke:#fff;stroke-width:3;}
+.smart-sensor-symbol{text-anchor:middle;font-size:22px;font-weight:bold;fill:#fff;}
+.smart-sensor-name{text-anchor:middle;font-size:19px;fill:#172737;}
+.smart-sensor-triggered circle{fill:#ad1725;stroke:#650b14;stroke-width:5;}
+.smart-sensor-open circle,.smart-sensor-motion circle{fill:#805700;}
+.smart-sensor-closed circle{fill:#206446;}
+.smart-sensor-tamper circle{fill:#783276;}
+.smart-sensor-fault circle{fill:#805700;}
+.smart-sensor-offline circle{fill:#4d4d4d;stroke-dasharray:4 3;}
+.smart-report-triggered{font-weight:bold;border-left:5px solid #ad1725;}
+.smart-map-legend{font-size:.9rem;line-height:1.6;}
+.smart-sensor-list{max-width:100%;overflow:auto;}
+.smart-layout-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:.7rem;border-top:1px solid #b5c1ce;padding-top:1rem;margin-top:1rem;}
+.smart-layout-form h4{grid-column:1/-1;}
+
+.smart-grid{align-items:start;}
+.smart-alarm-card{grid-column:1/-1;}
+#smart-home-private form{display:grid;gap:.7rem;}
+#smart-home-private form label{display:grid;gap:.35rem;min-width:0;}
+#smart-home-private form label:has(input[type=checkbox]){display:flex;align-items:center;gap:.6rem;}
+#smart-home-private form input:not([type=checkbox]):not([type=hidden]),#smart-home-private form select{width:100%;box-sizing:border-box;}
+#smart-home-private form button{justify-self:start;max-width:100%;}
+#smart-home-private .smart-layout-form{display:grid;}
+#smart-home-private .smart-command{max-width:500px;}

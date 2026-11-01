@@ -56,7 +56,7 @@ jobs:
 
   mac-installation:
     timeout-minutes: 10
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -70,3 +70,16 @@ jobs:
       - name: Verify release pins and offline installation checks
         if: inputs.requirements_file != 'requirements-dev.txt'
         run: python tools/pi_acceptance.py --offline
+
+  smart-home-optional:
+    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-dev.lock -r requirements-smart-home.lock
+      - run: python -c "from kasa import Credentials, Discover; from kasa.feature import Feature; import smart_home.worker"
+      - run: python -m unittest discover -s tests -p test_smart_home.py -v
+      - run: python -m unittest discover -s tests -p test_yale_smart_home.py -v

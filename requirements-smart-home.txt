@@ -1,0 +1,3 @@
+# Optional direct Tapo/Kasa controls. Core application still works without this.
+-c requirements.lock
+python-kasa==0.12.0

@@ -1435,5 +1435,8 @@ register_amex_balance(app, login_required)
 from web_control.instalment_settlement import register as register_instalment_settlement
 register_instalment_settlement(app, login_required, lambda: SUBSCRIPTIONS_FILE)
 
+from web_control.smart_home import register as register_smart_home
+register_smart_home(app, login_required, lambda password: check_password_hash(load_password_hash(), password))
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)
