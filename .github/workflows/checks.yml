@@ -56,7 +56,7 @@ jobs:
 
   mac-installation:
     timeout-minutes: 10
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
