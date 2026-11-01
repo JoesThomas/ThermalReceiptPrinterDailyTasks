@@ -1,0 +1,244 @@
+{% macro protected_fields(action) %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden"
+           name="ticket"
+           value="{{ smart_ticket(action,device.id) }}">
+{% endmacro %}
+<section class="smart-plan-panel" aria-label="{{ device.name }} house layout">
+    <h3>House layout and sensors</h3>
+    <p>
+        Arrange your rooms, then place the sensors reported by Yale. This is your local diagram; it does not change the alarm's areas or sensor configuration.
+    </p>
+    <p class="muted">
+        Last requested snapshot: {{ device.view.checked_at if device.view else 'not checked' }}. Use the status button to refresh; this is not a continuous alarm monitor.
+    </p>
+    {% if device.view and device.view.sensor_warning %}
+        <p class="flash" role="status">{{ device.view.sensor_warning }}</p>
+    {% endif %}
+    {% for floor in device.plan.floors %}
+        <figure class="smart-floor">
+            <figcaption>
+                <strong>{{ floor.name }}</strong>
+            </figcaption>
+            <svg viewBox="0 0 1040 640"
+                 class="smart-house-plan"
+                 role="img"
+                 aria-label="{{ floor.name }} rooms and mapped sensor states; full details in the sensor list">
+                <title>{{ floor.name }} · {{ device.name }}. Sensor status is also shown as text below.</title>
+                {% for room in floor.rooms %}
+                    <rect x="{{ room.sx }}" y="{{ room.sy }}" width="{{ room.sw }}" height="{{ room.sh }}" rx="5" class="smart-room" />
+                    <text x="{{ room.label_x }}" y="{{ room.label_y }}" class="smart-room-label">{{ room.name|truncate(24,true,'…') }}</text>
+                {% endfor %}
+                {% for point in floor.markers %}
+                    <g class="smart-sensor smart-sensor-{{ point.state }}">
+                    <title>{{ point.name }} · {{ point.label }}
+                        {% for flag in point.flags %}· {{ flag }}{% endfor %}
+                    </title>
+                    <circle cx="{{ point.cx }}" cy="{{ point.cy }}" r="17" />
+                    <text x="{{ point.cx }}" y="{{ point.cy+6 }}" class="smart-sensor-symbol">{{ point.symbol }}</text>
+                    <text x="{{ point.cx }}" y="{{ point.cy+39 }}" class="smart-sensor-name">{{ point.name|truncate(20,true,'…') }}</text>
+                    </g>
+                {% endfor %}
+            </svg>
+        </figure>
+    {% else %}
+        <p class="helper">No rooms added yet. Create the layout below; the app will not guess your house layout.</p>
+    {% endfor %}
+    <p class="smart-map-legend">
+        ! Alarm trigger reported · O Door/window open · M Motion reported · C Closed/no motion reported · T Tamper · F Fault · X Offline · ? Trigger status unavailable
+    </p>
+    {% if device.view and device.view.sensors %}
+        <div class="smart-sensor-list"
+             role="region"
+             tabindex="0"
+             aria-label="Yale sensor states">
+            <table>
+                <caption>Latest Yale sensor report</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Sensor</th>
+                        <th scope="col">Reported state</th>
+                        <th scope="col">Notes</th>
+                        <th scope="col">Placed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sensor in device.view.sensors %}
+                        <tr class="smart-report-{{ sensor.state }}">
+                            <th scope="row">{{ sensor.name }}</th>
+                            <td>{{ sensor.label }}</td>
+                            <td>{{ sensor.flags|join(' · ') }}</td>
+                            <td>{{ 'Yes' if sensor.id in device.plan.positions else 'Not mapped' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+    <details>
+        <summary>Edit private house layout</summary>
+        <p>
+            Positions and sizes are percentages of the drawing. Use the floor name to group rooms; up to four floors and 30 rooms. Rooms must fit within the drawing.
+        </p>
+        {% for room in device.plan.rooms %}
+            <form method="post"
+                  action="{{ url_for('smart_home_layout_room',identifier=device.id) }}"
+                  class="smart-layout-form">
+                {{ protected_fields('smart_home_layout_room') }}
+                <input type="hidden" name="room_id" value="{{ room.id }}">
+                <label>
+                    Room name
+                    <input name="name" maxlength="60" value="{{ room.name }}" required>
+                </label>
+                <label>
+                    Floor
+                    <input name="floor" maxlength="32" value="{{ room.floor }}" required>
+                </label>
+                <label>
+                    Left (%)
+                    <input type="number"
+                           name="x"
+                           min="0"
+                           max="95"
+                           step="0.1"
+                           value="{{ room.x }}"
+                           required>
+                </label>
+                <label>
+                    Top (%)
+                    <input type="number"
+                           name="y"
+                           min="0"
+                           max="95"
+                           step="0.1"
+                           value="{{ room.y }}"
+                           required>
+                </label>
+                <label>
+                    Width (%)
+                    <input type="number"
+                           name="w"
+                           min="5"
+                           max="100"
+                           step="0.1"
+                           value="{{ room.w }}"
+                           required>
+                </label>
+                <label>
+                    Height (%)
+                    <input type="number"
+                           name="h"
+                           min="5"
+                           max="100"
+                           step="0.1"
+                           value="{{ room.h }}"
+                           required>
+                </label>
+                <button>Save {{ room.name }}</button>
+                <button name="remove" value="on" formnovalidate>Remove {{ room.name }} and its markers</button>
+            </form>
+        {% endfor %}
+        <form method="post"
+              action="{{ url_for('smart_home_layout_room',identifier=device.id) }}"
+              class="smart-layout-form">
+            <h4>Add room</h4>
+            {{ protected_fields('smart_home_layout_room') }}
+            <label>
+                Room name
+                <input name="name" maxlength="60" required>
+            </label>
+            <label>
+                Floor
+                <input name="floor" maxlength="32" value="Ground floor" required>
+            </label>
+            <label>
+                Left (%)
+                <input type="number" name="x" min="0" max="95" step="0.1" value="5" required>
+            </label>
+            <label>
+                Top (%)
+                <input type="number" name="y" min="0" max="95" step="0.1" value="5" required>
+            </label>
+            <label>
+                Width (%)
+                <input type="number"
+                       name="w"
+                       min="5"
+                       max="100"
+                       step="0.1"
+                       value="40"
+                       required>
+            </label>
+            <label>
+                Height (%)
+                <input type="number"
+                       name="h"
+                       min="5"
+                       max="100"
+                       step="0.1"
+                       value="40"
+                       required>
+            </label>
+            <button>Add room to layout</button>
+        </form>
+        {% if device.plan.rooms and device.view and device.view.sensors %}
+            <form method="post"
+                  action="{{ url_for('smart_home_layout_sensor',identifier=device.id) }}"
+                  class="smart-layout-form">
+                <h4>Place a sensor</h4>
+                {{ protected_fields('smart_home_layout_sensor') }}
+                <label>
+                    Sensor
+                    <select name="sensor_id">
+                        {% for sensor in device.view.sensors %}<option value="{{ sensor.id }}">{{ sensor.name }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label>
+                    Room
+                    <select name="room_id">
+                        {% for room in device.plan.rooms %}
+                            <option value="{{ room.id }}">{{ room.floor }} · {{ room.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    Map label (optional)
+                    <input name="name" maxlength="80">
+                </label>
+                <label>
+                    Left within room (%)
+                    <input type="number"
+                           name="x"
+                           min="0"
+                           max="100"
+                           step="0.1"
+                           value="50"
+                           required>
+                </label>
+                <label>
+                    Top within room (%)
+                    <input type="number"
+                           name="y"
+                           min="0"
+                           max="100"
+                           step="0.1"
+                           value="50"
+                           required>
+                </label>
+                <button>Save sensor position</button>
+            </form>
+        {% else %}
+            <p class="muted">
+                Add a room and check Yale status to place sensors. Missing per-sensor trigger information is shown as unknown.
+            </p>
+        {% endif %}
+        {% for sensor_id,position in device.plan.positions.items() %}
+            <form method="post"
+                  action="{{ url_for('smart_home_layout_sensor',identifier=device.id) }}">
+                {{ protected_fields('smart_home_layout_sensor') }}
+                <input type="hidden" name="sensor_id" value="{{ sensor_id }}">
+                <button name="remove" value="on">Remove {{ position.name }} marker</button>
+            </form>
+        {% endfor %}
+    </details>
+</section>

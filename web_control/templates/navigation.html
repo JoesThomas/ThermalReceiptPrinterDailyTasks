@@ -47,6 +47,9 @@
                 <div class="tools-panel">
                     <div class="tool-group">
                         <h2>Day to day</h2>
+                        {% if smart_home_available|default(false) %}
+                            <a href="{{ url_for('smart_home_index') }}">Smart home<span>Separately locked device controls</span></a>
+                        {% endif %}
                         {% if birthdays_available|default(false) %}
                             <a href="{{ url_for('birthday_list') }}"
                                {% if request.endpoint == 'birthday_list' %}aria-current="page"{% endif %}>Birthdays<span>Dates and reminders</span></a>

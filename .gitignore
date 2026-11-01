@@ -241,3 +241,7 @@ data/document_vault/
 
 data/long_term_plans.json
 data/long_term_plans.lock
+
+# Separately encrypted smart-home credentials and private unlock limits
+data/smart_home/
+receipt-smart-home.encrypted.json

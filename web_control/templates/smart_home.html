@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include "favicon.html" %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Smart home · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+        <script src="{{ url_for('static',filename='smart-home.js') }}" defer></script>
+    </head>
+    <body>
+        {% include "navigation.html" %}
+        <main id="main-content">
+            <header>
+                <p class="eyebrow">Private device controls</p>
+                <h1>Smart home</h1>
+                <p>Direct local connections. This area needs its own unlock and locks after five minutes.</p>
+            </header>
+            {% if smart_error %}<p class="flash" role="alert">{{ smart_error }}</p>{% endif %}
+            {% if smart_session %}
+                <form method="post" action="{{ url_for('smart_home_lock') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button>Lock smart home now</button>
+                </form>
+            {% endif %}
+            <div id="smart-home-private"
+                 {% if smart_session %}data-expires="{{ smart_expires }}"{% endif %}>
+                {% if smart_session and smart_session.setup %}
+                    <section>
+                        <h2>Set up your authenticator</h2>
+                        <p>
+                            Add a time-based account named Receipt Smart Home in your authenticator app. Use SHA-1, six digits and a 30-second period.
+                        </p>
+                        <p>
+                            Enter this setup key manually: <code class="smart-secret">{{ smart_session.seed }}</code>
+                        </p>
+                        <h3>Save these recovery codes privately</h3>
+                        <p>Each code works once. Keep them separately from your encrypted backup. They are shown only during setup.</p>
+                        <ul>
+                            {% for code in smart_session.codes %}
+                                <li>
+                                    <code>{{ code }}</code>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        <form method="post" action="{{ url_for('smart_home_enrol') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <label>
+                                Authenticator code
+                                <input name="code"
+                                       inputmode="numeric"
+                                       pattern="[0-9]{6}"
+                                       maxlength="6"
+                                       autocomplete="one-time-code"
+                                       required>
+                            </label>
+                            <label>
+                                <input type="checkbox" name="saved" required>
+                                I have saved my recovery codes
+                            </label>
+                            <button>Confirm authenticator and create vault</button>
+                        </form>
+                    </section>
+                {% elif smart_session %}
+                    <p class="helper">
+                        Unlocked for this browser for at most five minutes. Status is checked only when you request it. Commands change physical devices; check the selected device before confirming.
+                    </p>
+                    <div class="smart-grid">
+                        {% for device in smart_devices %}
+                            <section class="{{ 'smart-alarm-card' if device.kind=='yale_alarm' else 'smart-device-card' }}">
+                                <h2>{{ device.name }}</h2>
+                                <p>{{ device.kind|capitalize }} · {{ device.host }}</p>
+                                <p>{{ 'Identity saved' if device.paired else 'Not trusted for controls yet' }}</p>
+                                <form method="post"
+                                      action="{{ url_for('smart_home_refresh',identifier=device.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden"
+                                           name="ticket"
+                                           value="{{ smart_ticket('smart_home_refresh',device.id) }}">
+                                    <button>Check {{ device.name }} status</button>
+                                </form>
+                                {% if device.kind=='yale_alarm' %}
+                                    {% include 'smart_home_plan.html' %}
+                                {% endif %}
+                                {% if device.view %}
+                                    <p>
+                                        Checked {{ device.view.checked_at }} · {{ device.view.model }} · {{ device.view.identity_label|default('MAC') }} {{ device.view.mac }}
+                                    </p>
+                                    <dl>
+                                        {% for reading in device.view.readings %}
+                                            <dt>{{ 'Camera active (privacy off)' if device.kind=='camera' and reading.id=='state' else reading.label }}</dt>
+                                            <dd>
+                                                {{ reading.value }} {{ reading.unit }}
+                                            </dd>
+                                        {% endfor %}
+                                    </dl>
+                                    {% if device.kind=='yale_alarm' and device.view.yale_stage=='verify' %}
+                                        <p>
+                                            Yale requires its email verification code. Request it, then enter it here. This is separate from your smart-home authenticator code.
+                                        </p>
+                                        <form method="post"
+                                              action="{{ url_for('smart_home_yale_verify',identifier=device.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden"
+                                                   name="ticket"
+                                                   value="{{ smart_ticket('smart_home_yale_verify',device.id) }}">
+                                            <button>Send Yale verification email</button>
+                                        </form>
+                                        <form method="post"
+                                              action="{{ url_for('smart_home_yale_verify',identifier=device.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden"
+                                                   name="ticket"
+                                                   value="{{ smart_ticket('smart_home_yale_verify',device.id) }}">
+                                            <label>
+                                                Yale email code
+                                                <input name="code"
+                                                       inputmode="numeric"
+                                                       pattern="[0-9]{4,8}"
+                                                       maxlength="8"
+                                                       required
+                                                       autocomplete="one-time-code">
+                                            </label>
+                                            <button>Verify Yale account</button>
+                                        </form>
+                                    {% elif device.kind=='yale_alarm' and device.view.yale_stage=='choose' %}
+                                        <form method="post"
+                                              action="{{ url_for('smart_home_yale_select',identifier=device.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden"
+                                                   name="ticket"
+                                                   value="{{ smart_ticket('smart_home_yale_select',device.id) }}">
+                                            <label>
+                                                Alarm and area
+                                                <select name="selection">
+                                                    {% for choice in device.view.choices %}
+                                                        <option value="{{ choice.alarm_id }}|{{ choice.area_id }}">{{ choice.label }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </label>
+                                            <button>Select this alarm area</button>
+                                        </form>
+                                    {% endif %}
+                                    {% if not device.paired and device.view.fingerprint %}
+                                        <form method="post"
+                                              action="{{ url_for('smart_home_trust',identifier=device.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden"
+                                                   name="ticket"
+                                                   value="{{ smart_ticket('smart_home_trust',device.id) }}">
+                                            <label>
+                                                <input type="checkbox" name="confirm" required>
+                                                The reported model and device identifier match the device I intend to control
+                                            </label>
+                                            <button>Trust {{ device.name }}</button>
+                                        </form>
+                                    {% elif device.paired %}
+                                        {% for control in device.view.controls %}
+                                            <form method="post"
+                                                  class="smart-command"
+                                                  action="{{ url_for('smart_home_control',identifier=device.id) }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <input type="hidden"
+                                                       name="ticket"
+                                                       value="{{ smart_ticket('smart_home_control',device.id) }}">
+                                                <input type="hidden" name="action" value="{{ control.action }}">
+                                                {% if control.minimum is defined %}
+                                                    <label>
+                                                        {{ control.label }}
+                                                        {% if control.action=='target_temperature' %}(°C){% endif %}
+                                                        <input type="number"
+                                                               name="value"
+                                                               min="{{ control.minimum }}"
+                                                               max="{{ control.maximum }}"
+                                                               step="{{ control.step }}"
+                                                               value="{{ control.current }}"
+                                                               required>
+                                                    </label>
+                                                {% endif %}
+                                                {% if control.alarm|default(false) %}
+                                                    <label>
+                                                        Fresh smart-home authenticator or recovery code
+                                                        <input name="alarm_code"
+                                                               maxlength="35"
+                                                               autocomplete="one-time-code"
+                                                               required>
+                                                    </label>
+                                                    <label>
+                                                        Type {{ control.confirmation }} to confirm
+                                                        <input name="command_confirmation"
+                                                               maxlength="16"
+                                                               autocomplete="off"
+                                                               required
+                                                               pattern="{{ control.confirmation }}">
+                                                    </label>
+                                                    <p>Manual command for this area only. No force-arm, sensor bypass or automatic disarming.</p>
+                                                {% endif %}
+                                                <label>
+                                                    <input type="checkbox" name="confirm" required>
+                                                    Confirm {{ control.label|lower }} on {{ device.name }}
+                                                </label>
+                                                <button>{{ control.label }}</button>
+                                            </form>
+                                        {% else %}
+                                            <p class="muted">No supported controls reported by this device.</p>
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endif %}
+                                {% if device.kind=='yale_alarm' %}
+                                    <details>
+                                        <summary>Reconnect Yale account</summary>
+                                        <form method="post"
+                                              action="{{ url_for('smart_home_yale_reconnect',identifier=device.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden"
+                                                   name="ticket"
+                                                   value="{{ smart_ticket('smart_home_yale_reconnect',device.id) }}">
+                                            <label>
+                                                <input type="checkbox" name="confirm" required>
+                                                Clear the saved Yale cloud session
+                                            </label>
+                                            <button>Reconnect Yale</button>
+                                        </form>
+                                    </details>
+                                {% endif %}
+                                <details>
+                                    <summary>Remove this device</summary>
+                                    <form method="post"
+                                          action="{{ url_for('smart_home_remove',identifier=device.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden"
+                                               name="ticket"
+                                               value="{{ smart_ticket('smart_home_remove',device.id) }}">
+                                        <label>
+                                            <input type="checkbox" name="confirm" required>
+                                            Remove the saved credentials for {{ device.name }}
+                                        </label>
+                                        <button>Remove device</button>
+                                    </form>
+                                </details>
+                            </section>
+                        {% else %}
+                            <section>
+                                <h2>No devices connected</h2>
+                                <p>Add a device below, check its status, then verify its identity before enabling controls.</p>
+                            </section>
+                        {% endfor %}
+                    </div>
+                    <section>
+                        <h2>Add a local Tapo/Kasa device</h2>
+                        <p>
+                            Use its fixed private IPv4 address. Credentials are encrypted and never returned in the page. Authentication requirements depend on model and firmware; Tapo control commonly uses the TP-Link account credentials and may require Third-Party Compatibility in Tapo Lab.
+                        </p>
+                        <p>
+                            The C212 is a camera. Temperature controls require a compatible thermostat; cameras do not provide heating control. Camera video, audio and recordings are not exposed by this connector.
+                        </p>
+                        <form method="post"
+                              action="{{ url_for('smart_home_add') }}"
+                              autocomplete="off">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden"
+                                   name="ticket"
+                                   value="{{ smart_ticket('smart_home_add') }}">
+                            <label>
+                                Device name
+                                <input name="name" maxlength="80" required>
+                            </label>
+                            <label>
+                                Category
+                                <select name="kind">
+                                    <option value="camera">Camera</option>
+                                    <option value="plug">Plug or switch</option>
+                                    <option value="light">Light</option>
+                                    <option value="thermostat">Compatible thermostat</option>
+                                    <option value="sensor">Sensor (read only)</option>
+                                </select>
+                            </label>
+                            <label>
+                                Private IPv4 address
+                                <input name="host"
+                                       inputmode="decimal"
+                                       maxlength="15"
+                                       placeholder="192.168.0.50"
+                                       required>
+                            </label>
+                            <label>
+                                Device authentication username
+                                <input name="username" maxlength="256" autocomplete="off" required>
+                            </label>
+                            <label>
+                                Device authentication password
+                                <input type="password"
+                                       name="password"
+                                       maxlength="256"
+                                       autocomplete="new-password"
+                                       required>
+                            </label>
+                            <details>
+                                <summary>Hub child device (optional)</summary>
+                                <label>
+                                    Child device ID
+                                    <input name="child_id" maxlength="128">
+                                </label>
+                                <p>For a supported hub-attached thermostat, sensor or socket. Use its device ID from your existing device setup.</p>
+                            </details>
+                            <button>Save encrypted device</button>
+                        </form>
+                    </section>
+                    <section>
+                        <h2>Add Yale Smart Alarm</h2>
+                        <p>
+                            For the newer Yale Smart Alarm with a Global-region Yale Home account (including the UK). This connects to Yale's cloud over verified HTTPS; it is not a local-only alarm connection. Older Sync/Smart Living hubs use a different service and are not supported by this connector.
+                        </p>
+                        <p>
+                            Account sessions are encrypted with your vault. You may be asked for Yale's email verification code, then to select and verify the alarm area. Every arming/disarming command needs a fresh smart-home authenticator code and a typed confirmation.
+                        </p>
+                        <form method="post"
+                              action="{{ url_for('smart_home_add') }}"
+                              autocomplete="off">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden"
+                                   name="ticket"
+                                   value="{{ smart_ticket('smart_home_add') }}">
+                            <input type="hidden" name="kind" value="yale_alarm">
+                            <label>
+                                Alarm name
+                                <input name="name" maxlength="80" required>
+                            </label>
+                            <label>
+                                Yale Home account email
+                                <input type="email"
+                                       name="username"
+                                       maxlength="256"
+                                       autocomplete="off"
+                                       required>
+                            </label>
+                            <label>
+                                Yale Home account password
+                                <input type="password"
+                                       name="password"
+                                       maxlength="256"
+                                       autocomplete="new-password"
+                                       required>
+                            </label>
+                            <button>Save encrypted Yale connection</button>
+                        </form>
+                    </section>
+                    <section>
+                        <h2>Vault and access</h2>
+                        <form method="post" action="{{ url_for('smart_home_backup') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden"
+                                   name="ticket"
+                                   value="{{ smart_ticket('smart_home_backup') }}">
+                            <button>Download encrypted smart-home backup</button>
+                        </form>
+                        <p>
+                            Routine receipt backups exclude this vault. Keep this encrypted copy, its passphrase and recovery codes safe and separate.
+                        </p>
+                        <details>
+                            <summary>Change smart-home passphrase</summary>
+                            <form method="post" action="{{ url_for('smart_home_passphrase') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden"
+                                       name="ticket"
+                                       value="{{ smart_ticket('smart_home_passphrase') }}">
+                                <label>
+                                    New passphrase
+                                    <input type="password"
+                                           name="passphrase"
+                                           minlength="16"
+                                           maxlength="256"
+                                           autocomplete="new-password"
+                                           required>
+                                </label>
+                                <label>
+                                    Confirm new passphrase
+                                    <input type="password"
+                                           name="confirm"
+                                           minlength="16"
+                                           maxlength="256"
+                                           autocomplete="new-password"
+                                           required>
+                                </label>
+                                <label>
+                                    Fresh authenticator or unused recovery code
+                                    <input name="code" maxlength="35" autocomplete="one-time-code" required>
+                                </label>
+                                <button>Change passphrase and lock all sessions</button>
+                            </form>
+                        </details>
+                        <details>
+                            <summary>Recent smart-home activity</summary>
+                            <ul>
+                                {% for row in smart_audit %}
+                                    <li>{{ row.at }} · {{ row.action }} · {{ row.outcome }}</li>
+                                {% else %}
+                                    <li>No activity recorded.</li>
+                                {% endfor %}
+                            </ul>
+                        </details>
+                    </section>
+                {% elif smart_ready %}
+                    <section>
+                        <h2>Unlock smart home</h2>
+                        <p>
+                            Use the separate smart-home passphrase and a fresh authenticator code. A code already used to unlock cannot be reused; wait for the next one or use a recovery code.
+                        </p>
+                        <form method="post" action="{{ url_for('smart_home_unlock') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <label>
+                                Smart-home passphrase
+                                <input type="password"
+                                       name="passphrase"
+                                       minlength="16"
+                                       maxlength="256"
+                                       autocomplete="current-password"
+                                       required>
+                            </label>
+                            <label>
+                                Authenticator or recovery code
+                                <input name="code" maxlength="35" autocomplete="one-time-code" required>
+                            </label>
+                            <button>Unlock smart home</button>
+                        </form>
+                    </section>
+                {% else %}
+                    <section>
+                        <h2>Create your private smart-home vault</h2>
+                        <p>
+                            Choose a separate passphrase of at least 16 characters and have an authenticator app ready. Device credentials will be encrypted using a key derived from this passphrase; the server does not store a decryption key.
+                        </p>
+                        <form method="post" action="{{ url_for('smart_home_setup') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <label>
+                                Current Receipt Control login password
+                                <input type="password"
+                                       name="web_password"
+                                       autocomplete="current-password"
+                                       required>
+                            </label>
+                            <label>
+                                New smart-home passphrase
+                                <input type="password"
+                                       name="passphrase"
+                                       minlength="16"
+                                       maxlength="256"
+                                       autocomplete="new-password"
+                                       required>
+                            </label>
+                            <label>
+                                Confirm passphrase
+                                <input type="password"
+                                       name="confirm"
+                                       minlength="16"
+                                       maxlength="256"
+                                       autocomplete="new-password"
+                                       required>
+                            </label>
+                            <button>Continue to authenticator setup</button>
+                        </form>
+                    </section>
+                {% endif %}
+            </div>
+        </main>
+    </body>
+</html>

@@ -526,3 +526,12 @@ Test-finance instalment settlements: [early payoff setup and assumptions](docs/e
 Amex-first ordering and the necessities spending ceiling: [forecast allocation rules](docs/amex-first-reserve-goals.md).
 
 Long-term planning: [editable multi-year scenarios, assumptions and privacy](docs/long-term-planning.md).
+
+
+### Private smart-home controls
+
+**More tools → Smart home** provides a separate HTTPS-only, passphrase-and-authenticator
+protected area for compatible local Tapo/Kasa devices and the newer Yale Smart Alarm.
+Yale includes an encrypted room/floor layout with mapped sensor states. See
+[smart-home setup and compatibility](docs/smart-home.md) before connecting devices;
+these optional controls are not included on receipts.
