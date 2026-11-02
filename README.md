@@ -535,3 +535,9 @@ protected area for compatible local Tapo/Kasa devices and the newer Yale Smart A
 Yale includes an encrypted room/floor layout with mapped sensor states. See
 [smart-home setup and compatibility](docs/smart-home.md) before connecting devices;
 these optional controls are not included on receipts.
+
+### Day travel planner
+
+**Calendar → Plan a day's travel** adds a private mini map and a day itinerary,
+with editable home location, arrival/parking buffers, feasible home stops and
+parked-car tracking. See [day travel setup, estimates and provider privacy](docs/day-travel.md).

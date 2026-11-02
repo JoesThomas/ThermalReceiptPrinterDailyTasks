@@ -100,6 +100,29 @@ def fixture_amex_balance():
     return 'ok'
 
 
+@web.app.get('/__fixture_day_travel')
+def fixture_day_travel():
+    from services import day_travel as travel, travel_routes
+    from receipt.local_time import uk_today
+    from datetime import datetime, time
+    day=uk_today().isoformat()
+    def collect(selected):
+        events=[]
+        for title,start,end,address in [('Morning appointment',time(10),time(11),'Library fixture'),('Afternoon appointment',time(14),time(15),'Clinic fixture')]:
+            events.append(dict(uid=title,title=title,location=address,date=selected,
+                               start_dt=datetime.combine(selected,start,travel.UK),end_dt=datetime.combine(selected,end,travel.UK)))
+        return events,[]
+    # Replace the registered route's collector closure without production network calls.
+    patch.object(web,'_collect_travel_calendar',side_effect=collect).start()
+    # Registration uses a delegating callable so this remains a fixture-only mock.
+    def locate(address,deadline):
+        index={'Home fixture':0,'Library fixture':1,'Clinic fixture':2}.get(address,0)
+        return [dict(point=[52.45+index*.01,-1.9+index*.01],label=address)]
+    patch.object(travel_routes,'locate',side_effect=locate).start()
+    patch.object(travel_routes,'route',side_effect=lambda a,b,m,deadline:dict(minutes=10,geometry=[a['point'],b['point']],source='Fixture route estimate')).start()
+    return redirect('/day-travel?day='+day)
+
+
 @web.app.get('/__fixture_smart_device')
 def fixture_smart_device():
     from smart_home import devices
