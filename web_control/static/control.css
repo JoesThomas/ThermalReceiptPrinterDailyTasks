@@ -184,7 +184,7 @@ dd code { overflow-wrap: anywhere; }
 .travel-page form:not(.travel-actions form){display:grid;gap:.8rem;margin:1rem 0;}
 .travel-page label{display:grid;gap:.35rem;min-width:0;}
 .travel-page .travel-check{display:flex;align-items:center;gap:.6rem;}
-.travel-fields{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));}
+.travel-fields{display:grid;gap:.8rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));}
 .travel-wide{grid-column:1/-1;}
 .travel-page input:not([type=checkbox]):not([type=hidden]),.travel-page select{width:100%;box-sizing:border-box;}
 .travel-page button{justify-self:start;max-width:100%;}
@@ -195,4 +195,4 @@ dd code { overflow-wrap: anywhere; }
 #travel-map{height:360px;width:100%;border:1px solid #a5b4c2;border-radius:10px;background:#e9edf2;z-index:0;}
 .travel-page .leaflet-tooltip{width:max-content;max-width:180px;white-space:normal;overflow-wrap:anywhere;font-size:12px;}
 .travel-locations{line-height:1.7;overflow-wrap:anywhere;}
-@media(max-width:500px){#travel-map{height:290px;}.travel-fields{grid-template-columns:1fr;}.travel-day{display:grid!important;}}
+@media(max-width:500px){#travel-map{height:290px;}.travel-fields{display:grid;gap:.8rem;grid-template-columns:1fr;}.travel-day{display:grid!important;}}

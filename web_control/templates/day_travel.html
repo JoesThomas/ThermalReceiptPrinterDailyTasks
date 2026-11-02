@@ -25,15 +25,20 @@
                 <p class="eyebrow">Calendar → journeys → home</p>
                 <h1>Your day on a map</h1>
                 <p class="muted">
-                    A suggested itinerary from home, tracking where each journey leaves your car. Plans use estimates, not live traffic or public transport timetables.
+                    One plan for your appointments, walking routes and bus/train journeys, keeping track of where your car is parked.
                 </p>
             </header>
-            <form method="get" class="travel-day">
+            <form method="post"
+                  action="{{ url_for('day_travel_run') }}"
+                  class="travel-day"
+                  data-travel-run>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="auto">
                 <label>
                     Choose a day
                     <input type="date" name="day" value="{{ day }}" required>
                 </label>
-                <button>Show this day</button>
+                <button {% if travel_job.state=='running' or not travel_settings.home %}disabled{% endif %}>Plan my day</button>
                 <a href="{{ url_for('calendar_map') }}">Calendar and location corrections</a>
             </form>
             <section>
@@ -53,48 +58,65 @@
                                    required
                                    autocomplete="street-address">
                         </label>
-                        <label>
-                            Usual travel mode
-                            <select name="mode">
-                                {% for code,name in [('driving','Drive'),('walking','Walk'),('cycling','Cycle'),('transit','Public transport')] %}
-                                    <option value="{{ code }}"
-                                            {% if travel_settings.mode==code %}selected{% endif %}>{{ name }}</option>
-                                {% endfor %}
-                            </select>
-                        </label>
                         <label class="travel-check">
                             <input type="checkbox"
                                    name="car"
                                    {% if travel_settings.car %}checked{% endif %}>
                             My car is at home at the start of the day
                         </label>
-                        <label>
-                            Arrive early (minutes)
-                            <input type="number"
-                                   name="buffer"
-                                   min="0"
-                                   max="120"
-                                   value="{{ travel_settings.buffer }}"
-                                   required>
-                        </label>
-                        <label>
-                            Minimum useful time at home (minutes)
-                            <input type="number"
-                                   name="home_minutes"
-                                   min="0"
-                                   max="480"
-                                   value="{{ travel_settings.home_minutes }}"
-                                   required>
-                        </label>
-                        <label>
-                            Parking / getting out per driving leg (minutes)
-                            <input type="number"
-                                   name="parking"
-                                   min="0"
-                                   max="60"
-                                   value="{{ travel_settings.parking }}"
-                                   required>
-                        </label>
+                        <details class="travel-wide">
+                            <summary>Optional travel preferences</summary>
+                            <div class="travel-fields">
+                                <label>
+                                    Usual travel mode
+                                    <select name="mode">
+                                        {% for code,name in [('auto','Automatic · walk when practical'),('driving','Always drive where available'),('walking','Walking only'),('cycling','Cycle'),('transit','Public transport')] %}
+                                            <option value="{{ code }}"
+                                                    {% if travel_settings.mode==code %}selected{% endif %}>
+                                                {{ name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+
+                                <label>
+                                    Arrive early (minutes)
+                                    <input type="number"
+                                           name="buffer"
+                                           min="0"
+                                           max="120"
+                                           value="{{ travel_settings.buffer }}"
+                                           required>
+                                </label>
+                                <label>
+                                    Minimum useful time at home (minutes)
+                                    <input type="number"
+                                           name="home_minutes"
+                                           min="0"
+                                           max="480"
+                                           value="{{ travel_settings.home_minutes }}"
+                                           required>
+                                </label>
+                                <label>
+                                    Parking / getting out per driving leg (minutes)
+                                    <input type="number"
+                                           name="parking"
+                                           min="0"
+                                           max="60"
+                                           value="{{ travel_settings.parking }}"
+                                           required>
+                                </label>
+                                <label>
+                                    Prefer walking up to (minutes)
+                                    <input type="number"
+                                           name="walk_minutes"
+                                           min="0"
+                                           max="120"
+                                           value="{{ travel_settings.get('walk_minutes',25) }}"
+                                           required>
+                                </label>
+                            </div>
+                        </details>
                         <button>Save home and preferences</button>
                     </form>
                 </details>
@@ -102,34 +124,45 @@
                     Start: <strong>{{ travel_settings.home or 'Set your home location above' }}</strong> · {{ travel_settings.buffer }} minute arrival buffer · at least {{ travel_settings.home_minutes }} minutes at home between events.
                 </p>
                 <p class="helper">
-                    Confirm map points before using timings. Driving includes your parking allowance. Cycling assumes you have a bicycle with you; taxis and lifts are not treated as your own car.
+                    Addresses are located automatically. Short walks are preferred when they fit the available time. Driving includes your parking allowance. You can correct a pin under Advanced if needed.
                 </p>
             </section>
             <section>
-                <h2>Prepare this day</h2>
-                <ol>
-                    <li>Find calendar locations, then confirm each map point below.</li>
-                    <li>Build the travel plan. Adjust event choices or durations and rebuild when needed.</li>
-                </ol>
-                <p class="helper">
-                    Finding locations sends your home and calendar location text to Photon (komoot). Building routes sends confirmed coordinates to FOSSGIS. Requests are cached and run only when requested. Loading the street map separately sends the viewed map area to OpenStreetMap. Your event titles are not sent to these services.
+                <h2>Plan this day</h2>
+                <p>
+                    Find addresses, check journey times and compare home stops in one step. You do not need to enter latitude, longitude or routine travel durations.
                 </p>
-                <div class="travel-actions">
-                    <form method="post"
-                          action="{{ url_for('day_travel_run') }}"
-                          data-travel-run>
-                        {{ fields() }}
-                        <input type="hidden" name="action" value="locations">
-                        <button {% if travel_job.state=='running' %}disabled{% endif %}>Find calendar locations</button>
-                    </form>
-                    <form method="post"
-                          action="{{ url_for('day_travel_run') }}"
-                          data-travel-run>
-                        {{ fields() }}
-                        <input type="hidden" name="action" value="plan">
-                        <button {% if travel_job.state=='running' or not day_data.events %}disabled{% endif %}>Build travel plan</button>
-                    </form>
-                </div>
+                <p class="muted">
+                    {% if transit_connected %}
+                        TransportAPI credentials configured. Bus/train times require journey-planner access on that account.
+                    {% else %}
+                        One-time connection needed for bus/train times: use your existing TransportAPI app ID/key in passwords.json under transport_api, or set RECEIPT_TRANSPORT_APP_ID and RECEIPT_TRANSPORT_APP_KEY. Walking routes work without this. <a href="https://developer.transportapi.com/"
+    target="_blank"
+    rel="noopener noreferrer">TransportAPI account</a>
+                    {% endif %}
+                </p>
+                <details>
+                    <summary>Advanced: refresh locations or routes separately</summary>
+                    <div class="travel-actions">
+                        <form method="post"
+                              action="{{ url_for('day_travel_run') }}"
+                              data-travel-run>
+                            {{ fields() }}
+                            <input type="hidden" name="action" value="locations">
+                            <button {% if travel_job.state=='running' %}disabled{% endif %}>Find calendar locations</button>
+                        </form>
+                        <form method="post"
+                              action="{{ url_for('day_travel_run') }}"
+                              data-travel-run>
+                            {{ fields() }}
+                            <input type="hidden" name="action" value="plan">
+                            <button {% if travel_job.state=='running' or not day_data.events %}disabled{% endif %}>Build travel plan</button>
+                        </form>
+                    </div>
+                </details>
+                <p class="muted">
+                    Planning shares location text with Photon / UK postcode lookup and coordinates with the route and timetable services. The street map loads OpenStreetMap tiles. Event titles and API keys are not sent to those map services.
+                </p>
                 <p id="travel-job"
                    role="status"
                    aria-live="polite"
@@ -140,53 +173,58 @@
             </section>
             {% if places %}
                 <section>
-                    <h2>Confirm locations</h2>
-                    <p>
-                        Names can match the wrong place. Choose the correct result or enter latitude and longitude. Coordinates can be copied from your map application.
-                    </p>
-                    {% for place in places %}
-                        <details {% if not place.confirmed %}open{% endif %}>
-                            <summary>{{ place.address }} · {{ 'Confirmed' if place.confirmed else 'Needs a map point' }}</summary>
-                            <form method="post"
-                                  action="{{ url_for('day_travel_place') }}"
-                                  class="travel-fields">
-                                {{ fields() }}
-                                <input type="hidden" name="place" value="{{ place.id }}">
-                                {% if place.choices %}
-                                    <label class="travel-wide">
-                                        Location result
-                                        <select name="choice">
-                                            {% for choice in place.choices %}
-                                                <option value="{{ loop.index0 }}"
-                                                        {% if place.point==choice.point %}selected{% endif %}>
-                                                    {{ choice.label }}
-                                                </option>
-                                            {% endfor %}
-                                        </select>
+                    <details>
+                        <summary>Advanced: review or correct automatic locations</summary>
+                        <p>
+                            Most addresses are matched automatically. Postcode-only matches are approximate and labelled on the plan. If a pin looks wrong or no reliable match was found, choose a result or enter a correction here.
+                        </p>
+                        {% for place in places %}
+                            <details {% if not place.confirmed %}open{% endif %}>
+                                <summary>
+                                    {{ place.address }} · {{ 'Located automatically' if place.get('source') and place.source!='Your map correction' and place.confirmed else 'Saved point' if place.confirmed else 'Needs review' }}
+                                </summary>
+                                <p>{{ place.get('accuracy','') }}</p>
+                                <form method="post"
+                                      action="{{ url_for('day_travel_place') }}"
+                                      class="travel-fields">
+                                    {{ fields() }}
+                                    <input type="hidden" name="place" value="{{ place.id }}">
+                                    {% if place.choices %}
+                                        <label class="travel-wide">
+                                            Location result
+                                            <select name="choice">
+                                                {% for choice in place.choices %}
+                                                    <option value="{{ loop.index0 }}"
+                                                            {% if place.point==choice.point %}selected{% endif %}>
+                                                        {{ choice.label }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </label>
+                                    {% endif %}
+                                    <label>
+                                        Latitude (optional override)
+                                        <input name="latitude"
+                                               type="number"
+                                               min="-90"
+                                               max="90"
+                                               step="any"
+                                               placeholder="{{ place.point[0] if place.point else 'e.g. 52.45' }}">
                                     </label>
-                                {% endif %}
-                                <label>
-                                    Latitude (optional override)
-                                    <input name="latitude"
-                                           type="number"
-                                           min="-90"
-                                           max="90"
-                                           step="any"
-                                           placeholder="{{ place.point[0] if place.point else 'e.g. 52.45' }}">
-                                </label>
-                                <label>
-                                    Longitude (optional override)
-                                    <input name="longitude"
-                                           type="number"
-                                           min="-180"
-                                           max="180"
-                                           step="any"
-                                           placeholder="{{ place.point[1] if place.point else 'e.g. -1.90' }}">
-                                </label>
-                                <button>Confirm map point</button>
-                            </form>
-                        </details>
-                    {% endfor %}
+                                    <label>
+                                        Longitude (optional override)
+                                        <input name="longitude"
+                                               type="number"
+                                               min="-180"
+                                               max="180"
+                                               step="any"
+                                               placeholder="{{ place.point[1] if place.point else 'e.g. -1.90' }}">
+                                    </label>
+                                    <button>Confirm map point</button>
+                                </form>
+                            </details>
+                        {% endfor %}
+                    </details>
                 </section>
             {% endif %}
             {% set plan=day_data.plan %}
@@ -199,7 +237,7 @@
                          role="region"
                          aria-label="Map of this day's confirmed locations and suggested journeys"
                          tabindex="0"></div>
-                    <button type="button" id="travel-map-tiles">Load street map</button>
+
                     <p class="muted">
                         Numbered pins match the location list below. Solid lines: estimated street routes. Dashed lines: connections only, not navigable routes. Unknown locations are omitted from the map.
                     </p>
@@ -245,6 +283,19 @@
                                 {{ leg.source }}
                                 {% if leg.note %}· {{ leg.note }}{% endif %}
                             </p>
+                            {% if leg.steps %}
+                                <ol class="travel-transit-steps">
+                                    {% for step in leg.steps %}
+                                        <li>
+                                            <strong>{{ step.mode|capitalize }} {{ step.line }}</strong>: {{ step.origin }} → {{ step.destination }}
+                                            {% if step.depart %}· {{ step.depart }}{% endif %}
+                                            {% if step.arrive %}–{{ step.arrive }}{% endif %}
+                                            {% if step.headsign %}· towards {{ step.headsign }}{% endif %}
+                                        </li>
+                                    {% endfor %}
+                                </ol>
+                            {% endif %}
+                            {% if leg.acknowledgements %}<p class="muted">{{ leg.acknowledgements }}</p>{% endif %}
                             <a href="{{ directions(leg) }}"
                                target="_blank"
                                rel="noopener noreferrer">Check directions
@@ -259,7 +310,7 @@
             <section>
                 <h2>Events and travel choices</h2>
                 <p>
-                    Calendar event order stays fixed. “Travel to this event” applies from the preceding stop. Driving can include a walk back to your parked car. Public transport needs a manually checked duration for each one-way leg; leave it unknown if you have not checked. Use calendar location corrections to change an event's address.
+                    Calendar event order stays fixed. “Travel to this event” applies from the preceding stop. Driving can include a walk back to your parked car. Bus/train timings come from the connected timetable service. Duration overrides are optional. Use calendar location corrections to change an event's address.
                 </p>
                 {% for event in day_data.events %}
                     {% set choice=day_data.overrides.get(event.id,{}) %}
@@ -275,45 +326,48 @@
                                 <p class="helper">{{ visit.message }} Car: {{ visit.car_at }}.</p>
                             {% endfor %}
                         {% endif %}
-                        <form method="post"
-                              action="{{ url_for('day_travel_event') }}"
-                              class="travel-fields">
-                            {{ fields() }}
-                            <input type="hidden" name="event" value="{{ event.id }}">
-                            <label>
-                                Travel to this event
-                                <select name="mode">
-                                    {% for code,name in [('auto','Use usual mode'),('driving','Drive / collect my car'),('walking','Walk'),('cycling','Cycle'),('transit','Public transport')] %}
-                                        <option value="{{ code }}"
-                                                {% if choice.get('mode','auto')==code %}selected{% endif %}>
-                                            {{ name }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                            </label>
-                            <label>
-                                Before this event
-                                <select name="via">
-                                    {% for code,name in [('auto','Home if there is enough time'),('direct','Go straight to the event'),('home','Prefer home; warn if it will not fit')] %}
-                                        <option value="{{ code }}"
-                                                {% if choice.get('via','auto')==code %}selected{% endif %}>
-                                            {{ name }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                            </label>
-                            <label>
-                                Override finish time
-                                <input type="time" name="end" value="{{ choice.get('end','') }}">
-                            </label>
-                            <label class="travel-check">
-                                <input type="checkbox"
-                                       name="skip"
-                                       {% if choice.get('skip') %}checked{% endif %}>
-                                Exclude from travel plan (e.g. online event)
-                            </label>
-                            <button>Save event travel choice</button>
-                        </form>
+                        <details>
+                            <summary>Override this event's travel plan</summary>
+                            <form method="post"
+                                  action="{{ url_for('day_travel_event') }}"
+                                  class="travel-fields">
+                                {{ fields() }}
+                                <input type="hidden" name="event" value="{{ event.id }}">
+                                <label>
+                                    Travel to this event
+                                    <select name="mode">
+                                        {% for code,name in [('auto','Use usual mode'),('driving','Drive / collect my car'),('walking','Walk'),('cycling','Cycle'),('transit','Public transport')] %}
+                                            <option value="{{ code }}"
+                                                    {% if choice.get('mode','auto')==code %}selected{% endif %}>
+                                                {{ name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <label>
+                                    Before this event
+                                    <select name="via">
+                                        {% for code,name in [('auto','Home if there is enough time'),('direct','Go straight to the event'),('home','Prefer home; warn if it will not fit')] %}
+                                            <option value="{{ code }}"
+                                                    {% if choice.get('via','auto')==code %}selected{% endif %}>
+                                                {{ name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <label>
+                                    Override finish time
+                                    <input type="time" name="end" value="{{ choice.get('end','') }}">
+                                </label>
+                                <label class="travel-check">
+                                    <input type="checkbox"
+                                           name="skip"
+                                           {% if choice.get('skip') %}checked{% endif %}>
+                                    Exclude from travel plan (e.g. online event)
+                                </label>
+                                <button>Save event travel choice</button>
+                            </form>
+                        </details>
                     </article>
                 {% else %}
                     <p>
@@ -323,56 +377,58 @@
             </section>
             {% if places %}
                 <section>
-                    <h2>Use a journey duration you have checked</h2>
-                    <p>
-                        A one-way estimate for public transport, traffic allowance or a route the provider cannot calculate. Public transport should include walking, waiting and changes. Reverse journeys need their own duration.
-                    </p>
-                    <form method="post"
-                          action="{{ url_for('day_travel_duration') }}"
-                          class="travel-fields">
-                        {{ fields() }}
-                        {% for field,title in [('origin','From'),('destination','To')] %}
+                    <details>
+                        <summary>Advanced: override a journey duration</summary>
+                        <p>
+                            A one-way estimate for public transport, traffic allowance or a route the provider cannot calculate. Public transport should include walking, waiting and changes. Reverse journeys need their own duration.
+                        </p>
+                        <form method="post"
+                              action="{{ url_for('day_travel_duration') }}"
+                              class="travel-fields">
+                            {{ fields() }}
+                            {% for field,title in [('origin','From'),('destination','To')] %}
+                                <label>
+                                    {{ title }}
+                                    <select name="{{ field }}">
+                                        {% for place in places %}<option value="{{ place.id }}">{{ place.address }}</option>{% endfor %}
+                                    </select>
+                                </label>
+                            {% endfor %}
                             <label>
-                                {{ title }}
-                                <select name="{{ field }}">
-                                    {% for place in places %}<option value="{{ place.id }}">{{ place.address }}</option>{% endfor %}
+                                Mode
+                                <select name="mode">
+                                    {% for code,name in [('transit','Public transport'),('driving','Drive'),('walking','Walk'),('cycling','Cycle')] %}
+                                        <option value="{{ code }}">{{ name }}</option>
+                                    {% endfor %}
                                 </select>
                             </label>
-                        {% endfor %}
-                        <label>
-                            Mode
-                            <select name="mode">
-                                {% for code,name in [('transit','Public transport'),('driving','Drive'),('walking','Walk'),('cycling','Cycle')] %}
-                                    <option value="{{ code }}">{{ name }}</option>
+                            <label>
+                                Total minutes
+                                <input type="number" name="minutes" min="0" max="1440" required>
+                            </label>
+                            <button>Save one-way duration</button>
+                        </form>
+                        {% if travel_settings.manual %}
+                            <details>
+                                <summary>Saved duration overrides ({{ travel_settings.manual|length }})</summary>
+                                {% for identity,minutes in travel_settings.manual.items() %}
+                                    {% set parts=identity.split('|') %}
+                                    <article class="travel-leg">
+                                        <p>
+                                            {{ travel_settings.places.get(parts[0],{}).get('address','Former location') }} → {{ travel_settings.places.get(parts[1],{}).get('address','Former location') }} · {{ parts[2] }} · {{ minutes }} minutes
+                                        </p>
+                                        <form method="post" action="{{ url_for('day_travel_duration') }}">
+                                            {{ fields() }}
+                                            <input type="hidden" name="origin" value="{{ parts[0] }}">
+                                            <input type="hidden" name="destination" value="{{ parts[1] }}">
+                                            <input type="hidden" name="mode" value="{{ parts[2] }}">
+                                            <button name="remove" value="on">Remove this duration override</button>
+                                        </form>
+                                    </article>
                                 {% endfor %}
-                            </select>
-                        </label>
-                        <label>
-                            Total minutes
-                            <input type="number" name="minutes" min="0" max="1440" required>
-                        </label>
-                        <button>Save one-way duration</button>
-                    </form>
-                    {% if travel_settings.manual %}
-                        <details>
-                            <summary>Saved duration overrides ({{ travel_settings.manual|length }})</summary>
-                            {% for identity,minutes in travel_settings.manual.items() %}
-                                {% set parts=identity.split('|') %}
-                                <article class="travel-leg">
-                                    <p>
-                                        {{ travel_settings.places.get(parts[0],{}).get('address','Former location') }} → {{ travel_settings.places.get(parts[1],{}).get('address','Former location') }} · {{ parts[2] }} · {{ minutes }} minutes
-                                    </p>
-                                    <form method="post" action="{{ url_for('day_travel_duration') }}">
-                                        {{ fields() }}
-                                        <input type="hidden" name="origin" value="{{ parts[0] }}">
-                                        <input type="hidden" name="destination" value="{{ parts[1] }}">
-                                        <input type="hidden" name="mode" value="{{ parts[2] }}">
-                                        <button name="remove" value="on">Remove this duration override</button>
-                                    </form>
-                                </article>
-                            {% endfor %}
-                        </details>
-                    {% endif %}
+                            </details>
+                        {% endif %}
+                    </details>
                 </section>
             {% endif %}
             <section>

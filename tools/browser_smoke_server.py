@@ -102,7 +102,7 @@ def fixture_amex_balance():
 
 @web.app.get('/__fixture_day_travel')
 def fixture_day_travel():
-    from services import day_travel as travel, travel_routes
+    from services import day_travel as travel, travel_routes, travel_transit
     from receipt.local_time import uk_today
     from datetime import datetime, time
     day=uk_today().isoformat()
@@ -118,6 +118,13 @@ def fixture_day_travel():
     def locate(address,deadline):
         index={'Home fixture':0,'Library fixture':1,'Clinic fixture':2}.get(address,0)
         return [dict(point=[52.45+index*.01,-1.9+index*.01],label=address)]
+    patch.object(web,'_travel_transit_credentials',return_value=('fixture-transit-id','fixture-transit-key')).start()
+    def transit(a,b,deadline,account,arrive_by=None,depart_after=None):
+        from datetime import timedelta
+        dep=arrive_by-timedelta(minutes=12) if arrive_by else depart_after+timedelta(minutes=5)
+        arr=dep+timedelta(minutes=12)
+        return dict(minutes=12,departure=dep.isoformat(),arrival=arr.isoformat(),geometry=[a['point'],b['point']],source='Fixture scheduled public transport',acknowledgements='Fixture timetable data',steps=[dict(mode='bus',line='45',origin='Example stop',destination='Example arrival stop',headsign='City',depart=dep.strftime('%H:%M'),arrive=arr.strftime('%H:%M'))])
+    patch.object(travel_transit,'route',side_effect=transit).start()
     patch.object(travel_routes,'locate',side_effect=locate).start()
     patch.object(travel_routes,'route',side_effect=lambda a,b,m,deadline:dict(minutes=10,geometry=[a['point'],b['point']],source='Fixture route estimate')).start()
     return redirect('/day-travel?day='+day)

@@ -761,32 +761,27 @@ process.on('exit', () => child.kill());
   await page.goto('http://receipt.test/__fixture_day_travel');
   const homeForm=page.locator('form[action="/day-travel/settings"]');
   await homeForm.locator('[name=home]').fill('Home fixture');
+  await page.getByText('Optional travel preferences',{exact:true}).click();
   await homeForm.locator('[name=parking]').fill('0');
+  await homeForm.locator('[name=mode]').selectOption('auto');
   await Promise.all([page.waitForNavigation({waitUntil:'load'}),homeForm.getByRole('button',{name:'Save home and preferences'}).click()]);
-  await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.getByRole('button',{name:'Find calendar locations',exact:true}).click()]);
-  await page.getByText('Library fixture · Needs a map point',{exact:true}).waitFor();
-  assert.equal(await page.locator('form[action="/day-travel/place"]').count(),3);
-  for(let index=0;index<3;index++) {
-    const form=page.locator('form[action="/day-travel/place"]').nth(index);
-    await form.locator('xpath=..').evaluate(el=>el.open=true);
-    await Promise.all([page.waitForNavigation({waitUntil:'load'}),form.getByRole('button',{name:'Confirm map point'}).click()]);
-  }
-  await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.getByRole('button',{name:'Build travel plan',exact:true}).click()]);
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.getByRole('button',{name:'Plan my day',exact:true}).click()]);
   await page.getByRole('heading',{name:'Day overview',exact:true}).waitFor();
   assert.equal(await page.locator('#travel-map .leaflet-tooltip').count(),3);
-  assert.match(await page.locator('main').innerText(),/Return home between events/);
-  assert.equal(await page.getByRole('link',{name:'Check directions in Google Maps',exact:true}).count(),4);
-  const travelEvent=page.locator('form[action="/day-travel/event"]').last();
-  await travelEvent.locator('[name=mode]').selectOption('walking');
-  await travelEvent.locator('[name=via]').selectOption('direct');
-  await Promise.all([page.waitForNavigation({waitUntil:'load'}),travelEvent.getByRole('button',{name:'Save event travel choice'}).click()]);
-  assert.equal(await page.locator('#travel-map').count(),0,'Changed settings must invalidate the old plan');
-  await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.getByRole('button',{name:'Build travel plan',exact:true}).click()]);
+  assert.match(await page.locator('main').innerText(),/Walking preferred/);
+  assert.equal(await page.locator('.travel-leg').filter({hasText:'Duration needed'}).count(),0);
+  await page.getByText('Edit home and planning assumptions',{exact:true}).click();
+  await page.getByText('Optional travel preferences',{exact:true}).click();
+  await homeForm.locator('[name=walk_minutes]').fill('5');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),homeForm.getByRole('button',{name:'Save home and preferences'}).click()]);
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.getByRole('button',{name:'Plan my day',exact:true}).click()]);
   await page.getByRole('heading',{name:'Day overview',exact:true}).waitFor();
-  assert.match(await page.locator('main').innerText(),/collect your parked car/);
+  assert.ok(await page.locator('.travel-transit-steps').count()>0);
+  assert.match(await page.locator('.travel-transit-steps').first().innerText(),/Bus 45/);
+  assert.doesNotMatch(await page.content(),/fixture-transit-id|fixture-transit-key/);
   for(const width of [390,1280]) {
     await page.setViewportSize({width,height:900});
-    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'Travel planner overflows viewport');
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'Automatic travel planner overflows viewport');
     if(process.env.TRAVEL_SCREENSHOT) await page.screenshot({path:process.env.TRAVEL_SCREENSHOT+'-'+width+'.png',fullPage:true});
   }
   const travelA11y=await require('./browser_accessibility.cjs')(page,'/day-travel');

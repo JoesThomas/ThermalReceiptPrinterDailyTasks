@@ -33,7 +33,7 @@ def endpoint(name, default):
     return url
 
 
-def fetch(url, params, deadline):
+def fetch(url, params, deadline, headers=None):
     """One installation-wide request per second; explicit user jobs only."""
     CACHE.mkdir(parents=True, exist_ok=True)
     with file_lock(CACHE / "request-rate"):
@@ -50,7 +50,11 @@ def fetch(url, params, deadline):
             response = session.get(
                 url,
                 params=params,
-                headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
+                headers={
+                    "User-Agent": USER_AGENT,
+                    "Accept": "application/json",
+                    **(headers or {}),
+                },
                 timeout=(3, min(6, max(1, deadline - time.monotonic()))),
                 allow_redirects=False,
                 stream=True,
@@ -70,16 +74,20 @@ def fetch(url, params, deadline):
                 response.close()
 
 
-def cached(url, params, deadline, ttl):
+def cached(url, params, deadline, ttl, *, headers=None, scope=""):
     digest = hashlib.sha256(
-        json.dumps([url, params], sort_keys=True).encode()
+        json.dumps([url, params, scope], sort_keys=True).encode()
     ).hexdigest()
     path = CACHE / (digest + ".json")
     item = PrivateStore(path, default=dict, max_bytes=900000)
     saved = item.read()
     if 0 <= time.time() - saved.get("at", 0) < ttl:
         return saved["data"]
-    data = fetch(url, params, deadline)
+    data = (
+        fetch(url, params, deadline, headers=headers)
+        if headers
+        else fetch(url, params, deadline)
+    )
     item.update(lambda v: v.update(at=time.time(), data=data))
     # Hard cap on private cache, with no address in filenames/logs.
     rows = sorted(CACHE.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
@@ -110,7 +118,16 @@ def locate(address, deadline):
                 )
                 if props.get(k)
             )[:500]
-            result.append(dict(point=p, label=label or address))
+            result.append(
+                dict(
+                    point=p,
+                    label=label or address,
+                    match={
+                        k: str(props.get(k, ""))[:120]
+                        for k in ("postcode", "housenumber", "street", "countrycode")
+                    },
+                )
+            )
         except (ValueError, TypeError, KeyError):
             continue
     return result
@@ -159,3 +176,47 @@ def route(a, b, mode, deadline):
         IndexError,
     ):
         return None
+
+
+def resolve(address, deadline):
+    from services.travel_geocoding import variants, select, postcode
+
+    choices = []
+    for query in variants(address):
+        if time.monotonic() >= deadline:
+            break
+        try:
+            found = locate(query, deadline)
+        except (ValueError, OSError, requests.RequestException):
+            continue
+        choices = (choices + found)[:3] if not found else found
+        match = select(address, found)
+        if match:
+            return dict(address=address, choices=found, **match)
+    pc = postcode(address)
+    if pc and time.monotonic() < deadline:
+        try:
+            data = cached(
+                "https://api.postcodes.io/postcodes/" + pc, {}, deadline, 30 * 86400
+            )
+            result = data.get("result") or {}
+            coords = point([result["latitude"], result["longitude"]])
+            if postcode(result.get("postcode", "")) == pc:
+                return dict(
+                    address=address,
+                    choices=choices,
+                    point=coords,
+                    confirmed=True,
+                    source="Postcodes.io",
+                    accuracy="Approximate postcode centre, not an exact building. Travel times are approximate.",
+                )
+        except (ValueError, OSError, requests.RequestException, KeyError, TypeError):
+            pass
+    return dict(
+        address=address,
+        choices=choices,
+        point=None,
+        confirmed=False,
+        source="No reliable match",
+        accuracy="Location needs review; no route was invented.",
+    )

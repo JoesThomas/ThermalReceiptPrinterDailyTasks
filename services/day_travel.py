@@ -53,7 +53,8 @@ def defaults():
     return dict(
         version=1,
         home="",
-        mode="driving",
+        mode="auto",
+        walk_minutes=25,
         car=True,
         buffer=10,
         home_minutes=30,
@@ -68,10 +69,11 @@ def validate(value):
     if not isinstance(value, dict) or value.get("version") != 1:
         raise ValueError("Invalid travel settings.")
     text(value["home"])
-    if value["mode"] not in MODES - {"auto"} or type(value["car"]) is not bool:
+    if value["mode"] not in MODES or type(value["car"]) is not bool:
         raise ValueError("Invalid travel mode.")
     for field, high in [("buffer", 120), ("home_minutes", 480), ("parking", 60)]:
         integer(value[field], 0, high)
+    integer(value.get("walk_minutes", 25), 0, 120)
     for name, maximum in [("places", 200), ("days", 31), ("manual", 500)]:
         if not isinstance(value[name], dict) or len(value[name]) > maximum:
             raise ValueError("Too much saved travel data.")
@@ -197,6 +199,7 @@ def place(address, state, label=None):
         address=address,
         label=label or address or "Location missing",
         point=saved.get("point") if saved.get("confirmed") else None,
+        accuracy=saved.get("accuracy", ""),
     )
 
 
@@ -220,10 +223,10 @@ def route_key(a, b, mode):
     return "|".join((a["id"], b["id"], mode))
 
 
-def build(state, day, route, progress=lambda message: None):
+def build(state, day, route, progress=lambda message: None, *, transit=None):
     """route(a,b,mode) returns minutes/geometry/source or None. Never infer transit schedules."""
     saved = state["days"].get(day, dict(events=[], overrides={}))
-    warnings = []
+    warnings = list(saved.get("warnings", []))
     legs = []
     visits = []
     home = place(state["home"], state, "Home")
@@ -268,6 +271,9 @@ def build(state, day, route, progress=lambda message: None):
         if e["address"] and not saved.get("overrides", {}).get(e["id"], {}).get("skip"):
             p = place(e["address"], state, e["title"])
             points[p["id"]] = p
+    for p in points.values():
+        if p.get("accuracy") and "Approximate" in p["accuracy"]:
+            warnings.append(p["label"] + ": " + p["accuracy"])
     memo = {}
 
     def piece(a, b, mode):
@@ -290,7 +296,7 @@ def build(state, day, route, progress=lambda message: None):
                 memo[identity] = route(a, b, mode)
         return memo[identity]
 
-    def journey(a, b, requested, parked):
+    def street_journey(a, b, requested, parked):
         mode = state["mode"] if requested == "auto" else requested
         steps = []
         next_car = parked
@@ -334,21 +340,137 @@ def build(state, day, route, progress=lambda message: None):
             parts=parts, minutes=duration if known else None, note=note, car=next_car
         )
 
-    def append(trip, arrival, depart=None):
-        for part in trip["parts"]:
-            legs.append(dict(part, depart=None, arrive=None, note=trip["note"]))
-        if trip["minutes"] is not None:
-            departure = depart or (
-                arrival - timedelta(minutes=trip["minutes"]) if arrival else None
+    def timed(trip, arrive_by=None, depart_after=None):
+        total = trip["minutes"]
+        depart = arrive = None
+        if total is not None:
+            depart = (
+                (arrive_by - timedelta(minutes=total)) if arrive_by else depart_after
             )
-            for part in legs[-len(trip["parts"]) :]:
-                part["depart"] = departure.isoformat() if departure else None
-                departure = (
-                    departure + timedelta(minutes=part["minutes"])
-                    if departure
-                    else None
+            if depart_after and depart and depart < depart_after:
+                depart = depart_after
+            arrive = depart + timedelta(minutes=total) if depart else None
+        trip.update(departure=depart, arrival=arrive)
+        return trip
+
+    def public(a, b, parked, arrive_by, depart_after):
+        identity = route_key(a, b, "transit")
+        if identity in state["manual"]:
+            return timed(
+                street_journey(a, b, "transit", parked), arrive_by, depart_after
+            )
+        info = None
+        if transit and a.get("point") and b.get("point"):
+            progress("Checking bus and train journeys for the event time")
+            cache_id = (identity, str(arrive_by), str(depart_after))
+            if cache_id not in memo:
+                memo[cache_id] = transit(
+                    a, b, arrive_by=arrive_by, depart_after=depart_after
                 )
-                part["arrive"] = departure.isoformat() if departure else None
+            info = memo[cache_id]
+        if not info:
+            return timed(
+                street_journey(a, b, "transit", parked), arrive_by, depart_after
+            )
+        depart = when(info.get("departure"))
+        arrive = when(info.get("arrival"))
+        depart = depart.astimezone(timezone.utc) if depart else None
+        arrive = arrive.astimezone(timezone.utc) if arrive else None
+        if (
+            not depart
+            or not arrive
+            or arrive < depart
+            or (depart_after and depart < depart_after)
+            or (arrive_by and arrive > arrive_by)
+        ):
+            return timed(
+                street_journey(a, b, "transit", parked), arrive_by, depart_after
+            )
+        part = dict(
+            origin=a,
+            destination=b,
+            mode="transit",
+            minutes=info["minutes"],
+            geometry=info.get("geometry", []),
+            source=info.get("source", "Scheduled public transport"),
+            steps=info.get("steps", []),
+            acknowledgements=info.get("acknowledgements", ""),
+        )
+        return dict(
+            parts=[part],
+            minutes=info["minutes"],
+            note="Includes the provider’s walking, waiting and changes; check disruption updates.",
+            car=parked,
+            departure=depart,
+            arrival=arrive,
+        )
+
+    def journey(a, b, requested, parked, arrive_by=None, depart_after=None):
+        chosen = (
+            (state["mode"] if "walk_minutes" in state else "auto")
+            if requested == "auto"
+            else requested
+        )
+        if chosen == "transit":
+            return public(a, b, parked, arrive_by, depart_after)
+        if chosen != "auto":
+            return timed(street_journey(a, b, chosen, parked), arrive_by, depart_after)
+        walking = timed(
+            street_journey(a, b, "walking", parked), arrive_by, depart_after
+        )
+
+        def fits(trip):
+            return trip["minutes"] is not None and (
+                not arrive_by or trip["arrival"] and trip["arrival"] <= arrive_by
+            )
+
+        if (
+            walking["minutes"] is not None
+            and walking["minutes"] <= state.get("walk_minutes", 25)
+            and fits(walking)
+        ):
+            walking["note"] = (
+                "Walking preferred: within your short-walk limit and fits the available time."
+            )
+            return walking
+        bus = public(a, b, parked, arrive_by, depart_after)
+        if fits(bus):
+            return bus
+        if parked:
+            driving = timed(
+                street_journey(a, b, "driving", parked), arrive_by, depart_after
+            )
+            if driving["minutes"] is not None:
+                driving["note"] = (
+                    driving["note"] + " " if driving["note"] else ""
+                ) + "No usable public transport journey returned; driving fallback."
+                return driving
+        if walking["minutes"] is not None:
+            walking["note"] = (
+                "No usable public transport journey returned. Walking fallback exceeds the preferred limit or available time; review it."
+            )
+            return walking
+        return bus
+
+    def append(trip, arrival=None, depart=None):
+        departure = trip.get("departure")
+        for part in trip["parts"]:
+            item = dict(
+                part,
+                depart=departure.isoformat() if departure else None,
+                arrive=None,
+                note=trip["note"],
+            )
+            if departure and part["minutes"] is not None:
+                departure = departure + timedelta(minutes=part["minutes"])
+                item["arrive"] = departure.isoformat()
+                if (
+                    part["mode"] == "transit"
+                    and len(trip["parts"]) == 1
+                    and trip.get("arrival")
+                ):
+                    item["arrive"] = trip["arrival"].isoformat()
+            legs.append(item)
 
     for e in events:
         dest = place(e["address"], state, e["title"])
@@ -358,25 +480,34 @@ def build(state, day, route, progress=lambda message: None):
             )
         arrival = e["start"] - timedelta(minutes=state["buffer"])
         mode = e["choice"].get("mode", "auto")
-        direct = journey(current, dest, mode, car)
+        direct = journey(current, dest, mode, car, arrival, previous_end)
         message = (
             "Start from home."
             if previous is None
             else "Travel directly to the next event."
         )
         used_home = False
-        if previous is not None and not same(current, home) and not same(dest, home):
-            back = journey(current, home, "auto", car)
-            outbound = journey(home, dest, mode, back["car"])
+        if (
+            previous is not None
+            and not same(current, home)
+            and not same(dest, home)
+            and e["choice"].get("via") != "direct"
+        ):
+            back = journey(current, home, "auto", car, depart_after=previous_end)
+            outbound = journey(
+                home, dest, mode, back["car"], arrival, back.get("arrival")
+            )
             known = (
                 previous_end
-                and back["minutes"] is not None
-                and outbound["minutes"] is not None
+                and back.get("arrival") is not None
+                and outbound.get("departure") is not None
+                and outbound.get("arrival") is not None
+                and outbound["arrival"] <= arrival
             )
             home_time = (
-                math.floor((arrival - previous_end).total_seconds() / 60)
-                - back["minutes"]
-                - outbound["minutes"]
+                math.floor(
+                    (outbound["departure"] - back["arrival"]).total_seconds() / 60
+                )
                 if known
                 else None
             )
@@ -399,24 +530,15 @@ def build(state, day, route, progress=lambda message: None):
             else:
                 message = f"Go direct: a return home leaves {max(0, home_time)} minutes at home; your minimum is {state['home_minutes']}."
         if not used_home:
-            departure = (
-                max(previous_end, arrival - timedelta(minutes=direct["minutes"]))
-                if previous_end and direct["minutes"] is not None
-                else None
-            )
-            append(direct, arrival, departure)
+            append(direct)
             car = direct["car"]
             if (
                 previous_end
                 and direct["minutes"] is not None
-                and previous_end + timedelta(minutes=direct["minutes"]) > arrival
+                and direct.get("arrival") is not None
+                and direct["arrival"] > arrival
             ):
-                late = math.ceil(
-                    (
-                        previous_end + timedelta(minutes=direct["minutes"]) - arrival
-                    ).total_seconds()
-                    / 60
-                )
+                late = math.ceil((direct["arrival"] - arrival).total_seconds() / 60)
                 warnings.append(
                     f"{e['title']}: journey exceeds the available gap by {late} minutes, including your arrival buffer."
                 )
@@ -442,7 +564,7 @@ def build(state, day, route, progress=lambda message: None):
         previous_end = e["end"]
         previous = e
     if previous is not None:
-        back = journey(current, home, "auto", car)
+        back = journey(current, home, "auto", car, depart_after=previous_end)
         append(back, None, previous_end)
         if not previous_end:
             warnings.append(

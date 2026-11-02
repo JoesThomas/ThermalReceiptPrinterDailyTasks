@@ -23,7 +23,7 @@ GUARD = Lock()
 JOB = {}
 
 
-def register(app, login_required, collect):
+def register(app, login_required, collect, transit_credentials=lambda: ("", "")):
     def selected():
         from receipt.local_time import uk_today
 
@@ -122,7 +122,11 @@ def register(app, login_required, collect):
         return render_template(
             "day_travel.html",
             day=day,
-            travel_settings=state,
+            travel_settings={
+                **state,
+                "mode": state["mode"] if "walk_minutes" in state else "auto",
+            },
+            transit_connected=all(transit_credentials()),
             day_data=day_data,
             places=places,
             travel_job=job,
@@ -138,12 +142,15 @@ def register(app, login_required, collect):
         try:
             home = travel.text(request.form.get("home", ""))
             mode = request.form.get("mode", "driving")
-            if mode not in travel.MODES - {"auto"}:
+            if mode not in travel.MODES:
                 raise ValueError("Choose a travel mode.")
             values = dict(
                 home=home,
                 mode=mode,
                 car=request.form.get("car") == "on",
+                walk_minutes=travel.integer(
+                    request.form.get("walk_minutes", "25"), 0, 120
+                ),
                 buffer=travel.integer(request.form.get("buffer"), 0, 120),
                 home_minutes=travel.integer(request.form.get("home_minutes"), 0, 480),
                 parking=travel.integer(request.form.get("parking"), 0, 60),
@@ -189,7 +196,12 @@ def register(app, login_required, collect):
                 else:
                     index = travel.integer(request.form.get("choice"), 0, 2)
                     coords = place.get("choices", [])[index]["point"]
-                place.update(point=coords, confirmed=True)
+                place.update(
+                    point=coords,
+                    confirmed=True,
+                    source="Your map correction",
+                    accuracy="",
+                )
                 for row in s["days"].values():
                     row.pop("plan", None)
 
@@ -300,7 +312,7 @@ def register(app, login_required, collect):
             with file_lock(travel.FILE.with_name("day_travel_job"), blocking=False):
                 state = travel.store().read()
                 deadline = time.monotonic() + 120
-                if action == "locations":
+                if action in {"locations", "auto"}:
                     update("Retrieving the selected day’s calendar…")
                     events, warnings = collect(date.fromisoformat(day))
                     rows = travel.event_rows(events, day)
@@ -319,15 +331,16 @@ def register(app, login_required, collect):
                             continue
                         update(f"Finding location {index + 1} of {len(addresses)}…")
                         try:
-                            choices = provider.locate(address, deadline)
+                            places[identifier] = provider.resolve(address, deadline)
                         except Exception:
-                            choices = []
-                        places[identifier] = dict(
-                            address=address,
-                            choices=choices,
-                            confirmed=False,
-                            point=None,
-                        )
+                            places[identifier] = dict(
+                                address=address,
+                                choices=[],
+                                confirmed=False,
+                                point=None,
+                                source="Lookup unavailable",
+                                accuracy="",
+                            )
 
                     def save(s):
                         if s["home"] != state["home"]:
@@ -354,14 +367,38 @@ def register(app, login_required, collect):
                         if JOB.get("token") != token:
                             raise ValueError("Request was cancelled.")
                         travel.store().update(save)
-                else:
-                    update("Comparing journeys, home stops and parked-car locations…")
+                if action in {"plan", "auto"}:
+                    state = travel.store().read()
+                    update(
+                        "Comparing walking, bus/train journeys, home stops and parked-car locations…"
+                    )
+                    from services import travel_transit
+
+                    account = transit_credentials()
+                    requests_left = [24]
+
+                    def public_route(a, b, **times):
+                        if requests_left[0] <= 0 or time.monotonic() >= deadline:
+                            return None
+                        requests_left[0] -= 1
+                        return travel_transit.route(a, b, deadline, account, **times)
+
                     plan = travel.build(
                         state,
                         day,
                         lambda a, b, m: provider.route(a, b, m, deadline),
                         update,
+                        transit=public_route if all(account) else None,
                     )
+                    plan["transit_connected"] = all(account)
+                    if not all(account):
+                        plan["warnings"].append(
+                            "Public transport is not connected. Add TransportAPI journey-planner access once to retrieve bus/train times automatically; walking and driving still work."
+                        )
+                    elif requests_left[0] <= 0:
+                        plan["warnings"].append(
+                            "Public transport lookup limit reached for this plan. Some alternatives may be unavailable; retry the selected journeys separately."
+                        )
                     plan["checked"] = datetime.now(travel.UK).isoformat()
 
                     def save(s):
@@ -397,7 +434,7 @@ def register(app, login_required, collect):
         day = selected()
         identity = owner()
         action = request.form.get("action")
-        if action not in {"locations", "plan"}:
+        if action not in {"locations", "plan", "auto"}:
             abort(400)
         with GUARD:
             if JOB.get("state") == "running":

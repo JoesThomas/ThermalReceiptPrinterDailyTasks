@@ -28,7 +28,7 @@ def event(name, start, end, location):
 
 def state(next_start="12:00"):
     s = travel.defaults()
-    s.update(home="Example home", parking=0)
+    s.update(home="Example home", parking=0, mode="driving")
     events = travel.event_rows(
         [
             event("Appointment A", "10:00", "11:00", "A address"),
