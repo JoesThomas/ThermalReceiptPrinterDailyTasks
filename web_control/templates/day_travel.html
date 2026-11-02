@@ -376,6 +376,11 @@
                             {% if event.end %}→ {{ journey_time(event.end) }}{% endif %}
                             · {{ event.address or 'At home · no location set' }}
                         </p>
+                        {% if choice.get('skip') %}
+                            <p class="muted">
+                                Ignored in this plan, including its time. Online events with a blank location can stay included as time at home.
+                            </p>
+                        {% endif %}
                         {% if plan %}
                             {% for visit in plan.visits if visit.id==event.id %}
                                 <p class="helper">{{ visit.message }} Car: {{ visit.car_at }}.</p>
@@ -418,7 +423,7 @@
                                     <input type="checkbox"
                                            name="skip"
                                            {% if choice.get('skip') %}checked{% endif %}>
-                                    Exclude from travel plan (e.g. online event)
+                                    Ignore this event entirely (e.g. not attending)
                                 </label>
                                 <button>Save event travel choice</button>
                             </form>

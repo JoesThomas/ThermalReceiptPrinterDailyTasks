@@ -80,7 +80,8 @@ the owner's live account; tests use synthetic scheduled journeys.
 ## Overrides and privacy
 
 Per-event travel mode, home-stop preference, finish time and exclusions remain
-editable. Manual one-way duration overrides are optional and tucked under
+editable. Ignoring an event excludes its time too; leave online events included
+with a blank location to reserve their time at home. Manual one-way duration overrides are optional and tucked under
 **Advanced: override a journey duration**. Driving overrides still receive the
 parking allowance. Reverse journeys have separate overrides; remove an override
 to resume automatic timing. Replan after changes.
