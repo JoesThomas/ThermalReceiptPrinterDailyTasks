@@ -117,6 +117,23 @@
                                 </form>
                             {% endfor %}
                         {% endif %}
+                        {% if batch.make %}
+                            <details>
+                                <summary>Preparation recipe: {{ batch.name }}</summary>
+                                {% if batch.make.yield %}
+                                    <p>
+                                        Recipe yield: {{ batch.make.yield }}. Adjust the batch to the requirements above; amounts here are the original recipe.
+                                    </p>
+                                {% endif %}
+                                <ul>
+                                    {% for ingredient in batch.make.ingredients|default([]) %}<li>{{ ingredient }}</li>{% endfor %}
+                                </ul>
+                                <ol>
+                                    {% for step in batch.make.method|default([]) %}<li>{{ step }}</li>{% endfor %}
+                                </ol>
+                                <p>Use the storage guide below, starting from actual preparation time.</p>
+                            </details>
+                        {% endif %}
                         <p class="muted">{{ batch.note }}</p>
                     {% endfor %}
                 </details>

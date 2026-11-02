@@ -166,6 +166,7 @@ def analyse(plan, components, overrides=None, today=None):
                 dict(
                     id=cid,
                     name=byid[cid].get("name", cid),
+                    make=byid[cid].get("make", {}),
                     make_on=group[0]["day"],
                     uses=group,
                     quantities=quantities,
