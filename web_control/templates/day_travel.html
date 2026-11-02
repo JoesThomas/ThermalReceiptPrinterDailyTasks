@@ -271,46 +271,101 @@
                             <p>
                                 <strong>{{ {'driving':'Drive','walking':'Walk','cycling':'Cycle','transit':'Public transport'}[leg.mode] }} · {{ (leg.minutes|string+' minutes') if leg.minutes is not none else 'Duration needed' }}</strong>
                             </p>
-                            <p>
-                                {% if leg.depart %}
-                                    Leave {{ journey_time(leg.depart) }}
-                                {% else %}
-                                    Departure time not known
-                                {% endif %}
-                                {% if leg.arrive %}· arrive {{ journey_time(leg.arrive) }}{% endif %}
-                            </p>
+                            <dl class="travel-times">
+                                <div>
+                                    <dt>Departure</dt>
+                                    <dd>
+                                        {% if leg.depart %}
+                                            <time datetime="{{ leg.depart }}">{{ journey_time(leg.depart) }}</time>
+                                        {% else %}
+                                            Unknown
+                                        {% endif %}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Arrival</dt>
+                                    <dd>
+                                        {% if leg.arrive %}
+                                            <time datetime="{{ leg.arrive }}">{{ journey_time(leg.arrive) }}</time>
+                                        {% else %}
+                                            Unknown
+                                        {% endif %}
+                                    </dd>
+                                </div>
+                            </dl>
                             <p class="muted">
                                 {{ leg.source }}
                                 {% if leg.note %}· {{ leg.note }}{% endif %}
                             </p>
                             {% if leg.steps %}
-                                <ol class="travel-transit-steps">
-                                    {% for step in leg.steps %}
+                                <div class="travel-timetable-wrap"
+                                     role="region"
+                                     tabindex="0"
+                                     aria-label="Timetable from {{ leg.origin.label }} to {{ leg.destination.label }}">
+                                    <table class="travel-timetable">
+                                        <caption>Journey timetable · walking, services and changes</caption>
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Departure</th>
+                                                <th scope="col">Arrival</th>
+                                                <th scope="col">Service</th>
+                                                <th scope="col">Stops / directions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for step in leg.steps %}
+                                                <tr>
+                                                    <td>{{ journey_time(step.depart_at) if step.depart_at else step.depart or 'Not supplied' }}</td>
+                                                    <td>{{ journey_time(step.arrive_at) if step.arrive_at else step.arrive or 'Not supplied' }}</td>
+                                                    <th scope="row">
+                                                        {{ 'Walk' if step.mode=='foot' else 'Wait / change' if step.mode=='wait' else step.mode|capitalize }} {{ step.line }}
+                                                    </th>
+                                                    <td>
+                                                        {{ step.origin }} → {{ step.destination }}
+                                                        {% if step.headsign %}
+                                                            <br>
+                                                            Towards {{ step.headsign }}
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="muted">On smaller screens, scroll the timetable sideways to see all stops.</p>
+                            {% elif leg.directions %}
+                                <h4>Directions</h4>
+                                <ol class="travel-directions">
+                                    {% for step in leg.directions %}
                                         <li>
-                                            <strong>{{ step.mode|capitalize }} {{ step.line }}</strong>: {{ step.origin }} → {{ step.destination }}
-                                            {% if step.depart %}· {{ step.depart }}{% endif %}
-                                            {% if step.arrive %}–{{ step.arrive }}{% endif %}
-                                            {% if step.headsign %}· towards {{ step.headsign }}{% endif %}
+                                            {{ step.instruction }}
+                                            {% if step.distance %}<span class="muted">· {{ step.distance }}</span>{% endif %}
                                         </li>
                                     {% endfor %}
                                 </ol>
+                                {% if leg.directions_truncated %}
+                                    <p class="travel-warning">This is a long route; only the first 200 direction steps are shown.</p>
+                                {% endif %}
+                            {% elif leg.minutes==0 %}
+                                <p>Already at this location; no travel directions needed.</p>
+                            {% elif leg.source=='Your duration estimate' %}
+                                <p class="muted">A manual duration is set for this leg. Remove that override to retrieve actual service times.</p>
+                            {% else %}
+                                <p class="muted">
+                                    Detailed directions or timetable are unavailable for this leg. The planner does not invent them; replan to check the provider again.
+                                </p>
                             {% endif %}
                             {% if leg.acknowledgements %}<p class="muted">{{ leg.acknowledgements }}</p>{% endif %}
-                            <a href="{{ directions(leg) }}"
-                               target="_blank"
-                               rel="noopener noreferrer">Check directions
-                                {% if leg.mode=='transit' %}and the timetable{% endif %}
-                            in Google Maps</a>
                         </article>
                     {% else %}
-                        <p>No timed journeys to calculate yet. Review the events below.</p>
+                        <p>No journeys are needed between these locations. Events without a location are assumed to be at home.</p>
                     {% endfor %}
                 </section>
             {% endif %}
             <section>
                 <h2>Events and travel choices</h2>
                 <p>
-                    Calendar event order stays fixed. “Travel to this event” applies from the preceding stop. Driving can include a walk back to your parked car. Bus/train timings come from the connected timetable service. Duration overrides are optional. Use calendar location corrections to change an event's address.
+                    Events without a location are assumed to be at home. Calendar event order stays fixed. “Travel to this event” applies from the preceding stop. Driving can include a walk back to your parked car. Bus/train timings come from the connected timetable service. Duration overrides are optional. Use calendar location corrections to change an event's address.
                 </p>
                 {% for event in day_data.events %}
                     {% set choice=day_data.overrides.get(event.id,{}) %}
@@ -319,7 +374,7 @@
                         <p>
                             {{ journey_time(event.start) if event.start else 'All day / no start time' }}
                             {% if event.end %}→ {{ journey_time(event.end) }}{% endif %}
-                            · {{ event.address or 'No location' }}
+                            · {{ event.address or 'At home · no location set' }}
                         </p>
                         {% if plan %}
                             {% for visit in plan.visits if visit.id==event.id %}

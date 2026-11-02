@@ -196,3 +196,16 @@ dd code { overflow-wrap: anywhere; }
 .travel-page .leaflet-tooltip{width:max-content;max-width:180px;white-space:normal;overflow-wrap:anywhere;font-size:12px;}
 .travel-locations{line-height:1.7;overflow-wrap:anywhere;}
 @media(max-width:500px){#travel-map{height:290px;}.travel-fields{display:grid;gap:.8rem;grid-template-columns:1fr;}.travel-day{display:grid!important;}}
+
+.travel-times{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;padding:.8rem;background:var(--paper,#f7f9fb);border:1px solid var(--border,#c4cec8);border-radius:8px;}
+.travel-times dt{font-size:.85rem;color:var(--sub,#526170);}
+.travel-times dd{margin:.3rem 0 0;font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums;}
+.travel-timetable-wrap{max-width:100%;overflow:auto;margin:1rem 0;}
+.travel-timetable{display:table;max-width:none;min-width:540px;width:100%;border-collapse:collapse;text-align:left;}
+.travel-timetable caption{text-align:left;font-weight:700;padding:.5rem 0;}
+.travel-timetable th,.travel-timetable td{padding:.65rem;vertical-align:top;border-bottom:1px solid var(--border,#c4cec8);white-space:normal;}
+.travel-timetable thead{background:var(--paper,#f7f9fb);}
+.travel-directions{padding-left:1.5rem;line-height:1.6;}
+.travel-directions li{margin:.4rem 0;}
+
+.travel-timetable th:nth-child(-n+2),.travel-timetable td:nth-child(-n+2){white-space:nowrap;min-width:85px;}

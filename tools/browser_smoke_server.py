@@ -108,7 +108,7 @@ def fixture_day_travel():
     day=uk_today().isoformat()
     def collect(selected):
         events=[]
-        for title,start,end,address in [('Morning appointment',time(10),time(11),'Library fixture'),('Afternoon appointment',time(14),time(15),'Clinic fixture')]:
+        for title,start,end,address in [('Morning appointment',time(10),time(11),'Library fixture'),('Home appointment',time(12),time(12,30),''),('Afternoon appointment',time(14),time(15),'Clinic fixture')]:
             events.append(dict(uid=title,title=title,location=address,date=selected,
                                start_dt=datetime.combine(selected,start,travel.UK),end_dt=datetime.combine(selected,end,travel.UK)))
         return events,[]
@@ -126,7 +126,7 @@ def fixture_day_travel():
         return dict(minutes=12,departure=dep.isoformat(),arrival=arr.isoformat(),geometry=[a['point'],b['point']],source='Fixture scheduled public transport',acknowledgements='Fixture timetable data',steps=[dict(mode='bus',line='45',origin='Example stop',destination='Example arrival stop',headsign='City',depart=dep.strftime('%H:%M'),arrive=arr.strftime('%H:%M'))])
     patch.object(travel_transit,'route',side_effect=transit).start()
     patch.object(travel_routes,'locate',side_effect=locate).start()
-    patch.object(travel_routes,'route',side_effect=lambda a,b,m,deadline:dict(minutes=10,geometry=[a['point'],b['point']],source='Fixture route estimate')).start()
+    patch.object(travel_routes,'route',side_effect=lambda a,b,m,deadline:dict(minutes=10,geometry=[a['point'],b['point']],source='Fixture route estimate',directions=[dict(instruction='Start heading north on Example Road',distance='100 m'),dict(instruction='Turn left onto Station Road',distance='200 m'),dict(instruction='Arrive at your destination',distance='0 m')],directions_truncated=False)).start()
     return redirect('/day-travel?day='+day)
 
 

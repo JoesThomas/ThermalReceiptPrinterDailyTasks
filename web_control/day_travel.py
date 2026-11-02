@@ -88,25 +88,6 @@ def register(app, login_required, collect, transit_credentials=lambda: ("", ""))
                 else {}
             )
         job.pop("owner", None)
-        from urllib.parse import urlencode
-
-        def directions(leg):
-            def location(p):
-                return (
-                    ",".join(str(x) for x in p["point"])
-                    if p.get("point")
-                    else p["address"]
-                )
-
-            return "https://www.google.com/maps/dir/?" + urlencode(
-                dict(
-                    api=1,
-                    origin=location(leg["origin"]),
-                    destination=location(leg["destination"]),
-                    travelmode=leg["mode"],
-                )
-            )
-
         from receipt.local_time import uk_receipt_time
 
         def journey_time(raw):
@@ -130,7 +111,6 @@ def register(app, login_required, collect, transit_credentials=lambda: ("", ""))
             day_data=day_data,
             places=places,
             travel_job=job,
-            directions=directions,
             travel_time=uk_receipt_time,
             journey_time=journey_time,
         )

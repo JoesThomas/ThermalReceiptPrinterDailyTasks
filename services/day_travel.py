@@ -171,7 +171,7 @@ def event_rows(events, day):
                     " ".join(str(event.get("title", "Untitled event")).split())[:200],
                     200,
                 ),
-                address=text(" ".join(str(event.get("location", "")).split())[:500]),
+                address=text(" ".join(str(event.get("location") or "").split())[:500]),
                 start=start.isoformat() if start else None,
                 end=end.isoformat()
                 if end and start and end.timestamp() > start.timestamp()
@@ -249,6 +249,8 @@ def build(state, day, route, progress=lambda message: None, *, transit=None):
             ).replace(fold=e["start"].fold)
             e["end"] = finish if finish > e["start"] else finish + timedelta(days=1)
         if e["all_day"] or not e["start"]:
+            if not e["address"]:
+                continue
             warnings.append(
                 f"{e['title']}: all-day or untimed event; set a timed calendar entry to include it in the journey order."
             )
@@ -277,6 +279,8 @@ def build(state, day, route, progress=lambda message: None, *, transit=None):
     memo = {}
 
     def piece(a, b, mode):
+        if same(a, b) and a["id"] == home["id"]:
+            return dict(minutes=0, geometry=[], source="Already at home")
         if not a["address"] or not b["address"]:
             return None
         if same(a, b):
@@ -284,11 +288,16 @@ def build(state, day, route, progress=lambda message: None, *, transit=None):
         identity = route_key(a, b, mode)
         if identity not in memo:
             if identity in state["manual"]:
-                memo[identity] = dict(
-                    minutes=state["manual"][identity],
-                    geometry=[],
-                    source="Your duration estimate",
-                )
+                details = {}
+                if mode != "transit" and a.get("point") and b.get("point"):
+                    progress("Checking directions for a journey with a manual duration")
+                    details = route(a, b, mode) or {}
+                memo[identity] = {
+                    **details,
+                    "minutes": state["manual"][identity],
+                    "geometry": details.get("geometry", []),
+                    "source": "Your duration estimate",
+                }
             elif not a.get("point") or not b.get("point") or mode == "transit":
                 memo[identity] = None
             else:
@@ -334,6 +343,10 @@ def build(state, day, route, progress=lambda message: None, *, transit=None):
                     minutes=mins,
                     geometry=info.get("geometry", []) if info else [],
                     source=info.get("source", "") if info else "Duration needed",
+                    directions=info.get("directions", []) if info else [],
+                    directions_truncated=info.get("directions_truncated", False)
+                    if info
+                    else False,
                 )
             )
         return dict(
@@ -406,6 +419,10 @@ def build(state, day, route, progress=lambda message: None, *, transit=None):
         )
 
     def journey(a, b, requested, parked, arrive_by=None, depart_after=None):
+        if same(a, b):
+            return timed(
+                street_journey(a, b, "walking", parked), arrive_by, depart_after
+            )
         chosen = (
             (state["mode"] if "walk_minutes" in state else "auto")
             if requested == "auto"
@@ -455,6 +472,8 @@ def build(state, day, route, progress=lambda message: None, *, transit=None):
     def append(trip, arrival=None, depart=None):
         departure = trip.get("departure")
         for part in trip["parts"]:
+            if same(part["origin"], part["destination"]):
+                continue
             item = dict(
                 part,
                 depart=departure.isoformat() if departure else None,
@@ -473,12 +492,17 @@ def build(state, day, route, progress=lambda message: None, *, transit=None):
             legs.append(item)
 
     for e in events:
-        dest = place(e["address"], state, e["title"])
-        if not e["address"]:
-            warnings.append(
-                e["title"] + ": no location; travel feasibility is unknown."
-            )
-        arrival = e["start"] - timedelta(minutes=state["buffer"])
+        home_assumed = not e["address"].strip()
+        dest = (
+            dict(home, label="Home · " + e["title"])
+            if home_assumed
+            else place(e["address"], state, e["title"])
+        )
+        arrival = (
+            e["start"]
+            if same(current, dest)
+            else e["start"] - timedelta(minutes=state["buffer"])
+        )
         mode = e["choice"].get("mode", "auto")
         direct = journey(current, dest, mode, car, arrival, previous_end)
         message = (
@@ -549,6 +573,12 @@ def build(state, day, route, progress=lambda message: None, *, transit=None):
                 e["title"]
                 + ": travel time is unknown; do not rely on the suggested departure time."
             )
+        if home_assumed:
+            message = (
+                "Stay at home for this event; no location is set."
+                if same(current, home)
+                else "Return home for this event; no location is set."
+            )
         visits.append(
             dict(
                 id=e["id"],
@@ -556,6 +586,7 @@ def build(state, day, route, progress=lambda message: None, *, transit=None):
                 start=e["start"].isoformat(),
                 end=e["end"].isoformat() if e["end"] else None,
                 location=dest,
+                home_assumed=home_assumed,
                 message=message,
                 car_at=car["label"] if car else "No car available",
             )
@@ -563,7 +594,7 @@ def build(state, day, route, progress=lambda message: None, *, transit=None):
         current = dest
         previous_end = e["end"]
         previous = e
-    if previous is not None:
+    if previous is not None and not same(current, home):
         back = journey(current, home, "auto", car, depart_after=previous_end)
         append(back, None, previous_end)
         if not previous_end:

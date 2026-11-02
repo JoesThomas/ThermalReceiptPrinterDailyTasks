@@ -83,6 +83,12 @@ def parse(data, arrive_by=None, depart_after=None):
                     headsign=clean(part.get("destination")),
                     depart=clean(part.get("departure_time"), 8),
                     arrive=clean(part.get("arrival_time"), 8),
+                    depart_at=timestamp(part.get("departure_datetime")).isoformat()
+                    if timestamp(part.get("departure_datetime"))
+                    else None,
+                    arrive_at=timestamp(part.get("arrival_datetime")).isoformat()
+                    if timestamp(part.get("arrival_datetime"))
+                    else None,
                 )
             )
             coords = part.get("coordinates") or []
