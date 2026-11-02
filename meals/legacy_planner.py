@@ -212,7 +212,9 @@ def generate_week(start: date | None = None, force: bool = False, raw=False) -> 
         if not pool:
             raise RuntimeError(f"No eligible recipes for {d.isoformat()}; check allergen/diet settings")
         want_batch = (not batch_used and d.weekday() == preferred_batch_day)
-        chosen = max(pool, key=lambda r: _score(r, previous, used, history, d, want_batch))
+        from meals.resource_planning import reuse_bonus
+        reduce_waste=prefs.get('cooking_style',{}).get('reduce_food_waste',True)
+        chosen = max(pool, key=lambda r: _score(r, previous, used, history, d, want_batch)+(reuse_bonus(r,meals,d) if reduce_waste else 0))
         used.add(chosen.get("name", ""))
         if chosen.get("meal_type") in {"batch", "whole_joint"}:
             batch_used = True
@@ -557,7 +559,18 @@ def print_sunday_prep(printer, left, line) -> None:
         left(printer, "NO PREP NEEDED")
         return
 
-    make_items = [x for x in prep if x.get("action") == "make"]
+    from meals.resource_planning import analyse
+    batches = analyse(plan, _load(COMPONENTS_FILE, {}).get("components", []), today=today)["batches"]
+    make_ids = {x["id"] for x in prep if x.get("action") == "make"}
+    later = [b for b in batches if b["id"] in make_ids and b["make_on"] > today.isoformat()]
+    today_ids = {b["id"] for b in batches if b["make_on"] == today.isoformat()}
+    make_items = [x for x in prep if x.get("action") == "make" and (x["id"] in today_ids or not any(b["id"] == x["id"] for b in batches))]
+    if later:
+        print_heading(printer, "MAKE CLOSER TO USE", write=left)
+        for batch in later:
+            for piece in wrap(batch["make_on"] + " " + batch["name"], RECEIPT_WIDTH):
+                left(printer, piece)
+        left(printer, "Recipes and batch amounts: Meals in app")
     buy_items = [x for x in prep if x.get("action") == "buy"]
 
     active = sum(int(x.get("details", {}).get("minutes", 0) or 0) for x in make_items)
@@ -587,7 +600,7 @@ def print_sunday_prep(printer, left, line) -> None:
             for piece in wrap("Bought items: follow pack storage, use-by and after-opening instructions."):
                 left(printer, piece)
 
-    order = _prep_order(prep)
+    order = _prep_order(make_items)
     if order:
         line(printer, "=")
         print_heading(printer, "PREP ORDER", write=left)
@@ -659,6 +672,9 @@ def print_today_recipe(printer, left, line) -> None:
     if r.get("allergens", {}).get("check_labels_for"):
         left(printer, "CHECK LABELS: " + ", ".join(r["allergens"]["check_labels_for"]).upper())
     line(printer, "-"); print_heading(printer, "INGREDIENTS", write=left)
+    from meals.resource_planning import cleanup
+    cleaning=cleanup(r)
+    left(printer,f"Clean-up estimate: {cleaning['level'].lower()} (~{cleaning['items']} items)")
     for item in r.get("ingredients", []): left(printer, "- " + item)
     line(printer, "-"); print_heading(printer, "METHOD", write=left)
     for i, step in enumerate(r.get("method", []), 1):

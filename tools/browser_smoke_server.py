@@ -47,6 +47,15 @@ write_json(copy / 'data' / 'subscriptions.json', {'monthly': [], 'yearly': [], '
 row = {'carrier': 'AMAZON', 'event_title': 'Example book', 'order_ref': '123-1234567-1234567', 'delivery_date': str(bin_collections.today())}
 delivery_state.record_deliveries([row], lambda value: 'AMAZON', lambda value: 'Expected today')
 
+@web.app.get('/__fixture_helper')
+def fixture_helper():
+    from actions import checklists, personal_helper
+    from receipt.local_time import uk_today
+    checklists.update('tasks', 'add', title='Prepare therapy questions')
+    personal_helper.observe(checklists.load()['items'])
+    return redirect('/helper')
+
+
 @web.app.get('/__fixture_login')
 def fixture_login():
     session['authenticated'] = True

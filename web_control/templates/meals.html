@@ -74,6 +74,78 @@
                     <button>Update plan</button>
                 </form>
             </section>
+            <section id="meal-resources">
+                <h2>Use more, waste less</h2>
+                <p>
+                    New weekly plans favour shared flavourings and fresh ingredients within the existing diet, allergy, variety and cooking-time rules. Current plans remain yours to edit.
+                </p>
+                <h3>Shared components</h3>
+                <ul>
+                    {% for item in resources.shared %}
+                        <li>{{ item.name }} · {{ item.count }} uses: {{ item.recipes|unique|join(', ') }}</li>
+                    {% else %}
+                        <li>No repeated components in the remaining meals.</li>
+                    {% endfor %}
+                </ul>
+                <details>
+                    <summary>Batch amounts & preparation dates</summary>
+                    <p>
+                        Amounts are recipe requirements, not a scaled batch recipe. Missing amounts are not guessed. Different dates may need separate batches under the storage guide below.
+                    </p>
+                    {% for batch in resources.batches %}
+                        <h4>{{ batch.name }} · make close to {{ batch.make_on }}</h4>
+                        {% for quantity in batch.quantities %}<p>{{ quantity }}</p>{% endfor %}
+                        {% if batch.unknown %}
+                            <p>{{ batch.unknown }} use(s) need an amount before a complete total can be shown.</p>
+                        {% endif %}
+                        <ul>
+                            {% for use in batch.uses %}
+                                <li>{{ use.day }} · {{ use.recipe }} · {{ use.amount or 'Amount not specified' }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% if personal_helper_available|default(false) %}
+                            {% for use in batch.uses %}
+                                <form method="post" action="{{ url_for('personal_helper_meal_quantity') }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="recipe" value="{{ use.recipe }}">
+                                    <input type="hidden" name="component" value="{{ batch.id }}">
+                                    <label>
+                                        Amount of {{ batch.name }} per {{ use.recipe }} meal (e.g. 2 tbsp)
+                                        <input name="quantity" maxlength="80" placeholder="Leave blank to reset">
+                                    </label>
+                                    <button>Save recipe amount</button>
+                                </form>
+                            {% endfor %}
+                        {% endif %}
+                        {% if batch.make %}
+                            <details>
+                                <summary>Preparation recipe: {{ batch.name }}</summary>
+                                {% if batch.make.yield %}
+                                    <p>
+                                        Recipe yield: {{ batch.make.yield }}. Adjust the batch to the requirements above; amounts here are the original recipe.
+                                    </p>
+                                {% endif %}
+                                <ul>
+                                    {% for ingredient in batch.make.ingredients|default([]) %}<li>{{ ingredient }}</li>{% endfor %}
+                                </ul>
+                                <ol>
+                                    {% for step in batch.make.method|default([]) %}<li>{{ step }}</li>{% endfor %}
+                                </ol>
+                                <p>Use the storage guide below, starting from actual preparation time.</p>
+                            </details>
+                        {% endif %}
+                        <p class="muted">{{ batch.note }}</p>
+                    {% endfor %}
+                </details>
+                <details>
+                    <summary>Washing-up estimates</summary>
+                    <p>Equipment count is a guide, not time or wash cycles. Clean raw-food tools before reuse.</p>
+                    {% for item in resources.cleanup %}
+                        <h4>{{ item.day }} · {{ item.name }}</h4>
+                        <p>{{ item.level }} · approximately {{ item['items'] }} items: {{ item.equipment|join(', ') }}.</p>
+                    {% endfor %}
+                </details>
+            </section>
             <section>
                 <h2>Storage &amp; leftovers</h2>
                 <p class="muted">

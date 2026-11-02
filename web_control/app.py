@@ -576,7 +576,13 @@ def meals_page():
         planned, problem = None, str(error)
     from meals.food_storage import web_guidance
     storage = web_guidance(planned, meals._load(meals.COMPONENTS_FILE, {}).get("components", []), today)
-    return render_template("meals.html", recipes=recipes, planned=planned, storage=storage,
+    from meals.resource_planning import analyse
+    from actions.personal_helper import store as helper_store
+    try:
+        resources = analyse(meals.load_plan_for(today) or {}, meals._load(meals.COMPONENTS_FILE, {}).get("components", []), helper_store().read()["meal_uses"], today)
+    except (OSError, ValueError):
+        resources = {"batches": [], "cleanup": [], "shared": []}
+    return render_template("meals.html", recipes=recipes, planned=planned, storage=storage, resources=resources,
                            confirmed=meal_confirmation(today), today=today, error=problem)
 
 
@@ -1456,6 +1462,9 @@ def _travel_transit_credentials():
     return credentials(private)
 
 register_day_travel(app, login_required, lambda day: _collect_travel_calendar(day), lambda: _travel_transit_credentials())
+
+from web_control.personal_helper import register as register_personal_helper
+register_personal_helper(app, login_required)
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

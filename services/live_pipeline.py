@@ -4991,19 +4991,38 @@ def run_live_pipeline(
             assistant_section('MONEY TO CHECK', daily_financial_lines(today))
         except (ValueError, OSError):
             left(printer, 'ORGANISER UNAVAILABLE - CHECK APP')
+        helper_view = None
+        try:
+            from actions.personal_helper import context as helper_context, receipt_brief
+            helper_view = helper_context(upcoming_events, observe_tasks=True)
+        except (OSError, ValueError):
+            left(printer, 'HELPER UNAVAILABLE - CHECK APP')
         focus_titles = {row['title'] for row in assistant_brief['focus']}
+        if helper_view and helper_view['enabled']:
+            focus_titles.update(row['title'] for row in helper_view['priorities'])
         try:
             from actions.birthdays import receipt_lines as birthday_lines
             assistant_section('BIRTHDAYS', birthday_lines())
         except (OSError, ValueError):
             left(printer, 'BIRTHDAY DATA UNAVAILABLE - CHECK WEB LIST')
-        assistant_section('DO FIRST', ['[ ] '+row['title'] for row in assistant_brief['focus']
-                                       if not (therapy_paid and row['title'].casefold() == 'pay for therapy')])
+        if helper_view and helper_view['enabled']:
+            if therapy_paid:
+                helper_view['priorities'] = [r for r in helper_view['priorities'] if r['title'].casefold() != 'pay for therapy']
+            assistant_section('YOUR DAY', receipt_brief(helper_view))
+        else:
+            assistant_section('DO FIRST', ['[ ] '+row['title'] for row in assistant_brief['focus']
+                                         if not (therapy_paid and row['title'].casefold() == 'pay for therapy')])
         appointment = assistant_brief['appointment']
+        if appointment and helper_view and helper_view['enabled'] and helper_view['departure']:
+            # The current route's departure supersedes an older manual travel estimate.
+            appointment = dict(appointment, notes=[note for note in appointment['notes']
+                if not (note.startswith('Leave by:') or note.startswith('Using your ') or note == 'Planned leave time has passed.')])
         if feature_enabled(settings, 'calendar'):
             print_calendar(printer, calendar_with_preparation(events, upcoming_events, appointment))
         remaining_tasks = '\n'.join(value for value in document_1.splitlines()
                                      if value.rstrip('.').strip() not in focus_titles)
+        if helper_view and helper_view['enabled'] and helper_view['compact']:
+            remaining_tasks = ''
         if remaining_tasks or (therapy_payment_due(upcoming_events, today) and not therapy_paid):
             print_google_doc(printer, remaining_tasks, upcoming_events, therapy_paid=therapy_paid)
 
