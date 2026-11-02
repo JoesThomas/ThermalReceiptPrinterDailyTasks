@@ -37,9 +37,5 @@
     L.polyline(coords,{color:leg.mode==='driving'?'#6f153b':leg.mode==='walking'?'#136252':'#31569a',weight:4,opacity:.8,dashArray:street?null:'5,8'}).addTo(map);
   });
   if(bounds.length)map.fitBounds(bounds,{padding:[35,45],maxZoom:15});else map.setView([52.48,-1.9],10);
-  const tiles=document.getElementById('travel-map-tiles');
-  tiles.addEventListener('click',()=>{
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'}).addTo(map);
-    tiles.disabled=true;tiles.textContent='Street map loaded';
-  },{once:true});
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'}).addTo(map);
 })();

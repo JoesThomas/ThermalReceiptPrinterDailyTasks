@@ -1449,7 +1449,13 @@ def _collect_travel_calendar(day):
     return events, snapshot().get('Calendar agenda', {}).get('warnings', [])
 
 from web_control.day_travel import register as register_day_travel
-register_day_travel(app, login_required, lambda day: _collect_travel_calendar(day))
+def _travel_transit_credentials():
+    from services.travel_transit import credentials
+    try: private=json.loads(PROJECT_PASSWORDS_FILE.read_text(encoding='utf-8'))
+    except (OSError,ValueError): private={}
+    return credentials(private)
+
+register_day_travel(app, login_required, lambda day: _collect_travel_calendar(day), lambda: _travel_transit_credentials())
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)
