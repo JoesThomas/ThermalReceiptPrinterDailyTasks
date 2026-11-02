@@ -80,7 +80,8 @@ the owner's live account; tests use synthetic scheduled journeys.
 ## Overrides and privacy
 
 Per-event travel mode, home-stop preference, finish time and exclusions remain
-editable. Manual one-way duration overrides are optional and tucked under
+editable. Ignoring an event excludes its time too; leave online events included
+with a blank location to reserve their time at home. Manual one-way duration overrides are optional and tucked under
 **Advanced: override a journey duration**. Driving overrides still receive the
 parking allowance. Reverse journeys have separate overrides; remove an override
 to resume automatic timing. Replan after changes.
@@ -89,8 +90,8 @@ Planning sends location text to Photon/komoot, UK postcodes to Postcodes.io when
 needed, confirmed coordinates to FOSSGIS and timetable endpoints to TransportAPI.
 Event titles and calendar feed URLs are not sent to those providers. The street
 map fetches OpenStreetMap tiles; it sends the site origin and viewed map area,
-not calendar titles or page query strings. Google Maps directions links share
-endpoints with Google only when clicked. Provider logs cannot be deleted here.
+not calendar titles or page query strings. Directions and timetables are shown
+in the app; no Google Maps request is needed. Provider logs cannot be deleted here.
 
 The authenticated web app saves home, map points, manual durations and at most
 31 selected-day snapshots locally in owner-only files, with CSRF and no-store
@@ -121,3 +122,26 @@ Sources and terms:
 
 Leaflet 1.9.4 is vendored locally with its BSD-2-Clause license and verified
 original JS/CSS hashes. No external JavaScript CDN is used.
+
+## At-home events and directions on the page
+
+A calendar event with an empty location is assumed to be **at home**. Its start
+and finish still reserve time, so a preceding away appointment can require a
+return home, and the next journey cannot depart before the home event finishes.
+Consecutive home events create no zero-minute travel cards and do not trigger a
+trip merely to collect a parked car. Locationless all-day entries create no timed
+journey or demand for an address; their calendar entry remains visible.
+
+Journey cards show clearly labelled **Departure** and **Arrival** times. Street
+routing requests include OSRM maneuver steps, rendered as directions with road
+names, turns, roundabout exits and distances. Transit cards show an on-page
+journey timetable with service numbers, stops, walking/waiting segments and
+changes. Full provider timestamps retain next-day and timezone context when
+available. Missing step times are labelled as not supplied, not fabricated.
+
+There is no Google Maps button or dependency for these details. Unknown/manual
+routes without provider instructions say that detailed directions are unavailable.
+A bounded list of at most 200 street steps is shown, with an explicit truncation
+notice for longer routes. Routing directions and times are provider estimates;
+check signs, access restrictions and service disruption information while travelling.
+Rebuild older saved plans to fetch the new details.

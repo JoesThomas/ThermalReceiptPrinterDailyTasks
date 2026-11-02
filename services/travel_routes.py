@@ -144,7 +144,7 @@ def route(a, b, mode, deadline):
     try:
         data = cached(
             url,
-            {"overview": "simplified", "geometries": "geojson", "steps": "false"},
+            {"overview": "simplified", "geometries": "geojson", "steps": "true"},
             deadline,
             86400,
         )
@@ -162,9 +162,14 @@ def route(a, b, mode, deadline):
         if not isinstance(geometry, list) or len(geometry) > 20000:
             return None
         points = [point([p[1], p[0]]) for p in geometry]
+        from services.travel_instructions import build as build_directions
+
+        directions, truncated = build_directions(result)
         return dict(
             minutes=math.ceil(seconds / 60),
             geometry=points,
+            directions=directions,
+            directions_truncated=truncated,
             source="FOSSGIS / OSRM estimate; no live traffic",
         )
     except (
