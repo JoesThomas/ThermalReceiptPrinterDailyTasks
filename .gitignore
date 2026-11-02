@@ -250,3 +250,8 @@ receipt-smart-home.encrypted.json
 data/day_travel.json
 data/day_travel*.lock
 cache/day_travel/
+
+# Local personal-helper metadata, addresses and preparation rules
+data/personal_helper.json
+data/personal_helper.lock
+data/helper_job.lock

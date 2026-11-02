@@ -876,6 +876,29 @@ process.on('exit', () => child.kill());
   assert.equal(await page.getByRole('heading',{name:'Private camera fixture',exact:true}).count(),0);
   assert.equal(await page.locator('.smart-house-plan').count(),0);
   await page.getByRole('heading',{name:'Unlock smart home',exact:true}).waitFor();
+  await page.goto('http://receipt.test/__fixture_helper');
+  await page.getByRole('heading',{name:'Personal helper',exact:true}).waitFor();
+  const helperTask=page.locator('.helper-task').filter({has:page.locator('summary').filter({hasText:'Prepare therapy questions'})});
+  await helperTask.locator('summary').first().click();
+  await helperTask.getByLabel('Estimated minutes (optional)').fill('15');
+  await helperTask.getByLabel('Smaller steps (one per line, up to ten)').fill('Find notebook\nWrite three questions');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),helperTask.getByRole('button',{name:'Save & show in helper',exact:true}).click()]);
+  await page.getByRole('button',{name:'Make today lighter',exact:true}).click();
+  await page.getByRole('button',{name:'Use usual pace',exact:true}).waitFor();
+  const helperRule=page.locator('form[action="/helper/rule"]').last();
+  await helperRule.getByLabel('Event title contains').fill('Therapy');
+  await helperRule.getByLabel('Things to take (one per line)').fill('Notebook');
+  await helperRule.getByLabel('Preparation steps (one per line)').fill('Review questions');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),helperRule.getByRole('button',{name:'Save rule',exact:true}).click()]);
+  await page.getByText('Reusable packing and preparation rule saved.',{exact:true}).waitFor();
+  for(const width of [390,1280]) {
+    await page.setViewportSize({width,height:900});
+    await page.locator('.helper-task summary').first().click();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'Helper overflows');
+    if(process.env.HELPER_SCREENSHOT) await page.screenshot({path:process.env.HELPER_SCREENSHOT+'-'+width+'.png',fullPage:true});
+  }
+  const helperA11y=await require('./browser_accessibility.cjs')(page,'/helper');
+  if(helperA11y) accessibilityFailures.push(helperA11y);
   assert.deepEqual(accessibilityFailures, [], `Accessibility violations: ${JSON.stringify(accessibilityFailures)}`);
   if (process.env.RECEIPT_BROWSER_SCREENSHOT) {
     await page.setViewportSize({width:390,height:900});

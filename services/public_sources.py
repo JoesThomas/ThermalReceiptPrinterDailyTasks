@@ -36,7 +36,13 @@ def weather(url, params):
         if not isinstance(value, dict) or not isinstance(value.get('current'), dict) or not isinstance(value.get('hourly'), dict):
             raise ValueError('Invalid weather response')
         return [value]
-    return cached('Weather', url, json.dumps(params, sort_keys=True), collect)[0]
+    value = cached('Weather', url, json.dumps(params, sort_keys=True), collect)[0]
+    try:
+        from actions.personal_helper import capture_weather
+        capture_weather(value)
+    except (OSError, ValueError):
+        pass  # A helper metadata failure must not hide the weather.
+    return value
 
 
 def document(url):

@@ -49,6 +49,10 @@ class DailyAssistantTests(unittest.TestCase):
         self.file = Path(self.folder.name) / "daily_lists.json"
         self.patch = patch.object(checklists, "FILE", self.file)
         self.patch.start()
+        from actions import personal_helper
+        self.helper_patch = patch.object(personal_helper, "FILE", Path(self.folder.name) / "helper.json")
+        self.helper_patch.start()
+        self.addCleanup(self.helper_patch.stop)
         write_json(
             self.file,
             {"items": [task("First"), task("Second"), task("Third"), task("Fourth")]},

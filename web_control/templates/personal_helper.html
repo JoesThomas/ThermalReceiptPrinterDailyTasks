@@ -1,0 +1,375 @@
+{% macro csrf() %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{% endmacro %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include "favicon.html" %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Personal helper · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='personal-helper.css') }}">
+        <script src="{{ url_for('static',filename='personal-helper.js') }}" defer></script>
+    </head>
+    <body>
+        {% include "navigation.html" %}
+        <main id="main-content" class="helper-page privacy-sensitive">
+            <header>
+                <p class="eyebrow">Make room for your day</p>
+                <h1>Personal helper</h1>
+                <p>Small next steps, useful gaps and preparation in one place. Suggestions use your saved calendar and travel plan.</p>
+            </header>
+            {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            <nav class="finance-jumps" aria-label="Helper sections">
+                <a href="#day-plan">Today</a><a href="#prepare">Prepare</a><a href="#helper-tasks">Tasks & errands</a><a href="#helper-rules">Reusable rules</a><a href="#helper-preferences">Preferences</a>
+            </nav>
+            <section id="day-plan">
+                <div class="helper-heading">
+                    <div>
+                        <h2>Today’s plan</h2>
+                        <p class="muted">{{ day }} · {{ 'Lighter day' if helper.lighter else 'Usual pace' }}</p>
+                    </div>
+                    <form method="post" action="{{ url_for('personal_helper_lighter') }}">
+                        {{ csrf() }}
+                        <input type="hidden"
+                               name="lighter"
+                               value="{{ '' if helper.lighter else 'on' }}">
+                        <button>{{ 'Use usual pace' if helper.lighter else 'Make today lighter' }}</button>
+                    </form>
+                </div>
+                {% if not helper.enabled %}
+                    <p class="flash">Receipt helper is switched off. The suggestions below remain available here.</p>
+                {% endif %}
+                <p class="muted">
+                    Lighter days show two priorities and shorter starts, and leave optional high-effort tasks out. Essential and due items stay visible.
+                </p>
+                {% if helper.warnings %}
+                    <aside class="helper">
+                        {% for warning in helper.warnings %}<p>{{ warning }}</p>{% endfor %}
+                    </aside>
+                {% endif %}
+                <form method="post" action="{{ url_for('personal_helper_refresh') }}">
+                    {{ csrf() }}
+                    <button {% if job.state == 'running' %}disabled{% endif %}>Update helper & locate errands</button>
+                </form>
+                <p id="helper-job"
+                   role="status"
+                   aria-live="polite"
+                   data-state="{{ job.state|default('') }}"
+                   data-url="{{ url_for('personal_helper_status') }}">
+                    {{ job.message|default('Refresh Calendar and Day travel when your plans change. Address lookups run only when requested.') }}
+                </p>
+                <div class="today-grid">
+                    <article>
+                        <h3>Do first</h3>
+                        <ol>
+                            {% for task in helper.priorities %}
+                                <li>
+                                    <strong>{{ task.title }}</strong>
+                                    {% if task.critical %}· essential / due{% endif %}
+                                    {% if task.next_step %}<p>Next step: {{ task.next_step }}</p>{% endif %}
+                                </li>
+                            {% else %}
+                                <li>No tasks need suggesting today.</li>
+                            {% endfor %}
+                        </ol>
+                        {% if helper.urgent %}
+                            <details>
+                                <summary>All {{ helper.urgent|length }} essential / due items</summary>
+                                <ul>
+                                    {% for task in helper.urgent %}
+                                        <li>
+                                            {{ task.title }}
+                                            {% if task.due %}· due {{ task.due }}{% endif %}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </details>
+                        {% endif %}
+                    </article>
+                    <article>
+                        <h3>Next departure</h3>
+                        {% if helper.departure %}
+                            <p>
+                                <strong>Leave {{ clock(helper.departure.at) }}</strong>
+                                <br>
+                                {{ helper.departure.destination }} · {{ helper.departure.mode }}
+                            </p>
+                        {% else %}
+                            <p>No future departure in a current saved plan.</p>
+                        {% endif %}
+                        <a href="{{ url_for('day_travel') }}">Review travel, directions & timetables</a></article>
+                </div>
+                <details open>
+                    <summary>Suggested task slots</summary>
+                    <p class="muted">
+                        Suggestions, not bookings. Travel and appointments are reserved first. Unknown durations are labelled as starts, not promises to finish. Review provisional gaps before using them.
+                    </p>
+                    <ul>
+                        {% for slot in helper.reservations %}
+                            <li>
+                                {{ clock(slot.start) }}–{{ clock(slot.end) }} · {{ slot.title }} · {{ 'short start' if slot.timebox else 'estimated duration' }} · {{ slot.context }}
+                            </li>
+                        {% else %}
+                            <li>No suitable gaps for these tasks. Add estimates or check your calendar.</li>
+                        {% endfor %}
+                    </ul>
+                </details>
+                <details>
+                    <summary>Available gaps</summary>
+                    <ul>
+                        {% for gap in helper.windows %}
+                            <li>{{ clock(gap.start) }}–{{ clock(gap.end) }} · {{ gap.minutes }} minutes · {{ gap.context }}</li>
+                        {% else %}
+                            <li>No gaps within your planning hours.</li>
+                        {% endfor %}
+                    </ul>
+                </details>
+            </section>
+            <section id="prepare">
+                <h2>Take & prepare</h2>
+                <div class="today-grid">
+                    <article>
+                        <h3>Before you leave</h3>
+                        <ul>
+                            {% for item in helper.take %}
+                                <li>{{ item }}</li>
+                            {% else %}
+                                <li>No packing prompts for a future outing today.</li>
+                            {% endfor %}
+                        </ul>
+                        <p class="muted">Weather prompts use today's saved forecast. Add personal items with a rule below.</p>
+                    </article><article>
+                    <h3>Preparation due today</h3>
+                    <ul>
+                        {% for item in helper.preparation %}
+                            <li>
+                                {{ item.title }} · by {{ clock(item.by) }}
+                                {% if item.event %}for {{ item.event }}{% endif %}
+                                {% if item.late %}· review now{% endif %}
+                            </li>
+                        {% else %}
+                            <li>No preparation due today.</li>
+                        {% endfor %}
+                    </ul>
+                </article>
+            </div>
+            <h3>Errands near your route</h3>
+            <ul>
+                {% for errand in helper.errands %}
+                    <li>
+                        <strong>{{ errand.title }}</strong> · {{ errand.distance }} m from the route
+                        {% if errand.hours %}<p>Your note: {{ errand.hours }}</p>{% endif %}
+                        <p class="muted">Proximity suggestion only: check time, opening hours and any detour. Not added to the itinerary.</p>
+                    </li>
+                {% else %}
+                    <li>No saved errands matched a future walking, cycling or driving leg.</li>
+                {% endfor %}
+            </ul>
+            <a href="{{ url_for('meals_page') }}#meal-resources">Kitchen plan: shared ingredients, batches & clean-up</a>
+        </section>
+        <section id="helper-tasks">
+            <h2>Tasks & errands</h2>
+            <p>
+                <a href="{{ url_for('task_list') }}">Add or edit the main task list</a>. Hidden or deferred helper tasks remain in that list; due items remain visible here.
+            </p>
+            {% if helper.nudges %}
+                <aside class="helper">
+                    <h3>Make these easier</h3>
+                    <ul>
+                        {% for task in helper.nudges %}
+                            <li>
+                                {{ task.title }} · {{ task.days }} days seen, deferred on {{ task.deferrals }} days. Try a smaller step, choose a later date or hide it from suggestions.
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </aside>
+            {% endif %}
+            {% for task in tasks %}
+                {% set meta=config.tasks.get(task.id,{}) %}{% set errand=config.errands.get(task.id,{}) %}
+                <details class="helper-task">
+                    <summary>
+                        {{ task.title }}
+                        {% if meta.hidden %}· hidden{% endif %}
+                        {% if meta.defer_until %}· deferred until {{ meta.defer_until }}{% endif %}
+                    </summary>
+                    <form method="post" action="{{ url_for('personal_helper_task') }}">
+                        {{ csrf() }}
+                        <input type="hidden" name="task" value="{{ task.id }}">
+                        <label>
+                            Estimated minutes (optional)
+                            <input name="minutes"
+                                   type="number"
+                                   min="1"
+                                   max="480"
+                                   value="{{ meta.minutes or '' }}">
+                        </label>
+                        <label>
+                            Where can you do it?
+                            <select name="context">
+                                {% for value in ['home','anywhere','outside'] %}
+                                    <option value="{{ value }}"
+                                            {% if meta.get('context','home') == value %}selected{% endif %}>
+                                        {{ value|capitalize }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label>
+                            Effort
+                            <select name="effort">
+                                {% for value in ['low','normal','high'] %}
+                                    <option value="{{ value }}"
+                                            {% if meta.get('effort','normal') == value %}selected{% endif %}>
+                                        {{ value|capitalize }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label>
+                            <input name="essential"
+                                   type="checkbox"
+                                   {% if meta.essential %}checked{% endif %}>
+                            Essential, including on lighter days
+                        </label>
+                        <label>
+                            Smaller steps (one per line, up to ten)<textarea name="steps" rows="3" maxlength="1610">{{ meta.get('steps',[])|join('\n') }}</textarea>
+                        </label>
+                        <button>Save & show in helper</button>
+                    </form>
+                    {% for step in meta.get('steps',[]) %}
+                        <form class="helper-action"
+                              method="post"
+                              action="{{ url_for('personal_helper_task_action') }}">
+                            {{ csrf() }}
+                            <input type="hidden" name="task" value="{{ task.id }}">
+                            <input type="hidden" name="action" value="step">
+                            <input type="hidden" name="index" value="{{ loop.index0 }}">
+                            <button aria-pressed="{{ 'true' if loop.index0 in meta.get('step_done',[]) else 'false' }}">
+                                {{ '✓ ' if loop.index0 in meta.get('step_done',[]) else 'Complete step: ' }}{{ step }}
+                            </button>
+                        </form>
+                    {% endfor %}
+                    <div class="helper-actions">
+                        <form method="post" action="{{ url_for('personal_helper_task_action') }}">
+                            {{ csrf() }}
+                            <input type="hidden" name="task" value="{{ task.id }}">
+                            <button name="action" value="complete">Mark task complete</button>
+                            <button name="action" value="hide">Hide suggestion</button>
+                        </form>
+                        <form method="post" action="{{ url_for('personal_helper_task_action') }}">
+                            {{ csrf() }}
+                            <input type="hidden" name="task" value="{{ task.id }}">
+                            <input type="hidden" name="action" value="defer">
+                            <label>
+                                Move suggestion to
+                                <input name="until"
+                                       type="date"
+                                       min="{{ tomorrow }}"
+                                       value="{{ tomorrow }}"
+                                       required>
+                            </label>
+                            <button>Defer task</button>
+                        </form>
+                    </div>
+                    <details>
+                        <summary>Make this an errand</summary>
+                        <form method="post" action="{{ url_for('personal_helper_errand') }}">
+                            {{ csrf() }}
+                            <input type="hidden" name="task" value="{{ task.id }}">
+                            <label>
+                                Shop / venue and address
+                                <input name="address"
+                                       value="{{ errand.address|default('') }}"
+                                       maxlength="500"
+                                       required>
+                            </label>
+                            <label>
+                                Opening-hours note (optional; not checked automatically)
+                                <input name="hours" value="{{ errand.hours|default('') }}" maxlength="160">
+                            </label>
+                            <button>Save errand</button>
+                            {% if errand %}<button name="remove" value="on" formnovalidate>Remove errand link</button>{% endif %}
+                        </form>
+                    </details>
+                </details>
+            {% else %}
+                <p>No unfinished tasks.</p>
+            {% endfor %}
+        </section>
+        <section id="helper-rules">
+            <h2>Reusable appointment rules</h2>
+            <p>
+                Match part of an event title, such as “Therapy”. Preparation is due the chosen number of hours before the event; packing applies to outings today.
+            </p>
+            {% for rule in config.rules + [none] %}
+                <details {% if not rule %}open{% endif %}>
+                    <summary>{{ rule.match if rule else 'Add a rule' }}</summary>
+                    <form method="post" action="{{ url_for('personal_helper_rule') }}">
+                        {{ csrf() }}
+                        {% if rule %}<input type="hidden" name="id" value="{{ rule.id }}">{% endif %}
+                        <label>
+                            Event title contains
+                            <input name="match"
+                                   maxlength="120"
+                                   value="{{ rule.match if rule else '' }}"
+                                   required>
+                        </label>
+                        <label>
+                            Preparation lead time (hours)
+                            <input name="lead_hours"
+                                   type="number"
+                                   min="0"
+                                   max="72"
+                                   value="{{ rule.lead_hours if rule else 12 }}"
+                                   required>
+                        </label>
+                        <label>
+                            Things to take (one per line)<textarea name="take" rows="2">{{ rule.take|join('\n') if rule else '' }}</textarea>
+                        </label>
+                        <label>
+                            Preparation steps (one per line)<textarea name="prepare" rows="2">{{ rule.prepare|join('\n') if rule else '' }}</textarea>
+                        </label>
+                        <button>Save rule</button>
+                        {% if rule %}<button name="remove" value="on" formnovalidate>Remove rule</button>{% endif %}
+                    </form>
+                </details>
+            {% endfor %}
+        </section>
+        <section id="helper-preferences">
+            <h2>Helper preferences</h2>
+            <form method="post" action="{{ url_for('personal_helper_settings') }}">
+                {{ csrf() }}
+                <label>
+                    <input type="checkbox"
+                           name="enabled"
+                           {% if config.enabled %}checked{% endif %}>
+                    Include helper on the daily receipt
+                </label>
+                <label>
+                    <input type="checkbox"
+                           name="compact"
+                           {% if config.compact %}checked{% endif %}>
+                    Keep receipt short: priorities and up to two relevant prompts, full tasks here
+                </label>
+                <label>
+                    Day starts
+                    <input type="time" name="start" value="{{ config.start }}" required>
+                </label>
+                <label>
+                    Day ends
+                    <input type="time" name="end" value="{{ config.end }}" required>
+                </label>
+                <button>Save preferences</button>
+            </form>
+            <p class="muted">
+                Helper details stay in local private storage and are excluded from the ordinary backup. Export or back up that file separately if you need these preferences restored.
+            </p>
+        </section>
+    </main>
+</body>
+</html>

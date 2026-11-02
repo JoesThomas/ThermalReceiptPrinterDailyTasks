@@ -47,6 +47,9 @@
                 <div class="tools-panel">
                     <div class="tool-group">
                         <h2>Day to day</h2>
+                        {% if personal_helper_available|default(false) %}
+                            <a href="{{ url_for('personal_helper_page') }}">Personal helper<span>Plan gaps, prepare and simplify your day</span></a>
+                        {% endif %}
                         {% if day_travel_available|default(false) %}
                             <a href="{{ url_for('day_travel') }}">Day travel<span>Map, home stops and parked car</span></a>
                         {% endif %}

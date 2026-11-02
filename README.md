@@ -541,3 +541,7 @@ these optional controls are not included on receipts.
 **Calendar → Plan a day's travel** adds a private mini map and a day itinerary,
 with editable home location, arrival/parking buffers, feasible home stops and
 parked-car tracking. See [day travel setup, estimates and provider privacy](docs/day-travel.md).
+
+### Personal helper
+
+Open **More tools → Personal helper** for task slots around calendar/travel, near-route errands, packing/preparation rules, smaller task steps and lighter days. The daily receipt stays brief; Meals shows shared components, batch requirements and clean-up estimates. See [Personal helper](docs/personal-helper.md) for assumptions, controls and local data.
