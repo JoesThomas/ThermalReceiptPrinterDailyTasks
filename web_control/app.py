@@ -1438,5 +1438,18 @@ register_instalment_settlement(app, login_required, lambda: SUBSCRIPTIONS_FILE)
 from web_control.smart_home import register as register_smart_home
 register_smart_home(app, login_required, lambda password: check_password_hash(load_password_hash(), password))
 
+def _collect_travel_calendar(day):
+    private = json.loads(PROJECT_PASSWORDS_FILE.read_text(encoding="utf-8"))
+    from services.calendar_agenda import collect
+    from receipt_settings import feature_enabled
+    events = collect(private.get('calendar', {}).get('ical_url'), day, 0,
+                     include_villa=feature_enabled(load_receipt_settings(), 'villa'),
+                     api_key=private.get('football', {}).get('api_key', ''))
+    from receipt.freshness import snapshot
+    return events, snapshot().get('Calendar agenda', {}).get('warnings', [])
+
+from web_control.day_travel import register as register_day_travel
+register_day_travel(app, login_required, lambda day: _collect_travel_calendar(day))
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

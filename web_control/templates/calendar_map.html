@@ -25,6 +25,9 @@
                     Events combine your iCal feed with home and away Villa fixtures when Villa information is enabled. Existing calendar matches appear once. Villa fixtures update from the club schedule; other events are edited in your calendar. You can correct the local map and receipt location below without changing the feed.
                 </p>
             </header>
+            <p>
+                <a class="section-link" href="{{ url_for('day_travel') }}">Plan a day's travel →</a>
+            </p>
             {% if error %}
                 <section class="helper">
                     {{ error }}

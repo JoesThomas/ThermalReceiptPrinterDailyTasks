@@ -245,3 +245,8 @@ data/long_term_plans.lock
 # Separately encrypted smart-home credentials and private unlock limits
 data/smart_home/
 receipt-smart-home.encrypted.json
+
+# Private home / itinerary settings and provider caches
+data/day_travel.json
+data/day_travel*.lock
+cache/day_travel/
