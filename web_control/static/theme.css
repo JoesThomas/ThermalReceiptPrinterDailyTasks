@@ -34,7 +34,7 @@ p { margin: .6rem 0 1rem; }
 .utility-menu:has(a[aria-current=page]) > summary { color: var(--green); box-shadow: inset 0 0 0 1px #e8cbd8; }
 .header-disclosure[open] > summary { background: var(--mint); color: var(--green); }
 .header-disclosure[open] > summary::after { transform: rotate(225deg) translate(-2px,-1px); }
-.app-navigation { max-width: none; position: static; display: grid; grid-template-columns: repeat(8,minmax(0,1fr)); margin: 0; padding: 0 0 12px; gap: 4px; border: 0; border-radius: 0; background: transparent; overflow: visible; box-shadow: none; }
+.app-navigation { max-width: none; position: static; display: grid; grid-template-columns: repeat(9,minmax(0,1fr)); margin: 0; padding: 0 0 12px; gap: 4px; border: 0; border-radius: 0; background: transparent; overflow: visible; box-shadow: none; }
 .app-navigation > a { min-width: 0; text-align: center; padding: 10px 8px; border-radius: 8px; color: var(--sub); font-size: .88rem; white-space: normal; }
 .app-navigation > a:hover, .header-disclosure > summary:hover { background: var(--surface); color: var(--ink); }
 .app-navigation a[aria-current=page] { background: var(--mint); color: var(--green); box-shadow: inset 0 0 0 1px #e8cbd8; }
@@ -222,7 +222,7 @@ main > header h1 { font-size: clamp(1.8rem,3vw,2.4rem); }
     .app-header-actions { margin-left: auto; }
     .app-header-actions .header-disclosure > summary { font-size: .8rem; padding-inline: 8px; }
     .app-header-actions button { font-size: .78rem; padding-inline: 10px; }
-    .app-navigation { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 4px; }
+    .app-navigation { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; }
     .tools-panel { left: 18px; right: 18px; gap: 14px; padding: 18px; }
     main { padding-inline: 18px; }
 }
@@ -269,3 +269,12 @@ main > header h1 { font-size: clamp(1.8rem,3vw,2.4rem); }
 .early-payoff-settings p { font-size: .88rem; }
 
 html[data-privacy=true] #amex-balance-alert [data-private]{visibility:hidden}
+
+/* Make the itinerary and its timings visible without opening More tools. */
+.home-grid > #day-route-shortcut { grid-column: 1 / -1; }
+.route-shortcut { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-left: 4px solid var(--green); }
+.route-shortcut > div { min-width: 0; }
+.route-shortcut h2 { margin-top: 0; }
+.route-shortcut p:last-child { margin-bottom: 0; }
+.route-shortcut > .button { flex: 0 0 auto; text-align: center; }
+@media(max-width:650px) { .route-shortcut { flex-direction: column; align-items: stretch; gap: 16px; } .route-shortcut > .button { white-space: normal; } }

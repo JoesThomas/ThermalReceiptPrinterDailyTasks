@@ -538,7 +538,7 @@ these optional controls are not included on receipts.
 
 ### Day travel planner
 
-**Calendar → Plan a day's travel** adds a private mini map and a day itinerary,
+**Routes & times** in the main navigation (also on Home and Calendar) opens a private mini map and a day itinerary,
 with editable home location, arrival/parking buffers, feasible home stops and
 parked-car tracking. See [day travel setup, estimates and provider privacy](docs/day-travel.md).
 
