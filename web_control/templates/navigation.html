@@ -66,6 +66,9 @@
                         {% endif %}
                         <a href="{{ url_for('delivery_checklist') }}">Deliveries<span>Track expected arrivals</span></a>
                         <a href="{{ url_for('meals_page') }}">Meals<span>Recipes and meal plans</span></a>
+                        {% if monthly_meals_available|default(false) %}
+                            <a href="{{ url_for('monthly_meals_page') }}">Monthly meals &amp; shops<span>Monthly menu and weekly specialist lists</span></a>
+                        {% endif %}
                         <a href="{{ url_for('quick_actions') }}">Quick actions</a>
                     </div>
                     <div class="tool-group">

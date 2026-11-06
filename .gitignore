@@ -255,3 +255,7 @@ cache/day_travel/
 data/personal_helper.json
 data/personal_helper.lock
 data/helper_job.lock
+
+# Private monthly meal shopping preferences
+data/monthly_meals.json
+data/monthly_meals.lock
