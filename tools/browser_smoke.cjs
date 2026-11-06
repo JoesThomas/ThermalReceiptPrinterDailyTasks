@@ -758,6 +758,18 @@ process.on('exit', () => child.kill());
   await page.keyboard.press('Enter');
   assert.equal(await page.locator('#main-content').evaluate(node => node === document.activeElement), true);
   // Smart-home setup and controls use a separate HTTPS-only encrypted MFA unlock.
+  // The route and timings are discoverable from Home, the main nav and Calendar.
+  await page.goto('http://receipt.test/');
+  for(const width of [390,1280]) {
+    await page.setViewportSize({width,height:900});
+    await page.locator('#day-route-shortcut').getByRole('link',{name:'Open today’s route & times',exact:true}).waitFor();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'Route shortcut overflows');
+  }
+  await Promise.all([page.waitForURL('**/day-travel'),page.locator('#day-route-shortcut').getByRole('link').click()]);
+  await page.getByRole('heading',{name:'Your daily route & times',exact:true}).waitFor();
+  assert.equal(await page.locator('.app-navigation > a[aria-current=page]').innerText(),'Routes & times');
+  await page.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Calendar',exact:true}).click();
+  await Promise.all([page.waitForURL('**/day-travel'),page.getByRole('link',{name:'Open daily route & times',exact:true}).click()]);
   await page.goto('http://receipt.test/__fixture_day_travel');
   const homeForm=page.locator('form[action="/day-travel/settings"]');
   await homeForm.locator('[name=home]').fill('Home fixture');

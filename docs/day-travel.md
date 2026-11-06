@@ -1,6 +1,7 @@
 # Automatic day travel planner
 
-Open **Calendar → Plan a day's travel**, or **More tools → Day travel**. Enter your
+Open **Routes & times** in the main navigation, **Open today’s route & times** on Home,
+or **Open daily route & times** on Calendar. Enter your
 home once, select a date, then choose **Plan my day**. A background job retrieves
 that day's calendar, locates addresses, compares journeys and builds the map.
 The main workflow does not require coordinate confirmation or manual durations.

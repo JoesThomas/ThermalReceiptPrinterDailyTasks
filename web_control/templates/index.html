@@ -254,6 +254,18 @@
             {% if active_view == 'dashboard' %}
                 <div class="home-grid">
                     {% include 'renewal_reminders.html' %}
+                    {% if day_travel_available|default(false) %}
+                        <section id="day-route-shortcut"
+                                 class="route-shortcut"
+                                 aria-labelledby="day-route-heading">
+                            <div>
+                                <p class="eyebrow">Travel today</p>
+                                <h2 id="day-route-heading">Your daily route &amp; times</h2>
+                                <p>See your day on a map, when to leave and arrive, directions and bus/train timetables.</p>
+                            </div>
+                            <a class="button primary" href="{{ url_for('day_travel') }}">Open today’s route &amp; times</a>
+                        </section>
+                    {% endif %}
                     <section id="overview">
                         <p class="eyebrow">At a glance</p>
                         <h2>Make room for the day</h2>
