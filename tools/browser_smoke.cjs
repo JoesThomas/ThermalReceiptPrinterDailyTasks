@@ -911,6 +911,31 @@ process.on('exit', () => child.kill());
   }
   const helperA11y=await require('./browser_accessibility.cjs')(page,'/helper');
   if(helperA11y) accessibilityFailures.push(helperA11y);
+  // A calendar-month menu and dated specialist lists use the same saved weeks.
+  await page.goto('http://receipt.test/__fixture_monthly_meals');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.getByRole('button',{name:'Create / complete monthly menu',exact:true}).click()]);
+  assert.ok(await page.locator('.shop-list').count()>3);
+  assert.match(await page.locator('#month-shops').innerText(),/Butcher/);
+  assert.match(await page.locator('#month-shops').innerText(),/Greengrocer/);
+  const monthSettings=page.locator('form[action="/meals/month/settings"]');
+  await monthSettings.locator('[name=weekly_day]').selectOption('6');
+  await monthSettings.locator('[name=veg_topup]').check();
+  await monthSettings.locator('[name=shop_4]').selectOption('Local shop');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),monthSettings.getByRole('button',{name:'Save shopping preferences',exact:true}).click()]);
+  assert.equal(await monthSettings.locator('[name=weekly_day]').inputValue(),'6');
+  assert.match(await page.locator('#month-shops').innerText(),/Local shop/);
+  const firstMeal=page.locator('.month-day').filter({has:page.getByText('Change this meal',{exact:true})}).first();
+  await firstMeal.getByText('Change this meal',{exact:true}).click();
+  await firstMeal.locator('select[name=recipe]').selectOption('Monthly fixture dinner 8');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),firstMeal.getByRole('button',{name:'Save meal',exact:true}).click()]);
+  assert.match(await page.locator('.month-day').first().innerText(),/Monthly fixture dinner 8/);
+  for(const width of [390,1280]) {
+    await page.setViewportSize({width,height:1000});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'Monthly meals overflows');
+    if(process.env.MONTHLY_MEALS_SCREENSHOT) await page.screenshot({path:process.env.MONTHLY_MEALS_SCREENSHOT+'-'+width+'.png',fullPage:false});
+  }
+  const monthlyA11y=await require('./browser_accessibility.cjs')(page,'/meals/month');
+  if(monthlyA11y) accessibilityFailures.push(monthlyA11y);
   assert.deepEqual(accessibilityFailures, [], `Accessibility violations: ${JSON.stringify(accessibilityFailures)}`);
   if (process.env.RECEIPT_BROWSER_SCREENSHOT) {
     await page.setViewportSize({width:390,height:900});

@@ -20,6 +20,16 @@
                     {{ today.strftime('%A %d %B') }} · Changing the recipe updates today's printed recipe and the meal plan shopping list.
                 </p>
             </header>
+            {% if monthly_meals_available|default(false) %}
+                <section class="route-shortcut" aria-labelledby="monthly-plan-heading">
+                    <div>
+                        <p class="eyebrow">Plan ahead, combine shopping trips</p>
+                        <h2 id="monthly-plan-heading">Monthly menu &amp; shopping trips</h2>
+                        <p>A main supermarket shop plus weekly butcher, greengrocer and fresh-essential lists.</p>
+                    </div>
+                    <a class="button primary" href="{{ url_for('monthly_meals_page') }}">Plan a month of meals</a>
+                </section>
+            {% endif %}
             {% with messages=get_flashed_messages() %}
                 {% for message in messages %}<p class="flash">{{ message }}</p>{% endfor %}
             {% endwith %}

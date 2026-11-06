@@ -181,11 +181,11 @@ def _special_meal(day: date, override: dict) -> dict:
     }
 
 
-def generate_week(start: date | None = None, force: bool = False, raw=False) -> dict:
+def generate_week(start: date | None = None, force: bool = False, raw=False, *, recent_names=(), existing=None, not_before=None) -> dict:
     today = datetime.now(TZ).date()
     start = start or sunday_for(today)
     path = plan_path(start)
-    if path.exists() and not force:
+    if path.exists() and not force and existing is None and not_before is None:
         plan = _load(path, {})
         return plan if raw else away_plan(plan)
 
@@ -200,8 +200,19 @@ def generate_week(start: date | None = None, force: bool = False, raw=False) -> 
     batch_used = False
     preferred_batch_day = int(prefs.get("batch_preferred_weekday", 6))  # Sunday=6
 
+    kept = {m['date']: m for m in (existing or {}).get('meals', [])}
     for offset in range(7):
         d = start + timedelta(days=offset)
+        if d.isoformat() in kept:
+            meal = kept[d.isoformat()]
+            meals.append(meal)
+            previous = meal.get('recipe') if meal.get('kind') == 'recipe' else None
+            if previous:
+                used.add(previous.get('name', ''))
+                batch_used = batch_used or previous.get('meal_type') in {'batch', 'whole_joint'}
+            continue
+        if not_before and d < not_before:
+            continue
         override = _override_for(d)
         if override and override.get("type") in {"takeaway", "eat_out", "freezer", "treat"}:
             meals.append(_special_meal(d, override))
@@ -214,7 +225,7 @@ def generate_week(start: date | None = None, force: bool = False, raw=False) -> 
         want_batch = (not batch_used and d.weekday() == preferred_batch_day)
         from meals.resource_planning import reuse_bonus
         reduce_waste=prefs.get('cooking_style',{}).get('reduce_food_waste',True)
-        chosen = max(pool, key=lambda r: _score(r, previous, used, history, d, want_batch)+(reuse_bonus(r,meals,d) if reduce_waste else 0))
+        chosen = max(pool, key=lambda r: _score(r, previous, used, history, d, want_batch)+(reuse_bonus(r,meals,d) if reduce_waste else 0) - (8 if r.get("name") in recent_names else 0))
         used.add(chosen.get("name", ""))
         if chosen.get("meal_type") in {"batch", "whole_joint"}:
             batch_used = True

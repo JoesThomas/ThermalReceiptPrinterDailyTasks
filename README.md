@@ -545,3 +545,7 @@ parked-car tracking. See [day travel setup, estimates and provider privacy](docs
 ### Personal helper
 
 Open **More tools → Personal helper** for task slots around calendar/travel, near-route errands, packing/preparation rules, smaller task steps and lighter days. The daily receipt stays brief; Meals shows shared components, batch requirements and clean-up estimates. See [Personal helper](docs/personal-helper.md) for assumptions, controls and local data.
+
+### Monthly meals and specialist shopping
+
+Open **Meals → Plan a month of meals** for a calendar-month menu backed by the same weekly plans as the daily receipt. Shopping separates cupboard/freezer supplies from dated butcher, greengrocer and fresh-essential lists, with editable suppliers and an optional midweek produce top-up. See [monthly menus and shopping](docs/monthly-meals.md) for quantities, storage assumptions and local files.

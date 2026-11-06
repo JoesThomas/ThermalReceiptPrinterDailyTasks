@@ -1,0 +1,260 @@
+{% macro csrf() %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="month" value="{{ view.month }}">
+{% endmacro %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Monthly meals & shops · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='monthly-meals.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content" class="monthly-meals privacy-sensitive">
+            <a href="{{ url_for('meals_page') }}">← Today's meal & recipes</a>
+            <header>
+                <p class="eyebrow">One menu, fewer unplanned shops</p>
+                <h1>Monthly meals & shops</h1>
+                <p>
+                    Plan your dinners for a calendar month, with next-day lunch extras where the recipe includes them. Buy cupboard/freezer items in a main shop, then combine the weekly butcher, greengrocer and fresh-essential stops.
+                </p>
+            </header>
+            {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            <form method="get" class="month-choice">
+                <label>
+                    Choose a month
+                    <input type="month" name="month" value="{{ view.month }}" required>
+                </label>
+                <button>View month</button>
+            </form>
+            <nav class="finance-jumps" aria-label="Monthly meal sections">
+                <a href="#month-menu">Menu</a><a href="#month-shops">Shopping lists</a><a href="#month-settings">Shopping days & shops</a><a href="#month-components">Bulk components</a>
+            </nav>
+            <section id="month-menu">
+                <div class="month-heading">
+                    <div>
+                        <p class="eyebrow">{{ view.label }}</p>
+                        <h2>Your monthly menu</h2>
+                    </div>
+                    <form method="post" action="{{ url_for('monthly_meals_generate') }}">
+                        {{ csrf() }}
+                        <button class="primary">Create / complete monthly menu</button>
+                    </form>
+                </div>
+                <p>
+                    Creates missing weeks and keeps all existing meals, including eating-out/freezer overrides. Saved meals feed the usual weekly planner and daily receipt. Only upcoming meals need ingredients.
+                </p>
+                {% if view.missing %}
+                    <p class="helper">
+                        {{ view.missing|length }} upcoming day(s) still need a saved menu. Complete the month before relying on its totals.
+                    </p>
+                {% endif %}
+                <div class="month-days">
+                    {% for row in view.days %}
+                        <article class="month-day{% if row.past %} month-past{% endif %}">
+                            <h3>{{ row.day.strftime('%a %d %b') }}</h3>
+                            <p>
+                                {% if row.away %}
+                                    Away · home meal paused
+                                {% elif row.meal %}
+                                    <strong>{{ row.meal.recipe.name if row.meal.kind=='recipe' else row.meal.name }}</strong>
+                                    {% if row.meal.kind=='recipe' %}
+                                        <small>{{ row.meal.recipe.total_minutes|default('?') }} minutes · {{ row.meal.recipe.cuisine|default('') }}</small>
+                                    {% endif %}
+                                {% else %}
+                                    {{ 'Past day' if row.past else 'Not planned yet' }}
+                                {% endif %}
+                            </p>
+                            {% if row.needs_review %}
+                                <p class="helper">Review this recipe: it does not meet your current diet, allergen or cooking-time settings.</p>
+                            {% endif %}
+                            {% if not row.past and row.meal and not row.away %}
+                                <details>
+                                    <summary>Change this meal</summary>
+                                    <form method="post" action="{{ url_for('monthly_meals_meal') }}">
+                                        {{ csrf() }}
+                                        <input type="hidden" name="day" value="{{ row.day.isoformat() }}">
+                                        <label>
+                                            Recipe for {{ row.day.strftime('%d %b') }}
+                                            <select name="recipe" required>
+                                                {% for recipe in recipes %}
+                                                    <option value="{{ recipe.name }}"
+                                                            {% if row.meal.kind=='recipe' and row.meal.recipe.name==recipe.name %}selected{% endif %}>
+                                                        {{ recipe.name }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </label>
+                                        <button>Save meal</button>
+                                    </form>
+                                    <p class="muted">Diet, allergen and weekday cooking-time rules still apply.</p>
+                                </details>
+                            {% endif %}
+                        </article>
+                    {% endfor %}
+                </div>
+                <p class="muted">
+                    Recipe-based estimated remaining meal cost: £{{ '%.2f'|format(view.cost.total) }}. This is not a live shop quote or a complete household food budget; component and pack costs can differ.
+                </p>
+            </section>
+            <section id="month-shops">
+                <h2>Shopping lists · {{ view.label }}</h2>
+                <p>
+                    {{ view.shopping_days }} planned shopping day(s), {{ view.stops }} shop stop(s), including {{ view.supermarket_stops }} supermarket stop(s). Several stops on the same date can be one outing; this is not a calculated travel route.
+                </p>
+                <aside class="helper">
+                    <p>
+                        Lists show remaining recipe requirements, not confirmed purchases. Pantry items stay visible with a stock-check note because a cupboard entry does not prove you have enough for a month. Unmeasured ingredients and homemade components need a manual quantity check.
+                    </p>
+                    <p>
+                        Shop dates group purchases; they are not shelf-life promises. Check use-by/opened-pack labels, freezer space and safe storage. Buy fresh food closer to use when necessary, or freeze suitable portions before their use-by date. The main shop is for clearly shelf-stable or frozen items, not a month of fresh meat or veg.
+                    </p>
+                </aside>
+                {% for visit in view.visits %}
+                    <details class="shop-list" {% if loop.first %}open{% endif %}>
+                        <summary>{{ visit.day.strftime('%a %d %b') }} · {{ visit.shop }} · {{ visit['items']|length }} ingredient(s)</summary>
+                        <ul>
+                            {% for item in visit['items'] %}
+                                <li>
+                                    {% for amount in item.amounts %}
+                                        <strong>{{ amount }}</strong>
+                                        {% if not loop.last %};{% endif %}
+                                    {% endfor %}
+                                    <small>Needed: {{ item.needs|join(', ') }}
+                                        {% if item.pantry %}· Listed in pantry: check available quantity{% endif %}
+                                        {% if item.unmeasured %}· Amount unspecified: check recipe{% endif %}
+                                    </small>
+                                    <details>
+                                        <summary>Used by / change category</summary>
+                                        <p>{{ item.recipes|join(', ') }}</p>
+                                        <form method="post" action="{{ url_for('monthly_meals_ingredient') }}">
+                                            {{ csrf() }}
+                                            <input type="hidden" name="ingredient" value="{{ item.key }}">
+                                            <label>
+                                                Shopping category for {{ item.key }}
+                                                <select name="category">
+                                                    {% for category in categories %}
+                                                        <option value="{{ category }}"
+                                                                {% if view.config.overrides.get(item.key)==category %}selected{% endif %}>
+                                                            {{ category }}
+                                                        </option>
+                                                    {% endfor %}
+                                                    <option value="default"
+                                                            {% if item.key not in view.config.overrides %}selected{% endif %}>
+                                                        Automatic category
+                                                    </option>
+                                                </select>
+                                            </label>
+                                            <button>Save category</button>
+                                        </form>
+                                    </details>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                {% else %}
+                    <p>No remaining recipe ingredients. Create the menu or choose another month.</p>
+                {% endfor %}
+                <p class="muted">
+                    Next-day lunch extras from the final dinner may fall in the following month. Household basics, breakfasts, drinks and snacks are not automatically invented. Compatible units are combined; weight/count conversions are not guessed.
+                </p>
+            </section>
+            <section id="month-settings">
+                <h2>Shopping days & shops</h2>
+                <p>
+                    Use the same weekly day to combine specialist stops into one outing. Only select a supplier for products it actually stocks. Fresh essentials can go to a local shop instead of another supermarket trip.
+                </p>
+                <form method="post" action="{{ url_for('monthly_meals_settings') }}">
+                    {{ csrf() }}
+                    <label>
+                        Usual weekly shopping day
+                        <select name="weekly_day">
+                            {% for name in weekdays %}
+                                <option value="{{ loop.index0 }}"
+                                        {% if view.config.weekly_day==loop.index0 %}selected{% endif %}>
+                                    {{ name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        <input name="veg_topup"
+                               type="checkbox"
+                               {% if view.config.veg_topup %}checked{% endif %}>
+                        Split fresh produce into an extra midweek top-up
+                    </label>
+                    <label>
+                        Produce top-up day
+                        <select name="veg_day">
+                            {% for name in weekdays %}
+                                <option value="{{ loop.index0 }}"
+                                        {% if view.config.veg_day==loop.index0 %}selected{% endif %}>
+                                    {{ name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    {% for category in categories %}
+                        {% set index=loop.index0 %}
+                        <label>
+                            {{ category }} supplier
+                            <select name="shop_{{ index }}">
+                                {% for shop in shops if category==categories[0] or shop!=shops[0] %}
+                                    <option value="{{ shop }}"
+                                            {% if view.config.shops[category]==shop %}selected{% endif %}>
+                                        {{ shop }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    {% endfor %}
+                    <button>Save shopping preferences</button>
+                </form>
+                <p class="muted">
+                    Classification is a starting point; correct individual items above. Unknown ingredients default to fresh essentials. Settings are saved locally; menus remain in the existing private weekly plan files.
+                </p>
+            </section>
+            <section id="month-components">
+                <h2>Bulk components to check</h2>
+                <p>
+                    These are separate preparation requirements. Shopping lists above total main recipe ingredients and bought components; also check ingredients for any homemade components below. Component yields are the original recipe, not automatically scaled to the monthly menu. Missing per-meal amounts are shown rather than guessed.
+                </p>
+                {% for batch in view.resources.batches %}
+                    <details>
+                        <summary>
+                            {{ batch.make_on }} · {{ batch.name }} · {{ batch.uses|length }} use(s)
+                            {% if batch.unknown %}· quantity check needed{% endif %}
+                        </summary>
+                        <ul>
+                            {% for amount in batch.quantities %}<li>{{ amount }}</li>{% endfor %}
+                            {% for use in batch.uses %}
+                                <li>{{ use.day }} · {{ use.recipe }} · {{ use.amount or 'Amount not specified' }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% if batch.make %}
+                            <h3>Original preparation recipe</h3>
+                            <p>Yield: {{ batch.make.yield|default('See recipe') }}</p>
+                            <ul>
+                                {% for ingredient in batch.make.ingredients|default([]) %}<li>{{ ingredient }}</li>{% endfor %}
+                            </ul>
+                            <ol>
+                                {% for step in batch.make.method|default([]) %}<li>{{ step }}</li>{% endfor %}
+                            </ol>
+                        {% endif %}
+                        <p>{{ batch.note }}</p>
+                    </details>
+                {% else %}
+                    <p>No bulk components in the remaining menu.</p>
+                {% endfor %}
+                <a href="{{ url_for('meals_page',_anchor='meal-resources') }}">Edit component amounts and review storage / leftovers guidance</a>
+            </section>
+        </main>
+    </body>
+</html>

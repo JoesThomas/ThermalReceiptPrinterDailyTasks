@@ -1466,5 +1466,8 @@ register_day_travel(app, login_required, lambda day: _collect_travel_calendar(da
 from web_control.personal_helper import register as register_personal_helper
 register_personal_helper(app, login_required)
 
+from web_control.monthly_meals import register as register_monthly_meals
+register_monthly_meals(app, login_required)
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)
