@@ -20,6 +20,11 @@
                     Food-shop items and planned recipe ingredients. Choose the exact product and quantity on Tesco, add it to your basket there, then mark it done here. This page cannot read or change your Tesco basket.
                 </p>
             </header>
+            {% if monthly_meals_available|default(false) %}
+                <p>
+                    <a href="{{ url_for('meal_shop') }}">Prepare a meal shopping list for your preferred supermarket</a>
+                </p>
+            {% endif %}
             {% if handling %}
                 <p class="helper">{{ handling.shopping }} Manual shopping entries need the same checks.</p>
             {% endif %}

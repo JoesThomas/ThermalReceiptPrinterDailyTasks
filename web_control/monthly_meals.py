@@ -1,7 +1,7 @@
 """Login/CSRF-protected monthly meal planning and local shop preferences."""
 
 from flask import abort, flash, redirect, render_template, request, url_for
-from meals import monthly, legacy_planner as planner
+from meals import monthly, legacy_planner as planner, supermarket
 from receipt.local_time import uk_today
 
 
@@ -45,6 +45,7 @@ def register(app, login_required):
                 "Sunday",
             ],
             recipes=planner.recipes(),
+            retailers=supermarket.RETAILERS,
         )
 
     @app.post("/meals/month/generate")
@@ -70,6 +71,7 @@ def register(app, login_required):
 
             def save(s):
                 s.update(
+                    retailer=request.form.get("retailer", s.get("retailer", "tesco")),
                     weekly_day=int(request.form.get("weekly_day", "5")),
                     veg_topup=request.form.get("veg_topup") == "on",
                     veg_day=int(request.form.get("veg_day", "2")),
@@ -85,9 +87,68 @@ def register(app, login_required):
             )
         except (ValueError, OSError):
             flash(
-                "Check the weekdays and shop choices. Fresh categories must stay on weekly lists."
+                "Check the weekdays, supermarket and shop choices. Fresh categories must stay on weekly lists."
             )
         return go(raw)
+
+    @app.route("/meals/shop", methods=["GET", "POST"])
+    @login_required
+    def meal_shop():
+        raw = selected()
+        try:
+            view = monthly.report(raw)
+        except (OSError, ValueError):
+            abort(
+                503,
+                description="The meal shopping list is unavailable. Check local meal data.",
+            )
+        retailer = view["config"].get("retailer", "tesco")
+        name = supermarket.RETAILERS[retailer][0]
+        dates = sorted({visit["day"].isoformat() for visit in view["visits"]})
+        day = request.values.get("day", dates[0] if dates else "")
+        if day and day not in dates:
+            flash("That shopping date is no longer available. Select a current list.")
+            return redirect(url_for("meal_shop", month=raw))
+        visits = [v for v in view["visits"] if v["day"].isoformat() == day]
+        rows, fingerprint = supermarket.review(visits, retailer)
+        enabled = supermarket.available(retailer)
+        checked = {r["id"] for r in rows if r["measured"] and not r["pantry"]}
+        landing = None
+        if request.method == "POST":
+            chosen = set(request.form.getlist("item"))
+            valid = {r["id"] for r in rows}
+            if request.form.get("fingerprint") != fingerprint or not chosen <= valid:
+                flash(
+                    "The shopping list or supermarket changed. Review the current list before sending."
+                )
+            else:
+                checked = chosen
+                try:
+                    if request.form.get("confirm_share") != "yes":
+                        raise supermarket.HandoffError(
+                            "Confirm that you want to send the selected ingredients."
+                        )
+                    landing = supermarket.transfer(
+                        retailer, [r["amount"] for r in rows if r["id"] in chosen]
+                    )
+                except supermarket.HandoffError as error:
+                    flash(str(error))
+        return render_template(
+            "meal_shop.html",
+            view=view,
+            day=day,
+            dates=dates,
+            visits=visits,
+            retailer=retailer,
+            retailer_name=name,
+            retailer_home=supermarket.SHOPS_HOME[retailer],
+            partner_supported=bool(supermarket.RETAILERS[retailer][3]),
+            enabled=enabled,
+            rows=rows,
+            checked=checked,
+            fingerprint=fingerprint,
+            landing=landing,
+        )
 
     @app.post("/meals/month/ingredient")
     @login_required

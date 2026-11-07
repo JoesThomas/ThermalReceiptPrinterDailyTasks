@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Supermarket shopping list · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+        <script src="{{ url_for('static',filename='meal-shop.js') }}" defer></script>
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <a href="{{ url_for('monthly_meals_page',month=view.month) }}">← Monthly meals</a>
+            <h1>Shop at {{ retailer_name }}</h1>
+            <p>
+                Review ingredients for one shopping date. The list combines the planned stops on that date; untick anything you intend to buy elsewhere.
+            </p>
+            <p>
+                <a href="{{ url_for('monthly_meals_page',month=view.month,_anchor='month-settings') }}">Change preferred supermarket</a>
+            </p>
+            {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            {% if dates %}
+                <section>
+                    <h2>Choose a shopping date</h2>
+                    <form method="get" action="{{ url_for('meal_shop') }}">
+                        <input type="hidden" name="month" value="{{ view.month }}">
+                        <label for="shop-day">Shopping date</label>
+                        <select name="day" id="shop-day">
+                            {% for option in dates %}
+                                <option value="{{ option }}" {% if option==day %}selected{% endif %}>{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                        <button>Show ingredients</button>
+                    </form>
+                    <p>Included stops: {{ visits|map(attribute='shop')|join(', ') }}.</p>
+                    <p class="muted">
+                        Quantities are recipe requirements. Choose pack sizes on the shop’s site. Cupboard and frozen items can cover more than one week; fresh items are grouped by their planned shopping dates.
+                    </p>
+                    {% if view.resources.batches %}
+                        <p>
+                            <a href="{{ url_for('monthly_meals_page',month=view.month,_anchor='month-components') }}">Check any homemade components separately</a>; their batch quantities are not included automatically.
+                        </p>
+                    {% endif %}
+                </section>
+                <section>
+                    <h2>Review ingredients</h2>
+                    <p>
+                        Pantry matches and unmeasured ingredients start unticked. Tick them if you need them and check the quantity yourself.
+                    </p>
+                    {% if view.handling %}
+                        <p class="helper">{{ view.handling.shopping }} Check every matched product and any substitutions before ordering.</p>
+                    {% endif %}
+                    <form method="post" action="{{ url_for('meal_shop') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="month" value="{{ view.month }}">
+                        <input type="hidden" name="day" value="{{ day }}">
+                        <input type="hidden" name="fingerprint" value="{{ fingerprint }}">
+                        <ul>
+                            {% for row in rows %}
+                                <li>
+                                    <label>
+                                        <input type="checkbox"
+                                               name="item"
+                                               value="{{ row.id }}"
+                                               data-shop-amount="{{ row.amount }}"
+                                               {% if row.id in checked %}checked{% endif %}>
+                                        {{ row.amount }}
+                                        {% if row.pantry %}· check pantry{% endif %}
+                                        {% if not row.measured %}· check amount{% endif %}
+                                    </label>
+                                    <a href="{{ row.search }}" target="_blank" rel="noopener noreferrer">Find {{ row.amount }} at {{ retailer_name }}</a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        {% if enabled %}
+                            <h3>Send to basket review</h3>
+                            <p>
+                                Samsung Food matches ingredients to products. Review its matches and quantities, then transfer them to {{ retailer_name }} and place the order there.
+                            </p>
+                            <label>
+                                <input type="checkbox" name="confirm_share" value="yes" required>
+                                Send the checked ingredients and quantities to Samsung Food
+                            </label>
+                            <button class="primary">Create basket review</button>
+                        {% elif partner_supported %}
+                            <p>
+                                Basket handoff requires Samsung Food developer access. You can copy the list or use the product searches on this page.
+                            </p>
+                        {% else %}
+                            <p>This supermarket uses the copy and search handoff. Add your chosen products on its own site.</p>
+                        {% endif %}
+                    </form>
+                    {% if landing %}
+                        <p role="status">Basket review link created. Your order has not been placed.</p>
+                        <a class="button primary"
+                           href="{{ landing }}"
+                           target="_blank"
+                           rel="noopener noreferrer">Review products in Samsung Food</a>
+                    {% endif %}
+                </section>
+                <section>
+                    <h2>Copy shopping list</h2>
+                    {% if retailer=='waitrose' %}
+                        <p>Open Waitrose and choose Multi-search from its search bar. Use the list to find the products you need.</p>
+                    {% elif retailer=='sainsburys' %}
+                        <p>Where SmartLists is available in the Sainsbury’s app, use this list to create one, then review the matches.</p>
+                    {% elif retailer=='ocado' %}
+                        <p>You can save chosen products as an Ocado Shopping List for future shops.</p>
+                    {% endif %}
+                    <label>
+                        Checked ingredients
+                        <textarea id="shop-copy-text" rows="8" readonly>{{ rows|selectattr('id','in',checked)|map(attribute='amount')|join('\n') }}</textarea>
+                    </label>
+                    <button type="button" id="shop-copy-button" hidden>Copy checked ingredients</button>
+                    <span id="shop-copy-status" role="status"></span>
+                    <a class="button"
+                       href="{{ retailer_home }}"
+                       target="_blank"
+                       rel="noopener noreferrer">Open {{ retailer_name }}</a>
+                </section>
+            {% else %}
+                <p>
+                    No remaining ingredients are scheduled for this month. Create or complete the monthly menu to add shopping dates.
+                </p>
+            {% endif %}
+        </main>
+    </body>
+</html>

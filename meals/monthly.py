@@ -10,6 +10,7 @@ from storage import PrivateStore, file_lock
 from receipt.local_time import uk_today
 from meals import legacy_planner as planner
 from meals.ingredients import parse, aggregate
+from meals.supermarket import RETAILERS
 
 FILE = Path(__file__).resolve().parents[1] / "data" / "monthly_meals.json"
 CATEGORIES = (
@@ -33,6 +34,7 @@ def defaults():
     return dict(
         version=1,
         active_month="",
+        retailer="tesco",
         weekly_day=5,
         veg_topup=False,
         veg_day=2,
@@ -51,6 +53,8 @@ def bounds(raw):
 def validate(value):
     if not isinstance(value, dict) or value.get("version") != 1:
         raise ValueError("Invalid monthly meal settings.")
+    if not isinstance(value.get("retailer", "tesco"), str) or value.get("retailer", "tesco") not in RETAILERS:
+        raise ValueError("Choose a supported supermarket.")
     if value["active_month"]:
         bounds(value["active_month"])
     for field in ("weekly_day", "veg_day"):
@@ -380,6 +384,7 @@ def shopping(rows, settings, first, on):
                 dict(
                     key=key,
                     amounts=aggregate([r["line"] for r in lines], for_shopping=True),
+                    requirements=aggregate([r["line"] for r in lines]),
                     needs=sorted({r["day"].isoformat() for r in lines}),
                     recipes=sorted({r["recipe"] for r in lines}),
                     unmeasured=any(parse(r["line"]) is None for r in lines),
@@ -442,7 +447,10 @@ def report(raw, on=None):
                 ),
             )
         )
-    rows = requirements(meals, on)
+    eligible_meals = [
+        row["meal"] for row in days if row["meal"] and not row["needs_review"]
+    ]
+    rows = requirements(eligible_meals, on)
     for row in days:
         b=row['breakfast']
         if row['day']>=on and b and not b['unavailable'] and not b['done']:
@@ -453,12 +461,12 @@ def report(raw, on=None):
     from actions.personal_helper import store as helper_store
 
     resources = analyse(
-        dict(meals=meals),
+        dict(meals=eligible_meals),
         planner._load(planner.COMPONENTS_FILE, {}).get("components", []),
         helper_store().read()["meal_uses"],
         on,
     )
-    rows.extend(component_purchases(meals, resources, weeks))
+    rows.extend(component_purchases(eligible_meals, resources, weeks))
     shops = shopping(rows, config, first, on)
     from meals.remaining import needs_dinner
 
