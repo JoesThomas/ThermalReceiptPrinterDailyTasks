@@ -49,7 +49,12 @@ def catalogue():
             name="Ready-to-eat tinned fish",
             ingredients=["ready-to-eat tinned sardines"],
             allergens={"uk_14": ["fish"]},
-            dietary={"vegan": False, "vegetarian": False},
+            dietary={
+                "vegan": False,
+                "vegetarian": False,
+                "contains_meat": False,
+                "contains_fish_or_shellfish": True,
+            },
         ),
         dict(
             id="meat",

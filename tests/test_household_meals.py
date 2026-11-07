@@ -74,6 +74,52 @@ class HouseholdTests(HouseholdFixture, TestCase):
         h.store().update(lambda v: v.update(s))
         self.assertFalse(planner._eligible(chicken, SAT, planner.preferences()))
 
+    def test_pescatarian_allows_fish_but_excludes_meat_and_meat_stock(self):
+        s = settings()
+        s["people"][0]["diet"] = "pescatarian"
+        r = dict(
+            recipe("Fish bowl", ["100g salmon", "75g rice"]),
+            dietary={"contains_meat": False, "contains_fish_or_shellfish": True},
+        )
+        self.assertTrue(h.permitted(r, s, SAT))
+        self.assertIn("fish", {v["id"] for v in reserve.report(SAT, s)["options"]})
+        r["ingredients"].append("100ml chicken stock")
+        self.assertFalse(h.permitted(r, s, SAT))
+        r["ingredients"].pop()
+        s["people"].append(dict(h.person(), diet="vegetarian"))
+        self.assertFalse(h.permitted(r, s, SAT))
+
+    def test_coeliac_filter_combines_with_diet_and_replaces_standard_lunch_wrap(self):
+        s = settings()
+        s["people"][0].update(diet="pescatarian", coeliac=True)
+        r = dict(
+            recipe("Fish bowl", ["100g salmon", "75g rice"]),
+            dietary={"contains_meat": False, "contains_fish_or_shellfish": True},
+        )
+        self.assertTrue(h.permitted(r, s, SAT))
+        self.assertEqual(
+            h.prepare(r, SAT, s)["lunch"]["extra_ingredients"],
+            ["1 gluten-free tortilla"],
+        )
+        self.assertEqual(r["lunch"]["extra_ingredients"], ["1 tortilla"])
+        for ingredient in ("1 tbsp soy sauce", "1 tsp barley malt", "40g spelt"):
+            with self.subTest(ingredient=ingredient):
+                self.assertFalse(h.permitted(dict(r, ingredients=[ingredient]), s, SAT))
+        r["lunch"]["extra_ingredients"] = ["1 pitta"]
+        self.assertFalse(h.permitted(r, s, SAT))
+
+    def test_coeliac_breakfast_filters_standard_oats_and_respects_avoid(self):
+        s = settings()
+        s["people"][0]["coeliac"] = True
+        choices = {r["name"]: r for r in b.catalogue(SAT, s)}
+        self.assertFalse(
+            h.permitted(choices["Quick porridge & fruit"], s, SAT, "breakfast")
+        )
+        certified = choices["Gluten-free porridge & fruit"]
+        self.assertTrue(h.permitted(certified, s, SAT, "breakfast"))
+        s["people"][0]["avoid"] = ["oats"]
+        self.assertFalse(h.permitted(certified, s, SAT, "breakfast"))
+
     def test_dairy_alternatives_and_certified_gluten_free_foods_are_not_false_milk_gluten(
         self,
     ):
@@ -465,8 +511,12 @@ class MealSettingsWebTests(HouseholdFixture, TestCase):
 
     def test_people_and_choices_save_and_change_recipe_filtering(self):
         self.login()
-        self.post("/meals/settings/household", **self.form())
+        form = self.form()
+        form.update(diet_0="pescatarian", coeliac_0="on")
+        self.post("/meals/settings/household", **form)
         s = h.store().read()
+        self.assertEqual(s["people"][0]["diet"], "pescatarian")
+        self.assertTrue(s["people"][0]["coeliac"])
         self.assertEqual(len(s["people"]), 2)
         self.assertEqual(s["people"][1]["allergens"], ["milk"])
         self.assertFalse(

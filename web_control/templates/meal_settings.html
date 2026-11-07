@@ -38,6 +38,9 @@
                 <p class="helper">
                     Filters use recipe metadata and ingredient text, not a guarantee about a particular product. Check ingredient labels, cross-contact and age-appropriate preparation. Clinical notes require manual review. Existing global recipe restrictions still apply.
                 </p>
+                <p class="helper">
+                    Combine any diet with the gluten-free filter. It checks recipe and lunch ingredients, replaces standard lunch bread and tortillas with gluten-free versions, and skips recipes with separate prep components it cannot verify. Check labels and avoid cross-contact; use only oats labelled gluten-free if you tolerate them, or add oats to Avoid. <a href="https://www.nhs.uk/conditions/coeliac-disease/treatment/">NHS coeliac guidance</a>.
+                </p>
                 <form method="post" action="{{ url_for('meal_settings_save') }}">
                     {{ csrf() }}
                     <div data-household-people>
@@ -267,6 +270,12 @@
                                        name="vegan"
                                        {% if r and r.dietary.vegan %}checked{% endif %}>
                                 Vegan
+                            </label>
+                            <label>
+                                <input type="checkbox"
+                                       name="pescatarian"
+                                       {% if r and r.dietary.pescatarian %}checked{% endif %}>
+                                Pescatarian (can contain fish or shellfish; no meat or meat stock)
                             </label>
                             <details>
                                 <summary>Declared allergens</summary>

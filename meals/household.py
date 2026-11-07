@@ -29,6 +29,47 @@ ALLERGENS = (
     "lupin",
     "molluscs",
 )
+DIETS = {
+    "omnivore": "Omnivore",
+    "pescatarian": "Pescatarian",
+    "vegetarian": "Vegetarian",
+    "vegan": "Vegan",
+}
+
+MEAT = re.compile(
+    r"\b(chicken|beef|lamb|pork|turkey|duck|goose|veal|venison|rabbit|"
+    r"ham|bacon|gammon|sausage[s]?|salami|chorizo|pepperoni|lard|"
+    r"gelatine?|tallow|bone broth|meat)\b"
+)
+GLUTEN = re.compile(
+    r"\b(wheat|wholewheat|wholemeal|barley|rye|spelt|semolina|bulg[ua]r|"
+    r"couscous|farro|freekeh|durum|triticale|malt|oats?|porridge|muesli|"
+    r"granola|cereals?|breads?|breadcrumbs?|toast|flatbreads?|pittas?|"
+    r"wraps?|tortillas?|naan|buns?|rolls?|pasta|orzo|spaghetti|linguine|"
+    r"noodles?|flour|biscuits?|crackers?|pastry|battered|breaded|"
+    r"beer|ale|lager|stout|gravy|stock|bouillon|soy sauce|soya sauce|"
+    r"worcestershire sauce|seitan)\b"
+)
+GLUTEN_FREE_PRODUCT = re.compile(
+    r"\bgluten[- ]free (?:oats?|porridge|muesli|granola|cereals?|breads?|"
+    r"breadcrumbs?|toast|flatbreads?|pittas?|wraps?|tortillas?|naan|buns?|rolls?|"
+    r"pasta|orzo|spaghetti|linguine|noodles?|flour|biscuits?|crackers?|pastry|"
+    r"beer|ale|lager|stout|gravy|stock|bouillon|soy sauce|soya sauce)\b"
+)
+NATURALLY_GLUTEN_FREE_STAPLE = re.compile(
+    r"\b(?:rice noodles?|(?:rice|corn|potato|gram|chickpea|almond|coconut) flour)\b"
+)
+
+
+def gluten_risk(ingredients):
+    for ingredient in ingredients:
+        text = GLUTEN_FREE_PRODUCT.sub("", ingredient.casefold())
+        text = NATURALLY_GLUTEN_FREE_STAPLE.sub("", text)
+        if GLUTEN.search(text):
+            return True
+    return False
+
+
 TERMS = {
     "cereals_containing_gluten": r"\b(wheat|wholewheat|wholemeal|bread|toast|pasta|couscous|barley|rye|oats|cereals?|flour|tortillas?)\b",
     "milk": r"\b(milk|yoghurt|yogurt|butter|cheese|cheddar|feta|cream|halloumi|parmesan)\b",
@@ -53,6 +94,7 @@ def person():
         birth_year=None,
         reference="range",
         diet="omnivore",
+        coeliac=False,
         allergens=[],
         avoid=[],
         clinical=False,
@@ -122,10 +164,10 @@ def validate(s):
             or not uk_today().year - 120 <= p["birth_year"] <= uk_today().year
         ):
             raise ValueError("Check the birth year.")
-        if p["reference"] not in ("male", "female", "range") or p["diet"] not in (
-            "omnivore",
-            "vegetarian",
-            "vegan",
+        if (
+            p["reference"] not in ("male", "female", "range")
+            or p["diet"] not in DIETS
+            or type(p.get("coeliac", False)) is not bool
         ):
             raise ValueError("Invalid dietary profile.")
         if not isinstance(p["allergens"], list) or any(
@@ -192,6 +234,8 @@ def validate(s):
             type(r["dietary"].get(k)) is not bool for k in ("vegan", "vegetarian")
         ):
             raise ValueError("Invalid recipe diet flags.")
+        if type(r["dietary"].get("pescatarian", False)) is not bool:
+            raise ValueError("Invalid recipe diet flags.")
         kcal = r.get("nutrition_per_serving", {}).get("calories")
         if kcal is not None and (type(kcal) is not int or not 0 < kcal <= 3000):
             raise ValueError("Invalid energy estimate.")
@@ -238,11 +282,7 @@ def inferred(recipe):
     for allergen, pattern in TERMS.items():
         remaining = text
         if allergen == "cereals_containing_gluten":
-            remaining = re.sub(
-                r"certified gluten-free oats|gluten-free (?:bread|toast|pasta|cereal|flour)",
-                "",
-                remaining,
-            )
+            remaining = GLUTEN_FREE_PRODUCT.sub("", remaining)
         if allergen == "milk":
             remaining = re.sub(
                 r"(?:soya|soy|oat|almond|coconut) (?:milk|yoghurt|yogurt|cream)",
@@ -252,6 +292,34 @@ def inferred(recipe):
         if re.search(pattern, remaining):
             result.add(allergen)
     return result
+
+
+def lunch_for(recipe, people):
+    lunch = recipe.get("lunch", {})
+    if not any(p.get("coeliac") for p in people):
+        return lunch
+    extras = lunch.get("extra_ingredients", [])
+    # Only substitute the planner's standard bread and tortilla sides.
+    replacements = {
+        "wholemeal bread": "gluten-free bread",
+        "tortilla": "gluten-free tortilla",
+    }
+    adapted = [
+        re.sub(
+            r"^(\d+ (?:slices? )?)(wholemeal bread|tortilla)$",
+            lambda m: m[1] + replacements[m[2]],
+            item,
+        )
+        for item in extras
+    ]
+    if adapted == extras:
+        return lunch
+    return dict(
+        lunch,
+        extra_ingredients=adapted,
+        overview=lunch.get("overview", "")
+        + " Use bread or wraps labelled gluten-free.",
+    )
 
 
 def recipe_signature(recipe):
@@ -291,21 +359,36 @@ def permitted(recipe, s, on, slot="dinner"):
         return False
     a = recipe.get("allergens", {})
     declared = set(a.get("uk_14", []) if isinstance(a, dict) else a)
-    allergens = declared | inferred(recipe)
-    text = (
-        recipe.get("name", "") + " " + " ".join(recipe.get("ingredients", []))
-    ).casefold()
+    ingredients = recipe.get("ingredients", []) + lunch_for(recipe, s["people"]).get(
+        "extra_ingredients", []
+    )
+    allergens = declared | inferred({"ingredients": ingredients})
+    text = (recipe.get("name", "") + " " + " ".join(ingredients)).casefold()
+    diet = recipe.get("dietary", {})
+    meat = diet.get("contains_meat") or MEAT.search(text)
+    seafood = diet.get("contains_fish_or_shellfish") or bool(
+        {"fish", "crustaceans", "molluscs"} & allergens
+    )
     for p in s["people"]:
         if set(p["allergens"]) & allergens:
             return False
-        diet = recipe.get("dietary", {})
-        animal = bool(
-            re.search(
-                r"\b(chicken|beef|lamb|pork|turkey|duck|fish|salmon|cod|tuna|prawns?|ham|bacon)\b",
-                text,
+        if p.get("coeliac") and (
+            "cereals_containing_gluten" in declared
+            or recipe.get("prep_components")
+            or gluten_risk(ingredients)
+        ):
+            return False
+        if p["diet"] == "pescatarian" and (
+            meat
+            or not (
+                diet.get("vegetarian")
+                or diet.get("vegan")
+                or diet.get("pescatarian")
+                or (diet.get("contains_meat") is False and seafood)
             )
-        )
-        if p["diet"] in ("vegetarian", "vegan") and animal:
+        ):
+            return False
+        if p["diet"] in ("vegetarian", "vegan") and (meat or seafood):
             return False
         if p["diet"] == "vegan" and {"milk", "eggs"} & allergens:
             return False
@@ -376,7 +459,7 @@ def prepare(recipe, on, s=None):
     reserve_lunch = not skip_meal(tomorrow) and not (
         lunch_override and lunch_override.get("type") in ("buy_lunch", "eat_out")
     )
-    lunch_recipe = recipe.get("lunch", {}) if reserve_lunch else {}
+    lunch_recipe = lunch_for(recipe, s["people"]) if reserve_lunch else {}
     extra = (
         (
             1
@@ -403,8 +486,8 @@ def prepare(recipe, on, s=None):
     for ref in result.get("prep_components", []):
         if isinstance(ref, dict) and type(ref.get("quantity")) in (int, float):
             ref["quantity"] *= float(factor)
-    if not reserve_lunch:
-        result["lunch"] = {}
+    if "lunch" in result or not reserve_lunch:
+        result["lunch"] = deepcopy(lunch_recipe)
     lunch = result.get("lunch")
     if lunch:
         lunch["extra_ingredients"] = [
