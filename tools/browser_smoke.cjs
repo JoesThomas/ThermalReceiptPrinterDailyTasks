@@ -912,7 +912,7 @@ process.on('exit', () => child.kill());
   await helperRule.getByLabel('Things to take (one per line)').fill('Notebook');
   await helperRule.getByLabel('Preparation steps (one per line)').fill('Review questions');
   await Promise.all([page.waitForNavigation({waitUntil:'load'}),helperRule.getByRole('button',{name:'Save rule',exact:true}).click()]);
-  await page.getByText('Reusable packing and preparation rule saved.',{exact:true}).waitFor();
+  await page.locator('main').getByText('Reusable packing and preparation rule saved.',{exact:true}).waitFor();
   for(const width of [390,1280]) {
     await page.setViewportSize({width,height:900});
     await page.locator('.helper-task summary').first().click();
