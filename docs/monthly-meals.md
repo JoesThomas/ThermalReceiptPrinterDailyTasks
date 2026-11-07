@@ -36,7 +36,7 @@ Weekly menus remain in `meal_plans/`. Shopping-day, supplier and ingredient-cate
 
 ## Supermarket handoff
 
-In **Monthly meals & shops → Shopping days & shops**, save a preferred online supermarket: Tesco, Sainsbury’s, Asda, Morrisons, Waitrose & Partners or Ocado. Select **Prepare supermarket shopping list** and choose a shopping date. Ingredients from the scheduled stops that day are combined using exact recipe quantities, without rounding twice for packs. The list includes planned breakfasts, eligible dinners, lunch extras and bought components. Check homemade component recipes separately; their yields need a manual check. Pantry items and unmeasured quantities start unticked. Untick items bought elsewhere or already in stock.
+In **Monthly meals & shops → Shopping days & shops**, save a preferred online supermarket: Tesco, Sainsbury’s, Asda, Morrisons, Waitrose & Partners or Ocado. Select **Prepare supermarket shopping list** and choose a shopping date. Ingredients from the main supermarket and supermarket top-up stops that day are combined using exact recipe quantities, without rounding twice for packs. The list includes planned breakfasts, eligible dinners, lunch extras and bought components. Check homemade component recipes separately; their yields need a manual check. Pantry items and unmeasured quantities start unticked. Untick items bought elsewhere or already in stock.
 
 All six retailers work with a copyable list and product searches. For Waitrose, use **Multi-search**; where available, Sainsbury’s **SmartLists** can turn the text into product suggestions. The local app does not see your retailer account, trolley, availability, prices or order.
 
@@ -48,3 +48,9 @@ When you explicitly create a basket review, the app sends only selected ingredie
 - [Documented integrated retailers](https://docs.whisk.com/resources/supported-retailers)
 - [Waitrose Multi-search](https://www.waitrose.com/ecom/help-information/shopping-with-waitrose/shop-online)
 - [Sainsbury’s SmartLists](https://corporate.sainsburys.co.uk/news/press-releases/sainsbury-s-launches-smartlists-a-new-ai-powered-way-to-shop/)
+
+## Local suppliers and meal attendance
+
+Butcher, greengrocer, fishmonger and local shop ingredients stay out of the online supermarket basket. Open the local supplier’s dated list from **Shopping lists** to review and copy it. Edit the category’s supplier under **Shopping days & shops** if you prefer to buy it elsewhere. The app adds a task for each scheduled butcher and greengrocer visit, with a link to the list. Rebuilding the month or changing the schedule reconciles pending tasks and keeps completed ones.
+
+With household profiles configured, expand **Who’s eating?** on a date to skip individual breakfasts, lunches or dinners. Mark all three for a full day away. Breakfast and dinner portions follow their own headcounts; lunch counts adjust extras reserved with the previous dinner where the recipe provides them. A home meal is paused when nobody needs it. Saved dinner recipes remain available if attendance changes again, and household dietary restrictions still apply. The planner does not invent a standalone lunch when there is no suitable previous dinner.

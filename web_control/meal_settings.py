@@ -82,6 +82,23 @@ def register(app, login_required):
                 )
 
             def save(s):
+                previous = household.people_by_id(s)
+                used = set()
+                for i, p in zip(indices, people):
+                    identity = request.form.get("person_id_" + i, f"legacy-{i}")
+                    if identity and identity not in previous:
+                        identity = ""
+                    if identity in used:
+                        raise ValueError("Duplicate household profile.")
+                    p["person_id"] = identity or secrets.token_hex(12)
+                    used.add(p["person_id"])
+                s["absences"] = {
+                    day: {key: slots for key, slots in away.items() if key in used}
+                    for day, away in s.get("absences", {}).items()
+                }
+                s["absences"] = {
+                    day: away for day, away in s["absences"].items() if away
+                }
                 s.update(
                     configured=True,
                     people=people,

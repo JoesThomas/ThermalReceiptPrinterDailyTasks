@@ -79,7 +79,9 @@ def review(visits, retailer):
                 amount=line,
                 pantry=flags.get(key, False),
                 measured=bool(parsed and parsed[0] > 0 and parsed[1] != "handful"),
-                search=search_url(retailer, parsed[3] if parsed else line),
+                search=search_url(retailer, parsed[3] if parsed else line)
+                if retailer
+                else None,
             )
         )
     fingerprint = hashlib.sha256(

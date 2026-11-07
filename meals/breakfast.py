@@ -262,7 +262,11 @@ def plan(on, s=None, calendar=None):
     from receipt.lifestyle import skip_meal
 
     s = s or household.store().read()
-    if not s["breakfast_enabled"] or skip_meal(on) or not household.shared(s, on):
+    if (
+        not s["breakfast_enabled"]
+        or skip_meal(on)
+        or not household.diners(s, on, "breakfast")
+    ):
         return None
     calendar = calendar or context(on)
     prefs = legacy_planner.preferences()
@@ -345,7 +349,7 @@ def plan(on, s=None, calendar=None):
     if not slot:
         note = "No verified fitting breakfast window. This is a food suggestion; check when you can eat."
     return dict(
-        recipe=household.prepare(chosen, on, s),
+        recipe=household.prepare(chosen, on, s, slot="breakfast"),
         start=slot[0] if slot and calendar["verified"] and not missing_travel else None,
         end=slot[1] if slot and calendar["verified"] and not missing_travel else None,
         note=note,

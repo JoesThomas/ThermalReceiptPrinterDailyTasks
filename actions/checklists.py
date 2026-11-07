@@ -32,6 +32,13 @@ def validate_state(value):
         for key in mot_keys
     ):
         raise ValueError('Invalid saved MOT task history.')
+    shopping_months = value.get('shopping_task_months', [])
+    if not isinstance(shopping_months, list) or len(shopping_months) > 24:
+        raise ValueError('Invalid saved shopping task months.')
+    for month in shopping_months:
+        if not isinstance(month, str) or len(month) != 7:
+            raise ValueError('Invalid saved shopping task month.')
+        date.fromisoformat(month + '-01')
     for row in value['items']:
         if (not isinstance(row, dict) or row.get('kind') not in {'tasks', 'exercises'}
             or row.get('source') not in {'doc', 'local'}
@@ -184,6 +191,11 @@ def update(kind, action, key='', title='', **metadata):
 
 
 def task_text(text):
+    from meals.shopping_tasks import ensure
+    try:
+        ensure()
+    except (OSError, ValueError, RuntimeError):
+        pass
     sync(text, 'tasks')
     return '\n'.join(row['title'] + '.' for row in rows('tasks') if not row['completed'] and row.get('skipped_on') != today() and (not row.get('due') or row['due'] <= today()))
 
