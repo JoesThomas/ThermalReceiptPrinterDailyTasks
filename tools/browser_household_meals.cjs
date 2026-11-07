@@ -12,7 +12,8 @@ module.exports = async function(page) {
   const form = page.locator('form[action="/meals/settings/household"]');
   await form.locator('[name=person_name_0]').fill('Adult');
   await form.locator('[name=birth_year_0]').fill('1996');
-  await form.locator('[name=diet_0]').selectOption('vegan');
+  await form.locator('[name=diet_0]').selectOption('pescatarian');
+  await form.locator('[name=coeliac_0]').check();
   await form.getByRole('button',{name:'Add person',exact:true}).click();
   await form.locator('[name=person_name_1]').fill('Child');
   await form.locator('[name=birth_year_1]').fill('2023');
@@ -21,6 +22,8 @@ module.exports = async function(page) {
   await Promise.all([page.waitForNavigation({waitUntil:'load'}),form.getByRole('button',{name:'Save household & meal preferences',exact:true}).click()]);
   assert.equal(await form.locator('fieldset.person-fields').count(),2);
   assert.equal(await form.locator('[name=seasonal]').isChecked(),true);
+  assert.equal(await form.locator('[name=diet_0]').inputValue(),'pescatarian');
+  assert.equal(await form.locator('[name=coeliac_0]').isChecked(),true);
   assert.match(await page.locator('#energy').innerText(),/not personal recommendations/);
   const reserve=page.locator('form[action="/meals/settings/reserve"]');
   await reserve.locator('[name=water_have]').fill('5');

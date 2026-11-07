@@ -24,7 +24,7 @@
     <label>
         Diet
         <select name="diet_{{ index }}">
-            {% for value,label in [('omnivore','Omnivore'),('vegetarian','Vegetarian'),('vegan','Vegan')] %}
+            {% for value,label in diets.items() %}
                 <option value="{{ value }}" {% if p.diet==value %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
         </select>
@@ -39,8 +39,14 @@
                value="{{ p.portion }}"
                required>
     </label>
+    <label>
+        <input type="checkbox"
+               name="coeliac_{{ index }}"
+               {% if p.coeliac %}checked{% endif %}>
+        Gluten-free (coeliac): filter meals with gluten risks
+    </label>
     <details>
-        <summary>Allergens to exclude</summary>
+        <summary>Food exclusions (dairy, eggs, nuts and other allergens)</summary>
         <div class="allergen-options">
             {% for allergen in allergens %}
                 <label>
@@ -48,7 +54,7 @@
                            name="allergen_{{ index }}"
                            value="{{ allergen }}"
                            {% if allergen in p.allergens %}checked{% endif %}>
-                    {{ allergen|replace('_',' ') }}
+                    {{ 'Milk / dairy' if allergen == 'milk' else allergen|replace('_',' ') }}
                 </label>
             {% endfor %}
         </div>
