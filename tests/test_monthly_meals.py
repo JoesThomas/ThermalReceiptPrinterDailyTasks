@@ -389,6 +389,54 @@ class MonthlyWebTests(MonthlyFixture, TestCase):
             monthly.store().read()["overrides"]["carrot"], "Fresh essentials"
         )
 
+    def test_shop_uses_saved_preference_and_only_transfers_reviewed_rows(self):
+        from meals import supermarket
+
+        self.assertEqual(self.client.get("/meals/shop").status_code, 302)
+        self.login()
+        shops = {
+            f"shop_{i}": shop
+            for i, shop in enumerate(monthly.defaults()["shops"].values())
+        }
+        self.post("settings", retailer="ocado", **shops)
+        self.assertEqual(monthly.store().read()["retailer"], "ocado")
+        self.post("settings", retailer="https://unexpected.example", **shops)
+        self.assertEqual(monthly.store().read()["retailer"], "ocado")
+        self.post("generate")
+        view = monthly.report("2026-11")
+        day = view["visits"][0]["day"]
+        rows, fingerprint = supermarket.review(
+            [v for v in view["visits"] if v["day"] == day], "ocado"
+        )
+        landing = supermarket.TRANSFER_URL + "/" + "a" * 32 + "/landing"
+        with patch.object(supermarket, "transfer", return_value=landing) as send:
+            page = self.client.get("/meals/shop?month=2026-11")
+            self.assertEqual(page.status_code, 200)
+            self.assertIn(b"Shop at Ocado", page.data)
+            self.assertIn(b"https://www.ocado.com/search?", page.data)
+            data = dict(
+                month="2026-11",
+                day=day.isoformat(),
+                item=rows[0]["id"],
+                fingerprint=fingerprint,
+            )
+            self.assertEqual(
+                self.client.post("/meals/shop", data=data).status_code, 403
+            )
+            data.update(csrf_token="token")
+            self.client.post("/meals/shop", data=data)
+            self.client.post(
+                "/meals/shop", data=dict(data, confirm_share="yes", fingerprint="stale")
+            )
+            self.client.post(
+                "/meals/shop", data=dict(data, confirm_share="yes", item="not-reviewed")
+            )
+            send.assert_not_called()
+            page = self.client.post("/meals/shop", data=dict(data, confirm_share="yes"))
+            send.assert_called_once_with("ocado", [rows[0]["amount"]])
+            self.assertIn(landing.encode(), page.data)
+            self.assertIn(b"Your order has not been placed.", page.data)
+
     def test_invalid_settings_do_not_overwrite_valid_file_and_data_is_escaped(self):
         self.login()
         monthly.store().update(lambda s: s.update(weekly_day=6))

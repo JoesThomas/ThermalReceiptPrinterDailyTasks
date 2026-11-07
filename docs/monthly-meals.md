@@ -33,3 +33,18 @@ Menu cost is the existing dinner/lunch recipe estimate, excluding breakfast pric
 ## Local files
 
 Weekly menus remain in `meal_plans/`. Shopping-day, supplier and ingredient-category preferences live in `data/monthly_meals.json`: bounded, validated, locked and atomically written with owner-only permissions. Both are ignored by Git and excluded from the ordinary allowlisted backup; include them in a protected local backup if needed. Invalid saved weekly plans are not overwritten by monthly generation. Generating is local and bounded to the weeks needed for the selected month; page reads do not generate menus or contact providers. Controls use the application's existing login, CSRF and no-store protections.
+
+## Supermarket handoff
+
+In **Monthly meals & shops → Shopping days & shops**, save a preferred online supermarket: Tesco, Sainsbury’s, Asda, Morrisons, Waitrose & Partners or Ocado. Select **Prepare supermarket shopping list** and choose a shopping date. Ingredients from the scheduled stops that day are combined using exact recipe quantities, without rounding twice for packs. The list includes planned breakfasts, eligible dinners, lunch extras and bought components. Check homemade component recipes separately; their yields need a manual check. Pantry items and unmeasured quantities start unticked. Untick items bought elsewhere or already in stock.
+
+All six retailers work with a copyable list and product searches. For Waitrose, use **Multi-search**; where available, Sainsbury’s **SmartLists** can turn the text into product suggestions. The local app does not see your retailer account, trolley, availability, prices or order.
+
+To enable the optional basket review, request Samsung Food/Whisk Graph API access and set the server environment variable `SAMSUNG_FOOD_SERVER_TOKEN` for the process running Receipt Control, then restart. The token must be authorised for list transfers. Keep it on the server and out of version control. The provider documents Tesco, Sainsbury’s and Ocado integration; live availability depends on the provider, retailer and location. Asda, Morrisons and Waitrose use the local copy/search route.
+
+When you explicitly create a basket review, the app sends only selected ingredient lines and quantities plus the chosen retailer and UK language/region. The response is a Samsung Food link. Review pack sizes, missing items, product labels and substitutions there before transferring products to the retailer, then check the retailer basket and place the order yourself. No supermarket login or payment is handled by Receipt Control. A missing token or unavailable service leaves the local list usable.
+
+- [Samsung Food/Whisk list transfer documentation](https://docs.whisk.com/shopping-list-mobile-api/overview)
+- [Documented integrated retailers](https://docs.whisk.com/resources/supported-retailers)
+- [Waitrose Multi-search](https://www.waitrose.com/ecom/help-information/shopping-with-waitrose/shop-online)
+- [Sainsbury’s SmartLists](https://corporate.sainsburys.co.uk/news/press-releases/sainsbury-s-launches-smartlists-a-new-ai-powered-way-to-shop/)

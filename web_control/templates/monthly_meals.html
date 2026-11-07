@@ -126,6 +126,10 @@
             <section id="month-shops">
                 <h2>Shopping lists · {{ view.label }}</h2>
                 <p>
+                    <a class="button primary"
+                       href="{{ url_for('meal_shop',month=view.month) }}">Prepare supermarket shopping list</a>
+                </p>
+                <p>
                     {{ view.shopping_days }} planned shopping day(s), {{ view.stops }} shop stop(s), including {{ view.supermarket_stops }} supermarket stop(s). Several stops on the same date can be one outing; this is not a calculated travel route.
                 </p>
                 <aside class="helper">
@@ -193,6 +197,17 @@
                 </p>
                 <form method="post" action="{{ url_for('monthly_meals_settings') }}">
                     {{ csrf() }}
+                    <label>
+                        Preferred online supermarket
+                        <select name="retailer">
+                            {% for key, shop in retailers.items() %}
+                                <option value="{{ key }}"
+                                        {% if view.config.get('retailer','tesco')==key %}selected{% endif %}>
+                                    {{ shop[0] }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
                     <label>
                         Usual weekly shopping day
                         <select name="weekly_day">

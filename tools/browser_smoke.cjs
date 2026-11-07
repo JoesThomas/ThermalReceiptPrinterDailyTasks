@@ -936,6 +936,8 @@ process.on('exit', () => child.kill());
   }
   const monthlyA11y=await require('./browser_accessibility.cjs')(page,'/meals/month');
   if(monthlyA11y) accessibilityFailures.push(monthlyA11y);
+  const shopA11y=await require('./browser_meal_shop.cjs')(page);
+  if(shopA11y) accessibilityFailures.push(shopA11y);
   accessibilityFailures.push(...await require('./browser_household_meals.cjs')(page));
   assert.deepEqual(accessibilityFailures, [], `Accessibility violations: ${JSON.stringify(accessibilityFailures)}`);
   if (process.env.RECEIPT_BROWSER_SCREENSHOT) {
