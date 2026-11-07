@@ -412,7 +412,9 @@
                                         <span class="badge {{ 'paid' if row.transaction else 'due' }}">{{ 'Paid' if row.transaction else 'Needs checking' }}</span> <span class="muted">{{ row.item.category|title }}</span>
                                     </p>
                                     {% if row.item.expected_amount is defined %}
-                                        <p class="muted">Expected £{{ '%.2f'|format(row.item.expected_amount) }}. The forecast uses the matched amount as its latest estimate.</p>
+                                        <p class="muted">
+                                            Expected £{{ '%.2f'|format(row.item.expected_amount) }}. The forecast uses the matched amount as its latest estimate.
+                                        </p>
                                     {% endif %}
                                     {% if row.item.end_date %}<p class="muted">Contract ends {{ row.item.end_date }}</p>{% endif %}
                                     <small>Payment date:
