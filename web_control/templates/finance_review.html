@@ -391,7 +391,7 @@
                                     </figcaption>
                                 </figure>
                                 <p class="muted">
-                                    Total scheduled: £{{ '%.2f'|format(charts.commitments.total) }}. A missing bank match does not prove a payment is unpaid.
+                                    Total paid or expected: £{{ '%.2f'|format(charts.commitments.total) }}. A missing bank match does not prove a payment is unpaid.
                                 </p>
                             {% else %}
                                 <p>No monthly commitments to chart.</p>
@@ -411,6 +411,9 @@
                                     <p>
                                         <span class="badge {{ 'paid' if row.transaction else 'due' }}">{{ 'Paid' if row.transaction else 'Needs checking' }}</span> <span class="muted">{{ row.item.category|title }}</span>
                                     </p>
+                                    {% if row.item.expected_amount is defined %}
+                                        <p class="muted">Expected £{{ '%.2f'|format(row.item.expected_amount) }}. The forecast uses the matched amount as its latest estimate.</p>
+                                    {% endif %}
                                     {% if row.item.end_date %}<p class="muted">Contract ends {{ row.item.end_date }}</p>{% endif %}
                                     <small>Payment date:
                                         {% if row.item.next_payment or row.item.due_day or row.item.due_date %}
@@ -465,8 +468,11 @@
                                     </p>
                                     {% if item.bank_paid_date %}
                                         <p>
-                                            <span class="badge paid">Bank matched {{ item.bank_paid_date.strftime('%d %b %Y') }}</span>
+                                            <span class="badge paid">Paid £{{ '%.2f'|format(item.bank_paid_amount) }} · {{ item.bank_paid_date.strftime('%d %b %Y') }}</span>
                                         </p>
+                                        {% if item.bank_paid_amount != item.amount %}
+                                            <small>The forecast uses the matched amount as its latest renewal estimate.</small>
+                                        {% endif %}
                                     {% else %}
                                         <p>
                                             <span class="badge">Payment unverified</span>

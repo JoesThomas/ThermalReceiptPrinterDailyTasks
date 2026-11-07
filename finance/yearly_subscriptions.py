@@ -1,9 +1,10 @@
 import json
-import math
-from zoneinfo import ZoneInfo
 from calendar import monthrange
-from datetime import date, datetime
+from datetime import date, timedelta
 from pathlib import Path
+
+from finance.bill_payments import exact_amount, payment_candidates, posted_date as _parse_date
+from finance.money import PENNY, parse
 
 
 DEFAULT_FILE = (
@@ -32,16 +33,6 @@ def load_yearly_subscriptions(path=DEFAULT_FILE):
         return []
 
     return subscriptions
-
-
-def _parse_date(value):
-    try:
-        parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
-        if parsed.tzinfo is not None:
-            parsed = parsed.astimezone(ZoneInfo('Europe/London'))
-        return parsed.date()
-    except (TypeError, ValueError):
-        return None
 
 
 def next_renewal(subscription, today=None):
@@ -139,46 +130,46 @@ def yearly_subscription_summary(
 def annual_subscription_rows(subscriptions, transactions, today):
     """Show annual renewals without treating an absent bank match as unpaid."""
     rows = []
-    for subscription in subscriptions or []:
+    used = set()
+    for index, subscription in enumerate(subscriptions or []):
         anchor = _parse_date(subscription.get("renewal_date"))
         renewal = next_renewal(subscription, today)
         last_paid = _parse_date(subscription.get("last_paid"))
-        match_terms = subscription.get("match") or []
-        if isinstance(match_terms, str):
-            match_terms = [match_terms]
-        terms = [str(term).casefold().strip() for term in match_terms if str(term).strip()]
-        try:
-            expected = float(subscription.get("amount"))
-        except (ValueError, TypeError):
-            expected = None
-
-        # A monthly payment to the same merchant must not verify the annual bill.
+        expected = parse(subscription.get("amount"))
+        match = None
         cycle = None
-        if anchor and anchor.year <= today.year:
+        if anchor and anchor.year <= today.year and expected is not None and expected > 0:
             cycle = date(today.year, anchor.month,
                          min(anchor.day, monthrange(today.year, anchor.month)[1]))
-        matches = []
-        if cycle and expected is not None and math.isfinite(expected) and expected > 0 and terms:
-            for tx in transactions or []:
-                paid_on = _parse_date(tx.get("timestamp") or tx.get("transaction_date")
-                                      or tx.get("date"))
-                if not paid_on or paid_on > today or abs((paid_on - cycle).days) > 30:
-                    continue
-                if str(tx.get("transaction_type", "")).upper() in {"CREDIT", "REFUND"}:
-                    continue
-                try:
-                    amount = float(tx.get("amount"))
-                except (ValueError, TypeError):
-                    continue
-                if not math.isfinite(amount) or amount >= 0 or abs(abs(amount) - expected) > 0.01:
-                    continue
-                description = " ".join(str(tx.get(key) or "") for key in
-                                       ("merchant_name", "description")).casefold()
-                if any(term in description for term in terms):
-                    matches.append(paid_on)
+            start = cycle - timedelta(days=30)
+            candidates = [
+                candidate for candidate in payment_candidates(
+                    subscription, transactions or [], today,
+                    start=max(start, last_paid or start), end=cycle + timedelta(days=30)
+                ) if candidate[0] not in used
+            ]
+            exact = exact_amount(candidates, expected)
+            if exact:
+                match = min(exact, key=lambda candidate: abs((candidate[1] - cycle).days))
+            else:
+                # Allow a higher renewal only close to its expected date. A
+                # cheaper monthly charge must not verify an annual renewal.
+                close = [candidate for candidate in candidates if abs((candidate[1] - cycle).days) <= 7]
+                if len(close) == 1:
+                    amount = close[0][2]
+                    previously_paid = any(parse(entry.get("amount")) == amount
+                                          for entry in subscription.get("history", [])
+                                          if isinstance(entry, dict))
+                    if amount > expected + PENNY or previously_paid:
+                        match = close[0]
 
-        rows.append({**subscription, "next_renewal": renewal,
-                     "last_paid_date": last_paid, "bank_paid_date": max(matches) if matches else None,
+        if match:
+            used.add(match[0])
+        rows.append({**subscription, "subscription_index": index, "next_renewal": renewal,
+                     "bank_match_index": match[0] if match else None,
+                     "last_paid_date": last_paid, "bank_paid_date": match[1] if match else None,
+                     "bank_paid_amount": float(match[2]) if match else None,
+                     "matched_renewal": cycle if match else None,
                      "days_until": (renewal - today).days if renewal else None})
     return sorted(rows, key=lambda row: (row["next_renewal"] or date.max,
                                           str(row.get("name", "")).casefold()))

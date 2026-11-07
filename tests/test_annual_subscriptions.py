@@ -1,8 +1,6 @@
 from receipt.profile import COLUMNS
 import unittest
-import ast
 from datetime import date
-from pathlib import Path
 from unittest.mock import patch
 from finance.yearly_subscriptions import annual_subscription_rows, next_renewal
 
@@ -51,21 +49,17 @@ class AnnualSubscriptionTests(unittest.TestCase):
         save.assert_called_once()
 
     def test_receipt_separates_annual_entry_and_labels_unverified(self):
-        source = ast.parse((Path(__file__).resolve().parents[1] / 'services/live_pipeline.py')
-                           .read_text(encoding='utf-8'))
-        node = next(item for item in source.body if isinstance(item, ast.FunctionDef)
-                    and item.name == 'print_annual_subscription_status')
-        amount_node = next(item for item in source.body if isinstance(item, ast.FunctionDef)
-                           and item.name == 'receipt_right_amount')
-        namespace = {'annual_subscription_rows': annual_subscription_rows, 'COLUMNS': COLUMNS}
-        exec(compile(ast.Module(body=[amount_node, node], type_ignores=[]), '<annual-receipt>', 'exec'), namespace)
+        from receipt.finance_renderers import print_annual_subscription_status
+        from receipt.layout import amount_rows
+
         lines = []
-        namespace['print_annual_subscription_status'](
+        print_annual_subscription_status(
             object(), lambda printer, line: lines.append(line),
             lambda printer, char: lines.append(char * 40),
             {'yearly': [{'name': 'Annual service', 'amount': 120,
                          'renewal_date': '2025-10-21', 'last_paid': '2025-10-21'}]},
-            [], date(2026, 9, 29))
+            [], date(2026, 9, 29), _context={'annual_subscription_rows': annual_subscription_rows,
+                                             'receipt_right_amount': lambda name, amount: amount_rows(name, amount, COLUMNS)})
         self.assertIn('ANNUAL SUBSCRIPTIONS [F+B]'.center(COLUMNS), lines)
         self.assertIn('  PAYMENT UNVERIFIED', lines)
         self.assertTrue(any('NEXT 21 Oct 2026' in line for line in lines))
@@ -74,16 +68,11 @@ class AnnualSubscriptionTests(unittest.TestCase):
         self.assertTrue(all(len(line) <= COLUMNS for line in lines))
 
     def test_right_aligned_amount_wraps_large_values(self):
-        source = ast.parse((Path(__file__).resolve().parents[1] / 'services/live_pipeline.py')
-                           .read_text(encoding='utf-8'))
-        node = next(item for item in source.body if isinstance(item, ast.FunctionDef)
-                    and item.name == 'receipt_right_amount')
-        namespace = {'COLUMNS': COLUMNS}
-        exec(compile(ast.Module(body=[node], type_ignores=[]), '<receipt-amount>', 'exec'), namespace)
-        amount = namespace['receipt_right_amount']
-        self.assertEqual(len(amount('Council Tax', 114)[0]), COLUMNS)
-        self.assertTrue(amount('Council Tax', 114)[0].endswith('£114.00'))
-        self.assertEqual(amount('An exceptionally long annual subscription name', 100000),
+        from receipt.layout import amount_rows as amount
+
+        self.assertEqual(len(amount('Council Tax', 114, COLUMNS)[0]), COLUMNS)
+        self.assertTrue(amount('Council Tax', 114, COLUMNS)[0].endswith('£114.00'))
+        self.assertEqual(amount('An exceptionally long annual subscription name', 100000, COLUMNS),
                          ['An exceptionally long annual subscription name', '£100,000.00'.rjust(COLUMNS)])
 
 

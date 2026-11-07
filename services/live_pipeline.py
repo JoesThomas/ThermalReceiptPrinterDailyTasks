@@ -1591,26 +1591,17 @@ def analyse_regular_payments(
         )
     ).date()
 
-    made = []
-    remaining = []
+    from finance.bill_payments import monthly_matches
 
-    for payment in payments:
-        paid = (
-            payment_made_this_month(
-                payment,
-                transactions,
-            )
-        )
-
-        result = dict(payment)
-
-        result["paid"] = paid
-
-        if paid:
-            made.append(result)
-
+    items = [dict(payment, match=payment.get("match_terms", []), due_day=payment.get("day"),
+                  category=payment.get("type")) for payment in payments]
+    matches = monthly_matches(items, transactions or [], today)
+    made, remaining = [], []
+    for index, payment in enumerate(payments):
+        if index in matches:
+            made.append(dict(payment, paid=True, amount=float(matches[index][2])))
         else:
-            remaining.append(result)
+            remaining.append(dict(payment, paid=False))
 
     remaining_total = sum(
         payment["amount"]
@@ -1908,89 +1899,6 @@ def build_finance_snapshot(
 
         "runway": runway,
     }
-
-def payment_made_this_month(
-    payment,
-    transactions,
-):
-    """
-    Check transaction history to determine
-    whether a known regular payment has already
-    been made this month.
-    """
-
-    today = datetime.now(
-        ZoneInfo(
-            "Europe/London"
-        )
-    ).date()
-
-    match_terms = payment.get(
-        "match_terms",
-        [],
-    )
-
-    expected_amount = payment[
-        "amount"
-    ]
-
-    for transaction in (
-        transactions or []
-    ):
-        tx_date = transaction_date(
-            transaction
-        )
-
-        if not tx_date:
-            continue
-
-        if (
-            tx_date.year != today.year
-            or tx_date.month != today.month
-        ):
-            continue
-
-        amount = transaction_amount(
-            transaction
-        )
-
-        # We're looking for money leaving.
-        if amount >= 0:
-            continue
-
-        description = (
-            transaction_description(
-                transaction
-            ).lower()
-        )
-
-        name_matches = any(
-            term in description
-            for term in match_terms
-        )
-
-        # Allow a little movement for bills
-        # such as energy.
-        tolerance = max(
-            2.00,
-            expected_amount * 0.10,
-        )
-
-        amount_matches = (
-            abs(
-                abs(amount)
-                - expected_amount
-            )
-            <= tolerance
-        )
-
-        if (
-            name_matches
-            and amount_matches
-        ):
-            return True
-
-    return False
 
 def previous_month(
     year,
@@ -2433,151 +2341,6 @@ def load_subscriptions():
         return {"monthly": [], "yearly": [], "instalments": []}
 
 
-def subscription_was_paid(
-    subscription,
-    transactions,
-    today,
-):
-    return matching_subscription_transaction(subscription, transactions, today) is not None
-
-
-def monthly_contract_ended(subscription, today):
-    """The month containing the end date is the final scheduled month."""
-    from finance.instalment_settlement import is_settled
-    if is_settled(subscription, today):
-        return True
-    value = subscription.get("end_date")
-    if not value:
-        return False
-    try:
-        final_day = date.fromisoformat(str(value))
-    except ValueError:
-        return False
-    return (today.year, today.month) > (final_day.year, final_day.month)
-
-
-def matching_subscription_transaction(subscription, transactions, today, used=()):
-    """
-    Return True when a transaction matching this
-    subscription exists in the current month.
-
-    Matches using:
-      - merchant description
-      - expected amount, when configured
-    """
-
-    match_terms = (
-        subscription.get(
-            "match",
-            []
-        )
-    )
-
-    if isinstance(
-            match_terms,
-            str,
-    ):
-        match_terms = [
-            match_terms
-        ]
-
-    match_terms = [
-        str(term).strip().lower()
-        for term in match_terms
-        if str(term).strip()
-    ]
-
-    expected_amount = (
-        subscription.get("amount")
-    )
-
-    try:
-        if expected_amount is not None:
-            expected_amount = float(
-                expected_amount
-            )
-
-    except (
-        TypeError,
-        ValueError,
-    ):
-        expected_amount = None
-
-    for index, transaction in enumerate(transactions):
-        if index in used:
-            continue
-
-        # --------------------------------------
-        # DATE
-        # --------------------------------------
-
-        payment_date = transaction_date(transaction)
-        if payment_date is None:
-            continue
-
-        # Only inspect the current month.
-        if (
-            payment_date.year
-            != today.year
-            or payment_date.month
-            != today.month
-            or payment_date > today
-        ):
-            continue
-
-        # --------------------------------------
-        # DESCRIPTION
-        # --------------------------------------
-
-        transaction_name = " ".join(str(transaction.get(field) or "")
-                                    for field in ("merchant_name", "description")).lower()
-
-        if not any(
-                term in transaction_name
-                for term in match_terms
-        ):
-            continue
-
-        if str(transaction.get("transaction_type", "")).upper() in ("CREDIT", "REFUND"):
-            continue
-
-        # --------------------------------------
-        # AMOUNT
-        # --------------------------------------
-
-        if expected_amount is not None:
-
-            try:
-                transaction_amount = abs(
-                    float(
-                        transaction.get(
-                            "amount",
-                            0,
-                        )
-                    )
-                )
-
-            except (
-                TypeError,
-                ValueError,
-            ):
-                continue
-
-            # Allow tiny rounding differences.
-            if (
-                abs(
-                    transaction_amount
-                    - expected_amount
-                )
-                > 0.01
-            ):
-                continue
-
-        # Merchant and amount matched.
-        return index
-
-    return None
-
 def build_subscription_status(
     transactions,
     subscriptions_data=None,
@@ -2591,29 +2354,41 @@ def build_subscription_status(
     subscriptions = subscriptions_data if subscriptions_data is not None else load_subscriptions()
     finance_settings = finance_settings if finance_settings is not None else load_finance_settings()
 
-    monthly = []
+    from finance.bill_payments import monthly_contract_ended, monthly_matches
+    from finance.money import parse
 
     regular = list(subscriptions.get("monthly", []))
     ended = [item for item in regular if monthly_contract_ended(item, today)]
     active = [item for item in regular if not monthly_contract_ended(item, today)]
     repayments = repayment_commitments(subscriptions, finance_settings)
     netflix = inferred_netflix_commitment(regular, transactions, today)
-    used = set()
-    for subscription in active + repayments + ([netflix] if netflix else []):
-        item = dict(
-            subscription
+    items = active + repayments + ([netflix] if netflix else [])
+    annual = annual_subscription_rows(subscriptions.get("yearly", []), transactions, today)
+    reserved = {row["bank_match_index"] for row in annual if row["bank_match_index"] is not None}
+    matches = monthly_matches(items, transactions, today, reserved=reserved)
+    used = reserved | {match[0] for match in matches.values()}
+    monthly = []
+    for row, subscription in enumerate(items):
+        item = dict(subscription)
+        match = matches.get(row)
+        index = match[0] if match else None
+        if index is not None:
+            _, paid_on, amount = match
+            item["last_paid"] = max(paid_on.isoformat(), item.get("last_paid") or "")
+            item["amount"] = float(amount)
+            if parse(subscription.get("amount")) not in (None, amount):
+                item["expected_amount"] = subscription["amount"]
+        elif subscription.get("category") == "repayment":
+            index = matching_repayment_transaction(subscription, transactions, today, used)
+            if index is not None:
+                used.add(index)
+        item["paid"] = index is not None
+        item["bank_match_index"] = index
+        item["bank_match_method"] = (
+            "Merchant and payment timing" if item.get("expected_amount") is not None
+            else "Merchant and amount" if match else "Payment date and amount"
         )
-
-        matched = matching_subscription_transaction(subscription, transactions, today, used)
-        if matched is None and subscription.get("category") == "repayment":
-            matched = matching_repayment_transaction(subscription, transactions, today, used)
-        item["paid"] = matched is not None
-        if matched is not None:
-            used.add(matched)
-
-        monthly.append(
-            item
-        )
+        monthly.append(item)
 
     return {
         "monthly": monthly,
@@ -5397,11 +5172,10 @@ def run_live_pipeline(
 
                 from receipt.freshness import mark
                 mark("Bank transactions", spending_summary.get("bank_data_status", "unavailable"))
-                subscription_changes = (
-                    update_subscriptions_from_transactions(
-                        transactions
+                if spending_summary.get("bank_data_status") == "complete":
+                    subscription_changes = update_subscriptions_from_transactions(
+                        transactions, today=today, finance_settings=load_finance_settings()
                     )
-                )
 
             else:
                 from receipt.freshness import mark

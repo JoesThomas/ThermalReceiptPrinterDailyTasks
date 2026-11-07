@@ -20,7 +20,7 @@ def print_subscription_changes(printer, changes, *, _context):
         percentage = float(change.get('percentage', 0))
         left(printer, name[:40])
         left(printer, f'  £{old_amount:.2f} -> £{new_amount:.2f}')
-        left(printer, f'  {difference:+.2f} GBP  {percentage:+.1f}%')
+        left(printer, f"  {'+' if difference >= 0 else '-'}£{abs(difference):.2f}  {percentage:+.1f}%")
 
 def print_instalment_status(printer, subscriptions_data, *, _context):
     _safe_amount = _context.get('_safe_amount')
@@ -148,7 +148,7 @@ def print_annual_subscription_status(printer, left, print_line, subscriptions_da
         renewal = item['next_renewal']
         left(printer, f'  NEXT {renewal:%d %b %Y}' if renewal else '  ADD RENEWAL DATE')
         if item['bank_paid_date']:
-            left(printer, f"  BANK MATCH {item['bank_paid_date']:%d %b %Y}")
+            left(printer, f"  PAID £{item['bank_paid_amount']:,.2f} ON {item['bank_paid_date']:%d %b %Y}")
         else:
             left(printer, '  PAYMENT UNVERIFIED')
         if item['last_paid_date']:

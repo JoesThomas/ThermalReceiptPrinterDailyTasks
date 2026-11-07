@@ -19,3 +19,19 @@ Verification uses mock bank data and temporary private files; it does not contac
 Amazon shopping is excluded from the automatic daily variable-spending estimate used for runway and salary savings planning. Actual purchase totals and spending since salary still include it. Scheduled Amazon repayments remain commitments. A manual daily spending estimate overrides the automatic estimate. Future discretionary Amazon purchases are not budgeted by this exclusion.
 
 Monzo transaction collection defaults to the first account returned by TrueLayer. Under Choose cash accounts, the separate Monzo transaction-source setting can restore all connected accounts. This also limits direct-debit and standing-order collection, while HSBC and Amex remain unchanged. Disabled accounts do not contribute to income or spending totals; coverage describes enabled sources only. Cash balance selection remains separate. The first returned account is a provider ordering, not a verified account identity, and may change after reconnecting.
+
+
+### When a bill amount changes
+
+Finance shows the amount actually paid when it can match a posted debit to a
+configured bill or subscription. The forecast skips that already paid occurrence
+and uses the matched amount as its latest estimate. Generating a Finance receipt
+with a complete bank refresh also saves the updated amount and payment history,
+and lists changes under **Bill changes**.
+
+The app prefers the expected amount when matching. A different monthly amount
+must be the only merchant match for the month, must not match another commitment,
+and must be within seven days of the expected day when one is known. A higher
+annual renewal must be the only merchant match within seven days of the renewal.
+Repayments and scheduled savings still require their expected amount. Keep bank
+matching terms specific, and check any payment the app leaves unverified.

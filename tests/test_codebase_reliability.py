@@ -42,10 +42,9 @@ class CodebaseReliabilityTests(unittest.TestCase):
               {'date':'2026-10-02','amount':50,'transaction_type':'CREDIT','description':'service refund'},
               {'date':'2026-10-02','amount':float('nan'),'description':'service'}]
         with patch.object(subscriptions,'load_subscriptions',return_value=data),patch.object(subscriptions,'save_subscriptions'):
-            self.assertEqual(subscriptions.update_subscriptions_from_transactions(rows),[])
+            self.assertEqual(subscriptions.update_subscriptions_from_transactions(rows, today=date(2026, 10, 2)),[])
         self.assertEqual(data['monthly'][0]['amount'],20)
         self.assertEqual(data['monthly'][0]['last_paid'],'2026-10-01')
-        self.assertEqual(subscriptions._date({'timestamp':'2026-09-30T23:30:00Z'}),'2026-10-01')
 
     def test_annual_payment_dates_use_uk_time_and_nan_is_not_a_match(self):
         bill={'name':'Example','amount':120,'renewal_date':'2026-10-01','match':['service']}

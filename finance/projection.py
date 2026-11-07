@@ -196,7 +196,8 @@ def payment_schedule(monthly, yearly, transactions, settings, today, horizon=182
                 remaining -= charge
                 if remaining <= 0:
                     break
-    for item in yearly:
+    from finance.yearly_subscriptions import annual_subscription_rows
+    for item in annual_subscription_rows(yearly, transactions, today):
         anchor = day(item.get('renewal_date'))
         if not anchor:
             undated.append(str(item.get('name') or 'Annual subscription'))
@@ -204,10 +205,8 @@ def payment_schedule(monthly, yearly, transactions, settings, today, horizon=182
             continue
         for offset in range(max(0, today.year - anchor.year), max(0, today.year - anchor.year) + year_count):
             due = occurs(anchor, offset, 'yearly')
-            observed = [d for tx in debits if matches(item, tx)
-                        if (d := _parse_date(tx)) and d <= today and abs((d - due).days) <= 30]
-            if due >= today and not observed:
-                add(item, due, item.get('amount'), 'Annual renewal')
+            if due >= today and due != item['matched_renewal']:
+                add(item, due, item['bank_paid_amount'] or item.get('amount'), 'Annual renewal')
     # Explicit cash payments can cover card repayments and one-off commitments.
     for item in settings.get('commitments', []) + [dict(i, amount=-money(i.get('amount'), Decimal(0)))
                                                   for i in settings.get('forecast_events', [])
