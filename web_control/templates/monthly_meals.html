@@ -61,9 +61,15 @@
                         {{ view.missing|length }} upcoming day(s) still need a saved menu. Complete the month before relying on its totals.
                     </p>
                 {% endif %}
+                {% if view.people %}
+                    <p>
+                        Use <strong>Who's eating?</strong> on a date to skip breakfast, lunch or dinner for anyone. Mark all three when someone is away for the day. Lunch counts apply to extras prepared with the previous dinner. Household dietary rules still apply.
+                    </p>
+                {% endif %}
                 <div class="month-days">
                     {% for row in view.days %}
-                        <article class="month-day{% if row.past %} month-past{% endif %}">
+                        <article id="day-{{ row.day.isoformat() }}"
+                                 class="month-day{% if row.past %} month-past{% endif %}">
                             <h3>{{ row.day.strftime('%a %d %b') }}</h3>
                             {% if household_meals_available|default(false) %}
                                 {% from 'breakfast_panel.html' import breakfast_panel with context %}{{ breakfast_panel(row.breakfast,row.day,view.month,true) }}
@@ -82,6 +88,36 @@
                             </p>
                             {% if row.needs_review %}
                                 <p class="helper">Review this recipe: it does not meet your current diet, allergen or cooking-time settings.</p>
+                            {% endif %}
+                            {% if view.people and not row.past %}
+                                <details>
+                                    <summary>
+                                        Who's eating?
+                                        {% if row.absent %}· attendance changed{% endif %}
+                                    </summary>
+                                    <p>
+                                        At home: {{ row.diner_counts.breakfast }} breakfast · {{ row.diner_counts.lunch }} lunch · {{ row.diner_counts.dinner }} dinner.
+                                    </p>
+                                    <form method="post" action="{{ url_for('monthly_meals_attendance') }}">
+                                        {{ csrf() }}
+                                        <input type="hidden" name="day" value="{{ row.day.isoformat() }}">
+                                        {% for key, person in view.people.items() %}
+                                            <fieldset>
+                                                <legend>{{ person.name }}</legend>
+                                                {% for slot in view.meal_slots %}
+                                                    <label>
+                                                        <input type="checkbox"
+                                                               name="absent"
+                                                               value="{{ key }}:{{ slot }}"
+                                                               {% if slot in row.absent.get(key,[]) %}checked{% endif %}>
+                                                        Skip {{ slot }}
+                                                    </label>
+                                                {% endfor %}
+                                            </fieldset>
+                                        {% endfor %}
+                                        <button>Save attendance</button>
+                                    </form>
+                                </details>
                             {% endif %}
                             {% if not row.past and row.meal and not row.away %}
                                 <details>
@@ -128,6 +164,10 @@
                 <p>
                     <a class="button primary"
                        href="{{ url_for('meal_shop',month=view.month) }}">Prepare supermarket shopping list</a>
+                    {% for shop in local_shops if view.visits|selectattr('shop','equalto',shop)|first %}
+                        <a class="button"
+                           href="{{ url_for('meal_shop',month=view.month,supplier=shop) }}">{{ shop }} lists</a>
+                    {% endfor %}
                 </p>
                 <p>
                     {{ view.shopping_days }} planned shopping day(s), {{ view.stops }} shop stop(s), including {{ view.supermarket_stops }} supermarket stop(s). Several stops on the same date can be one outing; this is not a calculated travel route.
@@ -144,6 +184,11 @@
                 {% for visit in view.visits %}
                     <details class="shop-list" {% if loop.first %}open{% endif %}>
                         <summary>{{ visit.day.strftime('%a %d %b') }} · {{ visit.shop }} · {{ visit['items']|length }} ingredient(s)</summary>
+                        {% if visit.shop in local_shops %}
+                            <p>
+                                <a href="{{ url_for('meal_shop',month=view.month,supplier=visit.shop,day=visit.day.isoformat()) }}">Open {{ visit.shop }} list for {{ visit.day.strftime('%d %b') }}</a>
+                            </p>
+                        {% endif %}
                         <ul>
                             {% for item in visit['items'] %}
                                 <li>

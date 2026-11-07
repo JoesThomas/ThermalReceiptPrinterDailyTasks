@@ -1,6 +1,9 @@
 <fieldset class="person-fields">
     <legend>Person {{ number }}</legend>
     <input type="hidden" name="person_index" value="{{ index }}">
+    <input type="hidden"
+           name="person_id_{{ index }}"
+           value="{{ p.get('person_id', 'legacy-' ~ index) if index != '__index__' else '' }}">
     <label>
         Name or label
         <input name="person_name_{{ index }}" maxlength="80" value="{{ p.name }}">

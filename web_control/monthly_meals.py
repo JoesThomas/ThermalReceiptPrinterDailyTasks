@@ -19,6 +19,16 @@ def register(app, login_required):
     def go(raw):
         return redirect(url_for("monthly_meals_page", month=raw))
 
+    def sync_tasks(raw):
+        from meals.shopping_tasks import sync
+
+        try:
+            sync(raw, uk_today())
+        except (OSError, ValueError, RuntimeError):
+            flash(
+                "The meal change was saved, but shopping tasks could not be updated. Check your task list."
+            )
+
     @app.get("/meals/month")
     @login_required
     def monthly_meals_page():
@@ -46,6 +56,7 @@ def register(app, login_required):
             ],
             recipes=planner.recipes(),
             retailers=supermarket.RETAILERS,
+            local_shops=monthly.LOCAL_SHOPS,
         )
 
     @app.post("/meals/month/generate")
@@ -54,6 +65,7 @@ def register(app, login_required):
         raw = selected()
         try:
             count = monthly.generate(raw)
+            sync_tasks(raw)
             flash(
                 f"Month ready: {count} week(s) created or completed. Existing meals were kept; the daily receipt uses these same plans."
             )
@@ -82,6 +94,7 @@ def register(app, login_required):
                 )
 
             monthly.store().update(save)
+            sync_tasks(raw)
             flash(
                 "Shopping days and suppliers saved. Lists regroup without changing the menu."
             )
@@ -90,6 +103,74 @@ def register(app, login_required):
                 "Check the weekdays, supermarket and shop choices. Fresh categories must stay on weekly lists."
             )
         return go(raw)
+
+    @app.post("/meals/month/attendance")
+    @login_required
+    def monthly_meals_attendance():
+        from datetime import date, timedelta
+        from meals import household
+
+        raw = selected()
+        try:
+            day = date.fromisoformat(request.form.get("day", ""))
+            first, last = monthly.bounds(raw)
+            on = uk_today()
+            if not max(on, first) <= day <= last:
+                raise ValueError("Choose today or an upcoming day in this month.")
+            checked = set(request.form.getlist("absent"))
+
+            def save(s):
+                if not s["configured"]:
+                    raise ValueError("Set up household profiles first.")
+                people = household.people_by_id(s)
+                valid = {
+                    f"{key}:{slot}" for key in people for slot in household.MEAL_SLOTS
+                }
+                if not checked <= valid:
+                    raise ValueError(
+                        "Household profiles changed. Refresh and try again."
+                    )
+                value = {
+                    key: [
+                        slot
+                        for slot in household.MEAL_SLOTS
+                        if f"{key}:{slot}" in checked
+                    ]
+                    for key in people
+                }
+                cutoff = (on - timedelta(days=365)).isoformat()
+                absences = {
+                    d: a for d, a in s.get("absences", {}).items() if d >= cutoff
+                }
+                absences.pop(day.isoformat(), None)
+                if any(value.values()):
+                    absences[day.isoformat()] = {
+                        key: slots for key, slots in value.items() if slots
+                    }
+                s["absences"] = absences
+
+            household.store().update(save)
+            sync_tasks(raw)
+            # Lunch is prepared with the previous evening's dinner.
+            if day == first:
+                previous = (first - timedelta(days=1)).strftime("%Y-%m")
+                sync_tasks(previous)
+            flash(
+                "Attendance saved. Meal portions and shopping now use the updated numbers."
+            )
+        except (ValueError, OSError) as error:
+            flash(
+                str(error)
+                if isinstance(error, ValueError)
+                else "Could not save attendance."
+            )
+        return redirect(
+            url_for(
+                "monthly_meals_page",
+                month=raw,
+                _anchor="day-" + request.form.get("day", "")[:10],
+            )
+        )
 
     @app.route("/meals/shop", methods=["GET", "POST"])
     @login_required
@@ -102,16 +183,23 @@ def register(app, login_required):
                 503,
                 description="The meal shopping list is unavailable. Check local meal data.",
             )
+        supplier = request.values.get("supplier", "")
+        if supplier and supplier not in monthly.LOCAL_SHOPS:
+            abort(400, description="Choose a scheduled local supplier.")
+        if supplier and request.method == "POST":
+            abort(405)
         retailer = view["config"].get("retailer", "tesco")
         name = supermarket.RETAILERS[retailer][0]
-        dates = sorted({visit["day"].isoformat() for visit in view["visits"]})
+        allowed = (supplier,) if supplier else monthly.SUPERMARKET_SHOPS
+        scheduled = [visit for visit in view["visits"] if visit["shop"] in allowed]
+        dates = sorted({visit["day"].isoformat() for visit in scheduled})
         day = request.values.get("day", dates[0] if dates else "")
         if day and day not in dates:
             flash("That shopping date is no longer available. Select a current list.")
-            return redirect(url_for("meal_shop", month=raw))
-        visits = [v for v in view["visits"] if v["day"].isoformat() == day]
-        rows, fingerprint = supermarket.review(visits, retailer)
-        enabled = supermarket.available(retailer)
+            return redirect(url_for("meal_shop", month=raw, supplier=supplier or None))
+        visits = [v for v in scheduled if v["day"].isoformat() == day]
+        rows, fingerprint = supermarket.review(visits, None if supplier else retailer)
+        enabled = not supplier and supermarket.available(retailer)
         checked = {r["id"] for r in rows if r["measured"] and not r["pantry"]}
         landing = None
         if request.method == "POST":
@@ -139,6 +227,7 @@ def register(app, login_required):
             day=day,
             dates=dates,
             visits=visits,
+            supplier=supplier,
             retailer=retailer,
             retailer_name=name,
             retailer_home=supermarket.SHOPS_HOME[retailer],
@@ -168,6 +257,7 @@ def register(app, login_required):
                     s["overrides"][key] = kind
 
             monthly.store().update(save)
+            sync_tasks(raw)
             flash(
                 "Ingredient category saved for future shopping lists too. Check packaging before assigning something to the monthly cupboard/freezer shop."
             )
@@ -183,6 +273,7 @@ def register(app, login_required):
             monthly.change_meal(
                 raw, request.form.get("day", ""), request.form.get("recipe", "")
             )
+            sync_tasks(raw)
             flash(
                 "Meal changed. Monthly shopping and the daily receipt now use the updated week."
             )

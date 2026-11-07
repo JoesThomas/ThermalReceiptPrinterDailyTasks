@@ -32,10 +32,13 @@ class MonthlyFixture:
         self.folder = TemporaryDirectory()
         self.addCleanup(self.folder.cleanup)
         self.root = Path(self.folder.name)
-        from actions import personal_helper
+        from actions import checklists, personal_helper
+        from meals import household
 
         self.patchers = [
             patch.object(monthly, "FILE", self.root / "settings.json"),
+            patch.object(household, "FILE", self.root / "household.json"),
+            patch.object(checklists, "FILE", self.root / "tasks.json"),
             patch.object(planner, "PLANS_DIR", self.root / "plans"),
             patch.object(planner, "PANTRY_FILE", self.root / "pantry.json"),
             patch.object(planner, "RECIPES_FILE", self.root / "recipes.json"),
@@ -404,9 +407,10 @@ class MonthlyWebTests(MonthlyFixture, TestCase):
         self.assertEqual(monthly.store().read()["retailer"], "ocado")
         self.post("generate")
         view = monthly.report("2026-11")
-        day = view["visits"][0]["day"]
+        visits = [v for v in view["visits"] if v["shop"] in monthly.SUPERMARKET_SHOPS]
+        day = visits[0]["day"]
         rows, fingerprint = supermarket.review(
-            [v for v in view["visits"] if v["day"] == day], "ocado"
+            [v for v in visits if v["day"] == day], "ocado"
         )
         landing = supermarket.TRANSFER_URL + "/" + "a" * 32 + "/landing"
         with patch.object(supermarket, "transfer", return_value=landing) as send:
@@ -414,6 +418,29 @@ class MonthlyWebTests(MonthlyFixture, TestCase):
             self.assertEqual(page.status_code, 200)
             self.assertIn(b"Shop at Ocado", page.data)
             self.assertIn(b"https://www.ocado.com/search?", page.data)
+            self.assertNotIn(b"chicken breast", page.data)
+            self.assertNotIn(b"carrot", page.data)
+            for supplier, expected, excluded in (
+                ("Butcher", b"chicken breast", b"carrot"),
+                ("Greengrocer", b"carrot", b"chicken breast"),
+            ):
+                local = self.client.get(
+                    "/meals/shop", query_string=dict(month="2026-11", supplier=supplier)
+                )
+                self.assertIn(expected, local.data)
+                self.assertNotIn(excluded, local.data)
+                self.assertNotIn(b"https://www.ocado.com", local.data)
+                self.assertEqual(
+                    self.client.post(
+                        "/meals/shop",
+                        data=dict(
+                            month="2026-11",
+                            supplier=supplier,
+                            csrf_token="token",
+                        ),
+                    ).status_code,
+                    405,
+                )
             data = dict(
                 month="2026-11",
                 day=day.isoformat(),
@@ -436,6 +463,41 @@ class MonthlyWebTests(MonthlyFixture, TestCase):
             send.assert_called_once_with("ocado", [rows[0]["amount"]])
             self.assertIn(landing.encode(), page.data)
             self.assertIn(b"Your order has not been placed.", page.data)
+
+    def test_dated_tasks_refresh_when_all_diners_skip_dinner(self):
+        from actions import checklists
+        from meals import household, shopping_tasks
+
+        self.login()
+        household.store().update(
+            lambda s: s.update(configured=True, breakfast_enabled=False)
+        )
+        day = date(2026, 11, 7)
+        self.save(day, [dict(date=day.isoformat(), kind="recipe", recipe=recipe())])
+        shopping_tasks.sync("2026-11", TODAY)
+        shopping_tasks.sync("2026-11", TODAY)
+        tasks = checklists.rows("tasks")
+        self.assertEqual(
+            {t["shop_supplier"] for t in tasks}, {"Butcher", "Greengrocer"}
+        )
+        self.assertEqual([t["due"] for t in tasks], [day.isoformat()] * 2)
+        checklists.update("tasks", "toggle", tasks[0]["id"])
+        self.post("attendance", day=day.isoformat(), absent="legacy-0:dinner")
+        self.assertEqual(len(checklists.rows("tasks")), 1)
+        self.assertTrue(checklists.rows("tasks")[0]["completed"])
+        view = monthly.report("2026-11")
+        self.assertEqual(
+            next(row["meal"]["kind"] for row in view["days"] if row["day"] == day),
+            "skipped",
+        )
+        self.assertEqual(view["visits"], [])
+        self.post("attendance", day=day.isoformat())
+        self.assertEqual(len(checklists.rows("tasks")), 2)
+        self.assertTrue(
+            next(t for t in checklists.rows("tasks") if t["id"] == tasks[0]["id"])[
+                "completed"
+            ]
+        )
 
     def test_invalid_settings_do_not_overwrite_valid_file_and_data_is_escaped(self):
         self.login()

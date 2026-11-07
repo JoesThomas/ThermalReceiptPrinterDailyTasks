@@ -59,6 +59,17 @@ module.exports = async function(page) {
   await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.getByRole('button',{name:'Create / complete monthly menu',exact:true}).click()]);
   assert.match(await page.locator('.month-day').first().innerText(),/Household lentil rice/);
   assert.doesNotMatch(await page.locator('.month-day').first().innerText(),/Monthly fixture dinner/);
+  const day = page.locator('.month-day').first();
+  await day.getByText("Who's eating?",{exact:true}).click();
+  const attendance = day.locator('form[action="/meals/month/attendance"]');
+  await attendance.locator('input[value$=":dinner"]').first().check();
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),attendance.getByRole('button',{name:'Save attendance',exact:true}).click()]);
+  await page.locator('p.flash').filter({hasText:'Attendance saved'}).waitFor();
+  await day.locator('summary').filter({hasText:'attendance changed'}).click();
+  assert.match(await attendance.locator('..').innerText(),/1 dinner/);
+  await attendance.locator('input[value$=":dinner"]').last().check();
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),attendance.getByRole('button',{name:'Save attendance',exact:true}).click()]);
+  assert.match(await day.innerText(),/No dinner needed/);
   const a11y=await require('./browser_accessibility.cjs')(page,'/meals/month');
   if(a11y) failures.push(a11y);
   return failures;

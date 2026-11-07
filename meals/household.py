@@ -121,6 +121,7 @@ def defaults():
         provisional_weekends=False,
         breakfast_overrides={},
         breakfast_done=[],
+        absences={},
         custom=[],
         reserve_days=3,
         water_litres=3.0,
@@ -141,6 +142,39 @@ def label(value, limit=160):
     return value.strip()
 
 
+MEAL_SLOTS = ("breakfast", "lunch", "dinner")
+
+
+def people_by_id(s):
+    return {p.get("person_id", f"legacy-{i}"): p for i, p in enumerate(s["people"])}
+
+
+def diners(s, on, slot):
+    absent = s.get("absences", {}).get(on.isoformat(), {})
+    return [
+        p
+        for key, p in people_by_id(s).items()
+        if (not (span := ages(p, on)) or span[0] >= 2)
+        and slot not in absent.get(key, ())
+    ]
+
+
+def attendance_paused(s, on, slot="dinner"):
+    return bool(
+        s.get("absences", {}).get(on.isoformat())
+        and shared(s, on)
+        and not diners(s, on, slot)
+    )
+
+
+def paused_dinner(on):
+    return dict(
+        date=on.isoformat(),
+        kind="skipped",
+        name="No dinner needed · nobody eating at home",
+    )
+
+
 def validate(s):
     from datetime import time
 
@@ -157,6 +191,26 @@ def validate(s):
             raise ValueError("Invalid meal flag.")
     if not isinstance(s["people"], list) or not 1 <= len(s["people"]) <= 20:
         raise ValueError("Use 1–20 household profiles.")
+    ids = [p.get("person_id", f"legacy-{i}") for i, p in enumerate(s["people"])]
+    if any(
+        not isinstance(k, str) or not re.fullmatch(r"[a-f0-9]{24}|legacy-\d{1,2}", k)
+        for k in ids
+    ) or len(set(ids)) != len(ids):
+        raise ValueError("Invalid household profile IDs.")
+    absences = s.get("absences", {})
+    if not isinstance(absences, dict) or len(absences) > 800:
+        raise ValueError("Too many attendance dates.")
+    for day, away in absences.items():
+        if date.fromisoformat(day).isoformat() != day or not isinstance(away, dict):
+            raise ValueError("Invalid attendance date.")
+        for key, slots in away.items():
+            if (
+                key not in ids
+                or not isinstance(slots, list)
+                or not 1 <= len(slots) <= 3
+                or any(slot not in MEAL_SLOTS for slot in slots)
+            ):
+                raise ValueError("Invalid meal attendance.")
     for p in s["people"]:
         label(p["name"], 80)
         if p["birth_year"] is not None and (
@@ -473,12 +527,12 @@ def scaled_line(line, factor):
     )
 
 
-def prepare(recipe, on, s=None):
+def prepare(recipe, on, s=None, *, slot="dinner"):
     s = s or store().read()
     if not s["configured"] or recipe.get("_household_scaled"):
         return deepcopy(recipe)
     result = deepcopy(recipe)
-    people = shared(s, on)
+    people = diners(s, on, slot)
     if not people:
         raise ValueError(
             "No shared-meal diners: under-twos need a separate feeding plan."
@@ -492,8 +546,14 @@ def prepare(recipe, on, s=None):
 
     tomorrow = on + timedelta(days=1)
     lunch_override = legacy_planner._override_for(tomorrow, "lunch")
-    reserve_lunch = not skip_meal(tomorrow) and not (
-        lunch_override and lunch_override.get("type") in ("buy_lunch", "eat_out")
+    lunch_people = diners(s, tomorrow, "lunch") if slot == "dinner" else []
+    lunch_portions = sum(p["portion"] for p in lunch_people)
+    reserve_lunch = (
+        bool(lunch_people)
+        and not skip_meal(tomorrow)
+        and not (
+            lunch_override and lunch_override.get("type") in ("buy_lunch", "eat_out")
+        )
     )
     lunch_recipe = lunch_for(recipe, s["people"]) if reserve_lunch else {}
     extra = (
@@ -505,7 +565,7 @@ def prepare(recipe, on, s=None):
         if lunch_recipe
         else 0
     )
-    required = portions * (1 + max(0, extra))
+    required = portions + lunch_portions * max(0, extra)
     desired = (
         max(required, base)
         if recipe.get("meal_type") in ("batch", "whole_joint")
@@ -527,7 +587,7 @@ def prepare(recipe, on, s=None):
     lunch = result.get("lunch")
     if lunch:
         lunch["extra_ingredients"] = [
-            scaled_line(v, Fraction(str(portions)))
+            scaled_line(v, Fraction(str(lunch_portions)))
             for v in lunch.get("extra_ingredients", [])
         ]
     result.update(
@@ -545,9 +605,11 @@ def prepare(recipe, on, s=None):
 
 def meal(row, s=None):
     s = s or store().read()
+    on = date.fromisoformat(row["date"])
+    if attendance_paused(s, on):
+        return paused_dinner(on)
     if row.get("kind") != "recipe":
         return deepcopy(row)
-    on = date.fromisoformat(row["date"])
     if (s["configured"] and not shared(s, on)) or not permitted(row["recipe"], s, on):
         return dict(
             date=row["date"],

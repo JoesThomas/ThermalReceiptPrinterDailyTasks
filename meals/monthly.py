@@ -30,6 +30,10 @@ SHOPS = (
 )
 
 
+SUPERMARKET_SHOPS = (SHOPS[0], SHOPS[4])
+LOCAL_SHOPS = tuple(shop for shop in SHOPS if shop not in SUPERMARKET_SHOPS)
+
+
 def defaults():
     return dict(
         version=1,
@@ -143,12 +147,12 @@ def category(line):
             else CATEGORIES[4]
         )
     if re.search(
-        r"\b(paste|sauce|mayo|mayonnaise|pesto|yoghurt|yogurt|milk|cheese|egg|eggs|butter|cream|ham|bacon|salami|chorizo)\b",
+        r"\b(paste|sauce|mayo|mayonnaise|pesto|yoghurt|yogurt|milk|cheese|egg|eggs|butter|cream|salami|chorizo)\b",
         name,
     ):
         return CATEGORIES[4]
     if re.search(
-        r"\b(chicken|beef|lamb|pork|turkey|duck|steak|mince|sausages|sausage)\b", name
+        r"\b(chicken|beef|lamb|pork|turkey|duck|steak|mince|sausages|sausage|bacon|ham|gammon|veal|venison)\b", name
     ):
         return CATEGORIES[1]
     if re.search(
@@ -401,7 +405,7 @@ def shopping(rows, settings, first, on):
         ingredients=ingredient_choices,
         shopping_days=len({v["day"] for v in visits}),
         stops=len(visits),
-        supermarket_stops=sum(v["shop"] in (SHOPS[0], SHOPS[4]) for v in visits),
+        supermarket_stops=sum(v["shop"] in SUPERMARKET_SHOPS for v in visits),
     )
 
 
@@ -432,6 +436,8 @@ def report(raw, on=None):
     for offset in range((last - first).days + 1):
         day = first + timedelta(days=offset)
         meal = lookup.get(day.isoformat())
+        if not meal and household.attendance_paused(household_settings, day):
+            meal = household.paused_dinner(day)
         away = skip_meal(day)
         if day >= on and not meal and not away:
             missing.append(day)
@@ -441,6 +447,8 @@ def report(raw, on=None):
                 meal=meal,
                 away=away,
                 past=day < on,
+                absent=household_settings.get("absences", {}).get(day.isoformat(), {}),
+                diner_counts={slot: len(household.diners(household_settings, day, slot)) for slot in household.MEAL_SLOTS},
                 breakfast=breakfast.plan(day, household_settings, breakfast.context(day,saved_snapshot=calendar_snapshot)),
                 needs_review=bool(
                     meal and (meal.get("_needs_review") or meal.get("kind") == "recipe" and not planner._eligible(meal["recipe"], day, prefs))
@@ -497,6 +505,8 @@ def report(raw, on=None):
         resources=resources,
         balance=overview(meals),
         handling=guidance(prefs),
+        people=household.people_by_id(household_settings) if household_settings["configured"] else {},
+        meal_slots=household.MEAL_SLOTS,
         cost=costs,
         **shops,
     )

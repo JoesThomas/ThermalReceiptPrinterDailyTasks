@@ -13,6 +13,11 @@ def register(app, login_required):
     def display(kind, prep_draft=None):
         if kind == 'tasks':
             try:
+                from meals.shopping_tasks import ensure
+                ensure()
+            except (OSError, ValueError, RuntimeError):
+                flash('Shopping tasks could not be updated. Check saved meals and task data.')
+            try:
                 from services.vehicle_records import sync_mot_tasks
                 sync_mot_tasks()
             except (OSError, ValueError):

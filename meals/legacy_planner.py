@@ -257,6 +257,9 @@ def get_meal(day: date | None = None) -> dict | None:
     from receipt.lifestyle import skip_meal
     if skip_meal(day):
         return {"date": day.isoformat(), "kind": "away", "name": "Away - home meal paused", "overview": "Recipe ingredients excluded from shopping."}
+    from meals.household import attendance_paused, paused_dinner, store
+    if attendance_paused(store().read(), day):
+        return paused_dinner(day)
     plan = load_plan_for(day)
     if not plan:
         plan = generate_week(current_week_sunday(day))
@@ -368,10 +371,14 @@ def build_sunday_prep(plan: dict) -> list[dict]:
 def estimate_week_cost(plan: dict) -> dict:
     recipe_cost = 0.0
     extras = 0.0
+    from meals.household import attendance_paused, prepare, store
+    s = store().read()
     for meal in plan.get("meals", []):
+        day = date.fromisoformat(meal['date'])
+        if attendance_paused(s, day):
+            continue
         if meal.get("kind") == "recipe":
-            from meals.household import prepare
-            r = prepare(meal['recipe'], date.fromisoformat(meal['date']))
+            r = prepare(meal['recipe'], day, s)
             recipe_cost += float(r.get("cost", {}).get("estimated_per_portion", 0) or 0) * r.get('_household_cook',1)
         else:
             extras += float(meal.get("estimated_cost", 0) or 0)

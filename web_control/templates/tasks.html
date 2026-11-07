@@ -277,6 +277,9 @@
                                         {% endif %}
                                     </small></span>
                                 </form>
+                                {% if item.shop_supplier and monthly_meals_available|default(false) %}
+                                    <a href="{{ url_for('meal_shop',month=item.shop_month,day=item.shop_day,supplier=item.shop_supplier) }}">Open {{ item.shop_supplier }} shopping list</a>
+                                {% endif %}
                                 <details>
                                     <summary>{{ 'Edit' if item.source == 'local' else 'Options' }}</summary>
                                     <form method="post" action="{{ url_for('checklist_update',kind=kind) }}">

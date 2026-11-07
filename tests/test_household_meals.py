@@ -208,6 +208,25 @@ class HouseholdTests(HouseholdFixture, TestCase):
         r["ingredients"] = ["45g oats", "200ml milk"]
         self.assertFalse(h.permitted(r, s, SAT, "breakfast"))
 
+    def test_attendance_reserves_lunch_for_next_day_diners_separately(self):
+        s = settings(people=[h.person(), h.person()])
+        tomorrow = SAT + timedelta(days=1)
+        s["absences"] = {
+            SAT.isoformat(): {"legacy-0": ["breakfast", "dinner"]},
+            tomorrow.isoformat(): {"legacy-1": ["lunch"]},
+        }
+        r = recipe("Rice bowl", ["100g rice"])
+        r["lunch"]["extra_dinner_portion"] = 0.5
+        cooked = h.prepare(r, SAT, s)
+        self.assertEqual(cooked["ingredients"], ["150g rice"])
+        self.assertEqual(cooked["lunch"]["extra_ingredients"], ["1 tortilla"])
+        self.assertEqual(cooked["_household_diners"], 1)
+        bmeal = b.plan(SAT, s, {"events": [], "plan": {}, "verified": False})
+        self.assertEqual(bmeal["recipe"]["_household_diners"], 1)
+        s["absences"][tomorrow.isoformat()]["legacy-0"] = ["lunch"]
+        self.assertEqual(h.prepare(r, SAT, s)["ingredients"], ["100g rice"])
+        self.assertEqual(h.prepare(r, SAT, s)["lunch"], {})
+
     def test_scaled_dinner_reserves_planned_lunch_and_is_idempotent(self):
         s = settings()
         s["people"].append(dict(h.person(), name="Two"))

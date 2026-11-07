@@ -4,7 +4,7 @@
         {% include 'favicon.html' %}
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
-        <title>Supermarket shopping list · Receipt Control</title>
+        <title>Shopping list · Receipt Control</title>
         <link rel="stylesheet"
               href="{{ url_for('static',filename='control.css') }}">
         <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
@@ -14,19 +14,25 @@
         {% include 'navigation.html' %}
         <main id="main-content">
             <a href="{{ url_for('monthly_meals_page',month=view.month) }}">← Monthly meals</a>
-            <h1>Shop at {{ retailer_name }}</h1>
+            <h1>{{ supplier ~ ' shopping list' if supplier else 'Shop at ' ~ retailer_name }}</h1>
             <p>
-                Review ingredients for one shopping date. The list combines the planned stops on that date; untick anything you intend to buy elsewhere.
+                Review ingredients for one shopping date.
+                {% if not supplier %}
+                    Ingredients assigned to local suppliers have separate lists and stay out of this basket.
+                {% endif %}
             </p>
-            <p>
-                <a href="{{ url_for('monthly_meals_page',month=view.month,_anchor='month-settings') }}">Change preferred supermarket</a>
-            </p>
+            {% if not supplier %}
+                <p>
+                    <a href="{{ url_for('monthly_meals_page',month=view.month,_anchor='month-settings') }}">Change preferred supermarket</a>
+                </p>
+            {% endif %}
             {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
             {% if dates %}
                 <section>
                     <h2>Choose a shopping date</h2>
                     <form method="get" action="{{ url_for('meal_shop') }}">
                         <input type="hidden" name="month" value="{{ view.month }}">
+                        {% if supplier %}<input type="hidden" name="supplier" value="{{ supplier }}">{% endif %}
                         <label for="shop-day">Shopping date</label>
                         <select name="day" id="shop-day">
                             {% for option in dates %}
@@ -71,7 +77,9 @@
                                         {% if row.pantry %}· check pantry{% endif %}
                                         {% if not row.measured %}· check amount{% endif %}
                                     </label>
-                                    <a href="{{ row.search }}" target="_blank" rel="noopener noreferrer">Find {{ row.amount }} at {{ retailer_name }}</a>
+                                    {% if row.search %}
+                                        <a href="{{ row.search }}" target="_blank" rel="noopener noreferrer">Find {{ row.amount }} at {{ retailer_name }}</a>
+                                    {% endif %}
                                 </li>
                             {% endfor %}
                         </ul>
@@ -85,11 +93,11 @@
                                 Send the checked ingredients and quantities to Samsung Food
                             </label>
                             <button class="primary">Create basket review</button>
-                        {% elif partner_supported %}
+                        {% elif not supplier and partner_supported %}
                             <p>
                                 Basket handoff requires Samsung Food developer access. You can copy the list or use the product searches on this page.
                             </p>
-                        {% else %}
+                        {% elif not supplier %}
                             <p>This supermarket uses the copy and search handoff. Add your chosen products on its own site.</p>
                         {% endif %}
                     </form>
@@ -103,11 +111,11 @@
                 </section>
                 <section>
                     <h2>Copy shopping list</h2>
-                    {% if retailer=='waitrose' %}
+                    {% if not supplier and retailer=='waitrose' %}
                         <p>Open Waitrose and choose Multi-search from its search bar. Use the list to find the products you need.</p>
-                    {% elif retailer=='sainsburys' %}
+                    {% elif not supplier and retailer=='sainsburys' %}
                         <p>Where SmartLists is available in the Sainsbury’s app, use this list to create one, then review the matches.</p>
-                    {% elif retailer=='ocado' %}
+                    {% elif not supplier and retailer=='ocado' %}
                         <p>You can save chosen products as an Ocado Shopping List for future shops.</p>
                     {% endif %}
                     <label>
@@ -116,14 +124,16 @@
                     </label>
                     <button type="button" id="shop-copy-button" hidden>Copy checked ingredients</button>
                     <span id="shop-copy-status" role="status"></span>
-                    <a class="button"
-                       href="{{ retailer_home }}"
-                       target="_blank"
-                       rel="noopener noreferrer">Open {{ retailer_name }}</a>
+                    {% if not supplier %}
+                        <a class="button"
+                           href="{{ retailer_home }}"
+                           target="_blank"
+                           rel="noopener noreferrer">Open {{ retailer_name }}</a>
+                    {% endif %}
                 </section>
             {% else %}
                 <p>
-                    No remaining ingredients are scheduled for this month. Create or complete the monthly menu to add shopping dates.
+                    No remaining ingredients are scheduled for {{ supplier or retailer_name }} this month. Create or complete the monthly menu to add shopping dates.
                 </p>
             {% endif %}
         </main>
