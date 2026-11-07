@@ -1,21 +1,22 @@
 // Read only small local alerts. Never fetch bank data or reload unsaved forms.
 (() => {
     const panel = document.getElementById('amex-interest-alert');
-    if (!panel) return;
+    const balancePanel = document.getElementById('amex-balance-alert');
+    const statusUrl = panel?.dataset.statusUrl || balancePanel?.dataset.statusUrl;
+    if (!statusUrl) return;
     let busy = false;
     let lastBalanceState = '';
     async function poll() {
         if (busy || document.hidden) return;
         busy = true;
         try {
-            const response = await fetch(panel.dataset.statusUrl, {
+            const response = await fetch(statusUrl, {
                 cache: 'no-store',
                 signal: AbortSignal.timeout(8000)
             });
             if (!response.ok) return;
             const state = await response.json();
             const charges = state.charges || [];
-            const balancePanel = document.getElementById('amex-balance-alert');
             const balanceKey = JSON.stringify(state.balance);
             if (balancePanel && state.balance && balanceKey !== lastBalanceState) {
                 const balance = state.balance;
@@ -42,6 +43,7 @@
                     return li;
                 }));
             }
+            if (!panel) return;
             panel.hidden = !charges.length && !state.error;
             document.getElementById('amex-interest-error').textContent = state.error || '';
             document.getElementById('amex-interest-charges').replaceChildren(...charges.map(row => {

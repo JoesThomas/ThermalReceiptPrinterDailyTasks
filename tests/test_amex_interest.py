@@ -143,6 +143,8 @@ class AmexInterestTests(TestCase):
                 session['authenticated'] = True
             response = client.get('/finance/amex-interest/status').get_json()
             self.assertEqual(len(response['charges']), 1)
+            home = client.get('/finance/amex-interest/status?home=1').get_json()
+            self.assertEqual(set(home), {'balance'})
             identifier = response['charges'][0]['id']
             self.assertEqual(client.post('/finance/amex-interest/acknowledge', data={'charge_id': identifier}).status_code, 302)
             self.assertFalse(interest.pending())
