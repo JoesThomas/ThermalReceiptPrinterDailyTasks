@@ -75,15 +75,32 @@
                                 {% from 'breakfast_panel.html' import breakfast_panel with context %}{{ breakfast_panel(row.breakfast,row.day,view.month,true) }}
                             {% endif %}
                             <p>
+                                <strong>Lunch: {{ row.lunch.name }}</strong>
+                            </p>
+                            {% if row.lunch.previous_dinner %}
+                                <details>
+                                    <summary>Lunch details</summary>
+                                    <p>Planned with the previous dinner: {{ row.lunch.previous_dinner }}.</p>
+                                    {% if row.lunch.overview %}<p>{{ row.lunch.overview }}</p>{% endif %}
+                                    {% if row.lunch.extra_ingredients %}
+                                        <ul>
+                                            {% for ingredient in row.lunch.extra_ingredients %}<li>{{ ingredient }}</li>{% endfor %}
+                                        </ul>
+                                    {% endif %}
+                                </details>
+                            {% elif row.lunch.overview %}
+                                <p class="muted">{{ row.lunch.overview }}</p>
+                            {% endif %}
+                            <p>
                                 {% if row.away %}
                                     Away · home meal paused
                                 {% elif row.meal %}
-                                    <strong>{{ row.meal.recipe.name if row.meal.kind=='recipe' else row.meal.name }}</strong>
+                                    <strong>Dinner: {{ row.meal.recipe.name if row.meal.kind=='recipe' else row.meal.name }}</strong>
                                     {% if row.meal.kind=='recipe' %}
                                         <small>{{ row.meal.recipe.total_minutes|default('?') }} minutes · {{ row.meal.recipe.cuisine|default('') }}</small>
                                     {% endif %}
                                 {% else %}
-                                    {{ 'Past day' if row.past else 'Not planned yet' }}
+                                    {{ 'Dinner: no saved meal' if row.past else 'Dinner: not planned yet' }}
                                 {% endif %}
                             </p>
                             {% if row.needs_review %}

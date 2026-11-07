@@ -49,6 +49,8 @@ When you explicitly create a basket review, the app sends only selected ingredie
 - [Waitrose Multi-search](https://www.waitrose.com/ecom/help-information/shopping-with-waitrose/shop-online)
 - [Sainsbury’s SmartLists](https://corporate.sainsburys.co.uk/news/press-releases/sainsbury-s-launches-smartlists-a-new-ai-powered-way-to-shop/)
 
+The calendar shows lunch on the date it is planned for, using the previous dinner’s lunch option where present, including across month boundaries. A saved lunch override appears instead. If nobody needs lunch or there is no saved lunch plan, the card says so. A calendar entry is a plan, not confirmation that leftovers are available.
+
 ## Local suppliers and meal attendance
 
 Butcher, greengrocer, fishmonger and local shop ingredients stay out of the online supermarket basket. Open the local supplier’s dated list from **Shopping lists** to review and copy it. Edit the category’s supplier under **Shopping days & shops** if you prefer to buy it elsewhere. The app adds a task for each scheduled butcher and greengrocer visit, with a link to the list. Rebuilding the month or changing the schedule reconciles pending tasks and keeps completed ones.

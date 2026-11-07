@@ -392,6 +392,59 @@ class MonthlyWebTests(MonthlyFixture, TestCase):
             monthly.store().read()["overrides"]["carrot"], "Fresh essentials"
         )
 
+    def test_calendar_shows_lunch_on_its_own_day_across_month_boundary(self):
+        from meals import household
+
+        self.login()
+        previous = date(2026, 10, 31)
+        sunday = date(2026, 11, 1)
+        dinner = recipe("Saturday tray bake")
+        dinner["lunch"] = {
+            "name": "Sunday leftover wrap",
+            "overview": "Reserve a portion.",
+            "extra_ingredients": ["1 tortilla"],
+        }
+        self.save(
+            previous, [dict(date=previous.isoformat(), kind="recipe", recipe=dinner)]
+        )
+        self.save(
+            sunday,
+            [
+                dict(
+                    date=sunday.isoformat(), kind="recipe", recipe=recipe("Sunday soup")
+                )
+            ],
+        )
+        view = monthly.report("2026-11", sunday)
+        self.assertEqual(view["days"][0]["lunch"]["name"], "Sunday leftover wrap")
+        self.assertEqual(
+            view["days"][0]["lunch"]["previous_dinner"], "Saturday tray bake"
+        )
+        self.assertEqual(view["days"][2]["lunch"]["name"], "No lunch planned")
+        page = self.client.get("/meals/month?month=2026-11")
+        self.assertIn(b"Lunch: Sunday leftover wrap", page.data)
+        self.assertIn(b"Dinner: Sunday soup", page.data)
+        write_json(
+            planner.OVERRIDES_FILE,
+            {
+                sunday.isoformat(): {
+                    "lunch": {"type": "buy_lunch", "name": "Cafe lunch"}
+                }
+            },
+        )
+        self.assertEqual(
+            monthly.report("2026-11", sunday)["days"][0]["lunch"]["name"], "Cafe lunch"
+        )
+        household.store().update(
+            lambda s: s.update(
+                configured=True, absences={sunday.isoformat(): {"legacy-0": ["lunch"]}}
+            )
+        )
+        self.assertEqual(
+            monthly.report("2026-11", sunday)["days"][0]["lunch"]["name"],
+            "No lunch needed",
+        )
+
     def test_shop_uses_saved_preference_and_only_transfers_reviewed_rows(self):
         from meals import supermarket
 

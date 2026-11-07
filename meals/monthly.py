@@ -409,16 +409,54 @@ def shopping(rows, settings, first, on):
     )
 
 
+def calendar_lunch(day, previous_dinner, household_settings, away):
+    from meals import household
+
+    if away or household.attendance_paused(household_settings, day, "lunch"):
+        return {"name": "No lunch needed"}
+    override = planner._override_for(day, "lunch")
+    if override and override.get("type") in ("buy_lunch", "eat_out"):
+        return {
+            "name": override.get("name") or ("Buy lunch" if override["type"] == "buy_lunch" else "Eat out"),
+            "overview": override.get("note"),
+        }
+    if previous_dinner and previous_dinner.get("kind") == "recipe":
+        dinner = previous_dinner["recipe"]
+        lunch = dinner.get("lunch")
+        if lunch:
+            return {
+                **lunch,
+                "name": lunch.get("name") or "Planned with the previous dinner",
+                "previous_dinner": dinner["name"],
+            }
+    return {"name": "No lunch planned"}
+
+
 def report(raw, on=None):
     on = on or uk_today()
     first, last = bounds(raw)
     meals = []
     weeks = []
     missing = []
-    for start in week_starts(first, last):
-        plan = read_week(start)
+    previous_day = first - timedelta(days=1)
+    previous_raw = None
+    for start in week_starts(previous_day, last):
+        if start + timedelta(days=6) < first:
+            # A prior month's damaged plan must not prevent this month's calendar.
+            try:
+                plan = read_week(start)
+            except (ValueError, OSError):
+                continue
+        else:
+            plan = read_week(start)
         if plan:
-            weeks.append(plan)
+            if start <= previous_day <= start + timedelta(days=6):
+                previous_raw = next(
+                    (m for m in plan["meals"] if m["date"] == previous_day.isoformat()),
+                    None,
+                )
+            if start + timedelta(days=6) >= first:
+                weeks.append(plan)
             meals.extend(
                 m
                 for m in plan["meals"]
@@ -433,6 +471,15 @@ def report(raw, on=None):
     days = []
     from receipt.lifestyle import skip_meal
 
+    def needs_review(meal, day):
+        return bool(meal and (
+            meal.get("_needs_review")
+            or meal["kind"] == "recipe" and not planner._eligible(meal["recipe"], day, prefs)
+        ))
+
+    previous = household.meal(previous_raw, household_settings) if previous_raw and not skip_meal(previous_day) else None
+    if needs_review(previous, previous_day):
+        previous = None
     for offset in range((last - first).days + 1):
         day = first + timedelta(days=offset)
         meal = lookup.get(day.isoformat())
@@ -441,6 +488,7 @@ def report(raw, on=None):
         away = skip_meal(day)
         if day >= on and not meal and not away:
             missing.append(day)
+        review = needs_review(meal, day)
         days.append(
             dict(
                 day=day,
@@ -450,11 +498,11 @@ def report(raw, on=None):
                 absent=household_settings.get("absences", {}).get(day.isoformat(), {}),
                 diner_counts={slot: len(household.diners(household_settings, day, slot)) for slot in household.MEAL_SLOTS},
                 breakfast=breakfast.plan(day, household_settings, breakfast.context(day,saved_snapshot=calendar_snapshot)),
-                needs_review=bool(
-                    meal and (meal.get("_needs_review") or meal.get("kind") == "recipe" and not planner._eligible(meal["recipe"], day, prefs))
-                ),
+                lunch=calendar_lunch(day, previous, household_settings, away),
+                needs_review=review,
             )
         )
+        previous = meal if not away and not review else None
     eligible_meals = [
         row["meal"] for row in days if row["meal"] and not row["needs_review"]
     ]
