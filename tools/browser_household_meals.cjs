@@ -43,6 +43,17 @@ module.exports = async function(page) {
     const a11y=await require('./browser_accessibility.cjs')(page,path);
     if(a11y) failures.push(a11y);
   }
+  const handling = page.getByText('Dietary checks: shopping to serving',{exact:true});
+  await handling.click();
+  await page.getByText('Pack leftovers',{exact:true}).waitFor();
+  assert.equal(await page.locator('#planned-recipe option[value^="Monthly fixture dinner"]').count(),0);
+  const rejected = await page.evaluate(async () => {
+    const form = document.querySelector('form[action="/meals/plan"]');
+    const data = new URLSearchParams(new FormData(form));
+    data.set('recipe','Monthly fixture dinner 0');
+    return (await fetch(form.action,{method:'POST',body:data})).status;
+  });
+  assert.equal(rejected,400);
   assert.match(await page.locator('main').innerText(),/Breakfast/);
   await page.goto('http://receipt.test/__fixture_monthly_meals');
   await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.getByRole('button',{name:'Create / complete monthly menu',exact:true}).click()]);

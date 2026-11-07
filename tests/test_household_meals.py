@@ -108,6 +108,80 @@ class HouseholdTests(HouseholdFixture, TestCase):
         r["lunch"]["extra_ingredients"] = ["1 pitta"]
         self.assertFalse(h.permitted(r, s, SAT))
 
+    def test_component_checks_include_both_buy_and_make_ingredients(self):
+        s = settings()
+        s["people"][0]["allergens"] = ["milk"]
+        r = dict(
+            recipe("Rice bowl", ["100g rice"]), prep_components=[{"id": "dressing"}]
+        )
+        component = {
+            "id": "dressing",
+            "make": {"ingredients": ["1 tsp oil"]},
+            "buy": {"item": "yoghurt dressing"},
+        }
+        write_json(planner.COMPONENTS_FILE, {"components": [component]})
+        self.assertFalse(h.permitted(r, s, SAT))
+        component["buy"]["item"] = "olive oil dressing"
+        write_json(planner.COMPONENTS_FILE, {"components": [component]})
+        self.assertTrue(h.permitted(r, s, SAT))
+        component["make"]["allergens"] = ["milk"]
+        write_json(planner.COMPONENTS_FILE, {"components": [component]})
+        self.assertFalse(h.permitted(r, s, SAT))
+        write_json(planner.COMPONENTS_FILE, {"components": []})
+        self.assertFalse(h.permitted(r, s, SAT))
+
+    def test_restricted_shopping_keeps_pantry_items_and_gluten_free_lunch(self):
+        s = settings()
+        s["people"][0]["coeliac"] = True
+        h.store().update(lambda v: v.update(s))
+        plan = {
+            "meals": [
+                {
+                    "kind": "recipe",
+                    "date": SAT.isoformat(),
+                    "recipe": recipe("Rice bowl", ["100g rice"]),
+                }
+            ]
+        }
+        with patch.object(planner, "_pantry_has", return_value=True):
+            output = " ".join(
+                item
+                for group in planner.build_shopping_list(plan).values()
+                for item in group
+            )
+        self.assertIn("rice", output)
+        self.assertIn("gluten-free tortilla", output)
+
+    def test_receipt_handling_stays_visible_with_storage_detail_disabled(self):
+        from unittest.mock import Mock
+
+        s = settings()
+        s["people"][0].update(
+            name="Private name", notes="Private clinical note", coeliac=True
+        )
+        h.store().update(lambda v: v.update(s))
+        prefs = dict(
+            planner.preferences(), cooking_style={"show_storage_guidance": False}
+        )
+        printed = []
+        with (
+            patch.object(planner, "preferences", return_value=prefs),
+            patch.object(
+                planner,
+                "get_meal",
+                return_value={"kind": "freezer", "name": "Freezer meal"},
+            ),
+        ):
+            planner.print_today_recipe(
+                Mock(), lambda _, line: printed.append(line), Mock()
+            )
+        output = " ".join(printed)
+        self.assertIn("DIETARY CHECKS", output)
+        self.assertIn("Store sealed, labelled and separate.", output)
+        self.assertIn("Verify ingredients and preparation.", output)
+        self.assertNotIn("Private", output)
+        self.assertNotIn("LEFTOVERS / STORAGE", output)
+
     def test_coeliac_breakfast_filters_standard_oats_and_respects_avoid(self):
         s = settings()
         s["people"][0]["coeliac"] = True

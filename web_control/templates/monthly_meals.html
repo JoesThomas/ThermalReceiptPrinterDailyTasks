@@ -120,6 +120,9 @@
                     Estimated dinner / planned-lunch recipe cost (breakfast prices and unknown custom recipe costs excluded): £{{ '%.2f'|format(view.cost.total) }}. This is not a live shop quote or a complete household food budget; component and pack costs can differ.
                 </p>
             </section>
+            {% with handling=view.handling %}
+                {% include 'diet_handling.html' %}
+            {% endwith %}
             <section id="month-shops">
                 <h2>Shopping lists · {{ view.label }}</h2>
                 <p>
@@ -133,6 +136,7 @@
                         Shop dates group purchases; they are not shelf-life promises. Check use-by/opened-pack labels, freezer space and safe storage. Buy fresh food closer to use when necessary, or freeze suitable portions before their use-by date. The main shop is for clearly shelf-stable or frozen items, not a month of fresh meat or veg.
                     </p>
                 </aside>
+                {% if view.handling %}<p class="helper">{{ view.handling.shopping }}</p>{% endif %}
                 {% for visit in view.visits %}
                     <details class="shop-list" {% if loop.first %}open{% endif %}>
                         <summary>{{ visit.day.strftime('%a %d %b') }} · {{ visit.shop }} · {{ visit['items']|length }} ingredient(s)</summary>
