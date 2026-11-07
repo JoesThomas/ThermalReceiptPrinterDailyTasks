@@ -1,0 +1,62 @@
+{% macro breakfast_panel(b,on,month='',compact=false) %}
+    <div class="breakfast-summary">
+        {% if not b %}
+            <p class="muted">Breakfast paused or separate feeding plan needed.</p>
+        {% elif b.unavailable %}
+            <p class="helper">{{ b.note }}</p>
+            <a href="{{ url_for('meal_settings_page') }}">Review breakfast settings</a>
+        {% else %}
+            <p>
+                <strong>Breakfast: {{ b.recipe.name }}</strong>
+                {% if b.done %}· Eaten{% endif %}
+            </p>
+            <small>About {{ b.recipe.total_minutes }} min
+                {% if b.recipe._household_diners %}· {{ b.recipe._household_diners }} diners{% endif %}
+                {% if b.start %}
+                    · suggested {{ b.start.strftime('%H:%M') }}–{{ b.end.strftime('%H:%M') }}
+                {% endif %}
+                </small><small>{{ b.note }}</small>
+                <details {% if not compact %}open{% endif %}>
+                    <summary>Breakfast ingredients &amp; options</summary>
+                    <ul>
+                        {% for item in b.recipe.ingredients %}<li>{{ item }}</li>{% endfor %}
+                    </ul>
+                    <ol>
+                        {% for step in b.recipe.method %}<li>{{ step }}</li>{% endfor %}
+                    </ol>
+                    {% if b.recipe.nutrition_per_serving.calories %}
+                        <p class="muted">
+                            Recipe estimate: approximately {{ b.recipe.nutrition_per_serving.calories }} kcal per original standard serving; brands and portion choices vary.
+                        </p>
+                    {% endif %}
+                    <form method="post" action="{{ url_for('meal_breakfast_change') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="day" value="{{ on.isoformat() }}">
+                        <input type="hidden" name="month" value="{{ month }}">
+                        <label>
+                            Breakfast for {{ on.strftime('%d %b') }}
+                            <select name="breakfast">
+                                <option value="">Automatic choice</option>
+                                {% for name in b.options %}
+                                    <option value="{{ name }}"
+                                            {% if b.manual and b.recipe.name==name %}selected{% endif %}>
+                                        {{ name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <button>Save breakfast</button>
+                    </form>
+                    {% if not month %}
+                        <form method="post" action="{{ url_for('meal_breakfast_change') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="day" value="{{ on.isoformat() }}">
+                            <button name="action" value="{{ 'undo' if b.done else 'eaten' }}">
+                                {{ 'Undo breakfast eaten' if b.done else 'Mark breakfast eaten' }}
+                            </button>
+                        </form>
+                    {% endif %}
+                </details>
+            {% endif %}
+        </div>
+    {% endmacro %}

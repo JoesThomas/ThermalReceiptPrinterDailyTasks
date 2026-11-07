@@ -101,7 +101,9 @@ def cleanup(recipe):
 def amount_for(recipe, cid, component, overrides):
     explicit = overrides.get(recipe.get("name", "") + "|" + cid)
     if explicit:
-        return explicit + " " + component.get("name", cid)
+        from meals.household import scaled_line
+        from fractions import Fraction
+        return scaled_line(explicit + " " + component.get("name",cid), Fraction(str(recipe.get('_household_factor',1))))
     for ref in recipe.get("prep_components", []):
         if (
             isinstance(ref, dict)

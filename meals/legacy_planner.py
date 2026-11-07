@@ -49,13 +49,15 @@ def _save(path: Path, data: Any) -> None:
 
 def recipes() -> list[dict]:
     data = _load(RECIPES_FILE, [])
-    if isinstance(data, dict):
-        return data.get("recipes", [])
-    return data if isinstance(data, list) else []
+    base = data.get("recipes", []) if isinstance(data, dict) else data if isinstance(data, list) else []
+    from meals.household import store
+    return base + [r for r in store().read()['custom'] if r['slot']=='dinner']
 
 
 def preferences() -> dict:
-    return _load(PREFERENCES_FILE, {})
+    value = _load(PREFERENCES_FILE, {})
+    from meals.household import store
+    return dict(value, _household=store().read())
 
 
 def sunday_for(day: date) -> date:
@@ -80,7 +82,8 @@ def load_plan_for(day: date, raw=False) -> dict | None:
 def away_plan(plan):
     from receipt.lifestyle import apply_plan
     import sys
-    return apply_plan(plan, sys.modules[__name__])
+    from meals.household import plan as household_plan
+    return apply_plan(household_plan(plan), sys.modules[__name__])
 
 
 def _allergens(recipe: dict) -> set[str]:
@@ -100,7 +103,7 @@ def _carb(recipe: dict) -> str:
     return str(recipe.get("balance", {}).get("carbohydrate", "") or "")
 
 
-def _eligible(recipe: dict, meal_day: date, prefs: dict) -> bool:
+def _eligible(recipe: dict, meal_day: date, prefs: dict, *, slot="dinner") -> bool:
     excluded = set(prefs.get("excluded_allergens", []))
     if excluded & _allergens(recipe):
         return False
@@ -111,7 +114,8 @@ def _eligible(recipe: dict, meal_day: date, prefs: dict) -> bool:
         return False
     if prefs.get("vegan_only") and not dietary.get("vegan", False):
         return False
-    return True
+    from meals.household import permitted, store
+    return permitted(recipe, prefs.get('_household') or store().read(), meal_day, slot)
 
 
 def _history_penalty(recipe: dict, history: dict, today: date) -> float:
@@ -190,6 +194,8 @@ def generate_week(start: date | None = None, force: bool = False, raw=False, *, 
         return plan if raw else away_plan(plan)
 
     prefs = preferences()
+    from meals.household import defaults as household_defaults
+    household_settings = prefs.get("_household") or household_defaults()
     library = recipes()
     history = _load(HISTORY_FILE, {})
     if not library:
@@ -225,7 +231,8 @@ def generate_week(start: date | None = None, force: bool = False, raw=False, *, 
         want_batch = (not batch_used and d.weekday() == preferred_batch_day)
         from meals.resource_planning import reuse_bonus
         reduce_waste=prefs.get('cooking_style',{}).get('reduce_food_waste',True)
-        chosen = max(pool, key=lambda r: _score(r, previous, used, history, d, want_batch)+(reuse_bonus(r,meals,d) if reduce_waste else 0) - (8 if r.get("name") in recent_names else 0))
+        from meals.nutrition_guidance import score as household_score
+        chosen = max(pool, key=lambda r: _score(r, previous, used, history, d, want_batch)+(reuse_bonus(r,meals,d) if reduce_waste else 0) - (8 if r.get("name") in recent_names else 0) + household_score(r, meals, d, household_settings))
         used.add(chosen.get("name", ""))
         if chosen.get("meal_type") in {"batch", "whole_joint"}:
             batch_used = True
@@ -253,7 +260,14 @@ def get_meal(day: date | None = None) -> dict | None:
     plan = load_plan_for(day)
     if not plan:
         plan = generate_week(current_week_sunday(day))
-    return next((m for m in plan.get("meals", []) if m.get("date") == day.isoformat()), None)
+    chosen = next((m for m in plan.get("meals", []) if m.get("date") == day.isoformat()), None)
+    if chosen and chosen.get('kind') == 'needs_review':
+        from meals.household import compatible_existing
+        raw = load_plan_for(day, raw=True)
+        kept = compatible_existing(raw, day, preferences())
+        plan = generate_week(current_week_sunday(day), existing=kept, not_before=day)
+        chosen = next((m for m in plan['meals'] if m['date']==day.isoformat()), None)
+    return chosen
 
 
 def _normalise_item(text: str) -> str:
@@ -288,7 +302,9 @@ def build_shopping_list(plan: dict, include_away=False) -> dict[str, list[str]]:
     from meals.remaining import needs_dinner
     from receipt.local_time import uk_today
     today = uk_today()
+    from meals.household import meal as household_meal
     for meal in plan.get("meals", []):
+        meal = household_meal(meal)
         if meal.get("kind") != "recipe":
             continue
         r = meal["recipe"]
@@ -311,7 +327,9 @@ def build_sunday_prep(plan: dict) -> list[dict]:
     by_id = {c.get("id"): c for c in components}
     needs: dict[str, list[str]] = defaultdict(list)
     from meals.remaining import needs_dinner
+    from meals.household import meal as household_meal
     for meal in plan.get("meals", []):
+        meal = household_meal(meal)
         if not needs_dinner(meal):
             continue
         r = meal["recipe"]
@@ -348,7 +366,9 @@ def estimate_week_cost(plan: dict) -> dict:
     extras = 0.0
     for meal in plan.get("meals", []):
         if meal.get("kind") == "recipe":
-            recipe_cost += float(meal["recipe"].get("cost", {}).get("estimated_per_portion", 0) or 0)
+            from meals.household import prepare
+            r = prepare(meal['recipe'], date.fromisoformat(meal['date']))
+            recipe_cost += float(r.get("cost", {}).get("estimated_per_portion", 0) or 0) * r.get('_household_cook',1)
         else:
             extras += float(meal.get("estimated_cost", 0) or 0)
     return {"home_meals": round(recipe_cost, 2), "takeaway_eating_out": round(extras, 2), "total": round(recipe_cost + extras, 2)}
@@ -546,7 +566,7 @@ def print_weekly_overview(printer, left, line) -> None:
             left(printer, f"{d.strftime('%a').upper()} {r['name'].upper()}"[:RECEIPT_WIDTH])
             for x in wrap(r.get("overview", ""), RECEIPT_WIDTH - 2): left(printer, "  " + x)
             n = r.get("nutrition_per_serving", {})
-            left(printer, f"  {r.get('total_minutes',0)}M / ~{n.get('calories','?')} KCAL / {n.get('protein_g','?')}G P")
+            left(printer, f"  {r.get('total_minutes',0)}M / ~{(n.get('calories') or '?')} KCAL / {n.get('protein_g','?')}G P")
         else:
             left(printer, f"{d.strftime('%a').upper()} {meal.get('name','').upper()}"[:RECEIPT_WIDTH])
     cost = plan.get("estimated_cost", {})
@@ -662,6 +682,12 @@ def print_sunday_prep(printer, left, line) -> None:
 
 def print_today_recipe(printer, left, line) -> None:
     today = datetime.now(TZ).date()
+    from meals.breakfast import receipt_lines as breakfast_lines
+    breakfast = breakfast_lines(today)
+    if breakfast:
+        line(printer, "-")
+        for text in breakfast:
+            for piece in wrap(text): left(printer,piece)
     meal = get_meal(today)
     if not meal:
         return
@@ -673,10 +699,16 @@ def print_today_recipe(printer, left, line) -> None:
         return
     r = meal["recipe"]
     left(printer, r.get("name", "RECIPE").upper())
-    left(printer, f"{r.get('total_minutes',0)} MIN / SERVES 1 / {r.get('effort','MEDIUM').upper()} EFFORT")
+    if r.get('_household_scaled'):
+        left(printer, f"{r.get('total_minutes',0)} MIN / {r['_household_diners']} DINERS")
+        for piece in wrap(f"Cook {r['_household_cook']:g} standard portions" + (" including planned lunch." if r.get("_household_lunch_reserved") else ".")): left(printer,piece)
+        left(printer, "Check timing/equipment for larger batches.")
+    else:
+        left(printer, f"{r.get('total_minutes',0)} MIN / SERVES 1 / {r.get('effort','MEDIUM').upper()} EFFORT")
     for x in wrap(r.get("overview", "")): left(printer, x)
     n = r.get("nutrition_per_serving", {})
-    left(printer, f"~{n.get('calories','?')} KCAL  P {n.get('protein_g','?')}G  C {n.get('carbs_g','?')}G")
+    if r.get("_household_scaled"): left(printer,"Nutrition per standard recipe portion.")
+    left(printer, f"~{(n.get('calories') or '?')} KCAL  P {n.get('protein_g','?')}G  C {n.get('carbs_g','?')}G")
     left(printer, f"FAT {n.get('fat_g','?')}G  FIBRE {n.get('fibre_g','?')}G")
     allergens = sorted(_allergens(r))
     left(printer, "ALLERGENS: " + (", ".join(a.replace("cereals_containing_gluten","gluten") for a in allergens).upper() if allergens else "NONE LISTED"))

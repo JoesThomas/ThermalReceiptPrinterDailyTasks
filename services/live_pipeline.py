@@ -4921,7 +4921,7 @@ def run_live_pipeline(
                 upcoming_events = get_calendar_events(CALENDAR_ICAL_URL, days_ahead=3, include_villa=feature_enabled(settings, 'villa'))
                 from receipt.freshness import mark
                 from web_control.today_summary import save_calendar
-                save_calendar(upcoming_events)
+                save_calendar(upcoming_events, coverage_days=3)
                 from receipt.freshness import snapshot
                 if snapshot().get('Calendar', {}).get('status', '').startswith('cached'):
                     left(printer, 'CALENDAR: CACHED DATA')
