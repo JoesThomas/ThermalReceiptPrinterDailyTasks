@@ -31,6 +31,7 @@ def main():
     page = " + ".join(display_args[1:]) if display_args and display_args[0] == "--pages" else display_args[1] if len(display_args) == 2 and display_args[0] == "--only" else "full receipt"
     if args == ['--paper-test']: page = 'paper test'
     elif args == ['--printer-test']: page = 'printer test'
+    elif args[:1] == ['--archive']: page = 'saved receipt'
     # The parent writes the lock immediately after starting this process.
     # Wait for that write so a quick job cannot leave a stale lock behind.
     for _ in range(100):

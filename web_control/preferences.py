@@ -54,7 +54,7 @@ def register(app, login_required, root):
         try:
             value = lifestyle.load()
             result = {'away_preferences': value['away'], 'away_active': lifestyle.active(settings=value)}
-            if request.endpoint in ('meals_page', 'tesco_list'):
+            if request.endpoint == 'meals_page':
                 from meals.legacy_planner import load_plan_for
                 plan = load_plan_for(uk_today()) or {}
                 result.update(away_excluded=plan.get('away_excluded', []), away_excluded_ingredients=plan.get('away_excluded_ingredients', []))
@@ -72,7 +72,7 @@ def register_settings_hub(app, login_required):
             ('Location',[('Weather location and local news','index','settings','receipt-location'),('Bin collection address','bin_settings','','')]),
             ('Receipt',[('Pages, appearance and features','index','settings',''),('Preview and source retries','preview','',''),('Saved receipts','archive_list','','')]),
             ('Connections',[('Setup and individual connection checks','setup_page','',''),('Integration health','api_health_page','',''),('Private backups','backup_page','','')]),
-            ('Meals',[('Recipes and meal confirmation','meals_page','',''),('Shopping and Tesco checklist','tesco_list','',''),('Away dates','preferences_page','','away')]),
+            ('Meals',[('Recipes and meal confirmation','meals_page','',''),('Print shopping checklist','meal_shop','',''),('Away dates','preferences_page','','away')]),
             ('Exercise',[('Receipt targets and equipment','exercise_list','','')]),
             ('Printing',[('Prepare a print','print_plan','',''),('Daily print time','index','settings',''),('Printer connection','printer_diagnostics','','')]),
         ]

@@ -160,7 +160,6 @@
             font-weight: 700;
         }
 
-        .tesco-item,
         .debug-print {
             display: flex;
             justify-content: space-between;
@@ -170,15 +169,6 @@
             border-bottom: 1px solid #eee;
         }
 
-        .tesco-link {
-            white-space: nowrap;
-            text-decoration: none;
-            border: 1px solid #ccc;
-            border-radius: 7px;
-            padding: 8px 10px;
-            color: inherit;
-            background: #f7f7f7;
-        }
 
         .debug-grid {
             display: grid;
@@ -367,7 +357,7 @@
                         <p class="eyebrow">Live data</p>
                         <h2>Explore your day</h2>
                         <div class="quick-actions">
-                            <a class="button" href="{{ url_for('delivery_checklist') }}">Confirm deliveries</a><a class="button" href="{{ url_for('gigs_page') }}">Gigs today</a><a class="button" href="{{ url_for('calendar_map') }}">Calendar map</a><a class="button" href="{{ url_for('meals_page') }}">Meals & recipes</a><a class="button" href="{{ url_for('tesco_list') }}">Tesco shopping review</a>
+                            <a class="button" href="{{ url_for('delivery_checklist') }}">Confirm deliveries</a><a class="button" href="{{ url_for('gigs_page') }}">Gigs today</a><a class="button" href="{{ url_for('calendar_map') }}">Calendar map</a><a class="button" href="{{ url_for('meals_page') }}">Meals & recipes</a><a class="button" href="{{ url_for('meal_shop') }}">Shopping checklist</a>
                         </div>
                     </section>
                 </div>
@@ -1285,14 +1275,8 @@
 
                     <h2>Food shop</h2>
 
-                    <p class="muted">
-                        Open each item as a Tesco Groceries search.
-                        The Tesco site remains responsible for choosing
-                        the exact product and adding it to your basket.
-                    </p>
-
                     <p>
-                        <a class="button" href="{{ url_for('tesco_list') }}">Review list for Tesco</a>
+                        <a class="button" href="{{ url_for('meal_shop') }}">Print meal shopping checklist</a>
                     </p>
                     <details>
                         <summary>Edit items used by this page and the printed food shop</summary>
@@ -1320,27 +1304,9 @@
 
                     {% elif food_shop_items %}
 
-                        {% for item in food_shop_items %}
-
-                            <div class="tesco-item">
-
-                                <span>{{ item }}</span>
-
-                                <a class="tesco-link"
-                                   href="{{ url_for( 'tesco_search', item=item ) }}"
-                                   target="_blank"
-                                   rel="noopener">Find at Tesco</a>
-
-                            </div>
-
-                        {% endfor %}
-
-                        <p>
-                            <a class="tesco-link"
-                               href="https://www.tesco.com/shop/en-GB/landing/groceries"
-                               target="_blank"
-                               rel="noopener">Open Tesco Groceries</a>
-                        </p>
+                        <ul>
+                            {% for item in food_shop_items %}<li>{{ item }}</li>{% endfor %}
+                        </ul>
 
                     {% else %}
 

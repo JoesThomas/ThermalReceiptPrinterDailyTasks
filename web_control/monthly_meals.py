@@ -1,11 +1,11 @@
 """Login/CSRF-protected monthly meal planning and local shop preferences."""
 
 from flask import abort, flash, redirect, render_template, request, url_for
-from meals import monthly, legacy_planner as planner, supermarket
+from meals import monthly, legacy_planner as planner, shopping_checklist
 from receipt.local_time import uk_today
 
 
-def register(app, login_required):
+def register(app, login_required, start_print, root):
     def selected():
         raw = request.values.get("month", uk_today().strftime("%Y-%m"))
         try:
@@ -55,7 +55,6 @@ def register(app, login_required):
                 "Sunday",
             ],
             recipes=planner.recipes(),
-            retailers=supermarket.RETAILERS,
             local_shops=monthly.LOCAL_SHOPS,
         )
 
@@ -82,8 +81,8 @@ def register(app, login_required):
         try:
 
             def save(s):
+                s.pop("retailer", None)  # Remove the retired preference when saving.
                 s.update(
-                    retailer=request.form.get("retailer", s.get("retailer", "tesco")),
                     weekly_day=int(request.form.get("weekly_day", "5")),
                     veg_topup=request.form.get("veg_topup") == "on",
                     veg_day=int(request.form.get("veg_day", "2")),
@@ -100,7 +99,7 @@ def register(app, login_required):
             )
         except (ValueError, OSError):
             flash(
-                "Check the weekdays, supermarket and shop choices. Fresh categories must stay on weekly lists."
+                "Check the weekdays and supplier choices. Fresh categories must stay on weekly lists."
             )
         return go(raw)
 
@@ -172,6 +171,40 @@ def register(app, login_required):
             )
         )
 
+    def queue_checklist(day, supplier, amounts):
+        from datetime import date, datetime, timezone
+        from hashlib import sha256
+        from receipt.archive import save
+        from receipt.repeat_guard import recent, record
+
+        text = shopping_checklist.receipt_text(
+            date.fromisoformat(day), supplier, amounts
+        )
+        stable = ["--shopping-list", sha256(text.encode()).hexdigest()]
+        if recent(root, stable) and request.form.get("allow_repeat") != "on":
+            flash(
+                "This checklist was just queued. Tick Allow intentional reprint to print it again."
+            )
+            return
+        try:
+            identifier = save(
+                {"food": text},
+                {},
+                datetime.now(timezone.utc).isoformat(),
+                "preview",
+                {},
+            )
+            started, error = start_print(["--archive", identifier, "all"])
+        except OSError:
+            flash("Could not save the shopping checklist for printing.")
+            return
+        if started:
+            try:
+                record(root, stable)
+            except OSError:
+                app.logger.warning("Could not save the shopping print request marker")
+        flash("Shopping checklist queued for printing." if started else error)
+
     @app.route("/meals/shop", methods=["GET", "POST"])
     @login_required
     def meal_shop():
@@ -186,10 +219,6 @@ def register(app, login_required):
         supplier = request.values.get("supplier", "")
         if supplier and supplier not in monthly.LOCAL_SHOPS:
             abort(400, description="Choose a scheduled local supplier.")
-        if supplier and request.method == "POST":
-            abort(405)
-        retailer = view["config"].get("retailer", "tesco")
-        name = supermarket.RETAILERS[retailer][0]
         allowed = (supplier,) if supplier else monthly.SUPERMARKET_SHOPS
         scheduled = [visit for visit in view["visits"] if visit["shop"] in allowed]
         dates = sorted({visit["day"].isoformat() for visit in scheduled})
@@ -198,45 +227,30 @@ def register(app, login_required):
             flash("That shopping date is no longer available. Select a current list.")
             return redirect(url_for("meal_shop", month=raw, supplier=supplier or None))
         visits = [v for v in scheduled if v["day"].isoformat() == day]
-        rows, fingerprint = supermarket.review(visits, None if supplier else retailer)
-        enabled = not supplier and supermarket.available(retailer)
-        checked = {r["id"] for r in rows if r["measured"] and not r["pantry"]}
-        landing = None
+        rows, fingerprint = shopping_checklist.review(visits, (raw, day, supplier))
+        checked = {r["id"] for r in rows}
         if request.method == "POST":
             chosen = set(request.form.getlist("item"))
-            valid = {r["id"] for r in rows}
-            if request.form.get("fingerprint") != fingerprint or not chosen <= valid:
+            if request.form.get("fingerprint") != fingerprint or not chosen <= checked:
                 flash(
-                    "The shopping list or supermarket changed. Review the current list before sending."
+                    "The shopping list changed. Review the current items before printing."
                 )
+            elif not chosen:
+                checked = chosen
+                flash("Choose at least one item to print.")
             else:
                 checked = chosen
-                try:
-                    if request.form.get("confirm_share") != "yes":
-                        raise supermarket.HandoffError(
-                            "Confirm that you want to send the selected ingredients."
-                        )
-                    landing = supermarket.transfer(
-                        retailer, [r["amount"] for r in rows if r["id"] in chosen]
-                    )
-                except supermarket.HandoffError as error:
-                    flash(str(error))
+                amounts = [r["amount"] for r in rows if r["id"] in chosen]
+                queue_checklist(day, supplier, amounts)
         return render_template(
             "meal_shop.html",
             view=view,
             day=day,
             dates=dates,
-            visits=visits,
             supplier=supplier,
-            retailer=retailer,
-            retailer_name=name,
-            retailer_home=supermarket.SHOPS_HOME[retailer],
-            partner_supported=bool(supermarket.RETAILERS[retailer][3]),
-            enabled=enabled,
             rows=rows,
             checked=checked,
             fingerprint=fingerprint,
-            landing=landing,
         )
 
     @app.post("/meals/month/ingredient")

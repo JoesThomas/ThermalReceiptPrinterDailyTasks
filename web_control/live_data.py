@@ -9,7 +9,6 @@ from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent.parent
 FOOD_SHOP_FILE = ROOT / "data" / "food_shop_override.json"
-TESCO_PROGRESS_FILE = ROOT / "data" / "tesco_progress.json"
 MEALS_EATEN_FILE = ROOT / "data" / "meals_eaten.json"
 
 
@@ -38,23 +37,6 @@ def save_food_shop(text):
         raise ValueError("Use at most 150 items of 180 characters each.")
     _write(FOOD_SHOP_FILE, {"items": items})
     return items
-
-
-def tesco_progress(items):
-    data = _read(TESCO_PROGRESS_FILE, {})
-    week = datetime.now(ZoneInfo("Europe/London")).date().isocalendar()
-    key = f"{week.year}-{week.week:02d}"
-    progress = data.get("items", {}) if isinstance(data, dict) and data.get("week") == key else {}
-    return {item: bool(progress.get(item)) for item in items}
-
-
-def mark_tesco_item(item, items, added):
-    if item not in items:
-        raise ValueError("Item is not on the current shopping list.")
-    progress = tesco_progress(items)
-    progress[item] = bool(added)
-    week = datetime.now(ZoneInfo("Europe/London")).date().isocalendar()
-    _write(TESCO_PROGRESS_FILE, {"week": f"{week.year}-{week.week:02d}", "items": progress})
 
 
 def meal_confirmation(day):

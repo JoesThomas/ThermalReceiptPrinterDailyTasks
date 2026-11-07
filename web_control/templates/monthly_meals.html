@@ -25,6 +25,8 @@
                 <p>
                     Plan breakfasts and dinners for a calendar month, with next-day lunch extras where the recipe includes them. Buy cupboard/freezer items in a main shop, then combine the weekly butcher, greengrocer and fresh-essential stops.
                 </p>
+                <a class="button primary"
+                   href="{{ url_for('meal_shop',month=view.month) }}">Supermarket checklist &amp; print</a>
             </header>
             {% if household_meals_available|default(false) %}
                 <p>
@@ -179,8 +181,6 @@
             <section id="month-shops">
                 <h2>Shopping lists · {{ view.label }}</h2>
                 <p>
-                    <a class="button primary"
-                       href="{{ url_for('meal_shop',month=view.month) }}">Prepare supermarket shopping list</a>
                     {% for shop in local_shops if view.visits|selectattr('shop','equalto',shop)|first %}
                         <a class="button"
                            href="{{ url_for('meal_shop',month=view.month,supplier=shop) }}">{{ shop }} lists</a>
@@ -259,17 +259,6 @@
                 </p>
                 <form method="post" action="{{ url_for('monthly_meals_settings') }}">
                     {{ csrf() }}
-                    <label>
-                        Preferred online supermarket
-                        <select name="retailer">
-                            {% for key, shop in retailers.items() %}
-                                <option value="{{ key }}"
-                                        {% if view.config.get('retailer','tesco')==key %}selected{% endif %}>
-                                    {{ shop[0] }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </label>
                     <label>
                         Usual weekly shopping day
                         <select name="weekly_day">

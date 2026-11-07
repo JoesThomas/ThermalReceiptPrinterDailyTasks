@@ -28,31 +28,20 @@ A shopping date is not a shelf-life guarantee. Follow use-by dates, opened-pack 
 - [FSA: chilling, freezing and defrosting](https://www.gov.uk/government/publications/how-to-chill-freeze-and-defrost-food-safely/how-to-chill-freeze-and-defrost-food-safely)
 - [Best before and use-by dates](https://www.gov.uk/understanding-food-labelling/best-before-and-use-by-dates)
 
-Menu cost is the existing dinner/lunch recipe estimate, excluding breakfast prices and unknown custom recipe costs; it is not live prices or a complete household budget; components, quantities, pack sizes and specialist prices can change the actual total. This page does not send orders, choose a real shop, insert errands, change retailer baskets or replace the existing Tesco review. The daily receipt uses the saved menu without adding a month-long shopping section to the daily paper.
+Menu cost is the existing dinner/lunch recipe estimate, excluding breakfast prices and unknown custom recipe costs; it is not live prices or a complete household budget; components, quantities, pack sizes and specialist prices can change the actual total. The shopping checklist is generated locally. The daily receipt uses the saved menu without adding a month-long shopping section to the daily paper.
 
 ## Local files
 
 Weekly menus remain in `meal_plans/`. Shopping-day, supplier and ingredient-category preferences live in `data/monthly_meals.json`: bounded, validated, locked and atomically written with owner-only permissions. Both are ignored by Git and excluded from the ordinary allowlisted backup; include them in a protected local backup if needed. Invalid saved weekly plans are not overwritten by monthly generation. Generating is local and bounded to the weeks needed for the selected month; page reads do not generate menus or contact providers. Controls use the application's existing login, CSRF and no-store protections.
 
-## Supermarket handoff
+## Print a shopping checklist
 
-In **Monthly meals & shops → Shopping days & shops**, save a preferred online supermarket: Tesco, Sainsbury’s, Asda, Morrisons, Waitrose & Partners or Ocado. Select **Prepare supermarket shopping list** and choose a shopping date. Ingredients from the main supermarket and supermarket top-up stops that day are combined using exact recipe quantities, without rounding twice for packs. The list includes planned breakfasts, eligible dinners, lunch extras and bought components. Check homemade component recipes separately; their yields need a manual check. Pantry items and unmeasured quantities start unticked. Untick items bought elsewhere or already in stock.
-
-All six retailers work with a copyable list and product searches. For Waitrose, use **Multi-search**; where available, Sainsbury’s **SmartLists** can turn the text into product suggestions. The local app does not see your retailer account, trolley, availability, prices or order.
-
-To enable the optional basket review, request Samsung Food/Whisk Graph API access and set the server environment variable `SAMSUNG_FOOD_SERVER_TOKEN` for the process running Receipt Control, then restart. The token must be authorised for list transfers. Keep it on the server and out of version control. The provider documents Tesco, Sainsbury’s and Ocado integration; live availability depends on the provider, retailer and location. Asda, Morrisons and Waitrose use the local copy/search route.
-
-When you explicitly create a basket review, the app sends only selected ingredient lines and quantities plus the chosen retailer and UK language/region. The response is a Samsung Food link. Review pack sizes, missing items, product labels and substitutions there before transferring products to the retailer, then check the retailer basket and place the order yourself. No supermarket login or payment is handled by Receipt Control. A missing token or unavailable service leaves the local list usable.
-
-- [Samsung Food/Whisk list transfer documentation](https://docs.whisk.com/shopping-list-mobile-api/overview)
-- [Documented integrated retailers](https://docs.whisk.com/resources/supported-retailers)
-- [Waitrose Multi-search](https://www.waitrose.com/ecom/help-information/shopping-with-waitrose/shop-online)
-- [Sainsbury’s SmartLists](https://corporate.sainsburys.co.uk/news/press-releases/sainsbury-s-launches-smartlists-a-new-ai-powered-way-to-shop/)
+Open **Monthly meals & shops → Supermarket checklist & print**. Choose a shopping date and untick anything you already have, then select **Print shopping checklist**. The printer receives one receipt with a tick box for each selected ingredient and its recipe quantity. Local supplier lists have their own print button. A copyable list is available on the same page.
 
 The calendar shows lunch on the date it is planned for, using the previous dinner’s lunch option where present, including across month boundaries. A saved lunch override appears instead. If nobody needs lunch or there is no saved lunch plan, the card says so. A calendar entry is a plan, not confirmation that leftovers are available.
 
 ## Local suppliers and meal attendance
 
-Butcher, greengrocer, fishmonger and local shop ingredients stay out of the online supermarket basket. Open the local supplier’s dated list from **Shopping lists** to review and copy it. Edit the category’s supplier under **Shopping days & shops** if you prefer to buy it elsewhere. The app adds a task for each scheduled butcher and greengrocer visit, with a link to the list. Rebuilding the month or changing the schedule reconciles pending tasks and keeps completed ones.
+Butcher, greengrocer, fishmonger and local shop ingredients stay off the supermarket checklist. Open the local supplier’s dated list from **Shopping lists** to review, print or copy it. Edit the category’s supplier under **Shopping days & shops** if you prefer to buy it elsewhere. The app adds a task for each scheduled butcher and greengrocer visit, with a link to the list. Rebuilding the month or changing the schedule reconciles pending tasks and keeps completed ones.
 
 With household profiles configured, expand **Who’s eating?** on a date to skip individual breakfasts, lunches or dinners. Mark all three for a full day away. Breakfast and dinner portions follow their own headcounts; lunch counts adjust extras reserved with the previous dinner where the recipe provides them. A home meal is paused when nobody needs it. Saved dinner recipes remain available if attendance changes again, and household dietary restrictions still apply. The planner does not invent a standalone lunch when there is no suitable previous dinner.

@@ -10,7 +10,6 @@ from storage import PrivateStore, file_lock
 from receipt.local_time import uk_today
 from meals import legacy_planner as planner
 from meals.ingredients import parse, aggregate
-from meals.supermarket import RETAILERS
 
 FILE = Path(__file__).resolve().parents[1] / "data" / "monthly_meals.json"
 CATEGORIES = (
@@ -38,7 +37,6 @@ def defaults():
     return dict(
         version=1,
         active_month="",
-        retailer="tesco",
         weekly_day=5,
         veg_topup=False,
         veg_day=2,
@@ -57,8 +55,6 @@ def bounds(raw):
 def validate(value):
     if not isinstance(value, dict) or value.get("version") != 1:
         raise ValueError("Invalid monthly meal settings.")
-    if not isinstance(value.get("retailer", "tesco"), str) or value.get("retailer", "tesco") not in RETAILERS:
-        raise ValueError("Choose a supported supermarket.")
     if value["active_month"]:
         bounds(value["active_month"])
     for field in ("weekly_day", "veg_day"):
