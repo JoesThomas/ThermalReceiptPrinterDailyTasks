@@ -340,6 +340,32 @@ def recipe_signature(recipe):
     ).hexdigest()
 
 
+def component_foods(recipe):
+    """Screen both make and buy variants; the prep choice can change during the week."""
+    refs = recipe.get("prep_components", [])
+    if not refs:
+        return [], set()
+    from meals import legacy_planner as planner
+
+    components = planner._load(planner.COMPONENTS_FILE, {}).get("components", [])
+    lookup = {c["id"]: c for c in components}
+    ingredients, allergens = [], set()
+    for ref in refs:
+        cid = ref.get("id") if isinstance(ref, dict) else ref
+        component = lookup.get(cid)
+        if not component:
+            return None
+        for action in ("make", "buy"):
+            item = component.get(action, {})
+            ingredients.extend(item.get("ingredients", []))
+            if item.get("item"):
+                ingredients.append(item["item"])
+            allergens.update(item.get("allergens", []))
+    if "tree_nuts" in allergens:
+        allergens.add("nuts")
+    return ingredients, allergens
+
+
 def permitted(recipe, s, on, slot="dinner"):
     if recipe.get("id") and recipe.get("slot") in ("dinner", "breakfast"):
         current = next(
@@ -362,6 +388,16 @@ def permitted(recipe, s, on, slot="dinner"):
     ingredients = recipe.get("ingredients", []) + lunch_for(recipe, s["people"]).get(
         "extra_ingredients", []
     )
+    if any(
+        p.get("coeliac") or p["allergens"] or p["diet"] != "omnivore" or p["avoid"]
+        for p in s["people"]
+    ):
+        components = component_foods(recipe)
+        if components is None:
+            return False
+        extra_ingredients, extra_allergens = components
+        ingredients += extra_ingredients
+        declared |= extra_allergens
     allergens = declared | inferred({"ingredients": ingredients})
     text = (recipe.get("name", "") + " " + " ".join(ingredients)).casefold()
     diet = recipe.get("dietary", {})

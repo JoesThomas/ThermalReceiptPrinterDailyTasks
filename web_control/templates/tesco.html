@@ -20,6 +20,9 @@
                     Food-shop items and planned recipe ingredients. Choose the exact product and quantity on Tesco, add it to your basket there, then mark it done here. This page cannot read or change your Tesco basket.
                 </p>
             </header>
+            {% if handling %}
+                <p class="helper">{{ handling.shopping }} Manual shopping entries need the same checks.</p>
+            {% endif %}
             {% if error %}
                 <p class="helper">Food-shop Google Doc unavailable: {{ error }}. Planned recipe items can still appear below.</p>
             {% endif %}

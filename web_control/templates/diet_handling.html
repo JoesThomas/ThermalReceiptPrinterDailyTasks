@@ -1,0 +1,28 @@
+{% if handling %}
+    <details class="section-disclosure">
+        <summary>Dietary checks: shopping to serving</summary>
+        <p>
+            {% if handling.diets %}Household diets: {{ handling.diets|join(', ') }}.{% endif %}
+            {% if handling.coeliac %}Gluten-free filter is on.{% endif %}
+            {% if handling.allergens %}Food exclusions: {{ handling.allergens|join(', ') }}.{% endif %}
+        </p>
+        {% if handling.manual %}<p>Review the household’s individual dietary notes before preparing food.</p>{% endif %}
+        <dl>
+            {% for stage, instruction in handling.stages %}
+                <dt>
+                    <strong>{{ stage }}</strong>
+                </dt>
+                <dd>
+                    {{ instruction }}
+                </dd>
+            {% endfor %}
+        </dl>
+        <p>
+            The planner screens known ingredients. It cannot confirm a product label, stored batch or preparation surface.
+            {% for name, link in handling.sources %}
+                <a href="{{ link }}">{{ name }}</a>
+                {% if not loop.last %}·{% endif %}
+            {% endfor %}
+        </p>
+    </details>
+{% endif %}

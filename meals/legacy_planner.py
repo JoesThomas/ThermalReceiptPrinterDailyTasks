@@ -303,13 +303,17 @@ def build_shopping_list(plan: dict, include_away=False) -> dict[str, list[str]]:
     from receipt.local_time import uk_today
     today = uk_today()
     from meals.household import meal as household_meal
+    from meals.diet_handling import guidance
+    prefs = preferences()
+    household = prefs.get("_household")
+    verify_pantry = bool(guidance(prefs))
     for meal in plan.get("meals", []):
-        meal = household_meal(meal)
+        meal = household_meal(meal, household)
         if meal.get("kind") != "recipe":
             continue
         r = meal["recipe"]
         for item in r.get("ingredients", []) if needs_dinner(meal, today, away=(lambda day: False) if include_away else None) else []:
-            if str(item).strip() and not _pantry_has(item):
+            if str(item).strip() and (verify_pantry or not _pantry_has(item)):
                 grouped[_section(item)].append(item)
         meal_day = date.fromisoformat(meal["date"])
         next_day = meal_day + timedelta(days=1)
@@ -317,7 +321,7 @@ def build_shopping_list(plan: dict, include_away=False) -> dict[str, list[str]]:
         from receipt.lifestyle import skip_meal
         lunch = {} if next_day < today or skip_meal(next_day) or lunch_override and lunch_override.get("type") in {"buy_lunch", "eat_out"} else r.get("lunch", {})
         for item in lunch.get("extra_ingredients", []):
-            if str(item).strip() and not _pantry_has(item):
+            if str(item).strip() and (verify_pantry or not _pantry_has(item)):
                 grouped[_section(item)].append(item)
     return {section: aggregate(items, for_shopping=True) for section, items in grouped.items()}
 
@@ -683,6 +687,15 @@ def print_sunday_prep(printer, left, line) -> None:
 def print_today_recipe(printer, left, line) -> None:
     today = datetime.now(TZ).date()
     from meals.breakfast import receipt_lines as breakfast_lines
+    from meals.diet_handling import guidance, receipt_lines as handling_lines
+    prefs = preferences()
+    handling = guidance(prefs)
+    if handling:
+        line(printer, "-")
+        print_heading(printer, "DIETARY CHECKS", write=left)
+        for note in handling_lines(handling):
+            for piece in wrap(note):
+                left(printer, piece)
     breakfast = breakfast_lines(today)
     if breakfast:
         line(printer, "-")
@@ -696,6 +709,8 @@ def print_today_recipe(printer, left, line) -> None:
     if meal.get("kind") != "recipe":
         left(printer, meal.get("name", "PLANNED MEAL").upper())
         for x in wrap(meal.get("overview", "")): left(printer, x)
+        if handling and meal.get("kind") in {"freezer", "takeaway", "eat_out", "treat"}:
+            left(printer, "Verify ingredients and preparation.")
         return
     r = meal["recipe"]
     left(printer, r.get("name", "RECIPE").upper())
@@ -731,7 +746,7 @@ def print_today_recipe(printer, left, line) -> None:
             for x in wrap(hint, RECEIPT_WIDTH - 2):
                 left(printer, "- " + x)
 
-    if r.get("hacks"):
+    if r.get("hacks") and not handling:
         line(printer, "-"); print_heading(printer, "COOKING TIPS", write=left)
         for tip in r["hacks"][:2]:
             for x in wrap(tip, RECEIPT_WIDTH-2): left(printer, "- " + x if x == wrap(tip, RECEIPT_WIDTH-2)[0] else "  " + x)
@@ -744,8 +759,10 @@ def print_today_recipe(printer, left, line) -> None:
         line(printer, "-"); print_heading(printer, "LUNCH TOMORROW", write=left); left(printer, lunch.get("name", "").upper())
         for x in wrap(lunch.get("overview", "")): left(printer, x)
         for item in lunch.get("extra_ingredients", []): left(printer, "+ " + item)
+        if handling and lunch_override and lunch_override.get("type") in {"buy_lunch", "eat_out"}:
+            left(printer, "Verify ingredients and preparation.")
 
-    if preferences().get("cooking_style", {}).get("show_storage_guidance", True):
+    if prefs.get("cooking_style", {}).get("show_storage_guidance", True):
         line(printer, "-")
         print_heading(printer, "LEFTOVERS / STORAGE", write=left)
         for note in receipt_lines(leftover_guidance(r, today), getattr(printer, "paper_saver", False) is True):

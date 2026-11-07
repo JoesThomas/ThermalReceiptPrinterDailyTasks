@@ -584,7 +584,10 @@ def meals_page():
         resources = {"batches": [], "cleanup": [], "shared": []}
     from meals import breakfast as breakfast_planner
     breakfast_view = breakfast_planner.plan(today)
-    return render_template("meals.html", recipes=recipes, planned=planned, storage=storage, resources=resources, breakfast_view=breakfast_view,
+    from meals.diet_handling import guidance
+    prefs = meals.preferences()
+    eligible_recipes = [recipe for recipe in recipes if meals._eligible(recipe, today, prefs)]
+    return render_template("meals.html", recipes=recipes, eligible_recipes=eligible_recipes, planned=planned, storage=storage, resources=resources, breakfast_view=breakfast_view, handling=guidance(prefs),
                            confirmed=meal_confirmation(today), today=today, error=problem)
 
 
@@ -596,6 +599,8 @@ def change_today_meal():
     selected = next((item for item in recipes if item["name"] == request.form.get("recipe")), None)
     if selected is None:
         return ("Choose a recipe from the list", 400)
+    if not meals._eligible(selected, today, meals.preferences()):
+        return ("That recipe does not meet your current meal settings.", 400)
     plan = meals.load_plan_for(today, raw=True) or meals.generate_week(meals.current_week_sunday(today), raw=True)
     if not any(item.get("date") == today.isoformat() for item in plan.get("meals", [])):
         return ("Today's meal is not in the plan", 400)
@@ -734,7 +739,9 @@ def _tesco_list():
 @login_required
 def tesco_list():
     items, error = _tesco_list()
-    return render_template("tesco.html", items=items, error=error,
+    from meals.legacy_planner import preferences
+    from meals.diet_handling import guidance
+    return render_template("tesco.html", items=items, error=error, handling=guidance(preferences()),
                            progress=tesco_progress(items))
 
 

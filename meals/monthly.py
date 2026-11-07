@@ -477,6 +477,7 @@ def report(raw, on=None):
         )
     )
     from meals.nutrition_guidance import overview
+    from meals.diet_handling import guidance
     return dict(
         month=raw,
         label=first.strftime("%B %Y"),
@@ -487,6 +488,7 @@ def report(raw, on=None):
         config=config,
         resources=resources,
         balance=overview(meals),
+        handling=guidance(prefs),
         cost=costs,
         **shops,
     )

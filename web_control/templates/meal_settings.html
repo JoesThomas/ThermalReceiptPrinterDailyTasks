@@ -203,7 +203,7 @@
             <section id="custom-recipes">
                 <h2>Your own recipes</h2>
                 <p>
-                    Add breakfast or dinner recipes. Ingredient quantities must describe the full cooking yield below; numeric quantities scale, while unmeasured amounts remain marked for review. Methods and cooking times are not automatically validated or scaled.
+                    Add breakfast or dinner recipes. List all ingredients for the full cooking yield, including oils, sauces, sides and toppings; numeric quantities scale, while unmeasured amounts remain marked for review. Methods and cooking times are not automatically validated or scaled.
                 </p>
                 {% for r in config.custom+[none] %}
                     <details {% if not r %}open{% endif %}>
