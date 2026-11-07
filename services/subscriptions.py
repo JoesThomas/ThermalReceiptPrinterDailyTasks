@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
-import math
 
-from datetime import datetime
 from pathlib import Path
 from finance.yearly_subscriptions import annual_subscription_rows
-from zoneinfo import ZoneInfo
+from finance.bill_payments import monthly_contract_ended, monthly_matches
+from finance.commitments import repayment_commitments
+from finance.money import parse
+from receipt.local_time import uk_today
 
 
 PROJECT_ROOT = (
@@ -50,280 +51,51 @@ def save_subscriptions(data):
     write_json(SUBSCRIPTIONS_FILE, data)
 
 
-def _description(transaction):
-    return str(
-        transaction.get(
-            "description",
-            "",
-        )
-        or transaction.get(
-            "spend_description",
-            "",
-        )
-        or ""
-    ).upper()
-
-
-def _amount(transaction):
-    try:
-        value = abs(float(transaction.get('amount', 0)))
-        return value if math.isfinite(value) else 0.0
-    except (TypeError, ValueError, OverflowError):
-        return 0.0
-
-
-def _is_debit(transaction):
-    kind = str(transaction.get('transaction_type') or transaction.get('type') or '').upper()
-    if kind in {'CREDIT', 'INCOME', 'REFUND'}:
-        return False
-    try:
-        value = float(transaction.get('amount', 0))
-        return math.isfinite(value) and value != 0 and (value < 0 or kind == 'DEBIT')
-    except (TypeError, ValueError, OverflowError):
-        return False
-
-
-def _date(transaction):
-    value = (
-        transaction.get("timestamp")
-        or transaction.get("transaction_date")
-        or transaction.get("date")
-    )
-
-    if not value:
-        return None
-
-    try:
-        parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
-        if parsed.tzinfo is not None:
-            parsed = parsed.astimezone(ZoneInfo('Europe/London'))
-        return parsed.date().isoformat()
-    except (TypeError, ValueError):
-        return None
-
-
-def _matches(
-    subscription,
-    transaction,
-):
-    description = _description(
-        transaction
-    )
-
-    if not description:
-        return False
-
-    terms = subscription.get(
-        "match",
-        [],
-    )
-
-    return _is_debit(transaction) and any(
-        str(term).upper()
-        in description
-        for term in terms
-        if term
-    )
-
-def _annual_amount_matches(subscription, transaction):
-    try:
-        amount = float(transaction.get("amount"))
-        expected = float(subscription.get("amount"))
-    except (TypeError, ValueError):
-        return False
-    return _is_debit(transaction) and math.isfinite(expected) and abs(abs(amount) - expected) <= 0.01
-
-def update_subscriptions_from_transactions(
-    transactions,
-):
-    """
-    Update known subscriptions/bills using
-    observed transactions.
-
-    Returns changes that should be printed
-    on this receipt.
-    """
-
+def update_subscriptions_from_transactions(transactions, *, today=None, finance_settings=None):
+    """Save newly matched bill payments and report changes to their estimates."""
+    today = today or uk_today()
     data = load_subscriptions()
+    monthly = [item for item in data["monthly"] if not monthly_contract_ended(item, today)]
+    yearly = data["yearly"]
+    repayments = repayment_commitments(data, finance_settings or {})
+    annual = annual_subscription_rows(yearly, transactions, today)
+    reserved = {row["bank_match_index"] for row in annual if row["bank_match_index"] is not None}
+    matches = monthly_matches(monthly + repayments, transactions, today, reserved=reserved)
+    observations = [
+        (monthly[index], "monthly", paid_on, float(amount))
+        for index, (_, paid_on, amount) in matches.items() if index < len(monthly)
+    ]
+    observations.extend(
+        (yearly[row["subscription_index"]], "yearly", row["bank_paid_date"], row["bank_paid_amount"])
+        for row in annual if row["bank_paid_date"] is not None
+    )
 
     changes = []
+    changed = False
+    for item, frequency, paid_on, amount in observations:
+        paid_date = paid_on.isoformat()
+        if (item.get("last_paid") or "") >= paid_date:
+            continue
+        item["last_paid"] = paid_date
+        history = item.setdefault("history", [])
+        item["history"] = (history + [{"date": paid_date, "amount": amount}])[-24:]
+        expected = parse(item.get("amount"))
+        item["amount"] = amount
+        changed = True
+        if expected is None or parse(amount) == expected:
+            continue
+        previous = float(expected)
+        difference = round(amount - previous, 2)
+        changes.append({
+            "name": item.get("name", "Subscription"),
+            "frequency": frequency,
+            "date": paid_date,
+            "old_amount": previous,
+            "new_amount": amount,
+            "difference": difference,
+            "percentage": difference / previous * 100 if previous else 0.0,
+        })
 
-    changed_file = False
-
-    for frequency in (
-        "monthly",
-        "yearly",
-    ):
-
-        for subscription in data.get(
-            frequency,
-            [],
-        ):
-
-            annual_paid_date = None
-            if frequency == "yearly":
-                annual_paid_date = annual_subscription_rows(
-                    [subscription], transactions,
-                    datetime.now(ZoneInfo("Europe/London")).date()
-                )[0]["bank_paid_date"]
-                if annual_paid_date is None:
-                    continue
-
-            matches = [
-                tx
-                for tx in transactions
-                if _matches(
-                    subscription,
-                    tx,
-                )
-                and (frequency != "yearly" or
-                     (_date(tx) == annual_paid_date.isoformat()
-                      and _annual_amount_matches(subscription, tx)))
-            ]
-
-            if not matches:
-                continue
-
-            # Most recent matching transaction.
-            matches.sort(
-                key=lambda tx:
-                    _date(tx) or "",
-                reverse=True,
-            )
-
-            transaction = matches[0]
-
-            new_amount = _amount(
-                transaction
-            )
-
-            paid_date = _date(
-                transaction
-            )
-
-            if (
-                new_amount <= 0
-                or not paid_date
-            ):
-                continue
-
-            old_amount = subscription.get(
-                "amount"
-            )
-
-            try:
-                old_amount = float(
-                    old_amount
-                )
-
-            except (
-                TypeError,
-                ValueError,
-            ):
-                old_amount = None
-
-            # We've already processed this
-            # transaction on a previous run.
-            if (
-                subscription.get(
-                    "last_paid"
-                )
-                == paid_date
-            ):
-                continue
-
-            history = subscription.setdefault(
-                "history",
-                [],
-            )
-
-            # Record the observed payment.
-            history.append({
-                "date": paid_date,
-                "amount": round(
-                    new_amount,
-                    2,
-                ),
-            })
-
-            # Prevent history growing forever.
-            subscription["history"] = (
-                history[-24:]
-            )
-
-            subscription[
-                "last_paid"
-            ] = paid_date
-
-            changed_file = True
-
-            # First observed payment:
-            # initialise without reporting
-            # it as a price change.
-            if old_amount is None:
-                subscription[
-                    "amount"
-                ] = round(
-                    new_amount,
-                    2,
-                )
-
-                continue
-
-            difference = (
-                new_amount
-                - old_amount
-            )
-
-            # Ignore penny-level noise.
-            if abs(difference) < 0.01:
-                continue
-
-            if old_amount:
-                percentage = (
-                    difference
-                    / old_amount
-                    * 100.0
-                )
-            else:
-                percentage = 0.0
-
-            subscription[
-                "amount"
-            ] = round(
-                new_amount,
-                2,
-            )
-
-            changes.append({
-                "name":
-                    subscription.get(
-                        "name",
-                        "Subscription",
-                    ),
-
-                "frequency":
-                    frequency,
-
-                "date":
-                    paid_date,
-
-                "old_amount":
-                    old_amount,
-
-                "new_amount":
-                    new_amount,
-
-                "difference":
-                    difference,
-
-                "percentage":
-                    percentage,
-            })
-
-    if changed_file:
-        save_subscriptions(
-            data
-        )
-
+    if changed:
+        save_subscriptions(data)
     return changes

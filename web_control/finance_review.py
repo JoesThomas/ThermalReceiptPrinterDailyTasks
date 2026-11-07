@@ -17,12 +17,10 @@ def build_review(deps, snapshot, fresh, refresh_status=None):
     incoming_review = deps.incoming_review
     cash_flow_review = deps.cash_flow_review
     from finance.premium_bonds import review as review_bond_prizes
-    from finance.commitments import matching_repayment_transaction
     from finance.yearly_subscriptions import annual_subscription_rows
     from services.live_pipeline import (
         build_subscription_status,
         analyse_incoming_payments,
-        matching_subscription_transaction,
     )
 
     today = datetime.now(ZoneInfo("Europe/London")).date()
@@ -47,18 +45,11 @@ def build_review(deps, snapshot, fresh, refresh_status=None):
         bank_data_status = finance_data[4].get("bank_data_status", "unavailable")
         status = build_subscription_status(transactions, today=today)
         annual = annual_subscription_rows(status["yearly"], transactions, today)
-        used = set()
         rows = []
         for item in status["monthly"]:
-            index = matching_subscription_transaction(item, transactions, today, used)
-            method = "Merchant and amount"
-            if index is None and item.get("category") == "repayment":
-                index = matching_repayment_transaction(item, transactions, today, used)
-                method = "Payment date and amount"
-            if index is not None:
-                used.add(index)
+            index = item.get("bank_match_index")
             tx = transactions[index] if index is not None else None
-            rows.append({"item": item, "transaction": tx, "method": method})
+            rows.append({"item": item, "transaction": tx, "method": item.get("bank_match_method")})
         from web_control.reconciliation import review_queue as build_queue
 
         has_uncertain_payments = False
