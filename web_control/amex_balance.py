@@ -1,18 +1,20 @@
 """Editable balance thresholds reuse the local Amex evidence and existing polling."""
 
-from flask import flash, redirect, request, session, url_for
-from finance import amex_balance as alerts
+from flask import flash, redirect, request, url_for
+from web_control.amex_alert_scope import balance_for, scope
 from finance.amex_protection import store, validate
 
 
 def register(app, login_required):
     @app.context_processor
     def context():
-        return (
-            {"amex_balance_alert": alerts.view()}
-            if session.get("authenticated")
-            else {}
-        )
+        page = scope()
+        if not page:
+            return {}
+        return {
+            "amex_balance_alert": balance_for(page),
+            "amex_balance_on_home": page == "home",
+        }
 
     @app.post("/finance/amex-balance/settings")
     @login_required

@@ -2,6 +2,7 @@
        class="flash amex-balance-alert"
        role="status"
        aria-live="polite"
+       data-status-url="{{ url_for('amex_interest_status',home=1) if amex_balance_on_home else url_for('amex_interest_status') }}"
        data-level="{{ amex_balance_alert.level }}"
        {% if not amex_balance_alert.show %}hidden{% endif %}>
     <strong id="amex-balance-title">{{ amex_balance_alert.title }}</strong>

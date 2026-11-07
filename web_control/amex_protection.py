@@ -1,7 +1,8 @@
 """Local statement/DD inputs and read-only warnings; no payments are initiated."""
 from datetime import date
-from flask import flash, redirect, request, session, url_for
+from flask import flash, redirect, request, url_for
 from finance import amex_protection as protection
+from web_control.amex_alert_scope import scope
 from finance.projection import money, day
 
 
@@ -18,7 +19,7 @@ def view():
 def register(app, login_required):
     @app.context_processor
     def context():
-        return {'amex_protection': view()} if session.get('authenticated') else {}
+        return {'amex_protection': view()} if scope() == 'finance' else {}
 
     @app.post('/finance/amex-protection')
     @login_required

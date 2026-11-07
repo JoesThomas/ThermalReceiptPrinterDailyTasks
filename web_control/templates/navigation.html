@@ -139,6 +139,9 @@
     {% if amex_interest_alert is defined %}
         {% include 'amex_interest_alert.html' %}
     {% endif %}
+    {% if amex_balance_alert is defined or amex_interest_alert is defined %}
+        <script src="{{ url_for('static', filename='amex-interest.js') }}" defer></script>
+    {% endif %}
     {% if recent_undo %}
         <aside class="undo-toast"
                data-expires="{{ recent_undo.expires }}"

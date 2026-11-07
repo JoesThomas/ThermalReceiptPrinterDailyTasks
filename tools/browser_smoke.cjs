@@ -27,32 +27,42 @@ process.on('exit', () => child.kill());
     await route.fulfill({status:result.status, headers:result.headers, body:Buffer.from(result.body,'base64')});
   });
   await page.goto('http://receipt.test/__fixture_login');
-  // Live balance flags refresh without replacing forms, and fresh zero clears them.
-  for (const [amount,level] of [['1500','high'],['500','outstanding'],['0','clear']]) {
+  assert.equal(await page.locator('#amex-balance-alert,#amex-interest-alert,#amex-protection-alert').count(),0);
+  await page.goto('http://receipt.test/');
+  assert.equal(await page.locator('#amex-interest-alert,#amex-protection-alert').count(),0);
+  // The homepage updates in place, but only shows the balance above its threshold.
+  for (const [amount,level] of [['1500','high'],['1000','outstanding'],['0','clear']]) {
     await page.evaluate(async amount=>{
       await fetch('/__fixture_amex_balance?amount='+amount);
       document.dispatchEvent(new Event('visibilitychange'));
     },amount);
     await page.waitForFunction(level=>document.querySelector('#amex-balance-alert')?.dataset.level===level,level);
-    assert.equal(await page.locator('#amex-balance-alert').isVisible(),level!=='clear');
+    assert.equal(await page.locator('#amex-balance-alert').isVisible(),level==='high');
   }
-  await page.getByText('Advanced: edit schedule as text', {exact:true}).click();
-  await page.locator('#manual-collections').fill('2026-10-06 | Recycling | 14');
-  // New bank evidence must appear without discarding an unfinished form.
-  assert.equal(await page.locator('#amex-interest-alert').isVisible(), false);
+  await page.goto('http://receipt.test/?view=tasks');
+  assert.equal(await page.locator('#amex-balance-alert,#amex-interest-alert,#amex-protection-alert').count(),0);
+  await page.goto('http://receipt.test/finance/test');
+  await page.locator('input[name=salary]').fill('12345');
   await page.evaluate(async () => {
+    await fetch('/__fixture_amex_balance?amount=500');
     await fetch('/__fixture_amex_interest');
     document.dispatchEvent(new Event('visibilitychange'));
   });
+  await page.waitForFunction(()=>document.querySelector('#amex-balance-alert')?.dataset.level==='outstanding');
+  assert.equal(await page.locator('#amex-balance-alert').isVisible(),true);
   await page.locator('#amex-interest-alert').waitFor({state:'visible'});
   await page.getByText(/£12.34 interest charged/).waitFor();
-  assert.equal(await page.locator('#manual-collections').inputValue(), '2026-10-06 | Recycling | 14');
+  assert.equal(await page.locator('input[name=salary]').inputValue(),'12345');
   await page.evaluate(async () => {
     const form = document.querySelector('#amex-interest-alert form');
     await fetch(form.action, {method:'POST', body:new URLSearchParams(new FormData(form))});
     document.dispatchEvent(new Event('visibilitychange'));
   });
   await page.locator('#amex-interest-alert').waitFor({state:'hidden'});
+  await page.evaluate(async () => { await fetch('/__fixture_amex_balance?amount=0'); });
+  await page.goto('http://receipt.test/bins');
+  await page.getByText('Advanced: edit schedule as text', {exact:true}).click();
+  await page.locator('#manual-collections').fill('2026-10-06 | Recycling | 14');
 
   await Promise.all([page.waitForURL('**/bins'), page.getByRole('button', {name: 'Use manual schedule'}).click()]);
   await page.locator('main').getByText('Manual schedule saved and selected.', {exact:true}).waitFor();

@@ -5,8 +5,8 @@ Amex transaction retrieval checks for posted interest charges using TrueLayer's
 from the Amex card source qualify. Credits, refunds, reversals and ordinary fees
 are excluded. This detects actual posted charges, not forecast interest or APR.
 
-Warnings show the charge date, currency and amount throughout the web application.
-Open pages check the small local warning file every ten seconds without triggering
+Finance pages show the charge date, currency and amount.
+Open Finance pages check the small local warning file every ten seconds without triggering
 bank requests, refreshing the page or losing unsaved input. The warning appears
 on daily information receipts when finance is not due, and on finance receipts
 when that section prints. Acknowledging displayed charges removes their warnings;
@@ -29,9 +29,9 @@ when unavailable, a fingerprint of the transaction fields is used.
 Reference: [TrueLayer card transactions](https://docs.truelayer.com/reference/getcardtransactions)
 and [account and card data](https://docs.truelayer.com/docs/account-and-card-data).
 
-Outstanding balances have a separate flag throughout the interface and on daily
-and finance receipts. Any positive GBP debt is flagged; above £1,000 by default
-it receives a stronger warning. Finance → Amex balance alerts lets you edit the
+Outstanding balances have a separate flag on Finance and on daily and finance
+receipts. Finance flags any positive GBP balance. Home only shows a warning
+above the configured threshold (£1,000 by default). Finance → Amex balance alerts lets you edit the
 threshold or switch this flag off. A balance is not evidence of arrears or interest.
 A failed/stale refresh retains the last known debt and asks for a refresh; only a
 successful fresh check can clear it. Forecast flags use simulated balances and do
