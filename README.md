@@ -247,8 +247,8 @@ opened and shows the transaction behind each monthly payment match. The print
 status reports whether the web print command is running, finished or failed;
 the detailed diagnostic log is `logs/web_print.log`.
 
-The control page also links to today's meal plan, a calendar map and Tesco
-shopping review. You can choose today's recipe from the recipe library; that
+The control page also links to today's meal plan, a calendar map and a printable
+shopping checklist. You can choose today's recipe from the recipe library; that
 updates the printed recipe and regenerates the plan's shopping items. Confirming
 a recipe eaten records that fact separately from cooking and can be undone.
 Calendar events and locations come from the read-only iCal feed; edit them in
@@ -256,10 +256,8 @@ your calendar. The map sends a selected event's location to Google Maps.
 
 The food-shop editor saves a local list that replaces the Google Doc list on
 the control page and the printed food-shop section. Reset returns to the Doc.
-The Tesco review combines food-shop items and the current meal plan's shopping
-items; it opens Tesco searches for product selection and keeps a weekly local checklist.
-It cannot read or add products to your Tesco basket. Confirm each actual addition
-on Tesco before marking it on the checklist. Monthly commitments can be edited
+Use **Monthly meals & shops → Supermarket checklist & print** for a dated
+receipt with a tick box for each ingredient. Monthly commitments can be edited
 under their own section; instalment balances are edited separately.
 
 Finance review includes a paid versus unverified commitments bar, 30-day
@@ -412,7 +410,7 @@ Timezone regressions cover midnight and the autumn BST/GMT transition.
 
 ### Away mode, private preferences and credit limits
 
-Open **More tools → Away & preferences** to set departure and return dates. The return date is the first day back. While away, scheduled jobs save a live receipt copy instead of physically printing; manual printing remains available. Pausing home meals removes their recipe ingredients and prep from the displayed plan and shopping list without deleting the underlying plan. Shared ingredients, manual shopping items and household essentials remain. Travel-meal exceptions keep cooking on selected dates. Existing Tesco baskets are unchanged.
+Open **More tools → Away & preferences** to set departure and return dates. The return date is the first day back. While away, scheduled jobs save a live receipt copy instead of physically printing; manual printing remains available. Pausing home meals removes their recipe ingredients and prep from the displayed plan and shopping list without deleting the underlying plan. Shared ingredients, manual shopping items and household essentials remain. Travel-meal exceptions keep cooking on selected dates.
 
 Credit-card limits are private reference records. Add a card name, limit and optional used balance; reuse the same name to update it. Finance review can use the bank-reported Amex balance. Remaining credit and utilisation never increase available cash or runway.
 

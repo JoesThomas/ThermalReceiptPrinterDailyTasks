@@ -9,7 +9,6 @@ from threading import Lock
 from datetime import timedelta, datetime, date
 from functools import wraps
 from pathlib import Path
-from urllib.parse import quote_plus
 from urllib.request import urlopen
 from zoneinfo import ZoneInfo
 from flask import Flask, abort, flash, jsonify, redirect, render_template, request, session, url_for
@@ -23,8 +22,8 @@ from routines import WEEKDAYS, add_routine, delete_routine, load_routines, mark_
 from web_control.charts import finance_charts, instalment_progress
 from web_control.payments import (cash_flow_review, external_payments,
                                   incoming_review, monthly_payments)
-from web_control.live_data import (food_shop_override, save_food_shop, tesco_progress,
-                                   mark_tesco_item, meal_confirmation, confirm_meal,
+from web_control.live_data import (food_shop_override, save_food_shop,
+                                   meal_confirmation, confirm_meal,
                                    clear_meal_confirmation, map_embed_url, map_link_url)
 from web_control.to_buy import load_to_buy, save_to_buy
 from web_control.future_tasks import load_tasks, update_task
@@ -680,7 +679,7 @@ def food_shop_save():
     except ValueError as error:
         flash(str(error))
     else:
-        flash("Shopping items saved for the next receipt and Tesco review.")
+        flash("Shopping items saved for the next receipt.")
     return redirect(url_for("index", view="tasks") + "#food-shop")
 
 
@@ -719,42 +718,6 @@ def future_tasks_save():
     else:
         flash("Future tasks saved locally.")
     return redirect(url_for("index", view="tasks") + "#future-tasks")
-
-
-def _tesco_list():
-    items, error = load_food_shop_items()
-    from meals import legacy_planner as meals
-    plan = meals.load_plan_for(_local_today())
-    if plan is None:
-        try:
-            meals.get_meal(_local_today())
-            plan = meals.load_plan_for(_local_today())
-        except (RuntimeError, ValueError, OSError):
-            plan = None
-    meal_items = [item for group in plan.get("shopping", {}).values() for item in group] if plan else []
-    return list(dict.fromkeys(items + meal_items)), error
-
-
-@app.get("/tesco")
-@login_required
-def tesco_list():
-    items, error = _tesco_list()
-    from meals.legacy_planner import preferences
-    from meals.diet_handling import guidance
-    return render_template("tesco.html", items=items, error=error, handling=guidance(preferences()),
-                           progress=tesco_progress(items))
-
-
-@app.post("/tesco/progress")
-@login_required
-def tesco_mark():
-    items, _ = _tesco_list()
-    try:
-        mark_tesco_item(request.form.get("item", ""), items,
-                        request.form.get("added") == "1")
-    except ValueError:
-        return ("Item no longer exists in the shopping list", 400)
-    return redirect(url_for("tesco_list"))
 
 
 def _monthly_entry():
@@ -890,25 +853,6 @@ PRINT_PAGES = {
     "food": "Food / meal planner",
     "finance": "Finance",
 }
-
-
-def _tesco_search_url(item):
-    return (
-        "https://www.tesco.com/shop/en-GB/search"
-        f"?query={quote_plus(str(item).strip())}"
-    )
-
-
-@app.get("/tesco/search")
-@login_required
-def tesco_search():
-    item = request.args.get("item", "").strip()
-
-    if not item:
-        flash("Choose a food-shop item first.")
-        return redirect(url_for("index"))
-
-    return redirect(_tesco_search_url(item))
 
 
 def _start_print_command(command_args):
@@ -1476,7 +1420,7 @@ from web_control.personal_helper import register as register_personal_helper
 register_personal_helper(app, login_required)
 
 from web_control.monthly_meals import register as register_monthly_meals
-register_monthly_meals(app, login_required)
+register_monthly_meals(app, login_required, _start_print_command, PROJECT_ROOT)
 
 from web_control.meal_settings import register as register_meal_settings
 register_meal_settings(app, login_required)

@@ -330,7 +330,14 @@ class MonthlyWebTests(MonthlyFixture, TestCase):
 
             return wrapped
 
-        register(self.app, login_required)
+        from unittest.mock import Mock
+        from receipt import archive
+
+        archive_dir = patch.object(archive, "DIRECTORY", self.root / "archive")
+        archive_dir.start()
+        self.addCleanup(archive_dir.stop)
+        self.start_print = Mock(return_value=(True, None))
+        register(self.app, login_required, self.start_print, self.root)
         self.client = self.app.test_client()
         self.clock = patch("web_control.monthly_meals.uk_today", return_value=TODAY)
         self.clock.start()
@@ -445,77 +452,50 @@ class MonthlyWebTests(MonthlyFixture, TestCase):
             "No lunch needed",
         )
 
-    def test_shop_uses_saved_preference_and_only_transfers_reviewed_rows(self):
-        from meals import supermarket
+    def test_shop_prints_only_selected_items_from_the_chosen_list(self):
+        from meals import shopping_checklist
+        from receipt import archive
 
         self.assertEqual(self.client.get("/meals/shop").status_code, 302)
         self.login()
-        shops = {
-            f"shop_{i}": shop
-            for i, shop in enumerate(monthly.defaults()["shops"].values())
-        }
-        self.post("settings", retailer="ocado", **shops)
-        self.assertEqual(monthly.store().read()["retailer"], "ocado")
-        self.post("settings", retailer="https://unexpected.example", **shops)
-        self.assertEqual(monthly.store().read()["retailer"], "ocado")
         self.post("generate")
         view = monthly.report("2026-11")
         visits = [v for v in view["visits"] if v["shop"] in monthly.SUPERMARKET_SHOPS]
         day = visits[0]["day"]
-        rows, fingerprint = supermarket.review(
-            [v for v in visits if v["day"] == day], "ocado"
+        rows, fingerprint = shopping_checklist.review(
+            [v for v in visits if v["day"] == day], ("2026-11", day.isoformat(), "")
         )
-        landing = supermarket.TRANSFER_URL + "/" + "a" * 32 + "/landing"
-        with patch.object(supermarket, "transfer", return_value=landing) as send:
-            page = self.client.get("/meals/shop?month=2026-11")
-            self.assertEqual(page.status_code, 200)
-            self.assertIn(b"Shop at Ocado", page.data)
-            self.assertIn(b"https://www.ocado.com/search?", page.data)
-            self.assertNotIn(b"chicken breast", page.data)
-            self.assertNotIn(b"carrot", page.data)
-            for supplier, expected, excluded in (
-                ("Butcher", b"chicken breast", b"carrot"),
-                ("Greengrocer", b"carrot", b"chicken breast"),
-            ):
-                local = self.client.get(
-                    "/meals/shop", query_string=dict(month="2026-11", supplier=supplier)
-                )
-                self.assertIn(expected, local.data)
-                self.assertNotIn(excluded, local.data)
-                self.assertNotIn(b"https://www.ocado.com", local.data)
-                self.assertEqual(
-                    self.client.post(
-                        "/meals/shop",
-                        data=dict(
-                            month="2026-11",
-                            supplier=supplier,
-                            csrf_token="token",
-                        ),
-                    ).status_code,
-                    405,
-                )
-            data = dict(
-                month="2026-11",
-                day=day.isoformat(),
-                item=rows[0]["id"],
-                fingerprint=fingerprint,
-            )
-            self.assertEqual(
-                self.client.post("/meals/shop", data=data).status_code, 403
-            )
-            data.update(csrf_token="token")
-            self.client.post("/meals/shop", data=data)
-            self.client.post(
-                "/meals/shop", data=dict(data, confirm_share="yes", fingerprint="stale")
-            )
-            self.client.post(
-                "/meals/shop", data=dict(data, confirm_share="yes", item="not-reviewed")
-            )
-            send.assert_not_called()
-            page = self.client.post("/meals/shop", data=dict(data, confirm_share="yes"))
-            send.assert_called_once_with("ocado", [rows[0]["amount"]])
-            self.assertIn(landing.encode(), page.data)
-            self.assertIn(b"Your order has not been placed.", page.data)
+        page = self.client.get("/meals/shop?month=2026-11")
+        self.assertIn(b"Supermarket shopping checklist", page.data)
+        self.assertNotIn(b"chicken breast", page.data)
+        self.assertNotIn(b"carrot", page.data)
+        local = self.client.get("/meals/shop?month=2026-11&supplier=Butcher")
+        self.assertIn(b"chicken breast", local.data)
+        self.assertNotIn(b"carrot", local.data)
+        data = dict(
+            month="2026-11",
+            day=day.isoformat(),
+            item=rows[0]["id"],
+            fingerprint=fingerprint,
+        )
+        self.assertEqual(self.client.post("/meals/shop", data=data).status_code, 403)
+        data.update(csrf_token="token")
+        self.client.post("/meals/shop", data=dict(data, fingerprint="stale"))
+        self.client.post("/meals/shop", data=dict(data, item="not-reviewed"))
+        self.client.post("/meals/shop", data=dict(data, item=[]))
+        self.start_print.assert_not_called()
+        page = self.client.post("/meals/shop", data=data)
+        self.assertIn(b"Shopping checklist queued for printing", page.data)
+        self.start_print.assert_called_once()
+        flag, identifier, scope = self.start_print.call_args.args[0]
+        self.assertEqual((flag, scope), ("--archive", "all"))
+        pages = archive.load(identifier)["pages"]
+        self.assertEqual(set(pages), {"food"})
+        self.assertIn("[ ] " + rows[0]["amount"], pages["food"])
+        self.assertEqual(pages["food"].count("[ ]"), 1)
+        self.assertNotIn("chicken breast", pages["food"])
+        self.client.post("/meals/shop", data=data)
+        self.start_print.assert_called_once()
 
     def test_dated_tasks_refresh_when_all_diners_skip_dinner(self):
         from actions import checklists
