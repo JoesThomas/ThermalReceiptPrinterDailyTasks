@@ -103,9 +103,9 @@ def preferences():
         ) or not isinstance(value.get("cooking_style", {}), dict):
             raise ValueError("Invalid cooking preferences.")
 
-    return PrivateStore(
-        planner.PREFERENCES_FILE, default=dict, validate=valid, max_bytes=150000
-    ).read()
+    value = PrivateStore(planner.PREFERENCES_FILE, default=dict, validate=valid, max_bytes=150000).read()
+    from meals.household import store
+    return dict(value, _household=store().read())
 
 
 def identity(line):
@@ -121,7 +121,7 @@ def category(line):
     name = identity(line)
     # Explicit preservation and dry seasoning take precedence over fresh-food names.
     if re.search(
-        r"\b(tin|tinned|canned|frozen|dried|powder|granules|spice|spices|salt|oil|vinegar|rice|couscous|flour|sugar|honey|passata|purée|puree|oats|lentils)\b",
+        r"\b(tin|tinned|canned|frozen|dried|powder|granules|spice|spices|salt|oil|vinegar|rice|couscous|cereal|muesli|flour|sugar|honey|passata|purée|puree|oats|lentils)\b",
         name,
     ):
         return CATEGORIES[0]
@@ -152,7 +152,7 @@ def category(line):
     ):
         return CATEGORIES[2]
     if re.search(
-        r"\b(onion|carrot|pepper|broccoli|spinach|lettuce|tomato|lemon|lime|garlic|ginger|aubergine|potato|cabbage|salad|herbs?|courgette|peas|greens|leaf|leaves|apples?|avocados?|cucumbers?|mushrooms?|celery|coriander|parsley|basil)\b",
+        r"\b(onion|carrot|pepper|broccoli|spinach|lettuce|tomato|lemon|lime|garlic|ginger|aubergine|potato|cabbage|salad|herbs?|courgette|peas|greens|leaf|leaves|apples?|bananas?|strawberries|berries|peaches|avocados?|cucumbers?|mushrooms?|celery|coriander|parsley|basil)\b",
         name,
     ):
         return CATEGORIES[3]
@@ -213,7 +213,10 @@ def generate(raw, on=None):
     with file_lock(planner.PLANS_DIR / "monthly_generation"):
         # Read all existing files before creating anything; never replace damaged saved menus.
         starts = list(week_starts(max(first, on), last))
+        from meals.household import compatible_existing
+        prefs = preferences()
         saved = {start: read_week(start) for start in starts}
+        saved = {start: compatible_existing(value, on, prefs) if value else value for start,value in saved.items()}
         recent = []
         updated = 0
         for start in starts:
@@ -412,7 +415,11 @@ def report(raw, on=None):
                 for m in plan["meals"]
                 if first <= date.fromisoformat(m["date"]) <= last
             )
+    from meals import household, breakfast
+    household_settings=household.store().read()
+    meals=household.plan({'meals':meals}, household_settings)['meals']
     lookup = {m["date"]: m for m in meals}
+    calendar_snapshot=breakfast.snapshot()
     prefs = preferences()
     days = []
     from receipt.lifestyle import skip_meal
@@ -429,14 +436,17 @@ def report(raw, on=None):
                 meal=meal,
                 away=away,
                 past=day < on,
+                breakfast=breakfast.plan(day, household_settings, breakfast.context(day,saved_snapshot=calendar_snapshot)),
                 needs_review=bool(
-                    meal
-                    and meal.get("kind") == "recipe"
-                    and not planner._eligible(meal["recipe"], day, prefs)
+                    meal and (meal.get("_needs_review") or meal.get("kind") == "recipe" and not planner._eligible(meal["recipe"], day, prefs))
                 ),
             )
         )
     rows = requirements(meals, on)
+    for row in days:
+        b=row['breakfast']
+        if row['day']>=on and b and not b['unavailable'] and not b['done']:
+            rows.extend(dict(day=row['day'],line=item,recipe=b['recipe']['name'],scope='Breakfast') for item in b['recipe']['ingredients'])
     # Include the last day's planned leftover lunch even when it falls in the next month.
     config = store().read()
     from meals.resource_planning import analyse
@@ -466,6 +476,7 @@ def report(raw, on=None):
             ]
         )
     )
+    from meals.nutrition_guidance import overview
     return dict(
         month=raw,
         label=first.strftime("%B %Y"),
@@ -475,6 +486,7 @@ def report(raw, on=None):
         missing=missing,
         config=config,
         resources=resources,
+        balance=overview(meals),
         cost=costs,
         **shops,
     )

@@ -20,6 +20,11 @@
                     {{ today.strftime('%A %d %B') }} · Changing the recipe updates today's printed recipe and the meal plan shopping list.
                 </p>
             </header>
+            {% if household_meals_available|default(false) %}
+                <p>
+                    <a class="button" href="{{ url_for('meal_settings_page') }}">Household, breakfast &amp; meal settings</a>
+                </p>
+            {% endif %}
             {% if monthly_meals_available|default(false) %}
                 <section class="route-shortcut" aria-labelledby="monthly-plan-heading">
                     <div>
@@ -59,6 +64,13 @@
                         <p class="muted">Manual shopping items remain in the list even when they have the same name.</p>
                     </section>
                 </details>
+            {% endif %}
+            {% if household_meals_available|default(false) %}
+                {% from 'breakfast_panel.html' import breakfast_panel with context %}
+                <section>
+                    <h2>Today's breakfast</h2>
+                    {{ breakfast_panel(breakfast_view,today) }}
+                </section>
             {% endif %}
             <section>
                 <h2>Planned meal</h2>

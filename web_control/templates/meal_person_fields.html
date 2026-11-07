@@ -1,0 +1,70 @@
+<fieldset class="person-fields">
+    <legend>Person {{ number }}</legend>
+    <input type="hidden" name="person_index" value="{{ index }}">
+    <label>
+        Name or label
+        <input name="person_name_{{ index }}" maxlength="80" value="{{ p.name }}">
+    </label>
+    <label>
+        Birth year (optional)
+        <input name="birth_year_{{ index }}"
+               type="number"
+               min="{{ today.year-120 }}"
+               max="{{ today.year }}"
+               value="{{ p.birth_year or '' }}">
+    </label>
+    <label>
+        Energy table reference
+        <select name="reference_{{ index }}">
+            {% for value,label in [('range','Range across male/female tables'),('male','Male population table'),('female','Female population table')] %}
+                <option value="{{ value }}" {% if p.reference==value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>
+        Diet
+        <select name="diet_{{ index }}">
+            {% for value,label in [('omnivore','Omnivore'),('vegetarian','Vegetarian'),('vegan','Vegan')] %}
+                <option value="{{ value }}" {% if p.diet==value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>
+        Standard portion factor
+        <input name="portion_{{ index }}"
+               type="number"
+               min="0.25"
+               max="3"
+               step="0.25"
+               value="{{ p.portion }}"
+               required>
+    </label>
+    <details>
+        <summary>Allergens to exclude</summary>
+        <div class="allergen-options">
+            {% for allergen in allergens %}
+                <label>
+                    <input type="checkbox"
+                           name="allergen_{{ index }}"
+                           value="{{ allergen }}"
+                           {% if allergen in p.allergens %}checked{% endif %}>
+                    {{ allergen|replace('_',' ') }}
+                </label>
+            {% endfor %}
+        </div>
+    </details>
+    <label>
+        Avoid / dislikes (one ingredient or phrase per line)<textarea name="avoid_{{ index }}" rows="2">{{ p.avoid|join('\n') }}</textarea>
+    </label>
+    <label>
+        <input type="checkbox"
+               name="clinical_{{ index }}"
+               {% if p.clinical %}checked{% endif %}>
+        Individual feeding/clinical advice is needed (including pregnancy/breastfeeding if relevant)
+    </label>
+    <label>
+        Dietary notes for manual review (not automatic filters)
+        <input name="notes_{{ index }}" maxlength="300" value="{{ p.notes }}">
+    </label>
+    <button type="button" data-remove-person>Remove person</button>
+</fieldset>

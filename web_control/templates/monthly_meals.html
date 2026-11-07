@@ -23,9 +23,14 @@
                 <p class="eyebrow">One menu, fewer unplanned shops</p>
                 <h1>Monthly meals & shops</h1>
                 <p>
-                    Plan your dinners for a calendar month, with next-day lunch extras where the recipe includes them. Buy cupboard/freezer items in a main shop, then combine the weekly butcher, greengrocer and fresh-essential stops.
+                    Plan breakfasts and dinners for a calendar month, with next-day lunch extras where the recipe includes them. Buy cupboard/freezer items in a main shop, then combine the weekly butcher, greengrocer and fresh-essential stops.
                 </p>
             </header>
+            {% if household_meals_available|default(false) %}
+                <p>
+                    <a class="button" href="{{ url_for('meal_settings_page') }}">Customise people, breakfasts, diets &amp; seasonal choices</a>
+                </p>
+            {% endif %}
             {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
             <form method="get" class="month-choice">
                 <label>
@@ -60,6 +65,9 @@
                     {% for row in view.days %}
                         <article class="month-day{% if row.past %} month-past{% endif %}">
                             <h3>{{ row.day.strftime('%a %d %b') }}</h3>
+                            {% if household_meals_available|default(false) %}
+                                {% from 'breakfast_panel.html' import breakfast_panel with context %}{{ breakfast_panel(row.breakfast,row.day,view.month,true) }}
+                            {% endif %}
                             <p>
                                 {% if row.away %}
                                     Away · home meal paused
@@ -100,8 +108,16 @@
                         </article>
                     {% endfor %}
                 </div>
+                {% if household_meals_available|default(false) %}
+                    <details>
+                        <summary>Menu balance indicators</summary>
+                        <p>
+                            Counts of planned dinner choices, not proof of a complete diet: plant-protein meals {{ view.balance.plant }}, fish {{ view.balance.fish }} (oily fish {{ view.balance.oily }}), wholegrain choices {{ view.balance.wholegrain }}, produce-containing dinners {{ view.balance.produce }}. Balance across the day/week and check individual needs; breakfasts, lunches and snacks matter too.
+                        </p>
+                    </details>
+                {% endif %}
                 <p class="muted">
-                    Recipe-based estimated remaining meal cost: £{{ '%.2f'|format(view.cost.total) }}. This is not a live shop quote or a complete household food budget; component and pack costs can differ.
+                    Estimated dinner / planned-lunch recipe cost (breakfast prices and unknown custom recipe costs excluded): £{{ '%.2f'|format(view.cost.total) }}. This is not a live shop quote or a complete household food budget; component and pack costs can differ.
                 </p>
             </section>
             <section id="month-shops">
@@ -163,7 +179,7 @@
                     <p>No remaining recipe ingredients. Create the menu or choose another month.</p>
                 {% endfor %}
                 <p class="muted">
-                    Next-day lunch extras from the final dinner may fall in the following month. Household basics, breakfasts, drinks and snacks are not automatically invented. Compatible units are combined; weight/count conversions are not guessed.
+                    Next-day lunch extras from the final dinner may fall in the following month. Household basics, drinks and snacks are not automatically invented. Compatible units are combined; weight/count conversions are not guessed.
                 </p>
             </section>
             <section id="month-settings">

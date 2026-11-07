@@ -549,3 +549,5 @@ Open **More tools → Personal helper** for task slots around calendar/travel, n
 ### Monthly meals and specialist shopping
 
 Open **Meals → Plan a month of meals** for a calendar-month menu backed by the same weekly plans as the daily receipt. Shopping separates cupboard/freezer supplies from dated butcher, greengrocer and fresh-essential lists, with editable suppliers and an optional midweek produce top-up. See [monthly menus and shopping](docs/monthly-meals.md) for quantities, storage assumptions and local files.
+
+Household diners, dietary exclusions, custom meals, quick/calendar-aware breakfasts, UK seasonal preferences and editable emergency supplies are available under **Settings → Household & meal settings**. [Household meal guide](docs/household-meals.md) explains quantities, population energy references and local data.

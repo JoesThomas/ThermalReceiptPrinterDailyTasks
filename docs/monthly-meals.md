@@ -1,8 +1,8 @@
 # Monthly menus and specialist shopping
 
-Open **Meals → Plan a month of meals**, or **More tools → Monthly meals & shops**. Choose a calendar month, then **Create / complete monthly menu**. This is a dinner menu with the recipes' next-day lunch extras, not a complete breakfast/snack/household plan.
+Open **Meals → Plan a month of meals**, or **More tools → Monthly meals & shops**. Choose a calendar month, then **Create / complete monthly menu**. The menu includes dinners, their planned next-day lunch extras and optional breakfasts. See [household settings](household-meals.md) for diners, dietary filters, seasonal choices and calendar-aware breakfasts; snacks, drinks and other household needs still need separate allowance.
 
-The month is backed by the same private Sunday-start weekly files used by the daily receipt. Existing meals and eating-out/freezer overrides are retained; missing upcoming weeks/days are filled. New choices retain diet, allergen and weekday-time rules, favour shared components and penalise repeats from earlier weeks in the month. Existing saved recipes that conflict with current rules are flagged for review rather than silently replaced. Use each day’s **Change this meal** to edit upcoming, uneaten meals. The edited week feeds the regular receipt and shopping. Generating another overlapping month preserves already planned boundary days.
+The month is backed by the same private Sunday-start weekly files used by the daily receipt. Existing meals and eating-out/freezer overrides are retained; missing upcoming weeks/days are filled. New choices retain diet, allergen and weekday-time rules, favour shared components and penalise repeats from earlier weeks in the month. Incompatible future, uneaten recipes are flagged for review and replaced when you complete the monthly menu; past and eaten meals remain recorded. Use each day’s **Change this meal** to edit upcoming, uneaten meals. The edited week feeds the regular receipt and shopping. Generating another overlapping month preserves already planned boundary days.
 
 ## Shopping pattern
 
@@ -17,7 +17,7 @@ Select a shared weekly day to combine stops into an outing. The report counts sh
 
 Correct individual ingredient categories where automatic classification does not suit the product. Explicit tins/frozen/dried foods and dry staples are separated from fresh products; unknown foods default to fresh essentials. Category corrections persist across future menus. Fresh supplier categories cannot be assigned to the monthly main-shop schedule wholesale. Assign an individual product to cupboard/freezer only after checking its actual packaging, suitability and available freezer space.
 
-Compatible recipe quantities are summed before pack/count rounding. Different cuts, measurement types and incompatible units remain separate. Unmeasured quantities remain visible; no density or weight-per-piece is invented. Items recorded in the pantry remain visible with a stock-check note, since a name or boolean entry does not establish enough stock for a whole month. Amounts use the recipes as written; additional guests, drinks, snacks and household essentials need separate allowance.
+Compatible recipe quantities are summed before pack/count rounding. Different cuts, measurement types and incompatible units remain separate. Unmeasured quantities remain visible; no density or weight-per-piece is invented. Items recorded in the pantry remain visible with a stock-check note, since a name or boolean entry does not establish enough stock for a whole month. Amounts use configured household portion factors when enabled; additional guests, drinks, snacks and household essentials need separate allowance.
 
 Bought prep components missing from a recipe's literal ingredients are included as explicit shopping requirements, using the same weekly make/buy decisions as the receipt. Missing amounts remain marked. Homemade component ingredients and original preparation yields are shown separately for manual checking; they are not guessed or automatically scaled. The existing conservative component batching/storage policy still applies.
 
@@ -28,7 +28,7 @@ A shopping date is not a shelf-life guarantee. Follow use-by dates, opened-pack 
 - [FSA: chilling, freezing and defrosting](https://www.gov.uk/government/publications/how-to-chill-freeze-and-defrost-food-safely/how-to-chill-freeze-and-defrost-food-safely)
 - [Best before and use-by dates](https://www.gov.uk/understanding-food-labelling/best-before-and-use-by-dates)
 
-Menu cost is the recipes' existing estimate, not live prices or a complete household budget; components, quantities, pack sizes and specialist prices can change the actual total. This page does not send orders, choose a real shop, insert errands, change retailer baskets or replace the existing Tesco review. The daily receipt uses the saved menu without adding a month-long shopping section to the daily paper.
+Menu cost is the existing dinner/lunch recipe estimate, excluding breakfast prices and unknown custom recipe costs; it is not live prices or a complete household budget; components, quantities, pack sizes and specialist prices can change the actual total. This page does not send orders, choose a real shop, insert errands, change retailer baskets or replace the existing Tesco review. The daily receipt uses the saved menu without adding a month-long shopping section to the daily paper.
 
 ## Local files
 

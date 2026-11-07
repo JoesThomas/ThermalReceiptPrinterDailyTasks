@@ -582,7 +582,9 @@ def meals_page():
         resources = analyse(meals.load_plan_for(today) or {}, meals._load(meals.COMPONENTS_FILE, {}).get("components", []), helper_store().read()["meal_uses"], today)
     except (OSError, ValueError):
         resources = {"batches": [], "cleanup": [], "shared": []}
-    return render_template("meals.html", recipes=recipes, planned=planned, storage=storage, resources=resources,
+    from meals import breakfast as breakfast_planner
+    breakfast_view = breakfast_planner.plan(today)
+    return render_template("meals.html", recipes=recipes, planned=planned, storage=storage, resources=resources, breakfast_view=breakfast_view,
                            confirmed=meal_confirmation(today), today=today, error=problem)
 
 
@@ -647,7 +649,7 @@ def calendar_map():
                          include_villa=feature_enabled(load_receipt_settings(), 'villa'),
                          api_key=private.get('football', {}).get('api_key', ''))
         from web_control.today_summary import save_calendar
-        save_calendar(events)
+        save_calendar(events, coverage_days=7)
         from receipt.freshness import snapshot
         warnings = snapshot().get('Calendar agenda', {}).get('warnings', [])
         if warnings:
@@ -1468,6 +1470,9 @@ register_personal_helper(app, login_required)
 
 from web_control.monthly_meals import register as register_monthly_meals
 register_monthly_meals(app, login_required)
+
+from web_control.meal_settings import register as register_meal_settings
+register_meal_settings(app, login_required)
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

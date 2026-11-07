@@ -1,0 +1,380 @@
+{% macro csrf() %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{% endmacro %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Household & meal settings · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static',filename='theme.css') }}">
+        <link rel="stylesheet"
+              href="{{ url_for('static',filename='meal-settings.css') }}">
+        <script src="{{ url_for('static',filename='meal-settings.js') }}" defer></script>
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content" class="meal-settings privacy-sensitive">
+            <a href="{{ url_for('meals_page') }}">← Meals & recipes</a>
+            <header>
+                <p class="eyebrow">Your household, your menu</p>
+                <h1>Household & meal settings</h1>
+                <p>
+                    Set who is eating, dietary requirements and favourite meals. Shared dishes respect the combined exclusions; settings do not generate separate plates or medical diets.
+                </p>
+            </header>
+            {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            <nav class="finance-jumps" aria-label="Meal setting sections">
+                <a href="#household">People & preferences</a><a href="#energy">Age & energy references</a><a href="#custom-recipes">Custom recipes</a><a href="#emergency-food">Emergency food</a>
+            </nav>
+            <section id="household">
+                <h2>People & planning preferences</h2>
+                <p>
+                    {{ config.people|length }} person(s) recorded. Add or remove profiles to change the number of diners. Birth year updates the approximate age range automatically; portion factors are your choices, never derived from calories. Children under two are excluded from shared adult recipes and need a separate feeding plan.
+                </p>
+                <p class="helper">
+                    Filters use recipe metadata and ingredient text, not a guarantee about a particular product. Check ingredient labels, cross-contact and age-appropriate preparation. Clinical notes require manual review. Existing global recipe restrictions still apply.
+                </p>
+                <form method="post" action="{{ url_for('meal_settings_save') }}">
+                    {{ csrf() }}
+                    <div data-household-people>
+                        {% for p in config.people %}
+                            {% set index=loop.index0|string %}{% set number=loop.index %}
+                            {% include 'meal_person_fields.html' %}
+                        {% endfor %}
+                    </div>
+                    <button type="button" data-add-person>Add person</button>
+                    <h3>Menu preferences</h3>
+                    <label>
+                        <input type="checkbox"
+                               name="balanced"
+                               {% if config.balanced %}checked{% endif %}>
+                        Favour varied protein, plant foods, wholegrains and less processed meat
+                    </label>
+                    <label>
+                        <input type="checkbox"
+                               name="seasonal"
+                               {% if config.seasonal %}checked{% endif %}>
+                        Prefer UK seasonal fresh produce
+                    </label>
+                    <p class="muted">
+                        Seasonality is a broad seasonal guide, not live local availability. Frozen/tinned foods stay useful; dietary and time limits take priority. <a href="{{ season_source }}">Seasonality source</a> · <a href="{{ balance_source }}">Eatwell guidance</a>.
+                    </p>
+                    <h3>Breakfast</h3>
+                    <label>
+                        <input type="checkbox"
+                               name="breakfast_enabled"
+                               {% if config.breakfast_enabled %}checked{% endif %}>
+                        Plan breakfast and show a short line on the food receipt
+                    </label>
+                    <label>
+                        Weekday preparation limit (minutes)
+                        <input type="number"
+                               name="weekday_minutes"
+                               min="1"
+                               max="15"
+                               value="{{ config.weekday_minutes }}"
+                               required>
+                    </label>
+                    <label>
+                        Weekend preparation limit (minutes)
+                        <input type="number"
+                               name="weekend_minutes"
+                               min="5"
+                               max="90"
+                               value="{{ config.weekend_minutes }}"
+                               required>
+                    </label>
+                    <label>
+                        Breakfast window begins
+                        <input type="time"
+                               name="breakfast_start"
+                               value="{{ config.breakfast_start }}"
+                               required>
+                    </label>
+                    <label>
+                        Breakfast window ends
+                        <input type="time"
+                               name="breakfast_end"
+                               value="{{ config.breakfast_end }}"
+                               required>
+                    </label>
+                    <label>
+                        Time to eat / tidy up (minutes)
+                        <input type="number"
+                               name="eating_minutes"
+                               min="5"
+                               max="60"
+                               value="{{ config.eating_minutes }}"
+                               required>
+                    </label>
+                    <label>
+                        <input type="checkbox"
+                               name="provisional_weekends"
+                               {% if config.provisional_weekends %}checked{% endif %}>
+                        Allow provisional weekend choices when the calendar is unverified
+                    </label>
+                    <p class="muted">
+                        Otherwise unverified weekends use a quick fallback. Saved calendar coverage and travel times are checked locally; refresh Calendar or Routes & times when plans change. Meal selections and groceries can change when new calendar information arrives.
+                    </p>
+                    <details>
+                        <summary>Choose enabled breakfasts</summary>
+                        <label>
+                            <input type="checkbox"
+                                   name="all_breakfasts"
+                                   {% if config.breakfasts is none %}checked{% endif %}>
+                            Use all eligible breakfasts
+                        </label>
+                        {% for r in breakfasts %}
+                            <label>
+                                <input type="checkbox"
+                                       name="breakfast"
+                                       value="{{ r.name }}"
+                                       {% if config.breakfasts is not none and r.name in config.breakfasts %}checked{% endif %}>
+                                {{ r.name }} · {{ r.total_minutes }} min
+                            </label>
+                        {% endfor %}
+                        <p>Uncheck “Use all” to apply your selections; include at least one quick option for weekdays.</p>
+                    </details>
+                    <details>
+                        <summary>Choose enabled dinners</summary>
+                        <label>
+                            <input type="checkbox"
+                                   name="all_dinners"
+                                   {% if config.dinners is none %}checked{% endif %}>
+                            Use all eligible dinners
+                        </label>
+                        {% for r in dinners %}
+                            <label>
+                                <input type="checkbox"
+                                       name="dinner"
+                                       value="{{ r.name }}"
+                                       {% if config.dinners is not none and r.name in config.dinners %}checked{% endif %}>
+                                {{ r.name }}
+                            </label>
+                        {% endfor %}
+                    </details>
+                    <button class="primary">Save household & meal preferences</button>
+                </form>
+                <template id="household-person-template">
+                    {% with p=person_template,index='__index__',number='__number__' %}
+                        {% include 'meal_person_fields.html' %}
+                    {% endwith %}
+                </template>
+                <p>
+                    New choices use these preferences. <a href="{{ url_for('monthly_meals_page') }}">Complete the monthly menu</a> to replace incompatible future recipes. Quantities cover the chosen diner portions and the recipe’s planned lunch; batch meals may leave extra portions. Bigger quantities can need more time and equipment.
+                </p>
+            </section>
+            <section id="energy">
+                <h2>Age & energy references</h2>
+                <p>
+                    These are SACN population estimates, not personal recommendations, calorie limits or weight-loss targets. They do not change portion sizes. Activity, growth, health and individual needs can differ substantially. Birth year gives two possible ages until the birthday is known; the displayed range includes both.
+                </p>
+                {% for row in references %}
+                    <article>
+                        <h3>{{ row.person.name }}</h3>
+                        <p>
+                            {% if row.ages %}
+                                Approximate age: {{ row.ages[0] }}–{{ row.ages[1] }}.
+                            {% else %}
+                                Birth year not set.
+                            {% endif %}
+                            {% if row.low %}
+                                Population reference: {{ row.low }}
+                                {% if row.low!=row.high %}–{{ row.high }}{% endif %}
+                                kcal/day.
+                            {% endif %}
+                        </p>
+                        <p class="muted">{{ row.note }}</p>
+                        {% if row.person.notes %}<p>Manual review: {{ row.person.notes }}</p>{% endif %}
+                    </article>
+                {% endfor %}
+                <a href="{{ energy_source }}">SACN source and limitations</a>
+                <p>
+                    Balanced-menu checks are indicators across days, not proof of a complete diet. Lunches, snacks, drinks and individual needs still matter. The Eatwell Guide does not cover children under two; seek suitable individual advice for clinical requirements.
+                </p>
+            </section>
+            <section id="custom-recipes">
+                <h2>Your own recipes</h2>
+                <p>
+                    Add breakfast or dinner recipes. Ingredient quantities must describe the full cooking yield below; numeric quantities scale, while unmeasured amounts remain marked for review. Methods and cooking times are not automatically validated or scaled.
+                </p>
+                {% for r in config.custom+[none] %}
+                    <details {% if not r %}open{% endif %}>
+                        <summary>{{ r.name if r else 'Add a custom recipe' }}</summary>
+                        <form method="post" action="{{ url_for('meal_settings_recipe') }}">
+                            {{ csrf() }}
+                            {% if r %}<input type="hidden" name="id" value="{{ r.id }}">{% endif %}
+                            <label>
+                                Recipe name
+                                <input name="name"
+                                       maxlength="120"
+                                       value="{{ r.name if r else '' }}"
+                                       required>
+                            </label>
+                            <label>
+                                Meal type
+                                <select name="slot">
+                                    <option value="dinner" {% if r and r.slot=='dinner' %}selected{% endif %}>Dinner</option>
+                                    <option value="breakfast"
+                                            {% if r and r.slot=='breakfast' %}selected{% endif %}>Breakfast</option>
+                                </select>
+                            </label>
+                            <label>
+                                Preparation / cooking minutes
+                                <input type="number"
+                                       name="minutes"
+                                       min="1"
+                                       max="240"
+                                       value="{{ r.total_minutes if r else 20 }}"
+                                       required>
+                            </label>
+                            <label>
+                                Whole recipe yield (standard portions)
+                                <input type="number"
+                                       name="servings"
+                                       min="0.25"
+                                       max="30"
+                                       step="0.25"
+                                       value="{{ r.cook_servings if r else 1 }}"
+                                       required>
+                            </label>
+                            <label>
+                                Ingredients (one per line)<textarea name="ingredients" rows="4" required>{{ r.ingredients|join('\n') if r else '' }}</textarea>
+                            </label>
+                            <label>
+                                Method (one step per line)<textarea name="method" rows="4" required>{{ r.method|join('\n') if r else '' }}</textarea>
+                            </label>
+                            <label>
+                                Estimated kcal per standard portion (optional)
+                                <input type="number"
+                                       name="calories"
+                                       min="1"
+                                       max="3000"
+                                       value="{{ r.nutrition_per_serving.calories or '' if r else '' }}">
+                            </label>
+                            <label>
+                                <input type="checkbox"
+                                       name="vegetarian"
+                                       {% if r and r.dietary.vegetarian %}checked{% endif %}>
+                                Vegetarian
+                            </label>
+                            <label>
+                                <input type="checkbox"
+                                       name="vegan"
+                                       {% if r and r.dietary.vegan %}checked{% endif %}>
+                                Vegan
+                            </label>
+                            <details>
+                                <summary>Declared allergens</summary>
+                                {% for allergen in allergens %}
+                                    <label>
+                                        <input type="checkbox"
+                                               name="recipe_allergen"
+                                               value="{{ allergen }}"
+                                               {% if r and allergen in r.allergens.uk_14 %}checked{% endif %}>
+                                        {{ allergen|replace('_',' ') }}
+                                    </label>
+                                {% endfor %}
+                            </details>
+                            <button>Save custom recipe</button>
+                            {% if r %}<button name="remove" value="on" formnovalidate>Remove custom recipe</button>{% endif %}
+                        </form>
+                    </details>
+                {% endfor %}
+            </section>
+            <section id="emergency-food">
+                <h2>Emergency food & water</h2>
+                <p>
+                    UK government guidance recommends being ready for three days, with non-perishable food that needs no refrigeration or cooking, and 3 litres of stored drinking water per person per day. Build supplies gradually from foods you normally eat and review them every six months. <a href="{{ reserve.source }}">Government Be Ready checklist</a>.
+                </p>
+                <p>
+                    Your chosen horizon: {{ reserve.days }} days for {{ reserve.people }} people. Stored-water goal: {{ reserve.water|round(1) }} litres; missing: {{ reserve.water_missing|round(1) }} litres. These are stored supplies, not a daily drinking prescription; extra water may be needed for other uses.
+                </p>
+                {% if reserve.infant %}
+                    <p class="helper">
+                        Baby feeding, ready-to-feed formula, sterilisation and individual water needs require a separate plan. Infant meal quantities are not generated here.
+                    </p>
+                {% endif %}
+                <p>
+                    Food options below are filtered for your household, but check the exact product and age-appropriate texture. They are suggestions, not a complete emergency diet or proof of adequate calories. Food target quantities are set by you in labelled portions or packs; no government tin counts are invented. Use single-serving packs where opened food would otherwise need refrigeration.
+                </p>
+                <form method="post" action="{{ url_for('meal_settings_reserve') }}">
+                    {{ csrf() }}
+                    <label>
+                        Your reserve days (government baseline: 3)
+                        <input type="number"
+                               name="reserve_days"
+                               min="1"
+                               max="30"
+                               value="{{ config.reserve_days }}"
+                               required>
+                    </label>
+                    <label>
+                        Your water litres per person per day (baseline: 3)
+                        <input type="number"
+                               name="water_litres"
+                               min="0"
+                               max="20"
+                               step="0.1"
+                               value="{{ config.water_litres }}"
+                               required>
+                    </label>
+                    <label>
+                        Stored water already available (litres)
+                        <input type="number"
+                               name="water_have"
+                               min="0"
+                               max="10000"
+                               step="0.1"
+                               value="{{ config.water_have }}"
+                               required>
+                    </label>
+                    {% for r in reserve.options %}
+                        <fieldset>
+                            <legend>{{ r.name }}</legend>
+                            <label>
+                                Your household target (packs / labelled portions)
+                                <input type="number"
+                                       name="target_{{ r.id }}"
+                                       min="0"
+                                       max="10000"
+                                       step="0.5"
+                                       value="{{ r.target if r.target is not none else '' }}">
+                            </label>
+                            <label>
+                                Already stored (same units)
+                                <input type="number"
+                                       name="have_{{ r.id }}"
+                                       min="0"
+                                       max="10000"
+                                       step="0.5"
+                                       value="{{ r.have }}">
+                            </label>
+                            <p>
+                                {% if r.missing is not none %}
+                                    Missing: {{ r.missing }} in your chosen units.
+                                {% else %}
+                                    Quantity not set: check labels and your usual food needs.
+                                {% endif %}
+                            </p>
+                        </fieldset>
+                    {% endfor %}
+                    <label>
+                        Other reserve foods / stock notes
+                        <input name="reserve_notes"
+                               maxlength="500"
+                               value="{{ config.reserve_notes }}">
+                    </label>
+                    <button>Save reserve settings</button>
+                </form>
+                <p>
+                    These reserves remain separate from ordinary monthly groceries, so they are not silently added to every shopping list.
+                </p>
+            </section>
+        </main>
+    </body>
+</html>
