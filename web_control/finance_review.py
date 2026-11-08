@@ -307,6 +307,11 @@ def capture_review(deps, snapshot):
     if model.get('http_status'):
         raise ValueError('Finance observation could not be calculated')
     observation = model['observation']
+    if observation['summary'].get('bank_data_status') == 'complete':
+        from services.subscriptions import update_subscriptions_from_transactions
+        from finance.receipt import load_finance_settings
+        update_subscriptions_from_transactions(observation['transactions'], today=today,
+                                               finance_settings=load_finance_settings())
     snapshots(model['insights']['observation'])
     save_review(observation['transactions'], model['rows'], today)
     capture(model['salary_plan'], observation['transactions'], model['rows'], model['income'],

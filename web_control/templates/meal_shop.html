@@ -15,7 +15,7 @@
         <main id="main-content">
             <a href="{{ url_for('monthly_meals_page',month=view.month,_anchor='month-shops') }}">← Monthly shopping lists</a>
             <h1>{{ supplier or 'Supermarket' }} shopping checklist</h1>
-            <p>Choose a date, then print the selected items as a receipt with empty tick boxes.</p>
+            <p>Choose a date to tick off items on your phone or print a paper checklist.</p>
             {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
             {% if dates %}
                 <section>
@@ -37,6 +37,36 @@
                             <a href="{{ url_for('monthly_meals_page',month=view.month,_anchor='month-components') }}">Check any homemade components separately</a>.
                         </p>
                     {% endif %}
+                </section>
+                <section id="shop-mode" data-shop-key="{{ fingerprint }}" hidden data-private>
+                    <h2>Shop on your phone</h2>
+                    <p>
+                        Progress is saved in this browser for this list. If the planned ingredients change, the updated list starts fresh.
+                    </p>
+                    <p id="shop-progress" role="status"></p>
+                    <div class="shop-mode-items">
+                        {% for row in rows %}
+                            <fieldset class="shop-mode-item">
+                                <legend>
+                                    {{ row.amount }}
+                                    {% if row.pantry %}· check pantry{% endif %}
+                                    {% if not row.measured %}· check amount{% endif %}
+                                </legend>
+                                <label>
+                                    <input type="checkbox" data-shop-got="{{ row.id }}">
+                                    Got it
+                                </label>
+                                <label>
+                                    Otherwise
+                                    <select data-shop-state="{{ row.id }}">
+                                        <option value="">Still to get</option>
+                                        <option value="have">Already have</option>
+                                        <option value="missing">Couldn’t find</option>
+                                    </select>
+                                </label>
+                            </fieldset>
+                        {% endfor %}
+                    </div>
                 </section>
                 <section>
                     <h2>Items to print</h2>

@@ -8,6 +8,14 @@ module.exports = async function(page) {
   await page.getByRole('heading',{name:'Supermarket shopping checklist',exact:true}).waitFor();
   const checks = page.locator('input[data-shop-amount]:checked');
   assert.ok(await checks.count() > 0);
+  const phone = page.locator('#shop-mode');
+  await phone.waitFor();
+  await phone.locator('[data-shop-got]').first().check();
+  await phone.locator('[data-shop-state]').nth(1).selectOption('missing');
+  await page.reload();
+  assert.equal(await phone.locator('[data-shop-got]').first().isChecked(),true);
+  assert.equal(await phone.locator('[data-shop-state]').nth(1).inputValue(),'missing');
+  assert.match(await phone.locator('#shop-progress').innerText(),/1 got.*1 couldn’t find/);
   await page.getByText('Copy shopping list instead',{exact:true}).click();
   const text = page.locator('#shop-copy-text');
   const before = await text.inputValue();

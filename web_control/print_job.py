@@ -32,6 +32,7 @@ def main():
     if args == ['--paper-test']: page = 'paper test'
     elif args == ['--printer-test']: page = 'printer test'
     elif args[:1] == ['--archive']: page = 'saved receipt'
+    elif args[:1] == ['--quick-note']: page = 'quick print note'
     # The parent writes the lock immediately after starting this process.
     # Wait for that write so a quick job cannot leave a stale lock behind.
     for _ in range(100):
@@ -61,6 +62,10 @@ def main():
             if len(args) != 3:
                 raise ValueError('Invalid archive command')
             command = [sys.executable, str(ROOT / 'web_control' / 'archive_job.py'), *args[1:]]
+        if args[:1] == ['--quick-note']:
+            if len(args) != 2:
+                raise ValueError('Invalid Quick Print command')
+            command = [sys.executable, str(ROOT / 'web_control' / 'quick_note_job.py'), args[1]]
         if scheduled:
             from receipt.lifestyle import active
             if active():
@@ -115,6 +120,12 @@ def main():
         save_status("failed", page)
         raise
     finally:
+        if args[:1] == ['--quick-note'] and len(args) == 2:
+            from receipt.quick_note import path_for
+            try:
+                path_for(ROOT, args[1]).unlink(missing_ok=True)
+            except (OSError, ValueError):
+                pass
         if scheduled:
             try:
                 from web_control.schedule_history import record

@@ -52,7 +52,13 @@ def save_subscriptions(data):
 
 
 def update_subscriptions_from_transactions(transactions, *, today=None, finance_settings=None):
-    """Save newly matched bill payments and report changes to their estimates."""
+    """Save the actual payment; a changed amount needs review before forecasting."""
+    from storage import file_lock
+    with file_lock(SUBSCRIPTIONS_FILE):
+        return _record_observations(transactions, today=today, finance_settings=finance_settings)
+
+
+def _record_observations(transactions, *, today=None, finance_settings=None):
     today = today or uk_today()
     data = load_subscriptions()
     monthly = [item for item in data["monthly"] if not monthly_contract_ended(item, today)]
@@ -78,13 +84,16 @@ def update_subscriptions_from_transactions(transactions, *, today=None, finance_
             continue
         item["last_paid"] = paid_date
         history = item.setdefault("history", [])
-        item["history"] = (history + [{"date": paid_date, "amount": amount}])[-24:]
+        entry = {"date": paid_date, "amount": amount}
+        item["history"] = (history + [entry])[-24:]
         expected = parse(item.get("amount"))
-        item["amount"] = amount
+        if expected is None:
+            item["amount"] = amount
         changed = True
         if expected is None or parse(amount) == expected:
             continue
         previous = float(expected)
+        entry.update(expected=previous, decision="pending")
         difference = round(amount - previous, 2)
         changes.append({
             "name": item.get("name", "Subscription"),

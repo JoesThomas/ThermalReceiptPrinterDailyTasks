@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Use this first · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static', filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <a href="{{ url_for('meals_page') }}">← Meals</a>
+            <h1>Use this first</h1>
+            <p>See what could replace a planned dinner. Checking a date does not change the menu or shopping list.</p>
+            {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            <section data-private>
+                <h2>Options for {{ day.strftime('%A %d %B') }}</h2>
+                <form method="get">
+                    <label>
+                        Meal date
+                        <input type="date"
+                               name="day"
+                               value="{{ day.isoformat() }}"
+                               min="{{ today.isoformat() }}"
+                               max="{{ latest.isoformat() }}"
+                               required>
+                    </label>
+                    <button>Check this date</button>
+                </form>
+                <ul>
+                    {% for row in options %}
+                        <li>{{ row.recipe }} · {{ row.portions }} portions in the {{ row.location }} · {{ row.needed }} needed</li>
+                    {% else %}
+                        <li>No saved batches fit this dinner and the current meal settings.</li>
+                    {% endfor %}
+                </ul>
+                <p>Check actual ingredients, handling and earlier labels before serving. The app cannot verify storage.</p>
+            </section>
+            <section data-private>
+                <h2>Record a batch</h2>
+                <form method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="day" value="{{ day.isoformat() }}">
+                    <label>
+                        Recipe
+                        <select name="recipe" required>
+                            <option value="">Choose the recipe used</option>
+                            {% for recipe in recipes %}<option>{{ recipe }}</option>{% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Portions
+                        <input type="number" name="portions" min="1" max="100" value="1" required>
+                    </label>
+                    <label>
+                        Stored in
+                        <select name="location">
+                            <option value="fridge">Fridge</option>
+                            <option value="freezer">Freezer (still frozen)</option>
+                        </select>
+                    </label>
+                    <label>
+                        Cooking date
+                        <input type="date"
+                               name="cooked"
+                               value="{{ today.isoformat() }}"
+                               max="{{ today.isoformat() }}"
+                               required>
+                    </label>
+                    <label>
+                        Earlier use-by date, required for the fridge
+                        <input type="date" name="use_by">
+                    </label>
+                    <label>
+                        <input type="checkbox" name="confirmed" required>
+                        I used the listed recipe without substitutions and stored it promptly.
+                    </label>
+                    <button name="action" value="add">Save batch</button>
+                </form>
+            </section>
+            <section data-private>
+                <h2>Saved portions</h2>
+                {% for row in items %}
+                    <form method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="day" value="{{ day.isoformat() }}">
+                        <input type="hidden" name="id" value="{{ row.id }}">
+                        <p>
+                            {{ row.recipe }} · {{ row.portions }} in the {{ row.location }} · cooked {{ row.cooked }}
+                            {% if row.use_by %}· use by {{ row.use_by }}{% endif %}
+                        </p>
+                        <button name="action" value="use">Use one portion</button>
+                        <button name="action" value="remove">Remove batch</button>
+                    </form>
+                {% else %}
+                    <p>No batches recorded.</p>
+                {% endfor %}
+            </section>
+            <details>
+                <summary>Storage reminders</summary>
+                <ul>
+                    {% for note in guidance %}<li>{{ note }}</li>{% endfor %}
+                </ul>
+            </details>
+        </main>
+    </body>
+</html>

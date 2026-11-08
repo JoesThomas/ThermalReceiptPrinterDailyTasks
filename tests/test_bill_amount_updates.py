@@ -27,7 +27,7 @@ def status(items, transactions, yearly=()):
 
 
 class BillAmountUpdatesTests(unittest.TestCase):
-    def test_higher_bill_is_paid_and_next_month_uses_matched_amount(self):
+    def test_higher_bill_is_paid_and_next_month_uses_saved_estimate(self):
         transactions = [payment(-65), payment(80, transaction_type="CREDIT"),
                         payment(-77, status="PENDING"), payment(-70, on="2026-11-08")]
         rows = status([BILL], transactions)
@@ -39,7 +39,7 @@ class BillAmountUpdatesTests(unittest.TestCase):
         self.assertEqual(BILL["amount"], 50)
         events, _, _ = payment_schedule(rows, [], transactions, {}, TODAY, horizon=40)
         self.assertEqual([(event["date"], event["amount"]) for event in events],
-                         [(date(2026, 12, 8), 65)])
+                         [(date(2026, 12, 8), 50)])
 
     def test_higher_same_merchant_purchase_does_not_replace_exact_bill(self):
         rows = status([BILL], [payment(-65), payment(-50)])
@@ -65,7 +65,7 @@ class BillAmountUpdatesTests(unittest.TestCase):
         self.assertEqual(row["bank_paid_amount"], 145)
         events, _, _ = payment_schedule([], [ANNUAL], transactions, {}, TODAY, horizon=400)
         self.assertEqual([(event["date"], event["amount"]) for event in events],
-                         [(date(2027, 11, 8), 145)])
+                         [(date(2027, 11, 8), 120)])
         for amount, on in [(-10, "2026-11-06"), (-145, "2026-10-25")]:
             row = annual_subscription_rows([ANNUAL], [payment(amount, "Annual Service", on)], TODAY)[0]
             self.assertIsNone(row["bank_paid_date"])
@@ -88,5 +88,5 @@ class BillAmountUpdatesTests(unittest.TestCase):
             self.assertEqual(subscriptions.update_subscriptions_from_transactions(
                 [payment(-50, on="2026-11-05")], today=TODAY), [])
         save.assert_called_once()
-        self.assertEqual(data["monthly"][0]["history"], [{"date": "2026-11-06", "amount": 65}])
-        self.assertEqual(data["yearly"][0]["amount"], 145)
+        self.assertEqual(data["monthly"][0]["history"], [{"date": "2026-11-06", "amount": 65, "expected": 50, "decision": "pending"}])
+        self.assertEqual(data["yearly"][0]["amount"], 120)
