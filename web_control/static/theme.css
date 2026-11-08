@@ -295,3 +295,5 @@ html[data-privacy=true] #amex-balance-alert [data-private]{visibility:hidden}
   align-items: center;
   gap: .5rem;
 }
+
+.quick-note-preview { max-width: 100%; overflow-x: auto; }

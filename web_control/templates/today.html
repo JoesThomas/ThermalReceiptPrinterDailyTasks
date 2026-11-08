@@ -4,14 +4,14 @@
     <p class="muted">
         Saved information, without waiting for external services. Generate a live receipt to check for updates.
     </p>
+    {% if weekly_review_available|default(false) %}
+        <p>
+            <a href="{{ url_for('weekly_review') }}">Look ahead: weekly review</a>
+        </p>
+    {% endif %}
     {% if today_view.priorities %}
         <section class="today-priorities">
             <h3>Needs your attention today</h3>
-            <p>
-                {% if weekly_review_available|default(false) %}
-                    <a href="{{ url_for('weekly_review') }}">Look ahead: weekly review</a>
-                {% endif %}
-            </p>
             {% for item in today_view.priorities %}
                 <article><strong>{{ item.title }}</strong>
                     <p class="muted">{{ item.why }}</p>

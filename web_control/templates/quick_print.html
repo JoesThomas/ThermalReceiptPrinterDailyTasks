@@ -33,7 +33,7 @@
                 </form>
                 {% if preview %}
                     <h2>Print layout</h2>
-                    <pre>{{ preview }}</pre>
+                    <pre class="quick-note-preview" tabindex="0" aria-label="Print layout">{{ preview }}</pre>
                 {% endif %}
             </section>
             <a href="{{ url_for('preview') }}">View printer status</a>
