@@ -72,7 +72,13 @@
                         {% if monthly_meals_available|default(false) %}
                             <a href="{{ url_for('monthly_meals_page') }}">Monthly meals &amp; shops<span>Monthly menu and weekly specialist lists</span></a>
                         {% endif %}
+                        {% if weekly_review_available|default(false) %}
+                            <a href="{{ url_for('weekly_review') }}">Weekly review<span>Appointments, bills, renewals and shopping</span></a>
+                        {% endif %}
                         <a href="{{ url_for('quick_actions') }}">Quick actions</a>
+                        {% if quick_print_available|default(false) %}
+                            <a href="{{ url_for('quick_print') }}">Quick Print<span>Print a note or checklist</span></a>
+                        {% endif %}
                     </div>
                     <div class="tool-group">
                         <h2>Money & records</h2>
@@ -84,6 +90,9 @@
                                {% if request.endpoint == 'annual_funds_page' %}aria-current="page"{% endif %}>Tax & annual funds<span>Set money aside for later</span></a>
                             <a href="{{ url_for('document_list') }}"
                                {% if request.endpoint == 'document_list' %}aria-current="page"{% endif %}>Documents<span>Your encrypted files</span></a>
+                        {% endif %}
+                        {% if bill_history_available|default(false) %}
+                            <a href="{{ url_for('bill_history') }}">Bill price history</a>
                         {% endif %}
                         <a href="{{ url_for('payment_trail') }}">Payment explanations</a>
                         <a href="{{ url_for('latest_receipt') }}">Latest receipt</a>

@@ -263,3 +263,9 @@ data/monthly_meals.lock
 # Private household dietary profiles and meal preferences
 data/meal_household.json
 data/meal_household.lock
+
+# One-off local print jobs and private meal batches
+data/quick_notes/
+data/use_first.json
+data/use_first.lock
+data/subscriptions.lock

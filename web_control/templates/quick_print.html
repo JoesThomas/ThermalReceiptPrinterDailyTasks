@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Quick Print · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static', filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <h1>Quick Print</h1>
+            <p>Print a separate note or checklist. Notes are not kept in the receipt archive.</p>
+            {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            <section data-private>
+                <form method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label for="quick-note">Receipt text</label>
+                    <textarea id="quick-note" name="text" rows="9" maxlength="2000" required>{{ text }}</textarea>
+                    <label>
+                        <input type="checkbox" name="checklist" {% if checklist %}checked{% endif %}>
+                        Add a tick box to each non-empty line
+                    </label>
+                    <button name="intent" value="preview">Preview</button>
+                    <button class="primary" name="intent" value="print">Print note</button>
+                    <label>
+                        <input type="checkbox" name="allow_repeat">
+                        Allow intentional reprint
+                    </label>
+                </form>
+                {% if preview %}
+                    <h2>Print layout</h2>
+                    <pre class="quick-note-preview" tabindex="0" aria-label="Print layout">{{ preview }}</pre>
+                {% endif %}
+            </section>
+            <a href="{{ url_for('preview') }}">View printer status</a>
+        </main>
+    </body>
+</html>

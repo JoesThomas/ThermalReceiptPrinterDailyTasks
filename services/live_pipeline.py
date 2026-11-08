@@ -2375,6 +2375,7 @@ def build_subscription_status(
         if index is not None:
             _, paid_on, amount = match
             item["last_paid"] = max(paid_on.isoformat(), item.get("last_paid") or "")
+            item["forecast_amount"] = item.get("amount")
             item["amount"] = float(amount)
             if parse(subscription.get("amount")) not in (None, amount):
                 item["expected_amount"] = subscription["amount"]
@@ -4693,10 +4694,11 @@ def run_live_pipeline(
                     "Downloading Google Calendar..."
                 )
 
-                upcoming_events = get_calendar_events(CALENDAR_ICAL_URL, days_ahead=3, include_villa=feature_enabled(settings, 'villa'))
+                calendar_days = 7 if today.weekday() == 6 else 3
+                upcoming_events = get_calendar_events(CALENDAR_ICAL_URL, days_ahead=calendar_days, include_villa=feature_enabled(settings, 'villa'))
                 from receipt.freshness import mark
                 from web_control.today_summary import save_calendar
-                save_calendar(upcoming_events, coverage_days=3)
+                save_calendar(upcoming_events, coverage_days=calendar_days)
                 from receipt.freshness import snapshot
                 if snapshot().get('Calendar', {}).get('status', '').startswith('cached'):
                     left(printer, 'CALENDAR: CACHED DATA')
@@ -4761,7 +4763,14 @@ def run_live_pipeline(
                           wrap=print_wrapped, safe=printer_safe_text)
         try:
             from organiser.records import receipt_lines as organisation_lines
-            assistant_section('WEEKLY REVIEW' if today.weekday() == 6 else 'FOLLOW UPS', organisation_lines(upcoming_events, today))
+            if today.weekday() == 6:
+                from organiser.weekly_review import review as weekly_review
+                weekly = weekly_review(today, upcoming_events, actions_only=True)
+                assistant_section('WEEKLY REVIEW', [
+                    f"[ ] {row['day']:%a}: {row['title']}" for row in weekly['actions'][:2]
+                ])
+            else:
+                assistant_section('FOLLOW UPS', organisation_lines(upcoming_events, today))
             from web_control.life_planning import daily_financial_lines
             assistant_section('MONEY TO CHECK', daily_financial_lines(today))
         except (ValueError, OSError):

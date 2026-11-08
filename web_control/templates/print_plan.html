@@ -12,6 +12,11 @@
     <body>
         {% include 'navigation.html' %}
         <main id="main-content">
+            <p>
+                {% if quick_print_available|default(false) %}
+                    <a href="{{ url_for('quick_print') }}">Quick Print a note or checklist</a>
+                {% endif %}
+            </p>
             <header>
                 <h1>Prepare print</h1>
             </header>

@@ -27,6 +27,9 @@
                 </p>
                 <a class="button primary"
                    href="{{ url_for('meal_shop',month=view.month) }}">Supermarket checklist &amp; print</a>
+                {% if use_first_available|default(false) %}
+                    <a class="button" href="{{ url_for('use_first') }}">Check leftovers &amp; freezer portions</a>
+                {% endif %}
             </header>
             {% if household_meals_available|default(false) %}
                 <p>
@@ -141,6 +144,11 @@
                             {% if not row.past and row.meal and not row.away %}
                                 <details>
                                     <summary>Change this meal</summary>
+                                    <p>
+                                        {% if use_first_available|default(false) %}
+                                            <a href="{{ url_for('use_first',day=row.day.isoformat()) }}">Check saved portions for this day</a>
+                                        {% endif %}
+                                    </p>
                                     <form method="post" action="{{ url_for('monthly_meals_meal') }}">
                                         {{ csrf() }}
                                         <input type="hidden" name="day" value="{{ row.day.isoformat() }}">

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Weekly review · Receipt Control</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static', filename='control.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+    </head>
+    <body>
+        {% include 'navigation.html' %}
+        <main id="main-content">
+            <h1>Weekly review</h1>
+            <p>{{ view.today.strftime('%a %d %b') }} to {{ view.end.strftime('%a %d %b') }} · from your saved plans</p>
+            {% for warning in view.warnings %}<p class="helper">{{ warning }}</p>{% endfor %}
+            <section data-private>
+                <h2>Things to sort out</h2>
+                <ul>
+                    {% for row in view.actions %}
+                        <li>
+                            <strong>{{ row.day.strftime('%a %d %b') }}</strong> · <a href="{{ url_for(row.endpoint, **(row.args|default({}))) }}">{{ row.title }}</a>
+                        </li>
+                    {% else %}
+                        <li>No follow-ups flagged in the saved plans.</li>
+                    {% endfor %}
+                </ul>
+            </section>
+            <section data-private>
+                <h2>Your next seven days</h2>
+                <p>
+                    Bill dates and amounts are estimates from your commitments. <a href="{{ url_for('finance_review') }}">Check Finance for actual payments.</a>
+                </p>
+                {% for day, rows in view.rows|groupby('day') %}
+                    <h3>{{ day.strftime('%A %d %B') }}</h3>
+                    <ul>
+                        {% for row in rows %}
+                            <li>
+                                {{ row.kind }} · <a href="{{ url_for(row.endpoint, **(row.args|default({}))) }}">{{ row.title }}</a>
+                                {% if row.note %}· {{ row.note }}{% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>There are no dated items in the saved plans for this period.</p>
+                {% endfor %}
+            </section>
+        </main>
+    </body>
+</html>

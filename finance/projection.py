@@ -105,6 +105,8 @@ def payment_schedule(monthly, yearly, transactions, settings, today, horizon=182
         from finance.instalment_settlement import is_settled
         if is_settled(original,today):continue
         item = dict(original)
+        if item.get('forecast_amount') is not None:
+            item['amount'] = item['forecast_amount']
         override = overrides.get(key(item.get('name')))
         if override:
             item['due_date'] = override['due_date']
@@ -206,7 +208,7 @@ def payment_schedule(monthly, yearly, transactions, settings, today, horizon=182
         for offset in range(max(0, today.year - anchor.year), max(0, today.year - anchor.year) + year_count):
             due = occurs(anchor, offset, 'yearly')
             if due >= today and due != item['matched_renewal']:
-                add(item, due, item['bank_paid_amount'] or item.get('amount'), 'Annual renewal')
+                add(item, due, item.get('amount'), 'Annual renewal')
     # Explicit cash payments can cover card repayments and one-off commitments.
     for item in settings.get('commitments', []) + [dict(i, amount=-money(i.get('amount'), Decimal(0)))
                                                   for i in settings.get('forecast_events', [])

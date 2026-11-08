@@ -278,3 +278,22 @@ html[data-privacy=true] #amex-balance-alert [data-private]{visibility:hidden}
 .route-shortcut p:last-child { margin-bottom: 0; }
 .route-shortcut > .button { flex: 0 0 auto; text-align: center; }
 @media(max-width:650px) { .route-shortcut { flex-direction: column; align-items: stretch; gap: 16px; } .route-shortcut > .button { white-space: normal; } }
+
+.shop-mode-items {
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+}
+.shop-mode-item {
+  margin: 0;
+  padding: .65rem .85rem;
+  min-width: 0;
+}
+.shop-mode-item label {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.quick-note-preview { max-width: 100%; overflow-x: auto; }

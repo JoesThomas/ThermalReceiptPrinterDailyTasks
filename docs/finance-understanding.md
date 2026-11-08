@@ -24,10 +24,12 @@ Monzo transaction collection defaults to the first account returned by TrueLayer
 ### When a bill amount changes
 
 Finance shows the amount actually paid when it can match a posted debit to a
-configured bill or subscription. The forecast skips that already paid occurrence
-and uses the matched amount as its latest estimate. Generating a Finance receipt
-with a complete bank refresh also saves the updated amount and payment history,
-and lists changes under **Bill changes**.
+configured bill or subscription. The forecast skips the occurrence already
+paid and keeps the saved estimate. A complete bank refresh in Finance, or a
+Finance receipt with complete bank data, records the actual in **Bill price
+history**. Mark the difference **One-off** to retain the estimate or choose
+**Use this amount going forward** to update future forecasts. Past actuals
+stay unchanged.
 
 The app prefers the expected amount when matching. A different monthly amount
 must be the only merchant match for the month, must not match another commitment,

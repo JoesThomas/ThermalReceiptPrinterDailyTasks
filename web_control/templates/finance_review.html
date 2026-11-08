@@ -402,6 +402,11 @@
                         <summary>Payment matches</summary>
                         <section>
                             <h2>Payment matches</h2>
+                            <p>
+                                {% if bill_history_available|default(false) %}
+                                    <a href="{{ url_for('bill_history') }}">Review bill price changes</a>
+                                {% endif %}
+                            </p>
                             <p class="muted">A due entry means no matching bank transaction was found; check it before treating it as unpaid.</p>
                             {% for row in rows %}
                                 <div class="review-row">
@@ -413,7 +418,7 @@
                                     </p>
                                     {% if row.item.expected_amount is defined %}
                                         <p class="muted">
-                                            Expected £{{ '%.2f'|format(row.item.expected_amount) }}. The forecast uses the matched amount as its latest estimate.
+                                            Expected £{{ '%.2f'|format(row.item.expected_amount) }}. The forecast keeps this estimate until you confirm a recurring change.
                                         </p>
                                     {% endif %}
                                     {% if row.item.end_date %}<p class="muted">Contract ends {{ row.item.end_date }}</p>{% endif %}
@@ -473,7 +478,7 @@
                                             <span class="badge paid">Paid £{{ '%.2f'|format(item.bank_paid_amount) }} · {{ item.bank_paid_date.strftime('%d %b %Y') }}</span>
                                         </p>
                                         {% if item.bank_paid_amount != item.amount %}
-                                            <small>The forecast uses the matched amount as its latest renewal estimate.</small>
+                                            <small>The forecast keeps the saved annual estimate until you confirm a recurring change.</small>
                                         {% endif %}
                                     {% else %}
                                         <p>

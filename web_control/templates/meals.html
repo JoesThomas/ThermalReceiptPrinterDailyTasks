@@ -35,6 +35,11 @@
                     <a class="button primary" href="{{ url_for('monthly_meals_page') }}">Plan a month of meals</a>
                 </section>
             {% endif %}
+            <p>
+                {% if use_first_available|default(false) %}
+                    <a class="button" href="{{ url_for('use_first') }}">Use this first · leftovers &amp; freezer portions</a>
+                {% endif %}
+            </p>
             {% include 'diet_handling.html' %}
             {% with messages=get_flashed_messages() %}
                 {% for message in messages %}<p class="flash">{{ message }}</p>{% endfor %}

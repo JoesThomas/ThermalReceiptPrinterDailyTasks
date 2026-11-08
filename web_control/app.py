@@ -1332,6 +1332,12 @@ register_tax_tools(app, login_required)
 
 from web_control.receipt_controls import register as register_receipt_controls
 register_receipt_controls(app, login_required, _start_print_command, PROJECT_ROOT)
+from web_control.bill_history import register as register_bill_history
+register_bill_history(app, login_required)
+from web_control.weekly_review import register as register_weekly_review
+register_weekly_review(app, login_required)
+from web_control.quick_print import register as register_quick_print
+register_quick_print(app, login_required, _start_print_command, PROJECT_ROOT)
 from web_control.preferences import register_settings_hub
 register_settings_hub(app, login_required)
 
@@ -1421,6 +1427,8 @@ register_personal_helper(app, login_required)
 
 from web_control.monthly_meals import register as register_monthly_meals
 register_monthly_meals(app, login_required, _start_print_command, PROJECT_ROOT)
+from web_control.use_first import register as register_use_first
+register_use_first(app, login_required)
 
 from web_control.meal_settings import register as register_meal_settings
 register_meal_settings(app, login_required)
