@@ -954,7 +954,7 @@ process.on('exit', () => child.kill());
   await page.getByRole('button',{name:'Preview',exact:true}).click();
   assert.match(await page.locator('main pre').innerText(), /\[ \] Buy oat milk\n\[ \] Call the garage/);
   await page.getByRole('button',{name:'Print note',exact:true}).click();
-  await page.getByText('Quick Print note queued.',{exact:true}).waitFor();
+  await page.locator('main').getByText('Quick Print note queued.',{exact:true}).waitFor();
   const noteArgs = await page.evaluate(async () => (await fetch('/__fixture_last_print')).json());
   assert.equal(noteArgs[0],'--quick-note');
   assert.match(noteArgs[1],/^[a-f0-9]{32}$/);
