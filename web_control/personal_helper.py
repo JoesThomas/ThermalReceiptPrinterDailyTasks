@@ -77,6 +77,7 @@ def register(app, login_required):
             clock=lambda d: d.astimezone(UK).strftime("%H:%M"),
             day=uk_today().isoformat(),
             tomorrow=(uk_today() + timedelta(days=1)).isoformat(),
+            receipt_lines=helper.receipt_brief(view),
         )
 
     @app.post("/helper/settings")
@@ -88,6 +89,7 @@ def register(app, login_required):
                 s.update(
                     enabled=request.form.get("enabled") == "on",
                     compact=request.form.get("compact") == "on",
+                    show_task_times=request.form.get("show_task_times") == "on",
                     start=request.form.get("start", "08:00"),
                     end=request.form.get("end", "20:00"),
                 )
@@ -97,6 +99,29 @@ def register(app, login_required):
         except (OSError, ValueError):
             flash("Use valid daytime planning hours and check local storage.")
         return go()
+
+    @app.post("/helper/receipt-priorities")
+    @login_required
+    def personal_helper_receipt_priorities():
+        try:
+            if request.form.get("action") == "reset":
+                helper.store().update(lambda s: s.pop("receipt_priorities", None))
+                flash("Automatic receipt priorities restored.")
+            else:
+                view = helper.context()
+                if request.form.get("day") != view["day"]:
+                    raise ValueError()
+                ids = [identifier for identifier in request.form.getlist("priority") if identifier]
+                available = {task["id"] for task in view["pending"]}
+                if not ids or len(ids) > view["priority_limit"] or len(set(ids)) != len(ids) or not set(ids) <= available:
+                    raise ValueError()
+                helper.store().update(lambda s: s.update(
+                    receipt_priorities={"day": view["day"], "ids": ids}
+                ))
+                flash("Today’s receipt priorities saved. Regenerate any saved preview.")
+        except (OSError, ValueError):
+            flash("Choose distinct tasks available today, or restore automatic priorities.")
+        return redirect(url_for("personal_helper_page", _anchor="receipt-priorities"))
 
     @app.post("/helper/lighter")
     @login_required
@@ -163,21 +188,30 @@ def register(app, login_required):
                 checklists.update("tasks", "toggle", identifier)
             flash("Task marked complete.")
             return go()
-        if action not in {"defer", "hide", "step"}:
+        if action not in {"defer", "tomorrow", "weekend", "hide", "step"}:
             abort(400)
         try:
+            today = uk_today()
+            until = None
 
             def update(s):
+                nonlocal until
                 m = s["tasks"].setdefault(
-                    identifier, {"first_seen": uk_today().isoformat()}
+                    identifier, {"first_seen": today.isoformat()}
                 )
-                if action == "defer":
-                    until = date.fromisoformat(request.form.get("until", ""))
-                    if not uk_today() < until <= uk_today() + timedelta(days=366):
+                if action in {"defer", "tomorrow", "weekend"}:
+                    if action == "tomorrow":
+                        until = today + timedelta(days=1)
+                    elif action == "weekend":
+                        days = 1 if today.weekday() == 5 else (5 - today.weekday()) % 7
+                        until = today + timedelta(days=days)
+                    else:
+                        until = date.fromisoformat(request.form.get("until", ""))
+                    if not today < until <= today + timedelta(days=366):
                         raise ValueError()
                     m["defer_until"] = until.isoformat()
                     m["deferrals"] = sorted(
-                        set(m.get("deferrals", []) + [uk_today().isoformat()])
+                        set(m.get("deferrals", []) + [today.isoformat()])
                     )[-30:]
                 elif action == "hide":
                     m["hidden"] = True
@@ -193,9 +227,10 @@ def register(app, login_required):
                     )
 
             helper.store().update(update)
-            flash(
-                "Helper task choice updated. Deadlines remain listed even when deferred or hidden."
-            )
+            if until:
+                flash(f"Task moved to {until:%A %d %B} in the helper. Essential and due tasks still show.")
+            else:
+                flash("Helper task choice updated. Essential and due tasks still show.")
         except (ValueError, OSError):
             flash("This task action could not be saved.")
         return go()

@@ -30,6 +30,8 @@ def defaults():
         version=1,
         enabled=True,
         compact=True,
+        show_task_times=False,
+        receipt_priorities={},
         start="08:00",
         end="20:00",
         lighter=[],
@@ -47,6 +49,20 @@ def validate(s):
     for field in ("enabled", "compact"):
         if type(s[field]) is not bool:
             raise ValueError("Invalid helper setting.")
+    if type(s.get("show_task_times", False)) is not bool:
+        raise ValueError("Invalid receipt task-time setting.")
+    priorities = s.get("receipt_priorities", {})
+    if not isinstance(priorities, dict):
+        raise ValueError("Invalid receipt priorities.")
+    if priorities:
+        date.fromisoformat(priorities["day"])
+        ids = priorities["ids"]
+        if not isinstance(ids, list) or not 1 <= len(ids) <= 3:
+            raise ValueError("Choose up to three receipt priorities.")
+        for identifier in ids:
+            text(identifier, 128)
+        if len(set(ids)) != len(ids):
+            raise ValueError("Choose a different task for each position.")
     if time.fromisoformat(s["start"]) >= time.fromisoformat(s["end"]):
         raise ValueError("The planning day must finish after it starts.")
     if not isinstance(s["lighter"], list) or len(s["lighter"]) > 31:
@@ -307,6 +323,13 @@ def near_route(coords, geometry):
     return best
 
 
+def is_deferred(row, settings, day):
+    meta = settings["tasks"].get(row["id"], {})
+    due = row.get("due")
+    return bool(meta.get("defer_until", "") > day
+                and not meta.get("essential") and not (due and due <= day))
+
+
 def build(tasks, events=None, travel_day=None, settings=None, now=None, *, pinned=()):
     s = deepcopy(settings if settings is not None else store().read())
     now = (now or datetime.now(UK)).astimezone(UTC)
@@ -386,7 +409,7 @@ def build(tasks, events=None, travel_day=None, settings=None, now=None, *, pinne
             )
         if (
             m.get("hidden")
-            or m.get("defer_until", "") > day
+            or is_deferred(row, s, day)
             or row.get("skipped_on") == day
         ):
             if not critical:
@@ -414,6 +437,12 @@ def build(tasks, events=None, travel_day=None, settings=None, now=None, *, pinne
 
     pending.sort(key=order)
     urgent.sort(key=order)
+    priority_limit = 2 if light else 3
+    saved_order = s.get("receipt_priorities", {})
+    if saved_order.get("day") == day:
+        ranks = {identifier: i for i, identifier in enumerate(saved_order["ids"])}
+        pending.sort(key=lambda row: ranks.get(row["id"], 3))
+
     reservations = []
     remaining = [dict(w) for w in free]
     for item in pending:
@@ -528,9 +557,11 @@ def build(tasks, events=None, travel_day=None, settings=None, now=None, *, pinne
     return dict(
         enabled=s["enabled"],
         compact=s["compact"],
+        show_task_times=s.get("show_task_times", False),
+        priority_limit=priority_limit,
         day=day,
         lighter=light,
-        priorities=pending[: 2 if light else 3],
+        priorities=pending[:priority_limit],
         urgent=urgent,
         windows=free,
         reservations=reservations,
@@ -589,7 +620,8 @@ def receipt_brief(view):
     lines = []
     if view["lighter"]:
         lines.append("LIGHTER DAY · essentials first")
-    slots = {r["id"]: r for r in view["reservations"]}
+    timed = view.get("show_task_times", False)
+    slots = {r["id"]: r for r in view["reservations"]} if timed else {}
     for row in view["priorities"]:
         slot = slots.get(row["id"])
         prefix = (
@@ -597,7 +629,7 @@ def receipt_brief(view):
             if slot and not view["warnings"]
             else ""
         )
-        action = "Start: " if row["timebox"] else ""
+        action = "Start: " if prefix and row["timebox"] else ""
         lines.append(
             "[ ] "
             + prefix
