@@ -348,6 +348,8 @@ def build(tasks, events=None, travel_day=None, settings=None, now=None, *, pinne
     for row in tasks or []:
         if row.get("kind") != "tasks" or checklists.is_done(row, day):
             continue
+        if row.get("shop_supplier") and not checklists.task_due(row, day):
+            continue
         m = s["tasks"].get(row["id"], {})
         due = row.get("due", "")
         critical = bool(m.get("essential") or due and due <= day)

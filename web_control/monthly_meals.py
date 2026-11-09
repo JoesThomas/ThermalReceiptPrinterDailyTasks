@@ -45,15 +45,7 @@ def register(app, login_required, start_print, root):
             view=view,
             categories=monthly.CATEGORIES,
             shops=monthly.SHOPS,
-            weekdays=[
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday",
-                "Sunday",
-            ],
+            weekend_days={5: "Saturday", 6: "Sunday"},
             recipes=planner.recipes(),
             local_shops=monthly.LOCAL_SHOPS,
         )
@@ -79,13 +71,17 @@ def register(app, login_required, start_print, root):
     def monthly_meals_settings():
         raw = selected()
         try:
+            weekly_day = int(request.form.get("weekly_day", "5"))
+            veg_day = int(request.form.get("veg_day", "6"))
+            if weekly_day not in monthly.WEEKEND_DAYS or veg_day not in monthly.WEEKEND_DAYS:
+                raise ValueError("Choose Saturday or Sunday.")
 
             def save(s):
                 s.pop("retailer", None)  # Remove the retired preference when saving.
                 s.update(
-                    weekly_day=int(request.form.get("weekly_day", "5")),
+                    weekly_day=weekly_day,
                     veg_topup=request.form.get("veg_topup") == "on",
-                    veg_day=int(request.form.get("veg_day", "2")),
+                    veg_day=veg_day,
                     shops={
                         category: request.form.get("shop_" + str(i), "")
                         for i, category in enumerate(monthly.CATEGORIES)
@@ -99,7 +95,7 @@ def register(app, login_required, start_print, root):
             )
         except (ValueError, OSError):
             flash(
-                "Check the weekdays and supplier choices. Fresh categories must stay on weekly lists."
+                "Choose Saturday or Sunday and check the supplier choices. Fresh categories must stay on weekly lists."
             )
         return go(raw)
 
@@ -251,6 +247,7 @@ def register(app, login_required, start_print, root):
             rows=rows,
             checked=checked,
             fingerprint=fingerprint,
+            needed_before_shop=sorted({need for visit in visits for need in visit["needed_before_shop"]}),
         )
 
     @app.post("/meals/month/ingredient")

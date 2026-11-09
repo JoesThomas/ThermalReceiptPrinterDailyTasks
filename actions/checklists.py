@@ -190,6 +190,13 @@ def update(kind, action, key='', title='', **metadata):
     return before, after
 
 
+def task_due(row, day):
+    due = row.get('due') or ''
+    if row.get('shop_supplier'):
+        return due == day and date.fromisoformat(day).weekday() >= 5
+    return not due or due <= day
+
+
 def task_text(text):
     from meals.shopping_tasks import ensure
     try:
@@ -197,7 +204,9 @@ def task_text(text):
     except (OSError, ValueError, RuntimeError):
         pass
     sync(text, 'tasks')
-    return '\n'.join(row['title'] + '.' for row in rows('tasks') if not row['completed'] and row.get('skipped_on') != today() and (not row.get('due') or row['due'] <= today()))
+    day = today()
+    return '\n'.join(row['title'] + '.' for row in rows('tasks')
+                     if not row['completed'] and row.get('skipped_on') != day and task_due(row, day))
 
 
 def required_equipment(row):

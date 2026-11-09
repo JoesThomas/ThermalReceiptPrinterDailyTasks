@@ -209,6 +209,9 @@
                 {% for visit in view.visits %}
                     <details class="shop-list" {% if loop.first %}open{% endif %}>
                         <summary>{{ visit.day.strftime('%a %d %b') }} · {{ visit.shop }} · {{ visit['items']|length }} ingredient(s)</summary>
+                        {% if visit.needed_before_shop %}
+                            <p class="helper">Some meals need ingredients before this shop. Check what you have or change those meals.</p>
+                        {% endif %}
                         {% if visit.shop in local_shops %}
                             <p>
                                 <a href="{{ url_for('meal_shop',month=view.month,supplier=visit.shop,day=visit.day.isoformat()) }}">Open {{ visit.shop }} list for {{ visit.day.strftime('%d %b') }}</a>
@@ -263,18 +266,16 @@
             <section id="month-settings">
                 <h2>Shopping days & shops</h2>
                 <p>
-                    Use the same weekly day to combine specialist stops into one outing. Only select a supplier for products it actually stocks. Fresh essentials can go to a local shop instead of another supermarket trip.
+                    Shopping is scheduled on weekends, with Saturday as the default. Use the same day to combine specialist stops into one outing. Only select a supplier for products it actually stocks. Fresh essentials can go to a local shop instead of another supermarket trip.
                 </p>
                 <form method="post" action="{{ url_for('monthly_meals_settings') }}">
                     {{ csrf() }}
                     <label>
                         Usual weekly shopping day
                         <select name="weekly_day">
-                            {% for name in weekdays %}
-                                <option value="{{ loop.index0 }}"
-                                        {% if view.config.weekly_day==loop.index0 %}selected{% endif %}>
-                                    {{ name }}
-                                </option>
+                            {% for weekday, name in weekend_days.items() %}
+                                <option value="{{ weekday }}"
+                                        {% if view.config.weekly_day==weekday %}selected{% endif %}>{{ name }}</option>
                             {% endfor %}
                         </select>
                     </label>
@@ -282,16 +283,14 @@
                         <input name="veg_topup"
                                type="checkbox"
                                {% if view.config.veg_topup %}checked{% endif %}>
-                        Split fresh produce into an extra midweek top-up
+                        Allow an extra weekend produce top-up
                     </label>
                     <label>
                         Produce top-up day
                         <select name="veg_day">
-                            {% for name in weekdays %}
-                                <option value="{{ loop.index0 }}"
-                                        {% if view.config.veg_day==loop.index0 %}selected{% endif %}>
-                                    {{ name }}
-                                </option>
+                            {% for weekday, name in weekend_days.items() %}
+                                <option value="{{ weekday }}"
+                                        {% if view.config.veg_day==weekday %}selected{% endif %}>{{ name }}</option>
                             {% endfor %}
                         </select>
                     </label>

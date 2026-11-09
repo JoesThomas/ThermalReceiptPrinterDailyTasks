@@ -31,6 +31,7 @@ SHOPS = (
 
 SUPERMARKET_SHOPS = (SHOPS[0], SHOPS[4])
 LOCAL_SHOPS = tuple(shop for shop in SHOPS if shop not in SUPERMARKET_SHOPS)
+WEEKEND_DAYS = (5, 6)
 
 
 def defaults():
@@ -39,7 +40,7 @@ def defaults():
         active_month="",
         weekly_day=5,
         veg_topup=False,
-        veg_day=2,
+        veg_day=6,
         shops=dict(zip(CATEGORIES, (SHOPS[0], SHOPS[1], SHOPS[4], SHOPS[2], SHOPS[4]))),
         overrides={},
     )
@@ -352,8 +353,28 @@ def component_purchases(meals, resources, weeks=None):
     return rows
 
 
+def weekend_day(value, default=5):
+    """Read legacy weekday preferences without continuing to schedule them."""
+    return value if value in WEEKEND_DAYS else default
+
+
+def next_weekend(on, weekday):
+    return on + timedelta(days=(weekday - on.weekday()) % 7)
+
+
 def shopping(rows, settings, first, on):
     start = max(first, on)
+    weekly = weekend_day(settings["weekly_day"])
+    produce = weekend_day(settings["veg_day"], 6)
+    first_weekend = min(next_weekend(start, day) for day in WEEKEND_DAYS)
+    main_shop = next_weekend(start, weekly)
+    # Use the earlier available weekend day if the preferred main shop misses a meal.
+    pantry_needs = [row["day"] for row in rows if (
+        settings["overrides"].get(identity(row["line"])) or category(row["line"])
+    ) == CATEGORIES[0]]
+    if pantry_needs and first_weekend <= min(pantry_needs) < main_shop:
+        main_shop = first_weekend
+
     grouped = defaultdict(list)
     items = defaultdict(list)
     for row in rows:
@@ -362,15 +383,14 @@ def shopping(rows, settings, first, on):
         shop = settings["shops"][kind]
         need = row["day"]
         if kind == CATEGORIES[0]:
-            buy = start
+            buy = main_shop
         else:
-            weekdays = [settings["weekly_day"]]
+            weekdays = [weekly]
             if kind == CATEGORIES[3] and settings["veg_topup"]:
-                weekdays.append(settings["veg_day"])
-            buy = max(
-                start,
-                max(need - timedelta(days=(need.weekday() - w) % 7) for w in weekdays),
-            )
+                weekdays.append(produce)
+            preferred = max(need - timedelta(days=(need.weekday() - w) % 7) for w in weekdays)
+            # Never invent a weekday stop when the preferred weekend has passed.
+            buy = preferred if preferred >= start else first_weekend
         grouped[(buy, shop)].append(row)
         items[key].append(dict(row, category=kind, shop=shop))
     visits = []
@@ -391,7 +411,8 @@ def shopping(rows, settings, first, on):
                     pantry=planner._pantry_has(lines[0]["line"]),
                 )
             )
-        visits.append(dict(day=buy, shop=shop, items=entries))
+        visits.append(dict(day=buy, shop=shop, items=entries,
+                           needed_before_shop=sorted({row["day"] for row in uses if row["day"] < buy})))
     ingredient_choices = [
         dict(key=k, label=k, category=v[0]["category"])
         for k, v in sorted(items.items())
@@ -509,6 +530,8 @@ def report(raw, on=None):
             rows.extend(dict(day=row['day'],line=item,recipe=b['recipe']['name'],scope='Breakfast') for item in b['recipe']['ingredients'])
     # Include the last day's planned leftover lunch even when it falls in the next month.
     config = store().read()
+    config["weekly_day"] = weekend_day(config["weekly_day"])
+    config["veg_day"] = weekend_day(config["veg_day"], 6)
     from meals.resource_planning import analyse
     from actions.personal_helper import store as helper_store
 

@@ -75,7 +75,7 @@ def eligible_tasks(state, day):
         if row["kind"] == "tasks"
         and not checklists.is_done(row, day.isoformat())
         and row.get("skipped_on") != day.isoformat()
-        and (not row.get("due") or row["due"] <= day.isoformat())
+        and checklists.task_due(row, day.isoformat())
     ]
 
 

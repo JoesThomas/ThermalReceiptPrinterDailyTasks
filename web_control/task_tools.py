@@ -39,8 +39,8 @@ def register(app, login_required):
             row['display_title'] = checklists.exercise_title(row) if kind == 'exercises' else row['title']
             row['required'] = checklists.required_equipment(row) if kind == 'exercises' else []
             row['skipped'] = row.get('skipped_on') == checklists.today()
-            row['group'] = 'Completed' if row['completed'] else ('Upcoming' if row.get('due', '') > checklists.today() else 'Today')
-            row['overdue'] = bool(row.get('due') and row['due'] < checklists.today() and not row['completed'])
+            row['group'] = 'Completed' if row['completed'] else ('Today' if checklists.task_due(row, checklists.today()) else 'Upcoming')
+            row['overdue'] = bool(not row.get('shop_supplier') and row.get('due') and row['due'] < checklists.today() and not row['completed'])
         items.sort(key=lambda row: (not row['on_receipt'], row['completed'], not row['overdue'],
                                    {'high': 0, 'normal': 1, 'low': 2}.get(row.get('priority', 'normal'), 1), row.get('due', '')))
         selected = [row for row in items if row['on_receipt'] and not row['skipped']]
