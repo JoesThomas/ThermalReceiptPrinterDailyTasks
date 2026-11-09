@@ -72,6 +72,22 @@
                                     <strong>{{ task.title }}</strong>
                                     {% if task.critical %}· essential / due{% endif %}
                                     {% if task.next_step %}<p>Next step: {{ task.next_step }}</p>{% endif %}
+                                    {% if not task.critical and not task.shop_supplier %}
+                                        <form method="post" action="{{ url_for('personal_helper_task_action') }}">
+                                            {{ csrf() }}
+                                            <input type="hidden" name="task" value="{{ task.id }}">
+                                            <button name="action"
+                                                    value="tomorrow"
+                                                    aria-label="Move {{ task.title }} to tomorrow">
+                                                Move to tomorrow
+                                            </button>
+                                            <button name="action"
+                                                    value="weekend"
+                                                    aria-label="Move {{ task.title }} to weekend">
+                                                Move to weekend
+                                            </button>
+                                        </form>
+                                    {% endif %}
                                 </li>
                             {% else %}
                                 <li>No tasks need suggesting today.</li>
@@ -104,6 +120,42 @@
                         {% endif %}
                         <a href="{{ url_for('day_travel') }}">Review travel, directions & timetables</a></article>
                 </div>
+                <section id="receipt-priorities" data-private>
+                    <h3>Today’s receipt priorities</h3>
+                    <p>
+                        Swap or reorder today’s tasks here. Chosen tasks go first in this order; the helper fills any remaining places. Saved receipt previews need to be regenerated.
+                    </p>
+                    {% if helper.pending %}
+                        <form method="post"
+                              action="{{ url_for('personal_helper_receipt_priorities') }}">
+                            {{ csrf() }}
+                            <input type="hidden" name="day" value="{{ day }}">
+                            {% for position in range(helper.priority_limit) %}
+                                <label>
+                                    Position {{ position + 1 }}
+                                    <select name="priority">
+                                        <option value="">Automatic</option>
+                                        {% for task in helper.pending %}
+                                            <option value="{{ task.id }}"
+                                                    {% if position < helper.priorities|length and task.id == helper.priorities[position].id %}selected{% endif %}>
+                                                {{ task.title }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                            {% endfor %}
+                            <button name="action" value="save">Save today’s order</button>
+                            <button name="action" value="reset">Use automatic priorities</button>
+                        </form>
+                    {% endif %}
+                    {% if receipt_lines %}
+                        <p>
+                            <strong>Your Day preview</strong>
+                        </p>
+                        <pre class="quick-note-preview" tabindex="0" aria-label="Your Day preview">{{ receipt_lines|join('
+') }}</pre>
+                    {% endif %}
+                </section>
                 <details open>
                     <summary>Suggested task slots</summary>
                     <p class="muted">
@@ -356,6 +408,13 @@
                            {% if config.compact %}checked{% endif %}>
                     Keep receipt short: priorities and up to two relevant prompts, full tasks here
                 </label>
+                <label>
+                    <input type="checkbox"
+                           name="show_task_times"
+                           {% if config.show_task_times %}checked{% endif %}>
+                    Show suggested task times on the receipt
+                </label>
+                <p class="muted">Appointment departure times still print when available.</p>
                 <label>
                     Day starts
                     <input type="time" name="start" value="{{ config.start }}" required>

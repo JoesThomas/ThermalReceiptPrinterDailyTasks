@@ -223,6 +223,28 @@ class HelperTests(TestCase):
         view["enabled"] = False
         self.assertEqual(helper.receipt_brief(view), [])
 
+    def test_untimed_checklist_keeps_departure_and_user_written_step(self):
+        events = [event("Appointment", address="Venue")]
+        settings = helper.defaults()
+        settings.pop("show_task_times")  # Existing saved settings also default to untimed.
+        settings["tasks"] = {"Laundry": {"steps": ["Sort whites"]}}
+        view = helper.build([task("Laundry")], events, travel_day(events), settings, NOW)
+        self.assertIn("[ ] Laundry · Sort whites", helper.receipt_brief(view))
+        self.assertIn("Leave 09:40 · Appointment", helper.receipt_brief(view))
+        view["show_task_times"] = True
+        self.assertIn("[ ] 08:00 Start: Laundry · Sort whites", helper.receipt_brief(view))
+
+    def test_receipt_priority_order_expires_and_ignores_deferred_choices(self):
+        tasks = [task("Laundry"), task("Job Search"), task("Tidy house")]
+        settings = helper.defaults()
+        settings["receipt_priorities"] = {"day": DAY, "ids": ["Tidy house", "Laundry"]}
+        settings["tasks"] = {"Laundry": {"defer_until": "2026-11-03"}}
+        view = helper.build(tasks, [], settings=settings, now=NOW)
+        self.assertEqual([row["id"] for row in view["priorities"]], ["Tidy house", "Job Search"])
+        tomorrow = helper.build(tasks, [], settings=settings, now=NOW + timedelta(days=1))
+        self.assertEqual([row["id"] for row in tomorrow["priorities"]],
+                         ["Job Search", "Laundry", "Tidy house"])
+
     def test_private_storage_validation_and_observation_prune_removed_tasks(self):
         with (
             TemporaryDirectory() as folder,
@@ -425,6 +447,36 @@ class HelperWebTests(TestCase):
         self.assertTrue(checklists.is_done(checklists.load()["items"][0]))
         self.post("/helper/task-action", task=self.identifier, action="complete")
         self.assertTrue(checklists.is_done(checklists.load()["items"][0]))
+
+    def test_receipt_order_can_be_saved_and_reset_in_the_helper(self):
+        from receipt.local_time import uk_today
+
+        self.login()
+        day = uk_today().isoformat()
+        checklists.update("tasks", "add", title="Laundry")
+        laundry = checklists.load()["items"][-1]["id"]
+        order = [laundry, self.identifier]
+        self.post("/helper/receipt-priorities", day=day, priority=order)
+        self.assertEqual([row["id"] for row in helper.context()["priorities"]], order)
+        self.post("/helper/receipt-priorities", day=day, priority=[laundry, laundry])
+        self.assertEqual(helper.store().read()["receipt_priorities"]["ids"], order)
+        self.post("/helper/receipt-priorities", action="reset")
+        self.assertNotIn("receipt_priorities", helper.store().read())
+
+    def test_quick_move_hides_task_from_the_full_receipt_until_weekend(self):
+        from datetime import date
+
+        self.login()
+        monday = date(2026, 11, 2)
+        with patch("web_control.personal_helper.uk_today", return_value=monday):
+            self.post("/helper/task-action", task=self.identifier, action="tomorrow")
+            self.assertEqual(helper.store().read()["tasks"][self.identifier]["defer_until"], "2026-11-03")
+            self.post("/helper/task-action", task=self.identifier, action="weekend")
+        self.assertEqual(helper.store().read()["tasks"][self.identifier]["defer_until"], "2026-11-07")
+        with patch.object(checklists, "today", return_value=monday.isoformat()):
+            self.assertEqual(checklists.task_text(""), "")
+        with patch.object(checklists, "today", return_value="2026-11-07"):
+            self.assertIn("Example", checklists.task_text(""))
 
     def test_rules_and_errands_validate_without_overwriting_good_state(self):
         self.login()

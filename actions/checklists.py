@@ -204,9 +204,15 @@ def task_text(text):
     except (OSError, ValueError, RuntimeError):
         pass
     sync(text, 'tasks')
+    from actions.personal_helper import store as helper_store, is_deferred
     day = today()
+    try:
+        helper = helper_store().read()
+    except (OSError, ValueError):
+        helper = {'enabled': False}
     return '\n'.join(row['title'] + '.' for row in rows('tasks')
-                     if not row['completed'] and row.get('skipped_on') != day and task_due(row, day))
+                     if not row['completed'] and row.get('skipped_on') != day and task_due(row, day)
+                     and not (helper['enabled'] and is_deferred(row, helper, day)))
 
 
 def required_equipment(row):

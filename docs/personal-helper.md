@@ -6,11 +6,17 @@ Open **More tools → Personal helper** (`/helper`). The daily receipt gets a sh
 
 Tasks come from the existing local/Google Doc checklist; completion updates that same checklist. Add an optional 1–480 minute estimate, home/outside/anywhere context, effort and essential flag. Appointments and known travel times are blocked before slots are suggested. Without an estimate, a task gets a **10-minute start**, or five minutes on a lighter day. This is a timebox, not an estimated completion time. Existing manual focus choices are preferred after essential/due tasks.
 
-Suggested slots are not calendar bookings. Refresh Calendar and build Day travel after changing an event. Stale or mismatched routes are rejected. Missing travel gets a provisional 30-minute buffer which may be insufficient; missing event finish times block the rest of the planning day. Warnings keep provisional slot times off the receipt. The web page displays the assumptions for review. Events without locations reserve appointment time at home.
+Suggested slots are not calendar bookings. Refresh Calendar and build Day travel after changing an event. Stale or mismatched routes are rejected. Missing travel gets a provisional 30-minute buffer which may be insufficient; missing event finish times block the rest of the planning day. Warnings keep provisional slot times off the receipt. Task times are off on the receipt by default. Turn them on under Helper preferences if wanted; appointment departure times are separate. The web page always displays suggested slots and their assumptions for review. Events without locations reserve appointment time at home.
 
 Lighter mode applies to today only: optional high-effort tasks are omitted, while essential and due items remain visible. The receipt notes additional urgent items if more than its priority limit exist. Repeated tasks preserve their existing recurrence rules.
 
 Use task details to split a task into up to ten steps, complete steps, defer or hide a suggestion. Hiding does not delete the original checklist entry. Essential or due tasks remain visible even if deferred/hidden. Saving task details restores its suggestion. A task first observed at least seven days ago, or deferred on three different days, gets a gentle review prompt; it is never automatically deleted or marked complete. Observation starts on helper refresh or a daily receipt, not on ordinary page reads.
+
+Use **Today’s receipt priorities** to change the order for this date, or restore
+the automatic order. Open it from **Receipt preview** and regenerate any saved
+preview to see the change. **Move to tomorrow** and **Move to weekend** defer
+ordinary tasks without changing their deadlines. Essential and due tasks remain
+visible. A saved smaller step can appear beside a task on the receipt.
 
 ## Errands and things to take
 
