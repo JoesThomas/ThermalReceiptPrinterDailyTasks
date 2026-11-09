@@ -112,21 +112,16 @@ def view():
 
 
 def print_status(printer, left, line, status):
-    if not status["show"]:
+    if not status["show"] or status["level"] != "high":
         return
     line(printer)
+    left(printer, "AMEX BALANCE WARNING")
     left(
         printer,
-        "AMEX BALANCE WARNING" if status["level"] == "high" else "AMEX BALANCE CHECK",
+        ("Last reported owed: " if status["stale"] else "Balance owed: ")
+        + status["amount_text"],
     )
-    if status["amount"] is not None:
-        left(
-            printer,
-            ("Last reported owed: " if status["stale"] else "Balance owed: ")
-            + status["amount_text"],
-        )
-    if status["level"] == "high":
-        left(printer, "Above your " + status["threshold_text"] + " warning threshold.")
+    left(printer, "Above your " + status["threshold_text"] + " warning threshold.")
     if status["stale"]:
         left(printer, "Balance needs refresh; checked " + status["checked"] + ".")
     left(

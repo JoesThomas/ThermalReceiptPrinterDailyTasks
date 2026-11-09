@@ -11,7 +11,7 @@ from types import SimpleNamespace
 import sys
 from flask import Flask
 from finance import amex_protection as protection
-from finance.amex_balance import assess, receipt_status
+from finance.amex_balance import assess, print_status, receipt_status
 from finance.receipt_text import ReceiptText
 from web_control.amex_balance import register
 
@@ -52,6 +52,24 @@ class BalanceAlertTests(TestCase):
         self.assertFalse(
             assess(value("3000", balance_alert_enabled=False), today=TODAY)["show"]
         )
+
+    def test_printed_balance_warning_requires_strict_threshold(self):
+        for amount, expected_warning in [
+            (None, False), ("11.95", False), ("750", False), ("750.01", True)
+        ]:
+            with self.subTest(amount=amount):
+                saved = value(amount, balance_alert_threshold="750")
+                saved["evidence"]["refresh_failed"] = True
+                output = []
+                print_status(
+                    None, lambda printer, text: output.append(text),
+                    lambda printer: output.append("---"), assess(saved, today=TODAY),
+                )
+                if expected_warning:
+                    self.assertIn("AMEX BALANCE WARNING", output)
+                    self.assertIn("Balance needs refresh; checked 26 Oct 2026.", output)
+                else:
+                    self.assertEqual(output, [])
 
     def test_stale_failed_and_missing_data_never_claim_cleared(self):
         for change in [
