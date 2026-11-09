@@ -166,7 +166,7 @@ class MonthlyTests(MonthlyFixture, TestCase):
             )
         )
 
-    def test_midweek_veg_and_local_shop_can_avoid_supermarket_topups(self):
+    def test_legacy_midweek_produce_preferences_move_to_weekend(self):
         s = monthly.defaults()
         s.update(veg_topup=True, veg_day=2)
         s["shops"]["Fresh essentials"] = "Greengrocer"
@@ -176,11 +176,21 @@ class MonthlyTests(MonthlyFixture, TestCase):
         ]
         view = monthly.shopping(rows, s, date(2026, 11, 1), TODAY)
         self.assertEqual(view["supermarket_stops"], 0)
-        self.assertIn(date(2026, 11, 11), [v["day"] for v in view["visits"]])
+        self.assertEqual([v["day"] for v in view["visits"]], [date(2026, 11, 7), date(2026, 11, 8)])
         s["overrides"]["carrot"] = "Fresh essentials"
         combined = monthly.shopping(rows, s, date(2026, 11, 1), TODAY)
         self.assertEqual(combined["stops"], 1)
         self.assertEqual(len(combined["visits"][0]["items"]), 2)
+
+    def test_weekday_meals_before_next_shop_are_flagged(self):
+        on = date(2026, 11, 9)
+        rows = [dict(day=on, line=line, recipe="Dinner")
+                for line in ("150g chicken breast", "1 carrot", "75g rice")]
+        settings = monthly.defaults()
+        settings["weekly_day"] = 2  # An existing, saved weekday preference.
+        visits = monthly.shopping(rows, settings, date(2026, 11, 1), on)["visits"]
+        self.assertEqual({visit["day"] for visit in visits}, {date(2026, 11, 14)})
+        self.assertTrue(all(visit["needed_before_shop"] == [on] for visit in visits))
 
     def test_pantry_is_not_assumed_to_cover_the_month_and_unknown_amounts_stay_visible(
         self,
@@ -390,7 +400,7 @@ class MonthlyWebTests(MonthlyFixture, TestCase):
             f"shop_{i}": s for i, s in enumerate(monthly.defaults()["shops"].values())
         }
         shops["shop_4"] = "Local shop"
-        self.post("settings", weekly_day="6", veg_topup="on", veg_day="3", **shops)
+        self.post("settings", weekly_day="6", veg_topup="on", veg_day="5", **shops)
         self.assertEqual(
             monthly.store().read()["shops"]["Fresh essentials"], "Local shop"
         )
@@ -532,12 +542,39 @@ class MonthlyWebTests(MonthlyFixture, TestCase):
             ]
         )
 
+    def test_initialized_weekday_tasks_are_rescheduled_and_hidden_from_weekdays(self):
+        from actions import checklists
+        from meals import shopping_tasks
+
+        self.login()
+        monday = date(2026, 11, 9)
+        saturday = date(2026, 11, 14)
+        self.save(monday, [dict(date=day.isoformat(), kind="recipe", recipe=recipe())
+                           for day in (monday, saturday)])
+        monthly.store().update(lambda s: s.update(active_month="2026-11", weekly_day=0))
+        old = dict(id="old-shop", kind="tasks", source="local", title="Shop",
+                   done=False, done_on=None, due=monday.isoformat(), shop_day=monday.isoformat(),
+                   shop_month="2026-11", shop_supplier="Butcher")
+        with checklists.transaction() as state:
+            state["items"].append(old)
+            state["shopping_task_months"] = ["2026-11"]
+        with patch.object(shopping_tasks, "uk_today", return_value=monday):
+            shopping_tasks.ensure()
+        tasks = checklists.rows("tasks")
+        self.assertEqual(min(task["due"] for task in tasks), saturday.isoformat())
+        self.assertTrue(all(date.fromisoformat(task["due"]).weekday() == 5 for task in tasks))
+        self.assertNotIn("old-shop", {task["id"] for task in tasks})
+        self.assertFalse(checklists.task_due(old, monday.isoformat()))
+        self.assertTrue(any(checklists.task_due(task, saturday.isoformat()) for task in tasks))
+        self.assertTrue(all(not checklists.task_due(task, "2026-11-16") for task in tasks))
+
     def test_invalid_settings_do_not_overwrite_valid_file_and_data_is_escaped(self):
         self.login()
         monthly.store().update(lambda s: s.update(weekly_day=6))
         before = monthly.FILE.read_bytes()
-        self.post("settings", weekly_day="99")
-        self.assertEqual(monthly.FILE.read_bytes(), before)
+        for weekday in ("4", "99"):
+            self.post("settings", weekly_day=weekday)
+            self.assertEqual(monthly.FILE.read_bytes(), before)
         self.save(
             TODAY,
             [

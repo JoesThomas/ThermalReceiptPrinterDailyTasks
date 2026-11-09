@@ -67,7 +67,7 @@ def dashboard():
     try:
         list_state = checklists.load()
         task_rows = [{**row, 'completed': checklists.is_done(row)} for row in list_state['items'] if row['kind'] == 'tasks']
-        tasks = [r for r in task_rows if not r['completed'] and r.get('skipped_on') != checklists.today() and (not r.get('due') or r['due'] <= checklists.today())]
+        tasks = [r for r in task_rows if not r['completed'] and r.get('skipped_on') != checklists.today() and checklists.task_due(r, checklists.today())]
         from actions.receipt_workout import plan
         exercises = plan()
     except ValueError:

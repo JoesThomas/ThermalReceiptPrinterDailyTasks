@@ -17,6 +17,11 @@
             <h1>{{ supplier or 'Supermarket' }} shopping checklist</h1>
             <p>Choose a date to tick off items on your phone or print a paper checklist.</p>
             {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+            {% if needed_before_shop %}
+                <p class="helper">
+                    Some ingredients are needed before this weekend shop (first meal: {{ needed_before_shop[0].strftime('%a %d %b') }}). Check what you have or change those meals.
+                </p>
+            {% endif %}
             {% if dates %}
                 <section>
                     <h2>Choose a shopping date</h2>
