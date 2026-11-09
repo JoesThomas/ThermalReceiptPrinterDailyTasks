@@ -1,0 +1,85 @@
+<section id="food-shop">
+    <h2>Food shop</h2>
+    <p>
+        <a class="button" href="{{ url_for('meal_shop') }}">Print meal shopping checklist</a>
+    </p>
+    <details>
+        <summary>Edit items used by this page and the printed food shop</summary>
+        <p class="muted">Save to use a local list instead of the Google Doc. Put one item on each line.</p>
+        <form method="post" action="{{ url_for('food_shop_save') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="shop-items">Shopping items</label>
+            <textarea id="shop-items" name="items" rows="8" style="width:100%">{{ food_shop_text }}</textarea>
+            <button>Save shopping list</button>
+        </form>
+        {% if food_shop_is_local %}
+            <form method="post" action="{{ url_for('food_shop_reset') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button>Return to Google Doc</button>
+            </form>
+        {% endif %}
+    </details>
+    {% if food_shop_error %}
+        <p>
+            Food shop unavailable:
+            {{ food_shop_error }}
+        </p>
+    {% elif food_shop_items %}
+        <ul>
+            {% for item in food_shop_items %}<li>{{ item }}</li>{% endfor %}
+        </ul>
+    {% else %}
+        <p>No food-shop items found.</p>
+    {% endif %}
+</section>
+<section id="to-buy">
+    <h2>To buy</h2>
+    <p class="muted">
+        Your wish list is saved on this computer. Tick “To buy” under Next receipt and save settings to print it once. Put one item on each line.
+    </p>
+    <form method="post" action="{{ url_for('to_buy_save') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="to-buy-items">Wish list</label>
+        <textarea id="to-buy-items" name="items" rows="12" style="width:100%">{{ to_buy_items|join('\n') }}</textarea>
+        <button>Save to buy list</button>
+    </form>
+</section>
+<section id="future-tasks">
+    <h2>Future tasks</h2>
+    <p class="muted">
+        Keep longer-term goals here, with a small next step. Entries are saved privately on this server. Tick “Future tasks” under Next receipt to include unfinished goals once.
+    </p>
+    {% for task in future_tasks %}
+        <form method="post" action="{{ url_for('future_tasks_save') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="task_id" value="{{ task.id }}">
+            <p>
+                <strong>{{ 'Completed' if task.done else 'Future goal' }}</strong>
+            </p>
+            <label for="goal-{{ task.id }}">Goal</label>
+            <input id="goal-{{ task.id }}"
+                   name="title"
+                   value="{{ task.title }}"
+                   maxlength="160"
+                   required>
+            <label for="step-{{ task.id }}">Next step (optional)</label>
+            <input id="step-{{ task.id }}"
+                   name="next_step"
+                   value="{{ task.next_step }}"
+                   maxlength="240">
+            <button name="action" value="save">Save changes</button>
+            <button name="action" value="toggle">{{ 'Reopen' if task.done else 'Mark completed' }}</button>
+            <button name="action" value="delete" formnovalidate>Delete</button>
+        </form>
+    {% else %}
+        <p class="muted">No future tasks yet.</p>
+    {% endfor %}
+    <form method="post" action="{{ url_for('future_tasks_save') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="new-goal">New goal</label>
+        <input id="new-goal" name="title" maxlength="160" required>
+        <label for="new-step">Next step (optional)</label>
+        <input id="new-step" name="next_step" maxlength="240">
+        <button>Add future task</button>
+    </form>
+</section>

@@ -33,7 +33,7 @@ class IngredientTotalsTests(TestCase):
             'receipt.lifestyle.skip_meal', return_value=False), patch(
             'web_control.live_data.meal_confirmation', return_value=None), patch.object(
             planner, '_override_for', return_value=None), patch.object(
-            planner, '_pantry_has', side_effect=lambda item: 'salt' in item):
+            planner, 'load_pantry_matcher', return_value=lambda item: 'salt' in item):
             shopping = planner.build_shopping_list(plan)
         self.assertEqual(shopping['FRUIT / VEG'], ['3 onions (need 2 1/2)'])
         self.assertEqual(shopping['BAKERY'], ['3 tortillas'])

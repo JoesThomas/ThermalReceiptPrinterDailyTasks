@@ -56,7 +56,11 @@ def register(app, login_required, collect, transit_credentials=lambda: ("", ""))
     @login_required
     def day_travel():
         day = selected()
-        owner()
+        identity = owner()
+        # A completed job has saved its plan. Sample progress before reading
+        # the file so completion during this request cannot strand a stale page.
+        with GUARD:
+            job = deepcopy(JOB) if JOB.get("owner") == identity and JOB.get("day") == day else {}
         try:
             state = travel.store().read()
         except (ValueError, OSError):
@@ -81,12 +85,6 @@ def register(app, login_required, collect, transit_credentials=lambda: ("", ""))
                         },
                     )
                 )
-        with GUARD:
-            job = (
-                deepcopy(JOB)
-                if JOB.get("owner") == owner() and JOB.get("day") == day
-                else {}
-            )
         job.pop("owner", None)
         from receipt.local_time import uk_receipt_time
 

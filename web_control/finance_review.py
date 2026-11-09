@@ -38,10 +38,6 @@ def build_review(deps, snapshot, fresh, refresh_status=None):
         if not fresh:
             finance_data[4]["bank_data_status"] = "partial"
         transactions = finance_data[0]
-        try:
-            bonds_summary = review_bond_prizes(today)
-        except (ValueError, OSError):
-            bonds_summary = None
         bank_data_status = finance_data[4].get("bank_data_status", "unavailable")
         status = build_subscription_status(transactions, today=today)
         annual = annual_subscription_rows(status["yearly"], transactions, today)

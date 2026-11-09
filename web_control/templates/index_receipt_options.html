@@ -1,0 +1,172 @@
+<!-- RECEIPT SETTINGS -->
+<form method="post" action="{{ url_for('save') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="return_view" value="{{ active_view }}">
+    <section id="next-receipt">
+        <h2>Next receipt</h2>
+        <p class="muted">
+            One-shot requests reset after
+            successful processing.
+        </p>
+        {% for key,label in [
+            ('finance_check','Finance check'),
+            ('food_shop','Food shop'),
+            ('shopping_list','Shopping list'),
+            ('to_buy','To buy'),
+            ('future_tasks','Future tasks')
+            ] %}
+            <label class="option">
+                <span>{{ label }}</span>
+                <input type="checkbox"
+                       name="{{ key }}"
+                       {% if settings.one_shot[key] %}checked{% endif %}>
+            </label>
+        {% endfor %}
+    </section>
+    <section id="daily-receipt">
+        <h2>Daily receipt</h2>
+        <input type="hidden" name="meals_setting_present" value="1">
+        {% for key,label in [
+            ('calendar','Calendar'),
+            ('meals','Meals on receipt'),
+            ('deliveries','Deliveries'),
+            ('weather','Weather'),
+            ('national_news','National news'),
+            ('local_news','BBC local news'),
+            ('sport_news','Sport news'),
+            ('local_gigs','Gigs today'),
+            ('villa','Villa match information'),
+            ('villa_trains','Villa match-day trains')
+            ] %}
+            <label class="option">
+                <span>{{ label }}</span>
+                <input type="checkbox"
+                       name="{{ key }}"
+                       {% if settings.features[key] %}checked{% endif %}>
+            </label>
+        {% endfor %}
+    </section>
+    <section>
+        <h2>Therapy payment reminder</h2>
+        <p class="muted">
+            When therapy is two or three days away, check recent bank payments before adding “Pay for therapy” to the receipt. Enter the payee as it appears in your bank.
+        </p>
+        <div class="grid">
+            <label>
+                Bank payment reference
+                <input name="therapy_payee"
+                       maxlength="80"
+                       autocomplete="off"
+                       value="{{ settings.therapy_payment.payee }}"
+                       placeholder="Name or reference on bank payment">
+            </label>
+            <label>
+                Paying account
+                <select name="therapy_provider">
+                    {% for provider in ['MONZO', 'HSBC'] %}
+                        <option value="{{ provider }}"
+                                {% if settings.therapy_payment.provider == provider %}selected{% endif %}>
+                            {{ provider|title }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </label>
+        </div>
+    </section>
+    <section>
+        <h2>Salary identification</h2>
+        <p class="muted">
+            Salary and payroll references are recognised automatically. If your employer appears under a different name in bank transactions, enter that name here so its payments are listed under salary.
+        </p>
+        <label>
+            Salary bank reference
+            <input name="salary_payee"
+                   maxlength="80"
+                   autocomplete="off"
+                   value="{{ settings.finance.salary_payee }}"
+                   placeholder="Employer name on bank payment">
+        </label>
+    </section>
+    <section id="receipt-location">
+        <h2>Receipt location</h2>
+        <p class="muted">
+            The name and region appear in the receipt header and weather. Coordinates choose the weather forecast; the BBC RSS feed chooses the local headlines.
+        </p>
+        <div class="grid">
+            <label>
+                Place name
+                <input name="name"
+                       maxlength="18"
+                       required
+                       value="{{ settings.location.name }}">
+            </label>
+            <label>
+                Region
+                <input name="region"
+                       maxlength="19"
+                       required
+                       value="{{ settings.location.region }}">
+            </label>
+            <label>
+                Latitude
+                <input type="number"
+                       name="latitude"
+                       min="-90"
+                       max="90"
+                       step="any"
+                       required
+                       value="{{ settings.location.latitude }}">
+            </label>
+            <label>
+                Longitude
+                <input type="number"
+                       name="longitude"
+                       min="-180"
+                       max="180"
+                       step="any"
+                       required
+                       value="{{ settings.location.longitude }}">
+            </label>
+            <label>
+                Local news heading
+                <input name="local_news_label"
+                       maxlength="35"
+                       required
+                       value="{{ settings.location.local_news_label }}">
+            </label>
+            <label>
+                BBC local RSS feed
+                <input type="url"
+                       name="local_news_feed"
+                       required
+                       value="{{ settings.location.local_news_feed }}">
+            </label>
+        </div>
+        <p class="muted">
+            Use a regional feed from feeds.bbci.co.uk/news/. Villa match-day information is controlled separately.
+        </p>
+    </section>
+    <section>
+        <h2>Output</h2>
+        <p class="muted">
+            Weather always includes the condition drawing, hourly forecast and temperature graph for your configured location.
+        </p>
+        <label class="option">
+            <span>News stories</span>
+            <input type="number"
+                   name="news_count"
+                   min="1"
+                   max="10"
+                   value="{{ settings.display.news_count }}">
+        </label>
+        <label class="option">
+            <span>Sport stories</span>
+            <input type="number"
+                   name="sport_count"
+                   min="1"
+                   max="5"
+                   value="{{ settings.display.sport_count }}">
+        </label>
+    </section>
+    <button class="primary">Save settings</button>
+</form>

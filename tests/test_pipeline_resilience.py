@@ -84,7 +84,7 @@ END:VCALENDAR\r
         plan={'meals':[
             {'date':'2026-10-05','kind':'recipe','recipe':{'name':'Eaten','ingredients':['rice','chicken'],'lunch':{'extra_ingredients':['wraps']}}},
             {'date':'2026-10-06','kind':'recipe','recipe':{'name':'Next','ingredients':['rice','fish','salt']}}]}
-        with patch('receipt.local_time.uk_today',return_value=date(2026,10,5)), patch('receipt.lifestyle.skip_meal',return_value=False), patch('web_control.live_data.meal_confirmation',side_effect=lambda day: {'recipe':'Eaten'} if day==date(2026,10,5) else None), patch.object(meals,'_pantry_has',side_effect=lambda item:item=='salt'), patch.object(meals,'_override_for',return_value=None):
+        with patch('receipt.local_time.uk_today',return_value=date(2026,10,5)), patch('receipt.lifestyle.skip_meal',return_value=False), patch('web_control.live_data.meal_confirmation',side_effect=lambda day: {'recipe':'Eaten'} if day==date(2026,10,5) else None), patch.object(meals,'load_pantry_matcher',return_value=lambda item:item=='salt'), patch.object(meals,'_override_for',return_value=None):
             items=[item for group in meals.build_shopping_list(plan).values() for item in group]
         self.assertEqual(set(items),{'rice','fish','wraps'})
 

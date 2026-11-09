@@ -141,6 +141,25 @@ def main():
         )
         measure("archive_300_receipts_first_page", listing)
         measure("archive_300_receipts_repeat_page", listing)
+    from meals import legacy_planner, monthly
+
+    with TemporaryDirectory() as directory:
+        pantry = Path(directory) / "pantry.json"
+        pantry.write_text(json.dumps({"items": {f"item {n}": True for n in range(100)}}))
+        groceries = [
+            {"day": today + timedelta(days=index % 29),
+             "line": f"{100 + index % 20}g frozen item {index % 75}",
+             "recipe": f"Recipe {index % 20}"}
+            for index in range(1800)
+        ] + [
+            {"day": today + timedelta(days=index % 29),
+             "line": f"1 carrot variety {index % 18}", "recipe": "Dinner"}
+            for index in range(600)
+        ]
+        with patch.object(legacy_planner, "PANTRY_FILE", pantry):
+            measure("monthly_shopping_2400_rows",
+                    lambda: monthly.shopping(groceries, monthly.defaults(), today.replace(day=1), today))
+
     tasks = {
         str(index): (lambda index=index: (time.sleep(0.02), index)[1])
         for index in range(4)

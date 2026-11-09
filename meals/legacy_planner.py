@@ -279,14 +279,20 @@ def _normalise_item(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _pantry_has(ingredient: str) -> bool:
+def load_pantry_matcher():
+    """Read pantry contents once for a shopping calculation."""
+    from functools import lru_cache
+
     pantry = _load(PANTRY_FILE, {})
     items = pantry.get("items", {}) if isinstance(pantry, dict) else {}
-    needle = _normalise_item(ingredient)
-    for key, value in items.items():
-        if value and (_normalise_item(key) in needle or needle in _normalise_item(key)):
-            return True
-    return False
+    names = tuple(_normalise_item(key) for key, value in items.items() if value) if isinstance(items, dict) else ()
+
+    @lru_cache(maxsize=512)
+    def contains(ingredient):
+        needle = _normalise_item(ingredient)
+        return any(name in needle or needle in name for name in names)
+
+    return contains
 
 
 def _section(ingredient: str) -> str:
@@ -301,7 +307,7 @@ def _section(ingredient: str) -> str:
 
 def build_shopping_list(plan: dict, include_away=False) -> dict[str, list[str]]:
     grouped: dict[str, list[str]] = defaultdict(list)
-    from meals.ingredients import aggregate
+    from meals.ingredients import aggregate, load_pack_sizes
     from meals.remaining import needs_dinner
     from receipt.local_time import uk_today
     today = uk_today()
@@ -310,13 +316,14 @@ def build_shopping_list(plan: dict, include_away=False) -> dict[str, list[str]]:
     prefs = preferences()
     household = prefs.get("_household")
     verify_pantry = bool(guidance(prefs))
+    pantry_has = load_pantry_matcher() if not verify_pantry else None
     for meal in plan.get("meals", []):
         meal = household_meal(meal, household)
         if meal.get("kind") != "recipe":
             continue
         r = meal["recipe"]
         for item in r.get("ingredients", []) if needs_dinner(meal, today, away=(lambda day: False) if include_away else None) else []:
-            if str(item).strip() and (verify_pantry or not _pantry_has(item)):
+            if str(item).strip() and (verify_pantry or not pantry_has(item)):
                 grouped[_section(item)].append(item)
         meal_day = date.fromisoformat(meal["date"])
         next_day = meal_day + timedelta(days=1)
@@ -324,9 +331,11 @@ def build_shopping_list(plan: dict, include_away=False) -> dict[str, list[str]]:
         from receipt.lifestyle import skip_meal
         lunch = {} if next_day < today or skip_meal(next_day) or lunch_override and lunch_override.get("type") in {"buy_lunch", "eat_out"} else r.get("lunch", {})
         for item in lunch.get("extra_ingredients", []):
-            if str(item).strip() and (verify_pantry or not _pantry_has(item)):
+            if str(item).strip() and (verify_pantry or not pantry_has(item)):
                 grouped[_section(item)].append(item)
-    return {section: aggregate(items, for_shopping=True) for section, items in grouped.items()}
+    pack_sizes = load_pack_sizes() if grouped else {}
+    return {section: aggregate(items, for_shopping=True, pack_sizes=pack_sizes)
+            for section, items in grouped.items()}
 
 
 def build_sunday_prep(plan: dict) -> list[dict]:

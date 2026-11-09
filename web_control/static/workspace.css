@@ -1,0 +1,75 @@
+/* Workspace-specific details. Page and form styling comes from the shared theme. */
+main > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.workspace-tools {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+    gap: 1rem;
+}
+
+.workspace-tools article {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.85rem;
+}
+
+.workspace-tools article h3 {
+    margin: 0;
+}
+
+.instalment .balance {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.instalment .balance strong {
+    font-size: 1.15rem;
+}
+
+.instalment .grid input,
+.save-instalment {
+    width: 100%;
+}
+
+.save-instalment {
+    margin-top: 16px;
+}
+
+.schedule,
+.history {
+    margin-top: 14px;
+}
+
+.schedule-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding-block: 6px;
+    border-bottom: 1px solid var(--border);
+}
+
+#print-pages .debug-grid form,
+#print-pages .debug-grid button {
+    width: 100%;
+}
+
+@media (max-width: 560px) {
+    main > header,
+    .routine {
+        align-items: flex-start;
+    }
+
+    .routine,
+    .instalment-header {
+        flex-direction: column;
+    }
+
+    .instalment .balance {
+        text-align: left;
+    }
+}

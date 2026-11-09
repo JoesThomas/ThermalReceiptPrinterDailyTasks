@@ -60,3 +60,28 @@ Bank token refresh and related calls have not been parallelised further: their
 shared authentication state needs its own concurrency design. Calendar travel
 chains retain their event ordering. Archive text searches may still scan many
 files on their first run, while unfiltered initial browsing reads only one page.
+
+## November workspace and shopping pass
+
+- Home, Tasks & lists, Account settings, Receipt, and Settings now prepare only
+  the data their page renders. The food-shop document is read only in Tasks &
+  lists, and only when a local list is not saved. Home shares one schedule
+  summary between its dashboard and its attention panel.
+- The Finance review no longer computes the same bond-prize summary twice.
+  The cash-reserve form's settings are only loaded on the Finance and Savings
+  screens that use them. Receipt previews build sample pages and compute
+  configuration fingerprints only when a visible page needs them. The route
+  page samples job progress before reading the saved plan, so a job that
+  finishes during rendering cannot leave the page stuck without its result.
+- Weekly and monthly shopping read pantry and pack-size data once per
+  calculation. The ingredient parser reuses recent immutable parse results;
+  its bounded cache does not store pantry state or recipe files.
+- Focused control pages now use section templates and a small workspace
+  stylesheet. Home puts printing and today's plans first, and the long editing
+  pages link straight to their sections.
+
+The 2,400-row monthly shopping fixture in `tools/benchmark_hot_paths.py`
+averaged **194 ms before and 16 ms after** across seven runs on the same local
+Python environment. The result hash was identical. These are synthetic timings;
+the change also eliminates an unnecessary Google Docs request on Home, Receipt,
+Settings and Accounts when a remote food list is configured.

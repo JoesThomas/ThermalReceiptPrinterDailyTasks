@@ -24,7 +24,7 @@ from services import local_gigs
 settings=copy.deepcopy(DEFAULT_SETTINGS)
 settings['therapy_payment']['payee']='Example payee'
 subscriptions={'monthly':[{'name':'Example bill','amount':30,'due_day':15,'category':'bill','match':[]}],'yearly':[],'instalments':[]}
-with tempfile.TemporaryDirectory() as directory, patch.object(web,'load_receipt_settings',return_value=settings), patch.object(web,'load_routines',return_value=[]), patch.object(web,'load_subscriptions',return_value=subscriptions), patch.object(web,'load_food_shop_items',return_value=([],None)), patch.object(web,'food_shop_override',return_value=None), patch.object(web,'load_to_buy',return_value=[]), patch.object(web,'load_tasks',return_value=[]), patch.object(web,'load_print_status',return_value={'state':'completed','page':'all','updated_at':'2026-10-01T12:00:00+00:00'}), patch.object(local_gigs,'CONFIG_FILE',Path(directory)/'gigs.json'):
+with tempfile.TemporaryDirectory() as directory, patch.object(web,'load_receipt_settings',return_value=settings), patch.object(web,'load_routines',return_value=[]), patch.object(web,'load_subscriptions',return_value=subscriptions) as load_subscriptions, patch.object(web,'load_food_shop_items',return_value=([],None)) as load_food_shop, patch.object(web,'food_shop_override',return_value=None), patch.object(web,'load_to_buy',return_value=[]), patch.object(web,'load_tasks',return_value=[]), patch.object(web,'load_print_status',return_value={'state':'completed','page':'all','updated_at':'2026-10-01T12:00:00+00:00'}), patch.object(local_gigs,'CONFIG_FILE',Path(directory)/'gigs.json'):
  with web.app.test_client() as client:
   with client.session_transaction() as session:
    session['authenticated']=True
@@ -42,13 +42,18 @@ with tempfile.TemporaryDirectory() as directory, patch.object(web,'load_receipt_
     for field in ['calendar','weather','therapy_payee','salary_payee','latitude','longitude','return_view']:
      assert 'name="'+field+'"' in text,(view,field)
     assert 'id="routines"' not in text
+   if view in ['receipt','settings','tasks','accounts']:
+    assert 'aria-label="On this page"' in text
    if view=='tasks':
     assert 'id="future-tasks"' in text and 'id="routines"' in text
     assert 'id="commitments"' not in text
    if view=='accounts':
     assert 'Example bill' in text and 'id="commitments"' in text
     assert 'id="future-tasks"' not in text
+  assert load_food_shop.call_count==1  # Only Tasks can fetch its Google Doc.
+  assert load_subscriptions.call_count==1  # Only Accounts reads instalment records.
   assert client.get('/?view=unknown').status_code==200
+  assert load_food_shop.call_count==1 and load_subscriptions.call_count==1
   for name in web.app.jinja_env.list_templates(): web.app.jinja_env.get_template(name)
   with patch.object(web,'save_receipt_settings') as save:
    response=client.post('/save',data={'csrf_token':'test','return_view':'settings','calendar':'on','weather':'on','local_gigs':'on'})
