@@ -1,0 +1,370 @@
+<p>
+    <a class="button" href="{{ url_for('finance_review') }}">Back to finance review</a>
+</p>
+<section id="instalments">
+    <h2>Instalments</h2>
+    <p class="muted">
+        Temporary payment commitments.
+        Changes are used by the next finance receipt. Set the regular amount and next payment date to help verify a matching bank debit.
+    </p>
+    {% if subscriptions.instalments %}
+        {% for item in subscriptions.instalments %}
+            <article class="instalment-record">
+                <h3>{{ item.name }}</h3>
+                {% if instalment_settlement_key is defined %}
+                    {% if item.settled_on %}
+                        <p>
+                            <strong>{{ item.name }} — settled {{ item.settled_on }}</strong> · excluded from future instalment forecasts.
+                        </p>
+                        <form method="post"
+                              action="{{ url_for('instalment_reopen',index=loop.index0) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden"
+                                   name="key"
+                                   value="{{ instalment_settlement_key(item) }}">
+                            <button>Reopen this instalment</button>
+                        </form>
+                    {% else %}
+                        <form method="post"
+                              action="{{ url_for('instalment_settle',index=loop.index0) }}"
+                              class="instalment-settle-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden"
+                                   name="key"
+                                   value="{{ instalment_settlement_key(item) }}">
+                            <label>
+                                Settlement date
+                                <input type="date"
+                                       name="date"
+                                       value="{{ settlement_today }}"
+                                       max="{{ settlement_today }}"
+                                       required>
+                            </label>
+                            {% set linked=instalment_settlement_links(item,subscriptions.monthly) %}
+                            {% if linked %}
+                                <input type="hidden" name="monthly_key" value="{{ linked[0].key }}">
+                                <label>
+                                    <input type="checkbox" name="also_monthly" checked>
+                                    Also stop the saved monthly entry {{ linked[0].name }} ({{ linked[0].amount }})
+                                </label>
+                            {% endif %}
+                            <button aria-label="Mark {{ item.name }} as settled">Mark as settled</button>
+                            <p class="muted">
+                                Use after the provider confirms payment in full. Records settlement locally; does not send money or cancel a Direct Debit. The record and payment history are retained.
+                            </p>
+                        </form>
+                    {% endif %}
+                {% endif %}
+                {% if not item.settled_on %}
+                    <form method="post"
+                          action="{{ url_for( 'instalment_update', index=loop.index0 ) }}"
+                          class="instalment">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="instalment-header">
+                            <div>
+                                {% if item.next_payment %}
+                                    <small>
+                                        Next payment:
+                                        {{ item.next_payment }}
+                                    </small>
+                                {% endif %}
+                            </div>
+                            {% if item.remaining_balance is defined and item.remaining_balance is not none %}
+                                <div class="balance">
+                                    <small>Remaining</small>
+                                    <strong>
+                                        £{{ "%.2f"|format(
+                                        item.remaining_balance
+                                        ) }}
+                                    </strong>
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% if item.progress %}
+                            <figure class="repayment-progress">
+                                <progress value="{{ item.progress.paid }}"
+                                          max="{{ item.progress.total }}"
+                                          aria-label="{{ item.name }} repayment progress: {{ item.progress.percent }} percent paid"></progress>
+                                <figcaption>
+                                    <span>{{ item.progress.percent }}% repaid · £{{ '%.2f'|format(item.progress.paid) }} paid</span><span>£{{ '%.2f'|format(item.progress.remaining) }} remaining</span>
+                                </figcaption>
+                            </figure>
+                        {% endif %}
+                        <div class="grid">
+                            <label>
+                                Name
+                                <br>
+                                <input type="text" name="name" value="{{ item.name }}" required>
+                            </label>
+                            <label>
+                                Regular payment (£)
+                                <br>
+                                <input type="number"
+                                       name="amount"
+                                       min="0"
+                                       step="0.01"
+                                       value="{{ item.amount if item.amount is not none else '' }}">
+                            </label>
+                            <label>
+                                Original total (£)
+                                <br>
+                                <input type="number"
+                                       name="total_price"
+                                       min="0"
+                                       step="0.01"
+                                       value="{{ item.total_price if item.total_price is not none else '' }}">
+                            </label>
+                            <label>
+                                Paid to date (£)
+                                <br>
+                                <input type="number"
+                                       name="paid_to_date"
+                                       min="0"
+                                       step="0.01"
+                                       value="{{ item.paid_to_date if item.paid_to_date is not none else '' }}">
+                            </label>
+                            <label>
+                                Remaining balance (£)
+                                <br>
+                                <input type="number"
+                                       name="remaining_balance"
+                                       min="0"
+                                       step="0.01"
+                                       value="{{ item.remaining_balance if item.remaining_balance is not none else '' }}">
+                            </label>
+                            <label>
+                                Payments remaining
+                                <br>
+                                <input type="number"
+                                       name="payments_remaining"
+                                       min="0"
+                                       step="1"
+                                       value="{{ item.payments_remaining if item.payments_remaining is not none else '' }}">
+                            </label>
+                            <label>
+                                Next payment
+                                <br>
+                                <input type="date" name="next_payment" value="{{ item.next_payment or '' }}">
+                            </label>
+                        </div>
+                        <!-- SCHEDULE -->
+                        {% if item.schedule %}
+                            <div class="schedule">
+                                <h4>Payment schedule</h4>
+                                {% for payment in item.schedule %}
+                                    <div class="schedule-row">
+                                        <span>{{ payment.date }}</span>
+                                        <strong>
+                                            £{{ "%.2f"|format(
+                                            payment.amount
+                                            ) }}
+                                        </strong>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <!-- HISTORY -->
+                        {% if item.history %}
+                            <details class="history">
+                                <summary>
+                                    Payment history
+                                    ({{ item.history|length }})
+                                </summary>
+                                <div class="schedule">
+                                    {% for payment in item.history %}
+                                        <div class="schedule-row">
+                                            <span>
+                                                {{ payment.date }}
+                                                {% if payment.type %}· {{ payment.type|title }}{% endif %}
+                                            </span>
+                                            <strong>
+                                                £{{ "%.2f"|format(
+                                                payment.amount
+                                                ) }}
+                                            </strong>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </details>
+                        {% endif %}
+                        <button type="submit" class="save-instalment">Save {{ item.name }}</button>
+                    </form>
+                {% endif %}
+            </article>
+        {% endfor %}
+    {% else %}
+        <p>No instalments configured.</p>
+    {% endif %}
+</section>
+<section id="commitments">
+    <p class="eyebrow">Edit live data</p>
+    <h2>Monthly commitments</h2>
+    <p class="muted">
+        Entries here appear on the finance receipt. Instalment balances have their own section; avoid entering the same repayment twice.
+    </p>
+    {% for item in subscriptions.monthly %}
+        <div class="instalment">
+            <form method="post"
+                  action="{{ url_for('commitment_update', index=loop.index0) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="grid">
+                    <label>
+                        Name
+                        <input name="name" value="{{ item.name }}" required>
+                    </label>
+                    <label>
+                        Monthly amount (£)
+                        <input type="number"
+                               name="amount"
+                               min="0.01"
+                               step="0.01"
+                               value="{{ item.amount }}"
+                               required>
+                    </label>
+                    <label>
+                        Usual payment day (optional)
+                        <input type="number"
+                               name="due_day"
+                               min="1"
+                               max="31"
+                               value="{{ item.due_day or '' }}">
+                    </label>
+                    <label>
+                        Contract end date (optional)
+                        <input type="date" name="end_date" value="{{ item.end_date or '' }}">
+                    </label>
+                    <label>
+                        Bank matching words (comma-separated)
+                        <input name="match"
+                               value="{{ (item.match or [])|join(', ') if item.match is not string else item.match }}">
+                    </label>
+                    <label>
+                        Type
+                        <select name="category">
+                            {% for value in ['bill','subscription','savings','repayment'] %}
+                                <option value="{{ value }}"
+                                        {% if item.category == value %}selected{% endif %}>{{ value|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                </div>
+                <button>Save {{ item.name }}</button>
+            </form>
+            <form method="post"
+                  action="{{ url_for('commitment_delete', index=loop.index0) }}"
+                  onsubmit="return confirm('Remove this monthly commitment?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button>Remove</button>
+            </form>
+        </div>
+    {% endfor %}
+    <h3>Add monthly commitment</h3>
+    <form method="post" action="{{ url_for('commitment_add') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="grid">
+            <label>
+                Name
+                <input name="name" required>
+            </label>
+            <label>
+                Monthly amount (£)
+                <input type="number" name="amount" min="0.01" step="0.01" required>
+            </label>
+            <label>
+                Usual payment day (optional)
+                <input type="number" name="due_day" min="1" max="31">
+            </label>
+            <label>
+                Contract end date (optional)
+                <input type="date" name="end_date">
+            </label>
+            <label>
+                Bank matching words
+                <input name="match" placeholder="e.g. netflix.com">
+            </label>
+            <label>
+                Type
+                <select name="category">
+                    <option value="subscription">Subscription</option>
+                    <option value="bill">Bill</option>
+                    <option value="savings">Savings</option>
+                    <option value="repayment">Repayment</option>
+                </select>
+            </label>
+        </div>
+        <button>Add commitment</button>
+    </form>
+</section>
+<section id="annual-subscriptions">
+    <p class="eyebrow">Edit live data</p>
+    <h2>Annual subscriptions</h2>
+    <p class="muted">
+        These appear separately from monthly commitments. A bank match is checked only near the renewal date; older payments remain recorded but unverified.
+    </p>
+    {% for item in subscriptions.yearly %}
+        <div class="instalment">
+            <form method="post"
+                  action="{{ url_for('annual_update', index=loop.index0) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="grid">
+                    <label>
+                        Name
+                        <input name="name" value="{{ item.name }}" required>
+                    </label>
+                    <label>
+                        Annual amount (£)
+                        <input type="number"
+                               name="amount"
+                               min="0.01"
+                               step="0.01"
+                               value="{{ item.amount }}"
+                               required>
+                    </label>
+                    <label>
+                        Renewal date
+                        <input type="date"
+                               name="renewal_date"
+                               value="{{ item.renewal_date or '' }}"
+                               required>
+                    </label>
+                    <label>
+                        Bank matching words
+                        <input name="match"
+                               value="{{ (item.match or [])|join(', ') if item.match is not string else item.match }}"
+                               placeholder="e.g. adobe">
+                    </label>
+                </div>
+                <button>Save {{ item.name }}</button>
+            </form>
+            <form method="post"
+                  action="{{ url_for('annual_delete', index=loop.index0) }}"
+                  onsubmit="return confirm('Remove this annual subscription?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button>Remove</button>
+            </form>
+        </div>
+    {% endfor %}
+    <h3>Add annual subscription</h3>
+    <form method="post" action="{{ url_for('annual_add') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="grid">
+            <label>
+                Name
+                <input name="name" required>
+            </label>
+            <label>
+                Annual amount (£)
+                <input type="number" name="amount" min="0.01" step="0.01" required>
+            </label>
+            <label>
+                Renewal date
+                <input type="date" name="renewal_date" required>
+            </label>
+            <label>
+                Bank matching words
+                <input name="match" placeholder="e.g. adobe">
+            </label>
+        </div>
+        <button>Add annual subscription</button>
+    </form>
+</section>

@@ -1,0 +1,49 @@
+<!-- DEBUG PRINTING -->
+<section id="print-pages">
+    <h2>Print individual page</h2>
+    <p class="muted">Choose an individual page to print, or open its preview first.</p>
+    <div class="debug-grid">
+        {% for key,label in [
+            ('information','Information'),
+            ('actions','Actions'),
+            ('food','Food / meal planner'),
+            ('finance','Finance')
+            ] %}
+            <form method="post" action="{{ url_for('print_page') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="page" value="{{ key }}">
+                <button>Print {{ label }}</button>
+                <a class="section-link" href="{{ url_for('preview', page=key) }}">Example preview</a>
+            </form>
+        {% endfor %}
+    </div>
+</section>
+<!-- PRINTER -->
+<section id="printing">
+    <h2>Printer</h2>
+    <form method="post" action="{{ url_for('save_print_schedule') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <h3>Daily automatic print</h3>
+        <label>
+            <input type="checkbox"
+                   name="enabled"
+                   {% if settings.print_schedule.enabled %}checked{% endif %}>
+            Enable daily printing
+        </label>
+        <label>
+            Print time
+            <input type="time"
+                   name="time"
+                   value="{{ settings.print_schedule.time }}"
+                   required>
+        </label>
+        <p class="muted">
+            Europe/London time, including daylight saving. The server and computer must be running. At most one scheduled job is launched each day; failures are not automatically reprinted.
+        </p>
+        <button>Save print schedule</button>
+    </form>
+    <form method="post" action="{{ url_for('print_now') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="primary">Print receipt now</button>
+    </form>
+</section>

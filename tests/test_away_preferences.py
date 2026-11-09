@@ -41,7 +41,7 @@ class AwayPreferenceTests(unittest.TestCase):
         value=self.settings()
         plan={'meals':[{'date':'2026-10-05','kind':'recipe','recipe':{'name':'Away meal','ingredients':['rice','chicken']}}, {'date':'2026-10-07','kind':'recipe','recipe':{'name':'Home meal','ingredients':['rice','fish']}}]}
         before=copy.deepcopy(plan)
-        with patch.object(meals,'_pantry_has',return_value=False), patch.object(meals,'_override_for',return_value=None), patch.object(meals,'build_sunday_prep',return_value=[]):
+        with patch.object(meals,'load_pantry_matcher',return_value=lambda item:False), patch.object(meals,'_override_for',return_value=None), patch.object(meals,'build_sunday_prep',return_value=[]):
             adjusted=lifestyle.apply_plan(plan, meals, value)
         self.assertEqual(plan,before)
         items=[item for group in adjusted['shopping'].values() for item in group]
@@ -52,7 +52,7 @@ class AwayPreferenceTests(unittest.TestCase):
 
     def test_cached_plan_is_adjusted_without_rewriting_original(self):
         self.settings()
-        with patch.object(meals,'PLANS_DIR',self.root/'plans'), patch.object(meals,'build_sunday_prep',return_value=[]), patch.object(meals,'_pantry_has',return_value=False):
+        with patch.object(meals,'PLANS_DIR',self.root/'plans'), patch.object(meals,'build_sunday_prep',return_value=[]), patch.object(meals,'load_pantry_matcher',return_value=lambda item:False):
             path=meals.plan_path(date(2026,10,4)); meals._save(path, {'meals':[{'date':'2026-10-05','kind':'recipe','recipe':{'name':'Kept recipe','ingredients':['rice']}}]})
             original=path.read_bytes()
             self.assertEqual(meals.load_plan_for(date(2026,10,5))['meals'][0]['kind'],'away')

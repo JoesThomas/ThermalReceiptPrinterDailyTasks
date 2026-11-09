@@ -77,12 +77,13 @@ def metadata(values=None, *, finance=False):
     }
 
 
-def preview_settings_fingerprint():
+def preview_settings_fingerprint(settings=None):
     """Track local receipt configuration; council refresh timestamps aren't edits."""
     from receipt_settings import settings_state
     from services import bin_collections
 
-    settings, _ = settings_state()
+    if settings is None:
+        settings, _ = settings_state()
     try:
         bins = bin_collections.load()
         bin_settings = {

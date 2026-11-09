@@ -9,7 +9,7 @@ import re
 from storage import PrivateStore, file_lock
 from receipt.local_time import uk_today
 from meals import legacy_planner as planner
-from meals.ingredients import parse, aggregate
+from meals.ingredients import parse, aggregate, load_pack_sizes
 
 FILE = Path(__file__).resolve().parents[1] / "data" / "monthly_meals.json"
 CATEGORIES = (
@@ -123,7 +123,10 @@ def identity(line):
 
 
 def category(line):
-    name = identity(line)
+    return category_for_name(identity(line))
+
+
+def category_for_name(name):
     # Explicit preservation and dry seasoning take precedence over fresh-food names.
     if re.search(
         r"\b(tin|tinned|canned|frozen|dried|powder|granules|spice|spices|salt|oil|vinegar|rice|couscous|cereal|muesli|flour|sugar|honey|passata|purée|puree|oats|lentils)\b",
@@ -368,18 +371,21 @@ def shopping(rows, settings, first, on):
     produce = weekend_day(settings["veg_day"], 6)
     first_weekend = min(next_weekend(start, day) for day in WEEKEND_DAYS)
     main_shop = next_weekend(start, weekly)
-    # Use the earlier available weekend day if the preferred main shop misses a meal.
-    pantry_needs = [row["day"] for row in rows if (
-        settings["overrides"].get(identity(row["line"])) or category(row["line"])
-    ) == CATEGORIES[0]]
-    if pantry_needs and first_weekend <= min(pantry_needs) < main_shop:
-        main_shop = first_weekend
-
+    # Classify once; the earliest cupboard need can move a Sunday shop to Saturday.
     grouped = defaultdict(list)
     items = defaultdict(list)
+    classified = []
+    first_pantry_need = None
     for row in rows:
         key = identity(row["line"])
-        kind = settings["overrides"].get(key) or category(row["line"])
+        kind = settings["overrides"].get(key) or category_for_name(key)
+        classified.append((row, key, kind))
+        if kind == CATEGORIES[0] and (first_pantry_need is None or row["day"] < first_pantry_need):
+            first_pantry_need = row["day"]
+    if first_pantry_need is not None and first_weekend <= first_pantry_need < main_shop:
+        main_shop = first_weekend
+
+    for row, key, kind in classified:
         shop = settings["shops"][kind]
         need = row["day"]
         if kind == CATEGORIES[0]:
@@ -394,6 +400,8 @@ def shopping(rows, settings, first, on):
         grouped[(buy, shop)].append(row)
         items[key].append(dict(row, category=kind, shop=shop))
     visits = []
+    pantry_has = planner.load_pantry_matcher() if grouped else None
+    pack_sizes = load_pack_sizes() if grouped else {}
     for (buy, shop), uses in sorted(grouped.items()):
         byname = defaultdict(list)
         for row in uses:
@@ -403,12 +411,12 @@ def shopping(rows, settings, first, on):
             entries.append(
                 dict(
                     key=key,
-                    amounts=aggregate([r["line"] for r in lines], for_shopping=True),
+                    amounts=aggregate([r["line"] for r in lines], for_shopping=True, pack_sizes=pack_sizes),
                     requirements=aggregate([r["line"] for r in lines]),
                     needs=sorted({r["day"].isoformat() for r in lines}),
                     recipes=sorted({r["recipe"] for r in lines}),
                     unmeasured=any(parse(r["line"]) is None for r in lines),
-                    pantry=planner._pantry_has(lines[0]["line"]),
+                    pantry=pantry_has(lines[0]["line"]),
                 )
             )
         visits.append(dict(day=buy, shop=shop, items=entries,

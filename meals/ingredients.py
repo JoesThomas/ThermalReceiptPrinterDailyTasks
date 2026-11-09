@@ -1,11 +1,15 @@
 """Combine compatible recipe quantities without guessing weight/count conversions."""
 import re
 from fractions import Fraction
+from functools import lru_cache
+import json
+import math
 
 PLURALS = {'onions': 'onion', 'carrots': 'carrot', 'peppers': 'pepper',
            'potatoes': 'potato', 'tomatoes': 'tomato', 'tortillas': 'tortilla',
            'lemons': 'lemon', 'limes': 'lime', 'cloves': 'clove', 'fillets': 'fillet',
            'breasts': 'breast', 'beans': 'bean', 'noodles': 'noodle'}
+SINGULAR_TO_PLURAL = {singular: plural for plural, singular in PLURALS.items()}
 UNITS = {'kg': ('g', 1000), 'g': ('g', 1), 'l': ('ml', 1000), 'ml': ('ml', 1),
          'tsp': ('tsp', 1), 'tbsp': ('tsp', 3), 'tin': ('tin', 1), 'tins': ('tin', 1),
          'slice': ('slice', 1), 'slices': ('slice', 1), 'nest': ('nest', 1),
@@ -15,13 +19,20 @@ QUANTITY = re.compile(r'^(\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?)\s*')
 
 def parse(text):
     original = str(text).strip()
+    return _cached_parse(original) if len(original) <= 256 else _parse(original)
+
+
+def _parse(original):
     value = original.casefold().replace('½', ' 1/2').replace('¼', ' 1/4').replace('¾', ' 3/4')
     match = QUANTITY.match(value.strip())
     if not match:
         return None
     raw = match.group(1)
     try:
-        amount = sum((Fraction(part) for part in raw.split()), Fraction(0))
+        parts = raw.split()
+        amount = Fraction(parts[0])
+        if len(parts) == 2:
+            amount += Fraction(parts[1])
     except (ValueError, ZeroDivisionError):
         return None
     rest = value.strip()[match.end():].strip()
@@ -35,7 +46,10 @@ def parse(text):
     if not rest:
         return None
     identity = ' '.join(PLURALS.get(word, word) for word in rest.split())
-    return amount * scale, unit, identity, rest
+    return amount if scale == 1 else amount * scale, unit, identity, rest
+
+
+_cached_parse = lru_cache(maxsize=1024)(_parse)
 
 
 def number(amount):
@@ -46,14 +60,19 @@ def number(amount):
     return f'{whole} {fraction}' if whole else fraction
 
 
+def load_pack_sizes():
+    from config import DATA_DIR
+
+    try:
+        value = json.loads((DATA_DIR / "pack_sizes.json").read_text())
+        return value if isinstance(value, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
 def aggregate(items, *, for_shopping=False, pack_sizes=None):
     if for_shopping and pack_sizes is None:
-        import json
-        from config import DATA_DIR
-        try:
-            pack_sizes = json.loads((DATA_DIR / "pack_sizes.json").read_text())
-        except (OSError, ValueError):
-            pack_sizes = {}
+        pack_sizes = load_pack_sizes()
     pack_sizes = pack_sizes or {}
     rows = {}
     for text in items:
@@ -78,7 +97,6 @@ def aggregate(items, *, for_shopping=False, pack_sizes=None):
         needed = amount
         note = ""
         if for_shopping:
-            import math
             if unit in {'count', 'tin', 'nest', 'slice'}:
                 amount = Fraction(math.ceil(amount))
             elif unit in {'g', 'ml'}:
@@ -92,9 +110,8 @@ def aggregate(items, *, for_shopping=False, pack_sizes=None):
                 note = f" (need {number(needed)}{unit if unit in {'g', 'ml'} else ''})"
         if unit == 'count':
             words = identity.split()
-            reverse = {singular: plural for plural, singular in PLURALS.items()}
-            if amount > 1 and words[-1] in reverse:
-                words[-1] = reverse[words[-1]]
+            if amount > 1 and words[-1] in SINGULAR_TO_PLURAL:
+                words[-1] = SINGULAR_TO_PLURAL[words[-1]]
             output.append(f'{number(amount)} {" ".join(words)}{note}')
         elif unit in {'g', 'ml'}:
             output.append(f'{number(amount)}{unit} {label}{note}')

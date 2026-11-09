@@ -11,7 +11,7 @@ from functools import wraps
 from pathlib import Path
 from urllib.request import urlopen
 from zoneinfo import ZoneInfo
-from flask import Flask, abort, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, g, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -64,9 +64,6 @@ def load_food_shop_items():
     Receipt Control page without importing the printer
     pipeline.
     """
-    local_items = food_shop_override()
-    if local_items is not None:
-        return local_items, None
     if not PROJECT_PASSWORDS_FILE.exists():
         return [], "Project passwords.json is missing."
 
@@ -369,64 +366,58 @@ def index():
     active_view = request.args.get("view", "dashboard")
     if active_view not in {"dashboard", "receipt", "tasks", "accounts", "settings"}:
         active_view = "dashboard"
-    from web_control.scheduled_print import next_print_time
-    from web_control.schedule_history import summary as daily_summary
-    status = load_print_status()
-    last_print_local = None
-    if status and status.get("updated_at"):
-        try:
-            stamp = datetime.fromisoformat(status["updated_at"].replace("Z", "+00:00"))
-            if stamp.tzinfo is None:
-                stamp = stamp.replace(tzinfo=ZoneInfo("UTC"))
-            last_print_local = stamp.astimezone(ZoneInfo("Europe/London")).strftime("%d %b, %H:%M %Z")
-        except (ValueError, TypeError):
-            pass
-    settings = load_receipt_settings()
     from receipt_settings import settings_state
-    from web_control.attention import build as attention_items
-    attention = attention_items(PROJECT_ROOT, settings, warning=settings_state()[1]) if active_view == "dashboard" else []
-    scheduled_at = next_print_time(datetime.now(ZoneInfo("Europe/London")), settings)
-    from services.local_gigs import options as gig_options
-    settings["features"]["local_gigs"] = gig_options()["enabled"]
-    routines = load_routines()
-    subscriptions = load_subscriptions()
-    for item in subscriptions.get("instalments", []):
-        if isinstance(item, dict):
-            item["progress"] = instalment_progress(item)
 
-    for item in routines:
-        due = next_due_date(item)
-        item["next_due_display"] = (
-            due.strftime("%a %d %b").upper()
-            if due
-            else "NOT SET"
+    settings, warning = settings_state()
+    g.receipt_settings_snapshot = (settings, warning)
+    context = {"active_view": active_view, "settings": settings}
+    if active_view == "dashboard":
+        from receipt.local_time import uk_now, uk_receipt_time
+        from web_control.attention import build as attention_items
+        from web_control.schedule_history import summary as daily_summary
+        from web_control.scheduled_print import next_print_time
+        from web_control.today_summary import dashboard
+
+        now = uk_now()
+        daily = daily_summary(settings, now=now, directory=PROJECT_ROOT / "data")
+        status = load_print_status()
+        context.update(
+            attention_items=attention_items(PROJECT_ROOT, settings, warning=warning, daily=daily, now=now),
+            daily_print=daily,
+            last_print_local=uk_receipt_time(status.get("updated_at")) if status else "",
+            print_status=status,
+            routines=load_routines(),
+            scheduled_at=next_print_time(now, settings),
+            today_view=dashboard(),
         )
+    elif active_view == "tasks":
+        routines = load_routines()
+        for item in routines:
+            due = next_due_date(item)
+            item["next_due_display"] = due.strftime("%a %d %b").upper() if due else "NOT SET"
+        local_food = food_shop_override()
+        food_items, food_error = (local_food, None) if local_food is not None else load_food_shop_items()
+        context.update(
+            routines=routines,
+            weekdays=WEEKDAYS,
+            food_shop_items=food_items,
+            food_shop_text="\n".join(food_items),
+            food_shop_error=food_error,
+            food_shop_is_local=local_food is not None,
+            to_buy_items=load_to_buy(),
+            future_tasks=load_tasks(),
+        )
+    elif active_view == "accounts":
+        subscriptions = load_subscriptions()
+        for item in subscriptions["instalments"]:
+            item["progress"] = instalment_progress(item)
+        context["subscriptions"] = subscriptions
+    else:
+        from services.local_gigs import options as gig_options
 
-    (
-        food_shop_items,
-        food_shop_error,
-    ) = load_food_shop_items()
+        settings["features"]["local_gigs"] = gig_options()["enabled"]
+    return render_template("index.html", **context)
 
-    from web_control.today_summary import dashboard
-    today_view = dashboard() if active_view == "dashboard" else {}
-    return render_template(
-        "index.html",
-        print_status=status,
-        today_view=today_view,
-        attention_items=attention,
-        active_view=active_view, scheduled_at=scheduled_at, last_print_local=last_print_local,
-        daily_print=daily_summary(settings, directory=PROJECT_ROOT / 'data'),
-        settings=settings,
-        routines=routines,
-        weekdays=WEEKDAYS,
-        subscriptions=subscriptions,
-        food_shop_items=food_shop_items,
-        food_shop_text="\n".join(food_shop_items),
-        food_shop_error=food_shop_error,
-        food_shop_is_local=food_shop_override() is not None,
-        to_buy_items=load_to_buy(),
-        future_tasks=load_tasks(),
-    )
 
 def _checked(name): return request.form.get(name) == "on"
 
@@ -992,9 +983,10 @@ def preview():
     printed_capture = load_capture()
     capture = (live_capture if source == "live" else printed_capture) or {"pages": {}, "page_times": {}}
     from receipt.build_info import preview_settings_fingerprint
-    current_settings = preview_settings_fingerprint()
-    meals_enabled = load_receipt_settings()['features'].get('meals', True)
-    examples = example_pages(_local_today())
+    from receipt_settings import settings_state
+    settings, warning = settings_state()
+    g.receipt_settings_snapshot = (settings, warning)
+    meals_enabled = settings['features'].get('meals', True)
     selected = (capture.get("page_order") or PAGE_NAMES) if page == "all" else (page,)
     if source == 'live' and not meals_enabled:
         selected = [name for name in selected if name != 'food']
@@ -1003,14 +995,22 @@ def preview():
         try: requested=validate_sections(request.args['sections'].split(','))
         except ValueError: abort(400)
         selected=[name for name in selected if name in requested]
-    pages = [{"name": name, "text": capture["pages"].get(name) or examples[name],
-              "blocks": receipt_blocks(capture["pages"].get(name) or examples[name],
-                                       capture.get("page_images", {}).get(name, [])),
-              "captured_at": capture.get("page_times", {}).get(name),
-              "captured_local": uk_receipt_time(capture.get("page_times", {}).get(name)),
-              "settings_changed": bool(capture.get('page_settings', {}).get(name)) and capture['page_settings'][name] != current_settings,
-              "sample": not bool(capture["pages"].get(name))}
-             for name in selected]
+    page_settings = capture.get("page_settings", {})
+    current_settings = preview_settings_fingerprint(settings) if any(page_settings.get(name) for name in selected) else None
+    examples = example_pages(_local_today()) if any(not capture["pages"].get(name) for name in selected) else {}
+    pages = []
+    for name in selected:
+        saved_text = capture["pages"].get(name)
+        text = saved_text or examples[name]
+        captured_at = capture.get("page_times", {}).get(name)
+        pages.append({
+            "name": name, "text": text,
+            "blocks": receipt_blocks(text, capture.get("page_images", {}).get(name, [])),
+            "captured_at": captured_at,
+            "captured_local": uk_receipt_time(captured_at),
+            "settings_changed": bool(page_settings.get(name)) and page_settings[name] != current_settings,
+            "sample": not bool(saved_text),
+        })
     from receipt.quality import check
     quality_warnings = check(capture.get("pages", {}), capture.get("freshness", {}))
     from receipt.paper import estimate
@@ -1293,6 +1293,8 @@ register_daily_tools(app, login_required, PROJECT_ROOT, _start_print_command, _r
 
 @app.context_processor
 def salary_reserve_context():
+    if request.endpoint not in {"finance_review", "savings_review"}:
+        return {}
     from finance.receipt import load_finance_settings
     from finance.salary_plan import reserves
     try:

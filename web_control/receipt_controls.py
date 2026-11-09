@@ -1,5 +1,5 @@
 """Read-only print planning and explicitly requested saved-copy printing."""
-from flask import abort, flash, redirect, render_template, request, url_for
+from flask import abort, flash, g, redirect, render_template, request, url_for
 from receipt.capture import LIVE_PREVIEW_FILE, load_capture
 
 RETRIES = {'Weather':'information', 'UK news':'information', 'Local news':'information',
@@ -10,7 +10,8 @@ def register(app, login_required, start_print, root):
     @app.context_processor
     def receipt_control_context():
         from receipt_settings import settings_state
-        settings, warning = settings_state()
+        snapshot = g.get("receipt_settings_snapshot")
+        settings, warning = snapshot if snapshot is not None else settings_state()
         return {'receipt_retries': RETRIES, 'receipt_settings_warning': warning, 'meals_on_receipt': settings['features'].get('meals', True)}
 
     @app.get('/print-plan')

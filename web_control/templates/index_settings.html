@@ -1,0 +1,56 @@
+<section id="settings-tools">
+    <h2>Setup &amp; connections</h2>
+    <div class="workspace-tools">
+        <article>
+            <h3>Setup &amp; backup</h3>
+            <p>Review configuration and keep a copy of private settings.</p>
+            <a href="{{ url_for('setup_page') }}">Review setup</a> · <a href="{{ url_for('backup_page') }}">Automatic backups</a>
+        </article>
+        <article>
+            <h3>Integration health</h3>
+            <p>Review connection failures, recent checks and retry settings.</p>
+            <a href="{{ url_for('api_health_page') }}">API health &amp; frequency</a>
+        </article>
+        <article>
+            <h3>Bin collections</h3>
+            <p>Change the collection address and reminder settings.</p>
+            <a href="{{ url_for('bin_settings') }}">Manage bin collections</a>
+        </article>
+        <article>
+            <h3>Household &amp; meals</h3>
+            <p>Set diners, diets, breakfasts and seasonal preferences.</p>
+            <a href="{{ url_for('meal_settings_page') }}">Household &amp; meal settings</a>
+        </article>
+    </div>
+</section>
+<section id="receipt-layout">
+    <h2>Receipt layout</h2>
+    <p class="muted">
+        The default order stays Information → Actions → Food → Finance. Finance appears when requested. A custom order collects all selected pages before sending them to the printer.
+    </p>
+    <form method="post" action="{{ url_for('save_receipt_layout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% for name in settings.layout.order %}
+            <label>
+                Page {{ loop.index }}
+                <select name="page_{{ loop.index0 }}">
+                    {% for value in ['information','actions','food','finance'] %}
+                        <option value="{{ value }}" {% if value == name %}selected{% endif %}>{{ value|title }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+        {% endfor %}
+        <p class="muted">
+            Daily receipts use your configured headline counts and include all enabled sections. Compact and detailed output remain available in Test finance.
+        </p>
+        <input type="hidden" name="paper_saver" value="off">
+        <label>
+            <input type="checkbox"
+                   name="paper_saver"
+                   {% if settings.layout.paper_saver|default(true) %}checked{% endif %}>
+            Paper-saving spacing (remove repeated blank lines and adjacent rules)
+        </label>
+        <button>Save receipt layout</button>
+    </form>
+</section>
+{% include 'printer_paper.html' %}

@@ -143,7 +143,7 @@ class HouseholdTests(HouseholdFixture, TestCase):
                 }
             ]
         }
-        with patch.object(planner, "_pantry_has", return_value=True):
+        with patch.object(planner, "load_pantry_matcher", return_value=lambda item: True):
             output = " ".join(
                 item
                 for group in planner.build_shopping_list(plan).values()

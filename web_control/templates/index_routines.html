@@ -1,0 +1,94 @@
+<!-- ROUTINES -->
+<section id="routines">
+    <div class="quick-actions">
+        <a class="button primary" href="{{ url_for('task_list') }}">To-do checklist</a><a class="button" href="{{ url_for('exercise_list') }}">Exercises</a>
+    </div>
+    <h2>Routines</h2>
+    <p class="muted">
+        Due routines are added to the receipt
+        as tick-box tasks.
+    </p>
+    {% for r in routines %}
+        <div class="routine">
+            <div>
+                <strong>{{ r.name }}</strong>
+                <br>
+                <small>
+                    {% if r.schedule_type == 'weekly' %}
+                        Every {{ r.weekday|title }}
+                    {% else %}
+                        Every {{ r.interval_days }} days
+                    {% endif %}
+                    · Next {{ r.next_due_display }}
+                    {% if not r.enabled %}· Disabled{% endif %}
+                </small>
+            </div>
+            <div class="actions">
+                <form method="post"
+                      action="{{ url_for( 'routine_done', routine_id=r.id ) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button>Done</button>
+                </form>
+                <form method="post"
+                      action="{{ url_for( 'routine_toggle', routine_id=r.id ) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="enabled" value="{{ '0' if r.enabled else '1' }}">
+                    <button>
+                        {{
+                        'Disable'
+                        if r.enabled
+                        else 'Enable'
+                        }}
+                    </button>
+                </form>
+                <form method="post"
+                      action="{{ url_for( 'routine_delete', routine_id=r.id ) }}"
+                      onsubmit=" return confirm( 'Delete this routine?' ) ">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button>Delete</button>
+                </form>
+            </div>
+        </div>
+    {% else %}
+        <p>No routines configured.</p>
+    {% endfor %}
+    <h3>Add routine</h3>
+    <form method="post" action="{{ url_for('routine_add') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="grid">
+            <label>
+                Name
+                <br>
+                <input name="name" placeholder="Laundry" required>
+            </label>
+            <label>
+                Type
+                <br>
+                <select name="schedule_type">
+                    <option value="weekly">Fixed weekday</option>
+                    <option value="interval">After completion</option>
+                </select>
+            </label>
+            <label>
+                Weekday
+                <br>
+                <select name="weekday">
+                    {% for d in weekdays %}<option value="{{ d }}">{{ d|title }}</option>{% endfor %}
+                </select>
+            </label>
+            <label>
+                Interval days
+                <br>
+                <input type="number" name="interval_days" min="1" value="7">
+            </label>
+            <label>
+                Show days before
+                <br>
+                <input type="number" name="show_days_before" min="0" value="0">
+            </label>
+        </div>
+        <p>
+            <button>Add routine</button>
+        </p>
+    </form>
+</section>
