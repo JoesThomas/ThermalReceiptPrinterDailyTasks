@@ -70,7 +70,9 @@ files on their first run, while unfiltered initial browsing reads only one page.
 - The Finance review no longer computes the same bond-prize summary twice.
   The cash-reserve form's settings are only loaded on the Finance and Savings
   screens that use them. Receipt previews build sample pages and compute
-  configuration fingerprints only when a visible page needs them.
+  configuration fingerprints only when a visible page needs them. The route
+  page samples job progress before reading the saved plan, so a job that
+  finishes during rendering cannot leave the page stuck without its result.
 - Weekly and monthly shopping read pantry and pack-size data once per
   calculation. The ingredient parser reuses recent immutable parse results;
   its bounded cache does not store pantry state or recipe files.

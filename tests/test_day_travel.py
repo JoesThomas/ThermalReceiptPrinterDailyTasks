@@ -254,6 +254,21 @@ class TravelWebTests(TestCase):
             "/day-travel/" + path, data=dict(day=DAY, csrf_token="test", **data)
         )
 
+    def test_page_keeps_polling_if_the_job_finishes_during_its_read(self):
+        web.JOB.update(owner="test", day=DAY, state="running", message="Planning")
+        store = travel.store()
+        previous = store.read()
+
+        def finish_during_read():
+            web.JOB.update(state="complete", message="Day plan ready.")
+            return previous
+
+        with patch.object(store, "read", side_effect=finish_during_read), patch.object(travel, "store", return_value=store):
+            response = self.client.get("/day-travel?day=" + DAY)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'data-state="running"', response.data)
+        self.assertEqual(self.client.get("/day-travel/status").get_json()["state"], "complete")
+
     def test_private_page_home_editor_csrf_and_no_network_on_get(self):
         with patch.object(provider, "locate") as locate:
             response = self.client.get("/day-travel?day=" + DAY)
