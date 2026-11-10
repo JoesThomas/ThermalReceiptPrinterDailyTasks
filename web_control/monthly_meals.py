@@ -7,6 +7,10 @@ from receipt.local_time import uk_today
 
 
 def register(app, login_required, start_print, root):
+    from meals.ingredients import ingredient_display
+
+    app.jinja_env.filters["ingredient_display"] = ingredient_display
+
     def selected():
         raw = request.values.get("month", uk_today().strftime("%Y-%m"))
         try:

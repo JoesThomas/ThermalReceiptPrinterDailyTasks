@@ -70,7 +70,7 @@
                                 <li>
                                     <label>
                                         <input type="checkbox" data-ingredient="{{ loop.index0 }}">
-                                        <span>{{ ingredient }}</span>
+                                        <span>{{ ingredient|ingredient_display }}</span>
                                     </label>
                                 </li>
                             {% else %}

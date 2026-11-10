@@ -90,7 +90,7 @@
                                     {% if row.lunch.overview %}<p>{{ row.lunch.overview }}</p>{% endif %}
                                     {% if row.lunch.extra_ingredients %}
                                         <ul>
-                                            {% for ingredient in row.lunch.extra_ingredients %}<li>{{ ingredient }}</li>{% endfor %}
+                                            {% for ingredient in row.lunch.extra_ingredients %}<li>{{ ingredient|ingredient_display }}</li>{% endfor %}
                                         </ul>
                                     {% endif %}
                                 </details>
@@ -343,7 +343,7 @@
                             <h3>Original preparation recipe</h3>
                             <p>Yield: {{ batch.make.yield|default('See recipe') }}</p>
                             <ul>
-                                {% for ingredient in batch.make.ingredients|default([]) %}<li>{{ ingredient }}</li>{% endfor %}
+                                {% for ingredient in batch.make.ingredients|default([]) %}<li>{{ ingredient|ingredient_display }}</li>{% endfor %}
                             </ul>
                             <ol>
                                 {% for step in batch.make.method|default([]) %}<li>{{ step }}</li>{% endfor %}

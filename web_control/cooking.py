@@ -9,6 +9,10 @@ from receipt.local_time import uk_today
 
 
 def register(app, login_required):
+    from meals.ingredients import ingredient_display
+
+    app.jinja_env.filters["ingredient_display"] = ingredient_display
+
     @app.get("/meals/cook")
     @login_required
     def cooking_page():

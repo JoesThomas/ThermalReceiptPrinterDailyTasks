@@ -184,10 +184,22 @@ def tomato_choice(lines, recipes):
     return 'round tomatoes'
 
 
+SALAD_LEAF_EXAMPLES = "e.g. lettuce, rocket or baby spinach"
+
+
+def ingredient_display(line):
+    """Examples clarify a mix without adding ingredients to recipe calculations."""
+    if re.search(r"\bmixed salad leaves\b", line, re.IGNORECASE) and "e.g." not in line.casefold():
+        return f"{line} ({SALAD_LEAF_EXAMPLES})"
+    return line
+
+
 def shopping_produce_note(key, lines):
     if key in LEAF_CHOICES:
         _, estimated = leaf_shopping_lines(key, lines)
         notes = []
+        if key in {'salad leaves', 'mixed salad leaves'}:
+            notes.append(f'Mixed salad leaves: {SALAD_LEAF_EXAMPLES}. Choose one suitable mix; these are examples, not separate items to buy.')
         if key == 'leafy greens':
             notes.append('Baby spinach is a suggested default where the recipe leaves the greens unspecified.')
         if estimated:
