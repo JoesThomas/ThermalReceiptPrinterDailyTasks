@@ -32,6 +32,7 @@ HISTORY_FILE = DATA_DIR / "recipe_history.json"
 OVERRIDES_FILE = DATA_DIR / "meal_overrides.json"
 PLANS_DIR = BASE_DIR / "meal_plans"
 from receipt.profile import COLUMNS as RECEIPT_WIDTH
+from meals.ingredients import ingredient_display
 
 
 def _load(path: Path, default: Any) -> Any:
@@ -749,7 +750,7 @@ def print_today_recipe(printer, left, line) -> None:
     from meals.resource_planning import cleanup
     cleaning=cleanup(r)
     left(printer,f"Clean-up estimate: {cleaning['level'].lower()} (~{cleaning['items']} items)")
-    for item in r.get("ingredients", []): left(printer, "- " + item)
+    for item in r.get("ingredients", []): left(printer, "- " + ingredient_display(item))
     line(printer, "-"); print_heading(printer, "METHOD", write=left)
     for i, step in enumerate(r.get("method", []), 1):
         for j, x in enumerate(wrap(step, RECEIPT_WIDTH-3)):
@@ -774,7 +775,7 @@ def print_today_recipe(printer, left, line) -> None:
     if lunch:
         line(printer, "-"); print_heading(printer, "LUNCH TOMORROW", write=left); left(printer, lunch.get("name", "").upper())
         for x in wrap(lunch.get("overview", "")): left(printer, x)
-        for item in lunch.get("extra_ingredients", []): left(printer, "+ " + item)
+        for item in lunch.get("extra_ingredients", []): left(printer, "+ " + ingredient_display(item))
         if handling and lunch_override and lunch_override.get("type") in {"buy_lunch", "eat_out"}:
             left(printer, "Verify ingredients and preparation.")
 

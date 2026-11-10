@@ -80,3 +80,13 @@ class ShoppingProduceTests(TestCase):
         kofta = next(r for r in recipes if r["name"] == "Beef Kofta & Tahini Flatbread")
         self.assertTrue(any("shape" in step for step in kofta["method"]))
         self.assertIn("planning defaults", kofta["ingredient_notes"])
+
+    def test_salad_examples_are_display_only_and_do_not_repeat(self):
+        from meals.ingredients import ingredient_display
+        line = "50g mixed salad leaves"
+        display = ingredient_display(line)
+        self.assertEqual(display, "50g mixed salad leaves (e.g. lettuce, rocket or baby spinach)")
+        self.assertEqual(ingredient_display(display), display)
+        self.assertEqual(ingredient_display("50g romaine lettuce"), "50g romaine lettuce")
+        self.assertEqual(line, "50g mixed salad leaves")
+        self.assertIn("not separate items", shopping_produce_note("mixed salad leaves", [line]))
