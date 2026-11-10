@@ -97,6 +97,35 @@ def shopping_key(line):
     return ' '.join(PLURALS.get(word, word) for word in name.split())
 
 
+BEEF_CUTS = {
+    "Beef Kofta & Tahini Flatbread": "lean beef mince",
+    "Harissa Beef Couscous": "lean beef strips",
+    "Beef Meatball Pasta": "lean beef mince",
+    "Quick Beef Bolognese": "lean beef mince",
+    "Beef Tacos": "lean beef mince",
+    "Chilli Con Carne": "lean beef mince",
+    "Beef Broccoli Noodles": "lean beef strips",
+    "Korean-style Beef Rice Bowl": "lean beef mince",
+    "Quick Beef Keema": "lean beef mince",
+    "Beef Pepper Rice": "lean beef strips",
+    "Beef Satay Noodles": "lean beef strips",
+    "Slow Beef Ragù": "lean stewing beef",
+    "Beef Lasagne": "lean beef mince",
+    "Beef Stew": "lean stewing beef",
+    "Slow Thai-style Beef Curry": "lean stewing beef",
+    "Moussaka-style Aubergine Bake": "lean beef mince",
+}
+
+
+def recipe_ingredient(line, recipe):
+    """Clarify audited catalogue entries, including old saved meal snapshots."""
+    parsed = parse(line)
+    cut = BEEF_CUTS.get(recipe)
+    if cut and parsed and parsed[2] == 'lean beef':
+        return re.sub(r'lean beef$', cut, line, flags=re.IGNORECASE)
+    return line
+
+
 def tomato_choice(lines, recipes):
     # Counted tomatoes must remain medium-sized; a cherry tomato is not an
     # interchangeable piece. Variety suggestions don't change recipe amounts.

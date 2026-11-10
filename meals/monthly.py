@@ -9,7 +9,7 @@ import re
 from storage import PrivateStore, file_lock
 from receipt.local_time import uk_today
 from meals import legacy_planner as planner
-from meals.ingredients import load_pack_sizes, shopping_amount, shopping_key, shopping_produce_note
+from meals.ingredients import load_pack_sizes, shopping_amount, shopping_key, shopping_produce_note, recipe_ingredient
 from meals.whole_chicken import combine_cuts, size_guide
 
 FILE = Path(__file__).resolve().parents[1] / "data" / "monthly_meals.json"
@@ -417,6 +417,7 @@ def shopping(rows, settings, first, on):
     overrides = {shopping_key(key): value for key, value in settings["overrides"].items()}
     overrides.update(settings["overrides"])
     for row in rows:
+        row = dict(row, line=recipe_ingredient(row["line"], row["recipe"]))
         key = shopping_key(row["line"])
         kind = overrides.get(key) or category_for_name(key)
         classified.append((row, key, kind))

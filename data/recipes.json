@@ -55,18 +55,18 @@
         "75g couscous",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "1 tbsp harissa paste"
       ],
       "method": [
         "Put the couscous in a bowl, cover with the packet-recommended amount of boiling water or stock, cover for 5 minutes, then fluff with a fork.",
         "Cook the main protein, chickpeas or falafel in a hot frying pan until well browned and cooked through; add the named spice or paste early enough to toast briefly without burning.",
-        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep leafy greens fresh unless the recipe specifically calls for them wilted.",
+        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep baby spinach fresh unless the recipe specifically calls for them wilted.",
         "Mix the yoghurt or tahini with lemon juice and a splash of water until spoonable, then taste and season.",
-        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and fresh herbs."
+        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and chopped flat-leaf parsley."
       ],
       "hacks": [
         "Let the pan get properly hot before adding the meat, then leave it alone briefly so it browns instead of steaming.",
@@ -80,7 +80,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -114,7 +114,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Za'atar Chicken & Roast Tomatoes",
@@ -151,10 +152,10 @@
         "250g potatoes",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "1 tsp za'atar"
       ],
       "method": [
@@ -173,7 +174,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -205,7 +206,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Sumac Chicken Flatbread",
@@ -242,18 +244,18 @@
         "1 flatbread",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "1 tsp sumac"
       ],
       "method": [
         "Slice the vegetables and prepare the fillings first; warm the tortillas or flatbread just before assembling so they stay soft.",
         "Cook the main protein, chickpeas or falafel in a hot frying pan until well browned and cooked through; add the named spice or paste early enough to toast briefly without burning.",
-        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep leafy greens fresh unless the recipe specifically calls for them wilted.",
+        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep baby spinach fresh unless the recipe specifically calls for them wilted.",
         "Mix the yoghurt or tahini with lemon juice and a splash of water until spoonable, then taste and season.",
-        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and fresh herbs."
+        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and chopped flat-leaf parsley."
       ],
       "hacks": [
         "Let the pan get properly hot before adding the meat, then leave it alone briefly so it browns instead of steaming.",
@@ -267,7 +269,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -300,7 +302,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chicken Shawarma Rice Bowl",
@@ -337,10 +340,10 @@
         "75g rice",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "1 tbsp tahini"
       ],
       "method": [
@@ -361,7 +364,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -397,7 +400,8 @@
         {
           "id": "shawarma_spice"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Beef Kofta & Tahini Flatbread",
@@ -430,22 +434,23 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean beef mince",
         "1 flatbread",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "1 tbsp tahini"
       ],
       "method": [
+        "Mix the beef mince with the listed seasoning and shape into small kofta before browning.",
         "Slice the vegetables and prepare the fillings first; warm the tortillas or flatbread just before assembling so they stay soft.",
-        "Cook the main protein, chickpeas or falafel in a hot frying pan until well browned and cooked through; add the named spice or paste early enough to toast briefly without burning.",
-        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep leafy greens fresh unless the recipe specifically calls for them wilted.",
+        "Cook the lean beef mince, chickpeas or falafel in a hot frying pan until well browned and cooked through; add the named spice or paste early enough to toast briefly without burning.",
+        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep baby spinach fresh unless the recipe specifically calls for them wilted.",
         "Mix the yoghurt or tahini with lemon juice and a splash of water until spoonable, then taste and season.",
-        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and fresh herbs."
+        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and chopped flat-leaf parsley."
       ],
       "hacks": [
         "Let the pan get properly hot before adding the meat, then leave it alone briefly so it browns instead of steaming.",
@@ -459,7 +464,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -496,7 +501,8 @@
         {
           "id": "tahini_yoghurt"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Harissa Beef Couscous",
@@ -529,7 +535,7 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean beef strips",
         "75g couscous",
         "1 carrot",
         "100g green vegetables",
@@ -539,7 +545,7 @@
       ],
       "method": [
         "Put the couscous in a bowl, cover with the packet-recommended amount of boiling water or stock, cover for 5 minutes, then fluff with a fork.",
-        "Cook the main protein, chickpeas or falafel in a hot frying pan until well browned and cooked through; add the named spice or paste early enough to toast briefly without burning.",
+        "Cook the lean beef strips, chickpeas or falafel in a hot frying pan until well browned and cooked through; add the named spice or paste early enough to toast briefly without burning.",
         "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep leafy greens fresh unless the recipe specifically calls for them wilted.",
         "Mix the yoghurt or tahini with lemon juice and a splash of water until spoonable, then taste and season.",
         "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and fresh herbs."
@@ -556,7 +562,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -588,7 +594,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Crispy Chickpea Tahini Bowl",
@@ -625,18 +632,18 @@
         "75g couscous",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "1 tbsp tahini"
       ],
       "method": [
         "Put the couscous in a bowl, cover with the packet-recommended amount of boiling water or stock, cover for 5 minutes, then fluff with a fork.",
         "Cook the main protein, chickpeas or falafel in a hot frying pan until well browned and cooked through; add the named spice or paste early enough to toast briefly without burning.",
-        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep leafy greens fresh unless the recipe specifically calls for them wilted.",
+        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep baby spinach fresh unless the recipe specifically calls for them wilted.",
         "Mix the yoghurt or tahini with lemon juice and a splash of water until spoonable, then taste and season.",
-        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and fresh herbs."
+        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and chopped flat-leaf parsley."
       ],
       "hacks": [
         "Finish pulses or vegetables with a little acid; it makes earthy flavours taste much brighter.",
@@ -649,7 +656,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -687,7 +694,8 @@
         {
           "id": "tahini_yoghurt"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Miso Aubergine Rice Bowl",
@@ -748,7 +756,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -784,7 +792,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Harissa Butter Beans & Feta",
@@ -821,18 +830,18 @@
         "2 slices crusty bread",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "1 tbsp harissa paste",
         "40g feta"
       ],
       "method": [
         "Cook the main protein, chickpeas or falafel in a hot frying pan until well browned and cooked through; add the named spice or paste early enough to toast briefly without burning.",
-        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep leafy greens fresh unless the recipe specifically calls for them wilted.",
+        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep baby spinach fresh unless the recipe specifically calls for them wilted.",
         "Mix the yoghurt or tahini with lemon juice and a splash of water until spoonable, then taste and season.",
-        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and fresh herbs."
+        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and chopped flat-leaf parsley."
       ],
       "hacks": [
         "Finish pulses or vegetables with a little acid; it makes earthy flavours taste much brighter.",
@@ -845,7 +854,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -878,7 +887,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Roast Cauliflower Tahini Bowl",
@@ -915,10 +925,10 @@
         "75g couscous",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "1 tbsp tahini"
       ],
       "method": [
@@ -937,7 +947,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -975,7 +985,8 @@
         {
           "id": "tahini_yoghurt"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Halloumi Lemon Couscous",
@@ -1012,18 +1023,18 @@
         "75g couscous",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "80g halloumi"
       ],
       "method": [
         "Put the couscous in a bowl, cover with the packet-recommended amount of boiling water or stock, cover for 5 minutes, then fluff with a fork.",
         "Cook the main protein, chickpeas or falafel in a hot frying pan until well browned and cooked through; add the named spice or paste early enough to toast briefly without burning.",
-        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep leafy greens fresh unless the recipe specifically calls for them wilted.",
+        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep baby spinach fresh unless the recipe specifically calls for them wilted.",
         "Mix the yoghurt or tahini with lemon juice and a splash of water until spoonable, then taste and season.",
-        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and fresh herbs."
+        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and chopped flat-leaf parsley."
       ],
       "hacks": [
         "Finish pulses or vegetables with a little acid; it makes earthy flavours taste much brighter.",
@@ -1037,7 +1048,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -1071,7 +1082,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Falafel Hummus Flatbread",
@@ -1108,19 +1120,19 @@
         "1 flatbread",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "4 falafel",
         "2 tbsp hummus"
       ],
       "method": [
         "Slice the vegetables and prepare the fillings first; warm the tortillas or flatbread just before assembling so they stay soft.",
         "Cook the main protein, chickpeas or falafel in a hot frying pan until well browned and cooked through; add the named spice or paste early enough to toast briefly without burning.",
-        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep leafy greens fresh unless the recipe specifically calls for them wilted.",
+        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep baby spinach fresh unless the recipe specifically calls for them wilted.",
         "Mix the yoghurt or tahini with lemon juice and a splash of water until spoonable, then taste and season.",
-        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and fresh herbs."
+        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and chopped flat-leaf parsley."
       ],
       "hacks": [
         "Finish pulses or vegetables with a little acid; it makes earthy flavours taste much brighter.",
@@ -1134,7 +1146,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -1171,7 +1183,8 @@
         {
           "id": "tahini_yoghurt"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Lemony Prawn Orzo",
@@ -1208,10 +1221,10 @@
         "90g orzo",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs"
+        "5g fresh flat-leaf parsley"
       ],
       "method": [
         "Cook the orzo in salted boiling water until just tender, then drain, reserving a small mug of the cooking water.",
@@ -1232,8 +1245,8 @@
         "extra_ingredients": [
           "2 slices wholemeal bread",
           "40g cheddar",
-          "lettuce",
-          "1 tomato"
+          "25g lettuce",
+          "1 medium round tomatoes"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -1269,7 +1282,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Salmon Tahini Greens",
@@ -1306,18 +1320,18 @@
         "250g potatoes",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "1 tbsp tahini"
       ],
       "method": [
         "Cut the potatoes into even pieces and cook them in salted boiling water until tender, then drain well.",
         "Cook the main protein, chickpeas or falafel in a hot frying pan until well browned and cooked through; add the named spice or paste early enough to toast briefly without burning.",
-        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep leafy greens fresh unless the recipe specifically calls for them wilted.",
+        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep baby spinach fresh unless the recipe specifically calls for them wilted.",
         "Mix the yoghurt or tahini with lemon juice and a splash of water until spoonable, then taste and season.",
-        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and fresh herbs."
+        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and chopped flat-leaf parsley."
       ],
       "hacks": [
         "Dry fish or seafood before cooking; less surface moisture means better browning.",
@@ -1331,7 +1345,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -1369,7 +1383,8 @@
         {
           "id": "tahini_yoghurt"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Harissa Salmon & Chickpeas",
@@ -1428,7 +1443,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -1459,7 +1474,8 @@
         "estimated_per_portion": 5.0,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Spiced Fish Couscous",
@@ -1519,8 +1535,8 @@
         "extra_ingredients": [
           "2 slices wholemeal bread",
           "40g cheddar",
-          "lettuce",
-          "1 tomato"
+          "25g lettuce",
+          "1 medium round tomatoes"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -1554,7 +1570,8 @@
         "estimated_per_portion": 4.2,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chicken Pesto Pasta",
@@ -1589,8 +1606,8 @@
       "ingredients": [
         "1 chicken breast",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil",
@@ -1613,7 +1630,7 @@
         "name": "Chicken Pesto Pasta Lunch Pot",
         "overview": "A deliberately reserved half-portion, chilled or reheated for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -1651,7 +1668,8 @@
         {
           "id": "pesto"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Sausage Tomato Pasta",
@@ -1686,8 +1704,8 @@
       "ingredients": [
         "2 pork sausages (about 150g)",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil"
@@ -1709,7 +1727,7 @@
         "name": "Sausage Tomato Pasta Lunch Pot",
         "overview": "A deliberately reserved half-portion, chilled or reheated for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -1743,7 +1761,8 @@
         "estimated_per_portion": 3.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Tuna Tomato Pasta",
@@ -1778,8 +1797,8 @@
       "ingredients": [
         "1 small tin tuna",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil"
@@ -1801,7 +1820,7 @@
         "name": "Tuna Tomato Pasta Lunch Pot",
         "overview": "A deliberately reserved half-portion, chilled or reheated for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -1837,7 +1856,8 @@
         "estimated_per_portion": 3.0,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Courgette Lemon Feta Pasta",
@@ -1872,8 +1892,8 @@
       "ingredients": [
         "120g chickpeas",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil",
@@ -1897,7 +1917,7 @@
         "name": "Courgette Lemon Feta Pasta Lunch Pot",
         "overview": "A deliberately reserved half-portion, chilled or reheated for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -1931,7 +1951,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Tomato Spinach Orzo",
@@ -1966,8 +1987,8 @@
       "ingredients": [
         "120g chickpeas",
         "90g orzo",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil"
@@ -1989,7 +2010,7 @@
         "name": "Tomato Spinach Orzo Lunch Pot",
         "overview": "A deliberately reserved half-portion, chilled or reheated for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -2023,7 +2044,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Gnocchi Tomato Mozzarella",
@@ -2058,8 +2080,8 @@
       "ingredients": [
         "120g chickpeas",
         "250g gnocchi",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil",
@@ -2081,7 +2103,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -2114,7 +2136,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Mushroom Carbonara",
@@ -2149,8 +2172,8 @@
       "ingredients": [
         "120g chickpeas",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil",
@@ -2175,7 +2198,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -2209,7 +2232,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Beef Meatball Pasta",
@@ -2242,18 +2266,19 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean beef mince",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil",
         "150g beef mince"
       ],
       "method": [
+        "Mix the beef mince with the listed seasoning and shape into small meatballs before browning.",
         "Cook the pasta in well-salted boiling water until al dente; reserve about 100ml of pasta water before draining.",
-        "Heat the oil in a frying pan. Cook the main protein, beans or vegetables until properly browned; add the garlic for the final 30 seconds so it does not burn.",
+        "Heat the oil in a frying pan. Cook the lean beef mince, beans or vegetables until properly browned; add the garlic for the final 30 seconds so it does not burn.",
         "Add the tomatoes or named sauce and simmer for 5-8 minutes until slightly reduced. Stir in the spinach for the final minute until just wilted.",
         "Add the drained pasta or orzo to the sauce and toss over low heat, loosening with reserved cooking water until the sauce clings rather than pooling in the pan. Finish with parmesan or the named cheese."
       ],
@@ -2268,7 +2293,7 @@
         "name": "Beef Meatball Pasta Lunch Pot",
         "overview": "A deliberately reserved half-portion, chilled or reheated for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -2302,7 +2327,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Quick Beef Bolognese",
@@ -2335,17 +2361,17 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean beef mince",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g plum tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil"
       ],
       "method": [
         "Cook the pasta in well-salted boiling water until al dente; reserve about 100ml of pasta water before draining.",
-        "Heat the oil in a frying pan. Cook the main protein, beans or vegetables until properly browned; add the garlic for the final 30 seconds so it does not burn.",
+        "Heat the oil in a frying pan. Cook the lean beef mince, beans or vegetables until properly browned; add the garlic for the final 30 seconds so it does not burn.",
         "Add the tomatoes or named sauce and simmer for 5-8 minutes until slightly reduced. Stir in the spinach for the final minute until just wilted.",
         "Add the drained pasta or orzo to the sauce and toss over low heat, loosening with reserved cooking water until the sauce clings rather than pooling in the pan. Finish with parmesan or the named cheese."
       ],
@@ -2361,7 +2387,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -2395,7 +2421,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chicken Arrabbiata",
@@ -2430,8 +2457,8 @@
       "ingredients": [
         "1 chicken breast",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil",
@@ -2455,7 +2482,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -2489,7 +2516,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Prawn Tomato Linguine",
@@ -2524,8 +2552,8 @@
       "ingredients": [
         "150g prawns",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil"
@@ -2549,8 +2577,8 @@
         "extra_ingredients": [
           "2 slices wholemeal bread",
           "40g cheddar",
-          "lettuce",
-          "1 tomato"
+          "25g lettuce",
+          "1 medium round tomatoes"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -2586,7 +2614,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "White Bean Tomato Pasta",
@@ -2621,8 +2650,8 @@
       "ingredients": [
         "120g chickpeas",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil",
@@ -2645,7 +2674,7 @@
         "name": "White Bean Tomato Pasta Lunch Pot",
         "overview": "A deliberately reserved half-portion, chilled or reheated for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -2679,7 +2708,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chicken Fajitas",
@@ -2718,7 +2748,7 @@
         "1/2 onion",
         "80g black or kidney beans",
         "2 tbsp salsa",
-        "handful of lettuce",
+        "25g lettuce",
         "1 tsp fajita seasoning"
       ],
       "method": [
@@ -2738,7 +2768,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -2773,7 +2803,8 @@
         {
           "id": "sriracha_mayo"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Beef Tacos",
@@ -2806,19 +2837,19 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean beef mince",
         "2 tortillas",
         "1/2 red pepper",
         "1/2 onion",
         "80g black or kidney beans",
         "2 tbsp salsa",
-        "handful of lettuce",
+        "25g lettuce",
         "1 tsp taco seasoning"
       ],
       "method": [
         "Slice the vegetables and prepare the fillings first; warm the tortillas or flatbread just before assembling so they stay soft.",
         "Heat a frying pan over medium-high heat. Cook the onion and pepper for 4-5 minutes until softened at the edges but not collapsed.",
-        "Add the main protein or beans with the named seasoning and cook until the meat is fully cooked or the beans are piping hot; stir in the salsa at the end rather than letting it make the filling watery.",
+        "Add the lean beef mince or beans with the named seasoning and cook until the meat is fully cooked or the beans are piping hot; stir in the salsa at the end rather than letting it make the filling watery.",
         "Warm the tortillas, then assemble with the hot filling and fresh lettuce or other cold toppings immediately before serving."
       ],
       "hacks": [
@@ -2832,7 +2863,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -2867,7 +2898,8 @@
         {
           "id": "sriracha_mayo"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chicken Burrito Bowl",
@@ -2906,7 +2938,7 @@
         "1/2 onion",
         "80g black or kidney beans",
         "2 tbsp salsa",
-        "handful of lettuce"
+        "25g lettuce"
       ],
       "method": [
         "Rinse the rice, then cook it in a covered saucepan or rice cooker according to the packet instructions; keep covered off the heat until serving.",
@@ -2925,7 +2957,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -2957,7 +2989,8 @@
         {
           "id": "sriracha_mayo"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chilli Con Carne",
@@ -2990,19 +3023,19 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean beef mince",
         "75g rice",
         "1/2 red pepper",
         "1/2 onion",
         "80g black or kidney beans",
         "2 tbsp salsa",
-        "handful of lettuce",
+        "25g lettuce",
         "1 tsp ground cumin"
       ],
       "method": [
         "Rinse the rice, then cook it in a covered saucepan or rice cooker according to the packet instructions; keep covered off the heat until serving.",
         "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add leafy greens only for the final 1-2 minutes so they wilt but stay bright.",
-        "Cook the main protein or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
+        "Cook the lean beef mince or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
         "Add the recipe-specific sauce or seasoning and simmer or toss only until it coats the ingredients; taste for salt, acidity and heat before serving."
       ],
       "hacks": [
@@ -3017,7 +3050,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -3045,7 +3078,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Black Bean Quesadilla",
@@ -3084,7 +3118,7 @@
         "1/2 onion",
         "80g black or kidney beans",
         "2 tbsp salsa",
-        "handful of lettuce"
+        "25g lettuce"
       ],
       "method": [
         "Slice the vegetables and prepare the fillings first; warm the tortillas or flatbread just before assembling so they stay soft.",
@@ -3103,7 +3137,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -3134,7 +3168,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Sweet Potato Bean Bowl",
@@ -3173,7 +3208,7 @@
         "1/2 onion",
         "80g black or kidney beans",
         "2 tbsp salsa",
-        "handful of lettuce"
+        "25g lettuce"
       ],
       "method": [
         "Rinse the rice, then cook it in a covered saucepan or rice cooker according to the packet instructions; keep covered off the heat until serving.",
@@ -3192,7 +3227,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -3220,7 +3255,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chipotle Chicken Tacos",
@@ -3259,7 +3295,7 @@
         "1/2 onion",
         "80g black or kidney beans",
         "2 tbsp salsa",
-        "handful of lettuce",
+        "25g lettuce",
         "1 tsp taco seasoning",
         "1 tsp chipotle paste"
       ],
@@ -3280,7 +3316,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -3315,7 +3351,8 @@
         {
           "id": "sriracha_mayo"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Lime Fish Tacos",
@@ -3354,7 +3391,7 @@
         "1/2 onion",
         "80g black or kidney beans",
         "2 tbsp salsa",
-        "handful of lettuce",
+        "25g lettuce",
         "1 tsp taco seasoning"
       ],
       "method": [
@@ -3375,8 +3412,8 @@
         "extra_ingredients": [
           "2 slices wholemeal bread",
           "40g cheddar",
-          "lettuce",
-          "1 tomato"
+          "25g lettuce",
+          "1 medium round tomatoes"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -3413,7 +3450,8 @@
         {
           "id": "sriracha_mayo"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Teriyaki Chicken Rice Bowl",
@@ -3473,7 +3511,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -3509,7 +3547,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chicken Katsu Rice",
@@ -3568,7 +3607,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -3608,7 +3647,8 @@
         {
           "id": "sriracha_mayo"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Prawn Sesame Noodles",
@@ -3669,8 +3709,8 @@
         "extra_ingredients": [
           "2 slices wholemeal bread",
           "40g cheddar",
-          "lettuce",
-          "1 tomato"
+          "25g lettuce",
+          "1 medium round tomatoes"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -3710,7 +3750,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Beef Broccoli Noodles",
@@ -3743,7 +3784,7 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean beef strips",
         "1 nest noodles",
         "1/2 broccoli",
         "1 carrot",
@@ -3753,8 +3794,8 @@
       ],
       "method": [
         "Cook the noodles according to the packet instructions, drain, and toss with a few drops of oil so they do not stick.",
-        "Cut the main protein and vegetables into bite-sized pieces before heating the pan so everything can cook quickly and evenly.",
-        "Heat a frying pan or wok until hot. Cook the main protein until browned and cooked through, then remove it briefly if needed to avoid overcooking.",
+        "Cut the lean beef strips and vegetables into bite-sized pieces before heating the pan so everything can cook quickly and evenly.",
+        "Heat a frying pan or wok until hot. Cook the lean beef strips until browned and cooked through, then remove it briefly if needed to avoid overcooking.",
         "Stir-fry the firmer vegetables first for 2-3 minutes, then add quicker-cooking greens or spring onions for another 1-2 minutes so they remain bright with a slight bite.",
         "Add the named sauce and return the protein to the pan. Toss for 1-2 minutes until everything is hot and evenly coated, then combine with the rice or noodles."
       ],
@@ -3770,7 +3811,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -3808,7 +3849,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Pork Hoisin Noodles",
@@ -3869,7 +3911,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -3907,7 +3949,8 @@
         "estimated_per_portion": 3.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chicken Fried Rice",
@@ -3967,7 +4010,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -4003,7 +4046,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Ginger Tofu Noodles",
@@ -4064,7 +4108,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -4102,7 +4146,8 @@
         "estimated_per_portion": 2.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Korean-style Beef Rice Bowl",
@@ -4135,7 +4180,7 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean beef mince",
         "75g rice",
         "1/2 broccoli",
         "1 carrot",
@@ -4145,8 +4190,8 @@
       ],
       "method": [
         "Rinse the rice, then cook it in a covered saucepan or rice cooker according to the packet instructions; keep covered off the heat until serving.",
-        "Cut the main protein and vegetables into bite-sized pieces before heating the pan so everything can cook quickly and evenly.",
-        "Heat a frying pan or wok until hot. Cook the main protein until browned and cooked through, then remove it briefly if needed to avoid overcooking.",
+        "Break up the lean beef mince and vegetables into bite-sized pieces before heating the pan so everything can cook quickly and evenly.",
+        "Heat a frying pan or wok until hot. Cook the lean beef mince until browned and cooked through, then remove it briefly if needed to avoid overcooking.",
         "Stir-fry the firmer vegetables first for 2-3 minutes, then add quicker-cooking greens or spring onions for another 1-2 minutes so they remain bright with a slight bite.",
         "Add the named sauce and return the protein to the pan. Toss for 1-2 minutes until everything is hot and evenly coated, then combine with the rice or noodles."
       ],
@@ -4161,7 +4206,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -4197,7 +4242,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Gochujang Chicken Bowl",
@@ -4257,7 +4303,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -4293,7 +4339,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Thai-style Chicken Curry",
@@ -4542,7 +4589,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -4580,7 +4627,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Peanut Tofu Noodle Bowl",
@@ -4639,7 +4687,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -4677,7 +4725,8 @@
         "estimated_per_portion": 2.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Quick Chicken Tikka Masala",
@@ -4715,8 +4764,8 @@
         "1/2 onion",
         "1 garlic clove",
         "1 tsp grated ginger",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 tsp mixed curry spices",
         "2 tbsp Greek yoghurt"
       ],
@@ -4738,7 +4787,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -4766,7 +4815,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Tomato Lentil Dhal",
@@ -4804,8 +4854,8 @@
         "1/2 onion",
         "1 garlic clove",
         "1 tsp grated ginger",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 tsp mixed curry spices"
       ],
       "method": [
@@ -4854,7 +4904,8 @@
         "estimated_per_portion": 1.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chickpea Spinach Curry",
@@ -4892,8 +4943,8 @@
         "1/2 onion",
         "1 garlic clove",
         "1 tsp grated ginger",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 tsp mixed curry spices"
       ],
       "method": [
@@ -4942,7 +4993,8 @@
         "estimated_per_portion": 2.0,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chicken Saag-style Curry",
@@ -4980,8 +5032,8 @@
         "1/2 onion",
         "1 garlic clove",
         "1 tsp grated ginger",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 tsp mixed curry spices"
       ],
       "method": [
@@ -5030,7 +5082,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Quick Beef Keema",
@@ -5063,20 +5116,20 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean beef mince",
         "75g rice",
         "1/2 onion",
         "1 garlic clove",
         "1 tsp grated ginger",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 tsp mixed curry spices",
         "80g frozen peas"
       ],
       "method": [
         "Rinse the rice, then cook it in a covered saucepan or rice cooker according to the packet instructions; keep covered off the heat until serving.",
         "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add leafy greens only for the final 1-2 minutes so they wilt but stay bright.",
-        "Cook the main protein or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
+        "Cook the lean beef mince or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
         "Add the recipe-specific sauce or seasoning and simmer or toss only until it coats the ingredients; taste for salt, acidity and heat before serving."
       ],
       "hacks": [
@@ -5091,7 +5144,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -5119,7 +5172,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Paneer Pepper Masala",
@@ -5157,8 +5211,8 @@
         "1/2 onion",
         "1 garlic clove",
         "1 tsp grated ginger",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 tsp mixed curry spices"
       ],
       "method": [
@@ -5179,7 +5233,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -5211,7 +5265,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Spiced Cauliflower Lentil Bowl",
@@ -5249,8 +5304,8 @@
         "1/2 onion",
         "1 garlic clove",
         "1 tsp grated ginger",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 tsp mixed curry spices"
       ],
       "method": [
@@ -5270,7 +5325,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -5298,7 +5353,8 @@
         "estimated_per_portion": 1.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Turkey Burgers & Wedges",
@@ -5356,7 +5412,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -5384,7 +5440,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Sausage Mash & Greens",
@@ -5451,7 +5508,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -5488,7 +5545,8 @@
         "estimated_per_portion": 3.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chicken Mustard Potatoes",
@@ -5546,7 +5604,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -5574,7 +5632,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Tuna Potato Cakes",
@@ -5633,7 +5692,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -5665,7 +5724,8 @@
         "estimated_per_portion": 3.0,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Spinach Feta Omelette",
@@ -5723,8 +5783,8 @@
         "extra_ingredients": [
           "2 slices wholemeal bread",
           "40g cheddar",
-          "lettuce",
-          "1 tomato"
+          "25g lettuce",
+          "1 medium round tomatoes"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -5756,7 +5816,8 @@
         "estimated_per_portion": 2.2,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chicken Caesar Wrap",
@@ -5813,7 +5874,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -5844,7 +5905,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Turkey Meatball Couscous",
@@ -5881,18 +5943,18 @@
         "75g couscous",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "150g beef mince"
       ],
       "method": [
         "Put the couscous in a bowl, cover with the packet-recommended amount of boiling water or stock, cover for 5 minutes, then fluff with a fork.",
         "Cook the main protein, chickpeas or falafel in a hot frying pan until well browned and cooked through; add the named spice or paste early enough to toast briefly without burning.",
-        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep leafy greens fresh unless the recipe specifically calls for them wilted.",
+        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep baby spinach fresh unless the recipe specifically calls for them wilted.",
         "Mix the yoghurt or tahini with lemon juice and a splash of water until spoonable, then taste and season.",
-        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and fresh herbs."
+        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and chopped flat-leaf parsley."
       ],
       "hacks": [
         "Let the pan get properly hot before adding the meat, then leave it alone briefly so it browns instead of steaming.",
@@ -5906,7 +5968,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -5940,7 +6002,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Pork Apple Mustard Skillet",
@@ -5998,7 +6061,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -6026,7 +6089,8 @@
         "estimated_per_portion": 3.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Spanish-style Chicken Rice",
@@ -6084,7 +6148,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -6112,7 +6176,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Smoky Chickpea Rice",
@@ -6169,7 +6234,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -6197,7 +6262,8 @@
         "estimated_per_portion": 2.0,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chorizo Bean Stew",
@@ -6254,7 +6320,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -6285,7 +6351,8 @@
         "estimated_per_portion": 3.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Greek Chicken Pitta",
@@ -6322,13 +6389,13 @@
         "1 pitta",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs"
+        "5g fresh flat-leaf parsley"
       ],
       "method": [
-        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add leafy greens only for the final 1-2 minutes so they wilt but stay bright.",
+        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add baby spinach only for the final 1-2 minutes so they wilt but stay bright.",
         "Cook the main protein or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
         "Add the recipe-specific sauce or seasoning and simmer or toss only until it coats the ingredients; taste for salt, acidity and heat before serving."
       ],
@@ -6343,7 +6410,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -6376,7 +6443,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Greek Lentil Feta Bowl",
@@ -6413,15 +6481,15 @@
         "250g potatoes",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "40g feta"
       ],
       "method": [
         "Cut the potatoes into even pieces and cook them in salted boiling water until tender, then drain well.",
-        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add leafy greens only for the final 1-2 minutes so they wilt but stay bright.",
+        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add baby spinach only for the final 1-2 minutes so they wilt but stay bright.",
         "Cook the main protein or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
         "Add the recipe-specific sauce or seasoning and simmer or toss only until it coats the ingredients; taste for salt, acidity and heat before serving."
       ],
@@ -6436,7 +6504,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -6468,7 +6536,8 @@
         "estimated_per_portion": 1.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Halloumi Chickpea Salad",
@@ -6504,14 +6573,14 @@
         "120g chickpeas",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "80g halloumi"
       ],
       "method": [
-        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add leafy greens only for the final 1-2 minutes so they wilt but stay bright.",
+        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add baby spinach only for the final 1-2 minutes so they wilt but stay bright.",
         "Cook the main protein or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
         "Add the recipe-specific sauce or seasoning and simmer or toss only until it coats the ingredients; taste for salt, acidity and heat before serving."
       ],
@@ -6526,7 +6595,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -6557,7 +6626,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Salmon Rice Bowl",
@@ -6616,7 +6686,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -6654,7 +6724,8 @@
         "estimated_per_portion": 5.0,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Tuna Mediterranean Couscous",
@@ -6691,17 +6762,17 @@
         "75g couscous",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs"
+        "5g fresh flat-leaf parsley"
       ],
       "method": [
         "Put the couscous in a bowl, cover with the packet-recommended amount of boiling water or stock, cover for 5 minutes, then fluff with a fork.",
         "Cook the main protein, chickpeas or falafel in a hot frying pan until well browned and cooked through; add the named spice or paste early enough to toast briefly without burning.",
-        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep leafy greens fresh unless the recipe specifically calls for them wilted.",
+        "Cook or char the peppers and onions for 4-6 minutes until softened with browned edges. Keep baby spinach fresh unless the recipe specifically calls for them wilted.",
         "Mix the yoghurt or tahini with lemon juice and a splash of water until spoonable, then taste and season.",
-        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and fresh herbs."
+        "Assemble with the couscous or warm flatbread, cooked filling, vegetables, dressing and chopped flat-leaf parsley."
       ],
       "hacks": [
         "Dry fish or seafood before cooking; less surface moisture means better browning.",
@@ -6715,7 +6786,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -6751,7 +6822,8 @@
         "estimated_per_portion": 3.0,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Lemon Herb Cod & Potatoes",
@@ -6788,14 +6860,14 @@
         "250g potatoes",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs"
+        "5g fresh flat-leaf parsley"
       ],
       "method": [
         "Cut the potatoes into even pieces and cook them in salted boiling water until tender, then drain well.",
-        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add leafy greens only for the final 1-2 minutes so they wilt but stay bright.",
+        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add baby spinach only for the final 1-2 minutes so they wilt but stay bright.",
         "Cook the main protein or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
         "Add the recipe-specific sauce or seasoning and simmer or toss only until it coats the ingredients; taste for salt, acidity and heat before serving."
       ],
@@ -6812,8 +6884,8 @@
         "extra_ingredients": [
           "2 slices wholemeal bread",
           "40g cheddar",
-          "lettuce",
-          "1 tomato"
+          "25g lettuce",
+          "1 medium round tomatoes"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -6847,7 +6919,8 @@
         "estimated_per_portion": 4.2,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Prawn Chickpea Tomato Bowl",
@@ -6884,13 +6957,13 @@
         "120g chickpeas",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs"
+        "5g fresh flat-leaf parsley"
       ],
       "method": [
-        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add leafy greens only for the final 1-2 minutes so they wilt but stay bright.",
+        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add baby spinach only for the final 1-2 minutes so they wilt but stay bright.",
         "Cook the main protein or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
         "Add the recipe-specific sauce or seasoning and simmer or toss only until it coats the ingredients; taste for salt, acidity and heat before serving."
       ],
@@ -6906,8 +6979,8 @@
         "extra_ingredients": [
           "2 slices wholemeal bread",
           "40g cheddar",
-          "lettuce",
-          "1 tomato"
+          "25g lettuce",
+          "1 medium round tomatoes"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -6940,7 +7013,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Butter Bean Tomato Toast",
@@ -6977,13 +7051,13 @@
         "2 slices crusty bread",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs"
+        "5g fresh flat-leaf parsley"
       ],
       "method": [
-        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add leafy greens only for the final 1-2 minutes so they wilt but stay bright.",
+        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add baby spinach only for the final 1-2 minutes so they wilt but stay bright.",
         "Cook the main protein or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
         "Add the recipe-specific sauce or seasoning and simmer or toss only until it coats the ingredients; taste for salt, acidity and heat before serving."
       ],
@@ -6998,7 +7072,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -7031,7 +7105,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Mushroom Lentil Ragù",
@@ -7066,8 +7141,8 @@
       "ingredients": [
         "120g cooked lentils",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g plum tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil",
@@ -7091,7 +7166,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -7125,7 +7200,8 @@
         "estimated_per_portion": 1.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Broccoli Pea Pesto Pasta",
@@ -7160,8 +7236,8 @@
       "ingredients": [
         "120g chickpeas",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil",
@@ -7184,7 +7260,7 @@
         "name": "Broccoli Pea Pesto Pasta Lunch Pot",
         "overview": "A deliberately reserved half-portion, chilled or reheated for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -7222,7 +7298,8 @@
         {
           "id": "pesto"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Ricotta Spinach Tomato Pasta",
@@ -7257,8 +7334,8 @@
       "ingredients": [
         "120g chickpeas",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil",
@@ -7281,7 +7358,7 @@
         "name": "Ricotta Spinach Tomato Pasta Lunch Pot",
         "overview": "A deliberately reserved half-portion, chilled or reheated for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -7315,7 +7392,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chicken Tomato Mozzarella",
@@ -7350,8 +7428,8 @@
       "ingredients": [
         "1 chicken breast",
         "250g potatoes",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil",
@@ -7375,7 +7453,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -7407,7 +7485,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Beef Pepper Rice",
@@ -7440,7 +7519,7 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean beef strips",
         "75g rice",
         "1/2 broccoli",
         "1 carrot",
@@ -7451,7 +7530,7 @@
       "method": [
         "Rinse the rice, then cook it in a covered saucepan or rice cooker according to the packet instructions; keep covered off the heat until serving.",
         "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add leafy greens only for the final 1-2 minutes so they wilt but stay bright.",
-        "Cook the main protein or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
+        "Cook the lean beef strips or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
         "Add the recipe-specific sauce or seasoning and simmer or toss only until it coats the ingredients; taste for salt, acidity and heat before serving."
       ],
       "hacks": [
@@ -7465,7 +7544,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -7501,7 +7580,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Sesame Chicken Noodles",
@@ -7561,7 +7641,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -7599,7 +7679,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Sweet Chilli Salmon Noodles",
@@ -7660,7 +7741,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -7700,7 +7781,8 @@
         "estimated_per_portion": 5.0,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Tofu Fried Rice",
@@ -7760,7 +7842,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -7796,7 +7878,8 @@
         "estimated_per_portion": 2.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chicken Peanut Rice Bowl",
@@ -7856,7 +7939,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -7892,7 +7975,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Beef Satay Noodles",
@@ -7925,7 +8009,7 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean beef strips",
         "1 nest noodles",
         "1/2 broccoli",
         "1 carrot",
@@ -7936,8 +8020,8 @@
       ],
       "method": [
         "Cook the noodles according to the packet instructions, drain, and toss with a few drops of oil so they do not stick.",
-        "Cut the main protein and vegetables into bite-sized pieces before heating the pan so everything can cook quickly and evenly.",
-        "Heat a frying pan or wok until hot. Cook the main protein until browned and cooked through, then remove it briefly if needed to avoid overcooking.",
+        "Cut the lean beef strips and vegetables into bite-sized pieces before heating the pan so everything can cook quickly and evenly.",
+        "Heat a frying pan or wok until hot. Cook the lean beef strips until browned and cooked through, then remove it briefly if needed to avoid overcooking.",
         "Stir-fry the firmer vegetables first for 2-3 minutes, then add quicker-cooking greens or spring onions for another 1-2 minutes so they remain bright with a slight bite.",
         "Add the named sauce and return the protein to the pan. Toss for 1-2 minutes until everything is hot and evenly coated, then combine with the rice or noodles."
       ],
@@ -7952,7 +8036,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -7990,7 +8074,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Slow Beef Ragù",
@@ -8023,17 +8108,17 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean stewing beef",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g plum tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil"
       ],
       "method": [
         "Cook the pasta in well-salted boiling water until al dente; reserve about 100ml of pasta water before draining.",
-        "Heat the oil in a frying pan. Cook the main protein, beans or vegetables until properly browned; add the garlic for the final 30 seconds so it does not burn.",
+        "Heat the oil in a frying pan. Cook the lean stewing beef, beans or vegetables until properly browned; add the garlic for the final 30 seconds so it does not burn.",
         "Add the tomatoes or named sauce and simmer for 5-8 minutes until slightly reduced. Stir in the spinach for the final minute until just wilted.",
         "Add the drained pasta or orzo to the sauce and toss over low heat, loosening with reserved cooking water until the sauce clings rather than pooling in the pan. Finish with parmesan or the named cheese."
       ],
@@ -8049,7 +8134,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -8084,7 +8169,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Beef Lasagne",
@@ -8117,10 +8203,10 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean beef mince",
         "90g pasta",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil",
@@ -8130,7 +8216,7 @@
       "method": [
         "Cook the pasta in well-salted boiling water until al dente; reserve about 100ml of pasta water before draining.",
         "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add leafy greens only for the final 1-2 minutes so they wilt but stay bright.",
-        "Cook the main protein or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
+        "Cook the lean beef mince or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
         "Add the recipe-specific sauce or seasoning and simmer or toss only until it coats the ingredients; taste for salt, acidity and heat before serving."
       ],
       "hacks": [
@@ -8145,7 +8231,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -8180,7 +8266,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Aubergine Parmigiana",
@@ -8215,8 +8302,8 @@
       "ingredients": [
         "120g chickpeas",
         "2 slices crusty bread",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil",
@@ -8239,7 +8326,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -8273,7 +8360,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Mushroom Risotto",
@@ -8308,8 +8396,8 @@
       "ingredients": [
         "120g chickpeas",
         "75g rice",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 garlic clove",
         "15g parmesan",
         "1 tsp olive oil",
@@ -8333,7 +8421,7 @@
         "name": "Mushroom Risotto Lunch Pot",
         "overview": "A deliberately reserved half-portion, chilled or reheated for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -8365,7 +8453,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chicken Tikka Masala",
@@ -8403,8 +8492,8 @@
         "1/2 onion",
         "1 garlic clove",
         "1 tsp grated ginger",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 tsp mixed curry spices",
         "2 tbsp Greek yoghurt"
       ],
@@ -8426,7 +8515,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -8455,7 +8544,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Slow Chickpea Aubergine Curry",
@@ -8493,8 +8583,8 @@
         "1/2 onion",
         "1 garlic clove",
         "1 tsp grated ginger",
-        "150g tomatoes",
-        "handful of spinach",
+        "150g round tomatoes",
+        "25g spinach",
         "1 tsp mixed curry spices",
         "1 small aubergine"
       ],
@@ -8545,7 +8635,8 @@
         "estimated_per_portion": 2.0,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Shawarma-style Roast Chicken",
@@ -8582,10 +8673,10 @@
         "250g potatoes",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "1 tbsp tahini"
       ],
       "method": [
@@ -8604,7 +8695,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -8641,7 +8732,8 @@
         {
           "id": "shawarma_spice"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Slow Spiced Lamb & Yoghurt",
@@ -8678,14 +8770,14 @@
         "75g couscous",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs"
+        "5g fresh flat-leaf parsley"
       ],
       "method": [
         "Put the couscous in a bowl, cover with the packet-recommended amount of boiling water or stock, cover for 5 minutes, then fluff with a fork.",
-        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add leafy greens only for the final 1-2 minutes so they wilt but stay bright.",
+        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add baby spinach only for the final 1-2 minutes so they wilt but stay bright.",
         "Cook the main protein or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
         "Add the recipe-specific sauce or seasoning and simmer or toss only until it coats the ingredients; taste for salt, acidity and heat before serving."
       ],
@@ -8701,7 +8793,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -8736,7 +8828,8 @@
         "estimated_per_portion": 5.0,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Persian-inspired Chicken Rice",
@@ -8793,7 +8886,7 @@
         "name": "Leftover Rice Bowl",
         "overview": "A reserved half-portion refreshed with crunchy salad for lunch.",
         "extra_ingredients": [
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -8822,7 +8915,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Roast Cauliflower Lentils Tahini",
@@ -8859,10 +8953,10 @@
         "250g potatoes",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "1 tbsp tahini"
       ],
       "method": [
@@ -8881,7 +8975,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -8918,7 +9012,8 @@
         {
           "id": "tahini_yoghurt"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Beef Stew",
@@ -8951,7 +9046,7 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean stewing beef",
         "250g potatoes",
         "1 carrot",
         "100g green vegetables",
@@ -8961,7 +9056,7 @@
       ],
       "method": [
         "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add leafy greens only for the final 1-2 minutes so they wilt but stay bright.",
-        "Cook the main protein or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
+        "Cook the lean stewing beef or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
         "Add the recipe-specific sauce or seasoning and simmer or toss only until it coats the ingredients; taste for salt, acidity and heat before serving."
       ],
       "hacks": [
@@ -8976,7 +9071,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -9005,7 +9100,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Shepherd's Pie",
@@ -9063,7 +9159,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -9092,7 +9188,8 @@
         "estimated_per_portion": 5.0,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Fish Pie",
@@ -9152,8 +9249,8 @@
         "extra_ingredients": [
           "2 slices wholemeal bread",
           "40g cheddar",
-          "lettuce",
-          "1 tomato"
+          "25g lettuce",
+          "1 medium round tomatoes"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -9186,7 +9283,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Homemade Chicken Pie",
@@ -9244,7 +9342,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -9273,7 +9371,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Roast Chicken Dinner",
@@ -9331,7 +9430,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -9360,7 +9459,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Sausage Vegetable Traybake",
@@ -9416,7 +9516,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -9445,7 +9545,8 @@
         "estimated_per_portion": 3.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Pork Ramen",
@@ -9505,7 +9606,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -9544,7 +9645,8 @@
         "estimated_per_portion": 3.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Chicken Ramen",
@@ -9605,7 +9707,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -9644,7 +9746,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Slow Thai-style Beef Curry",
@@ -9677,7 +9780,7 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean stewing beef",
         "75g rice",
         "1/2 broccoli",
         "1 carrot",
@@ -9688,7 +9791,7 @@
       "method": [
         "Rinse the rice, then cook it in a covered saucepan or rice cooker according to the packet instructions; keep covered off the heat until serving.",
         "Heat the oil in a frying pan over medium heat and cook the onion for 4-5 minutes until soft. Add the garlic, ginger and curry spices or paste and fry for 30-60 seconds until fragrant.",
-        "Add the main protein or vegetables and cook until lightly coloured, then add the tomatoes and a splash of water. Simmer gently until the sauce thickens and the main ingredient is cooked through.",
+        "Add the lean stewing beef or vegetables and cook until lightly coloured, then add the tomatoes and a splash of water. Simmer gently until the sauce thickens and the main ingredient is cooked through.",
         "Stir in the spinach for the final 1-2 minutes so it wilts without turning dull; add yoghurt only after lowering the heat so it stays smooth."
       ],
       "hacks": [
@@ -9779,7 +9882,7 @@
         "1/2 onion",
         "80g black or kidney beans",
         "2 tbsp salsa",
-        "handful of lettuce",
+        "25g lettuce",
         "60g grated cheddar"
       ],
       "method": [
@@ -9799,7 +9902,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -9831,7 +9934,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Black Bean Enchilada Bake",
@@ -9870,7 +9974,7 @@
         "1/2 onion",
         "80g black or kidney beans",
         "2 tbsp salsa",
-        "handful of lettuce",
+        "25g lettuce",
         "60g grated cheddar"
       ],
       "method": [
@@ -9890,7 +9994,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -9922,7 +10026,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Moussaka-style Aubergine Bake",
@@ -9955,20 +10060,20 @@
         "fat": "included in cooking, dressing or garnish"
       },
       "ingredients": [
-        "150g lean beef",
+        "150g lean beef mince",
         "250g potatoes",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "1 small aubergine"
       ],
       "method": [
         "Cut the potatoes into even pieces and cook them in salted boiling water until tender, then drain well.",
-        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add leafy greens only for the final 1-2 minutes so they wilt but stay bright.",
-        "Cook the main protein or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
+        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add baby spinach only for the final 1-2 minutes so they wilt but stay bright.",
+        "Cook the lean beef mince or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
         "Add the recipe-specific sauce or seasoning and simmer or toss only until it coats the ingredients; taste for salt, acidity and heat before serving."
       ],
       "hacks": [
@@ -9983,7 +10088,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -10016,7 +10121,8 @@
         "estimated_per_portion": 4.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Lemon Oregano Chicken Traybake",
@@ -10053,10 +10159,10 @@
         "250g potatoes",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs"
+        "5g fresh flat-leaf parsley"
       ],
       "method": [
         "Heat the oven to 200C fan. Cut the vegetables into similar-sized pieces, toss with the oil and the recipe seasoning, and spread them in a single layer on a roasting tray.",
@@ -10074,7 +10180,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -10107,7 +10213,8 @@
         "estimated_per_portion": 3.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Spanish-style Fish Stew",
@@ -10165,8 +10272,8 @@
         "extra_ingredients": [
           "2 slices wholemeal bread",
           "40g cheddar",
-          "lettuce",
-          "1 tomato"
+          "25g lettuce",
+          "1 medium round tomatoes"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -10200,7 +10307,8 @@
         "estimated_per_portion": 4.2,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Slow Pork Tomato Beans",
@@ -10256,7 +10364,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -10284,7 +10392,8 @@
         "estimated_per_portion": 3.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Vegetable Nut Roast",
@@ -10342,7 +10451,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -10371,7 +10480,8 @@
         "estimated_per_portion": 2.5,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Stuffed Peppers with Feta & Lentils",
@@ -10408,16 +10518,16 @@
         "75g rice",
         "1/2 red pepper",
         "1/2 red onion",
-        "handful of leafy greens",
+        "25g baby spinach",
         "1/2 lemon",
         "2 tbsp Greek yoghurt",
-        "fresh herbs",
+        "5g fresh flat-leaf parsley",
         "40g feta",
         "1 whole red pepper"
       ],
       "method": [
         "Rinse the rice, then cook it in a covered saucepan or rice cooker according to the packet instructions; keep covered off the heat until serving.",
-        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add leafy greens only for the final 1-2 minutes so they wilt but stay bright.",
+        "Cut the vegetables into even pieces. Cook firmer vegetables such as carrot or broccoli first until just tender, then add baby spinach only for the final 1-2 minutes so they wilt but stay bright.",
         "Cook the main protein or vegetarian component over medium-high heat until browned and cooked through, adjusting the heat if the outside colours too quickly.",
         "Add the recipe-specific sauce or seasoning and simmer or toss only until it coats the ingredients; taste for salt, acidity and heat before serving."
       ],
@@ -10433,7 +10543,7 @@
         "overview": "A reserved half-portion from dinner with salad in a wrap.",
         "extra_ingredients": [
           "1 tortilla",
-          "handful of salad leaves"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies by brands, quantities and cooking method.",
@@ -10466,7 +10576,8 @@
         "estimated_per_portion": 1.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Batch Cottage Pie",
@@ -10623,7 +10734,7 @@
         "1 lemon",
         "1 garlic bulb",
         "2 tsp olive oil",
-        "fresh herbs"
+        "5g fresh flat-leaf parsley"
       ],
       "method": [
         "Season the chicken inside and out and roast according to its weight until safely cooked.",
@@ -10659,7 +10770,7 @@
         "overview": "Cooked chicken with crunchy salad and yoghurt in a pitta.",
         "extra_ingredients": [
           "1 pitta",
-          "handful of lettuce",
+          "25g lettuce",
           "2 tbsp Greek yoghurt"
         ]
       },
@@ -10690,7 +10801,8 @@
         {
           "id": "chicken_stock"
         }
-      ]
+      ],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Slow Pulled Pork Shoulder",
@@ -10769,7 +10881,7 @@
         "overview": "Shredded pork with crunchy slaw in bread.",
         "extra_ingredients": [
           "2 slices wholemeal bread",
-          "handful of slaw"
+          "50g plain shredded cabbage and carrot slaw"
         ]
       },
       "nutrition_note": "Approximate per-serving values; actual nutrition varies with the joint and trimming.",
@@ -10800,7 +10912,8 @@
         "estimated_per_portion": 3.1,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Batch Beef & Bean Chilli",
@@ -10952,7 +11065,7 @@
         "300g spinach",
         "2 tbsp curry spices",
         "450g basmati rice",
-        "natural yoghurt"
+        "30g natural yoghurt"
       ],
       "method": [
         "Brown the aubergine in batches and set aside.",
@@ -10987,7 +11100,7 @@
         "extra_ingredients": [
           "1 flatbread",
           "2 tbsp yoghurt",
-          "handful of salad"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values.",
@@ -11017,7 +11130,8 @@
         "estimated_per_portion": 1.7,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     },
     {
       "name": "Batch Sausage & Bean Casserole",
@@ -11202,7 +11316,7 @@
         "overview": "Turkey meatballs and tomato sauce in a crusty roll with salad.",
         "extra_ingredients": [
           "1 wholemeal roll",
-          "handful of salad"
+          "25g mixed salad leaves"
         ]
       },
       "nutrition_note": "Approximate per-serving values.",
@@ -11234,7 +11348,8 @@
         "estimated_per_portion": 2.8,
         "estimate_only": true
       },
-      "prep_components": []
+      "prep_components": [],
+      "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
     }
   ]
 }

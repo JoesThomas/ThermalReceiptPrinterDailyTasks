@@ -82,6 +82,7 @@
                 <section id="recipe-notes" aria-labelledby="notes-heading">
                     <h2 id="notes-heading">Recipe notes</h2>
                     {% if recipe.overview %}<p>{{ recipe.overview }}</p>{% endif %}
+                    {% if recipe.ingredient_notes %}<p>{{ recipe.ingredient_notes }}</p>{% endif %}
                     <p>
                         <strong>Listed allergens:</strong> {{ allergens|join(', ')|replace('_', ' ') if allergens else 'None listed' }}.
                     </p>

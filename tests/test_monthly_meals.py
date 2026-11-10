@@ -263,6 +263,19 @@ class MonthlyTests(MonthlyFixture, TestCase):
         checklist, _ = shopping_checklist.review([visit], "supermarket")
         self.assertEqual([i["amount"] for i in checklist], [i["amount"] for i in visit["items"]])
 
+    def test_cached_beef_requirements_combine_only_when_the_cuts_match(self):
+        day = date(2026, 11, 7)
+        rows = [
+            dict(day=day, recipe="Quick Beef Bolognese", line="450g lean beef"),
+            dict(day=day, recipe="Batch Cottage Pie", line="600g lean beef mince"),
+            dict(day=day, recipe="Beef Broccoli Noodles", line="150g lean beef"),
+        ]
+        view = monthly.shopping(rows, monthly.defaults(), day, day)
+        items = {i["key"]: i for v in view["visits"] for i in v["items"]}
+        self.assertEqual(items["lean beef mince"]["requirements"],
+                         ["450g lean beef mince", "600g lean beef mince"])
+        self.assertEqual(items["lean beef strips"]["requirements"], ["150g lean beef strips"])
+
     def test_whole_chicken_covers_counted_cuts_without_guessing_weights(self):
         settings = monthly.defaults()
         shop = date(2026, 11, 7)

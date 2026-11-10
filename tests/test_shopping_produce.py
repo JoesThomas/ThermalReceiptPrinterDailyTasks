@@ -47,3 +47,36 @@ class ShoppingProduceTests(TestCase):
         for variety in ("cherry", "piccolo", "beef", "tinned", "sun-dried"):
             self.assertEqual(shopping_amount(variety + " tomato", ["100g " + variety + " tomatoes"], pack_sizes={}),
                              "100 g " + variety + " tomatoes")
+
+    def test_audited_beef_dishes_use_the_correct_cut(self):
+        from meals.ingredients import recipe_ingredient
+        self.assertEqual(recipe_ingredient("150g lean beef", "Quick Beef Bolognese"),
+                         "150g lean beef mince")
+        self.assertEqual(recipe_ingredient("150g lean beef", "Beef Broccoli Noodles"),
+                         "150g lean beef strips")
+        self.assertEqual(recipe_ingredient("150g lean beef", "Beef Stew"),
+                         "150g lean stewing beef")
+        self.assertEqual(recipe_ingredient("150g lean beef", "Custom dish"), "150g lean beef")
+        self.assertEqual(recipe_ingredient("150g diced beef", "Quick Beef Bolognese"), "150g diced beef")
+
+    def test_catalogue_has_specific_produce_and_beef_ingredients(self):
+        import json
+        from pathlib import Path
+        from meals.ingredients import BEEF_CUTS, parse
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "data/recipes.json").read_text()
+        self.assertEqual(source, (root / "recipes.json").read_text())
+        recipes = json.loads(source)["recipes"]
+        vague = {"fresh herbs", "handful of leafy greens", "handful of salad leaves",
+                 "handful of spinach", "handful of lettuce", "lettuce",
+                 "handful of salad", "handful of slaw", "natural yoghurt"}
+        for recipe in recipes:
+            lines = recipe.get("ingredients", []) + recipe.get("lunch", {}).get("extra_ingredients", [])
+            self.assertFalse(vague.intersection(lines), recipe["name"])
+            self.assertFalse(any((row := parse(line)) and row[2] in {"lean beef", "tomato"}
+                                 for line in lines), recipe["name"])
+            if recipe["name"] in BEEF_CUTS:
+                self.assertIn("150g " + BEEF_CUTS[recipe["name"]], lines)
+        kofta = next(r for r in recipes if r["name"] == "Beef Kofta & Tahini Flatbread")
+        self.assertTrue(any("shape" in step for step in kofta["method"]))
+        self.assertIn("planning defaults", kofta["ingredient_notes"])
