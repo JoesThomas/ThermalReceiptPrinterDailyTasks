@@ -1,3 +1,4 @@
+{% from 'meal_shopping_items.html' import shopping_items, chicken_size_note with context %}
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -17,10 +18,12 @@
             <h1>{{ supplier or 'Supermarket' }} shopping checklist</h1>
             <p>Choose a date to tick off items on your phone or print a paper checklist.</p>
             {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
-            {% if needed_before_shop %}
-                <p class="helper">
-                    Some ingredients are needed before this weekend shop (first meal: {{ needed_before_shop[0].strftime('%a %d %b') }}). Check what you have or change those meals.
-                </p>
+            {% if before_shop_items %}
+                <details class="helper" {% if not rows %}open{% endif %}>
+                    <summary>Needed before this shop · {{ before_shop_items|length }} items</summary>
+                    <p>Check what you have or adjust those meals. These items are separate from the checklist.</p>
+                    {{ shopping_items(before_shop_items, view, []) }}
+                </details>
             {% endif %}
             {% if dates %}
                 <section>
@@ -30,8 +33,8 @@
                         {% if supplier %}<input type="hidden" name="supplier" value="{{ supplier }}">{% endif %}
                         <label for="shop-day">Shopping date</label>
                         <select name="day" id="shop-day">
-                            {% for option in dates %}
-                                <option value="{{ option }}" {% if option==day %}selected{% endif %}>{{ option }}</option>
+                            {% for option, label in dates.items() %}
+                                <option value="{{ option }}" {% if option==day %}selected{% endif %}>{{ label }}</option>
                             {% endfor %}
                         </select>
                         <button>Show ingredients</button>
@@ -45,6 +48,14 @@
                         </p>
                     {% endif %}
                 </section>
+            {% endif %}
+            {% if rows %}
+                {{ chicken_size_note(chicken_size) }}
+                {% if rows|selectattr('whole_chicken')|first %}
+                    <p class="helper">
+                        For whole chicken, see the <a href="{{ url_for('monthly_meals_page',month=view.month,_anchor='month-shops') }}">monthly list</a> for which cuts to set aside for each meal.
+                    </p>
+                {% endif %}
                 <section id="shop-mode" data-shop-key="{{ fingerprint }}" hidden data-private>
                     <h2>Shop on your phone</h2>
                     <p>
@@ -57,7 +68,6 @@
                                 <legend>
                                     {{ row.amount }}
                                     {% if row.pantry %}· check pantry{% endif %}
-                                    {% if not row.measured %}· check amount{% endif %}
                                 </legend>
                                 <label>
                                     <input type="checkbox" data-shop-got="{{ row.id }}">
@@ -101,7 +111,6 @@
                                                {% if row.id in checked %}checked{% endif %}>
                                         {{ row.amount }}
                                         {% if row.pantry %}· check pantry{% endif %}
-                                        {% if not row.measured %}· check amount{% endif %}
                                     </label>
                                 </li>
                             {% endfor %}
@@ -117,7 +126,7 @@
                     <button type="button" id="shop-copy-button" hidden>Copy selected ingredients</button>
                     <span id="shop-copy-status" role="status"></span>
                 </details>
-            {% else %}
+            {% elif not before_shop_items %}
                 <p>No remaining ingredients are scheduled for this list. Create or complete the monthly menu to add shopping dates.</p>
             {% endif %}
         </main>

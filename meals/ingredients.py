@@ -8,13 +8,16 @@ import math
 PLURALS = {'onions': 'onion', 'carrots': 'carrot', 'peppers': 'pepper',
            'potatoes': 'potato', 'tomatoes': 'tomato', 'tortillas': 'tortilla',
            'lemons': 'lemon', 'limes': 'lime', 'cloves': 'clove', 'fillets': 'fillet',
-           'breasts': 'breast', 'beans': 'bean', 'noodles': 'noodle'}
+           'breasts': 'breast', 'thighs': 'thigh', 'chickens': 'chicken', 'beans': 'bean', 'noodles': 'noodle',
+           'apples': 'apple', 'bananas': 'banana', 'avocados': 'avocado',
+           'cucumbers': 'cucumber', 'mushrooms': 'mushroom', 'courgettes': 'courgette'}
 SINGULAR_TO_PLURAL = {singular: plural for plural, singular in PLURALS.items()}
 UNITS = {'kg': ('g', 1000), 'g': ('g', 1), 'l': ('ml', 1000), 'ml': ('ml', 1),
          'tsp': ('tsp', 1), 'tbsp': ('tsp', 3), 'tin': ('tin', 1), 'tins': ('tin', 1),
          'slice': ('slice', 1), 'slices': ('slice', 1), 'nest': ('nest', 1),
          'nests': ('nest', 1), 'handful': ('handful', 1), 'handfuls': ('handful', 1)}
 QUANTITY = re.compile(r'^(\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?)\s*')
+UNMEASURED_SCALE = re.compile(r' \(unmeasured; scale for \d+(?:\.\d+)?x\)$')
 
 
 def parse(text):
@@ -50,6 +53,43 @@ def _parse(original):
 
 
 _cached_parse = lru_cache(maxsize=1024)(_parse)
+
+
+def shopping_key(line):
+    parsed = parse(line)
+    if parsed:
+        return ('tinned ' if parsed[1] == 'tin' else '') + parsed[2]
+    name = UNMEASURED_SCALE.sub('', ' '.join(str(line).casefold().split()))
+    name = name.removeprefix('handful of ')
+    return ' '.join(PLURALS.get(word, word) for word in name.split())
+
+
+def shopping_amount(key, lines, *, pack_sizes=None):
+    measured = []
+    uncertain = False
+    for line in lines:
+        parsed = parse(line)
+        if parsed and parsed[0] > 0 and parsed[1] != 'handful':
+            measured.append(line)
+        else:
+            uncertain = True
+
+    amounts = []
+    for line in aggregate(measured, for_shopping=True, pack_sizes=pack_sizes):
+        match = re.match(r'^(\d+)(g|ml) (.*)$', line)
+        if match:
+            count, unit, label = match.groups()
+            if int(count) >= 1000:
+                count = str(int(count) / 1000).removesuffix('.0')
+                unit = {'g': 'kg', 'ml': 'L'}[unit]
+            line = f'{count} {unit} {label}'
+        amounts.append(line)
+    if key == 'fresh herbs' and uncertain and not measured:
+        return 'Flat-leaf parsley (suggested; to taste)'
+    result = ' + '.join(amounts) or key
+    if uncertain:
+        result += ' (check extra amount)' if measured else ' (check amount)'
+    return result
 
 
 def number(amount):

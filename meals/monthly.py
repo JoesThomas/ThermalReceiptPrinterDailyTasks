@@ -9,7 +9,8 @@ import re
 from storage import PrivateStore, file_lock
 from receipt.local_time import uk_today
 from meals import legacy_planner as planner
-from meals.ingredients import parse, aggregate, load_pack_sizes
+from meals.ingredients import load_pack_sizes, shopping_amount, shopping_key
+from meals.whole_chicken import combine_cuts, size_guide
 
 FILE = Path(__file__).resolve().parents[1] / "data" / "monthly_meals.json"
 CATEGORIES = (
@@ -46,6 +47,7 @@ def defaults():
         veg_topup=False,
         veg_day=6,
         supplier_mode="specialist",
+        prefer_whole_chicken=True,
         shops=dict(zip(CATEGORIES, (SHOPS[0], SHOPS[1], SHOPS[4], SHOPS[2], SHOPS[4], "Baker"))),
         overrides={},
     )
@@ -77,6 +79,8 @@ def validate(value):
         raise ValueError("Invalid top-up setting.")
     if value.get("supplier_mode", "specialist") not in SUPPLIER_MODES:
         raise ValueError("Choose supermarket or specialist shopping.")
+    if type(value.get("prefer_whole_chicken", True)) is not bool:
+        raise ValueError("Invalid whole chicken preference.")
     if not isinstance(value["shops"], dict) or set(value["shops"]) not in (
         set(CATEGORIES), set(CATEGORIES) - {BAKERY}
     ):
@@ -129,17 +133,8 @@ def preferences():
     return dict(value, _household=store().read())
 
 
-def identity(line):
-    row = parse(line)
-    return (
-        (("tinned " if row[1] == "tin" else "") + row[2])
-        if row
-        else " ".join(str(line).casefold().split())
-    )
-
-
 def category(line):
-    return category_for_name(identity(line))
+    return category_for_name(shopping_key(line))
 
 
 def category_for_name(name):
@@ -383,6 +378,29 @@ def next_weekend(on, weekday):
     return on + timedelta(days=(weekday - on.weekday()) % 7)
 
 
+def shopping_items(uses, pantry_has, pack_sizes):
+    byname = defaultdict(list)
+    for row in uses:
+        byname[row.get("shopping_key") or shopping_key(row["line"])].append(row)
+    entries = []
+    for key, lines in sorted(byname.items()):
+        requirements = [row["line"] for row in lines if row["line"]]
+        usage = sorted({
+            (row["day"], row["recipe"], row.get("use_line", row["line"]))
+            for row in lines
+        })
+        entries.append(dict(
+            key=key,
+            amount=shopping_amount(key, requirements, pack_sizes=pack_sizes),
+            requirements=requirements,
+            needs=sorted({day.isoformat() for day, _, _ in usage}),
+            usage=usage,
+            pantry=any(pantry_has(line) for line in requirements),
+            whole_chicken=any("use_line" in row for row in lines),
+        ))
+    return entries
+
+
 def shopping(rows, settings, first, on):
     start = max(first, on)
     weekly = weekend_day(settings["weekly_day"])
@@ -394,9 +412,11 @@ def shopping(rows, settings, first, on):
     items = defaultdict(list)
     classified = []
     first_pantry_need = None
+    overrides = {shopping_key(key): value for key, value in settings["overrides"].items()}
+    overrides.update(settings["overrides"])
     for row in rows:
-        key = identity(row["line"])
-        kind = settings["overrides"].get(key) or category_for_name(key)
+        key = shopping_key(row["line"])
+        kind = overrides.get(key) or category_for_name(key)
         classified.append((row, key, kind))
         if kind == CATEGORIES[0] and (first_pantry_need is None or row["day"] < first_pantry_need):
             first_pantry_need = row["day"]
@@ -423,24 +443,19 @@ def shopping(rows, settings, first, on):
     pantry_has = planner.load_pantry_matcher() if grouped else None
     pack_sizes = load_pack_sizes() if grouped else {}
     for (buy, shop), uses in sorted(grouped.items()):
-        byname = defaultdict(list)
-        for row in uses:
-            byname[identity(row["line"])].append(row)
-        entries = []
-        for key, lines in sorted(byname.items()):
-            entries.append(
-                dict(
-                    key=key,
-                    amounts=aggregate([r["line"] for r in lines], for_shopping=True, pack_sizes=pack_sizes),
-                    requirements=aggregate([r["line"] for r in lines]),
-                    needs=sorted({r["day"].isoformat() for r in lines}),
-                    recipes=sorted({r["recipe"] for r in lines}),
-                    unmeasured=any(parse(r["line"]) is None for r in lines),
-                    pantry=pantry_has(lines[0]["line"]),
-                )
-            )
-        visits.append(dict(day=buy, shop=shop, items=entries,
-                           needed_before_shop=sorted({row["day"] for row in uses if row["day"] < buy})))
+        early = [row for row in uses if row["day"] < buy]
+        planned = [row for row in uses if row["day"] >= buy]
+        if settings.get("prefer_whole_chicken", True):
+            planned = combine_cuts(planned)
+        visits.append(dict(
+            day=buy,
+            shop=shop,
+            items=shopping_items(planned, pantry_has, pack_sizes),
+            before_shop_items=shopping_items(early, pantry_has, pack_sizes),
+            chicken_size=size_guide(row["line"] for row in planned)
+            if settings.get("prefer_whole_chicken", True) else None,
+        ))
+    scheduled = [v for v in visits if v["items"]]
     ingredient_choices = [
         dict(key=k, label=k, category=v[0]["category"])
         for k, v in sorted(items.items())
@@ -448,9 +463,10 @@ def shopping(rows, settings, first, on):
     return dict(
         visits=visits,
         ingredients=ingredient_choices,
-        shopping_days=len({v["day"] for v in visits}),
-        stops=len(visits),
-        supermarket_stops=sum(v["shop"] in SUPERMARKET_SHOPS for v in visits),
+        category_overrides=overrides,
+        shopping_days=len({v["day"] for v in scheduled}),
+        stops=len(scheduled),
+        supermarket_stops=sum(v["shop"] in SUPERMARKET_SHOPS for v in scheduled),
     )
 
 
@@ -559,6 +575,7 @@ def report(raw, on=None):
     # Include the last day's planned leftover lunch even when it falls in the next month.
     config = store().read()
     config.setdefault("supplier_mode", "specialist")
+    config.setdefault("prefer_whole_chicken", True)
     config["shops"] = specialist_shops(config)
     config["weekly_day"] = weekend_day(config["weekly_day"])
     config["veg_day"] = weekend_day(config["veg_day"], 6)
