@@ -19,11 +19,11 @@ def register(app, login_required, start_print, root):
     def go(raw):
         return redirect(url_for("monthly_meals_page", month=raw))
 
-    def sync_tasks(raw):
-        from meals.shopping_tasks import sync
+    def sync_tasks(raw, *, all_months=False):
+        from meals.shopping_tasks import sync, sync_known_months
 
         try:
-            sync(raw, uk_today())
+            (sync_known_months if all_months else sync)(raw, uk_today())
         except (OSError, ValueError, RuntimeError):
             flash(
                 "The meal change was saved, but shopping tasks could not be updated. Check your task list."
@@ -78,24 +78,29 @@ def register(app, login_required, start_print, root):
 
             def save(s):
                 s.pop("retailer", None)  # Remove the retired preference when saving.
+                supplier_mode = request.form.get("supplier_mode", s.get("supplier_mode", "specialist"))
+                shops = monthly.specialist_shops(s)
+                if supplier_mode == "specialist":
+                    shops = {
+                        category: request.form.get("shop_" + str(i), shops[category])
+                        for i, category in enumerate(monthly.CATEGORIES)
+                    }
                 s.update(
+                    supplier_mode=supplier_mode,
                     weekly_day=weekly_day,
                     veg_topup=request.form.get("veg_topup") == "on",
                     veg_day=veg_day,
-                    shops={
-                        category: request.form.get("shop_" + str(i), "")
-                        for i, category in enumerate(monthly.CATEGORIES)
-                    },
+                    shops=shops,
                 )
 
             monthly.store().update(save)
-            sync_tasks(raw)
+            sync_tasks(raw, all_months=True)
             flash(
                 "Shopping days and suppliers saved. Lists regroup without changing the menu."
             )
         except (ValueError, OSError):
             flash(
-                "Choose Saturday or Sunday and check the supplier choices. Fresh categories must stay on weekly lists."
+                "Choose a shopping mode, Saturday or Sunday, and valid suppliers. Fresh categories must stay on weekly lists."
             )
         return go(raw)
 
@@ -215,6 +220,9 @@ def register(app, login_required, start_print, root):
         supplier = request.values.get("supplier", "")
         if supplier and supplier not in monthly.LOCAL_SHOPS:
             abort(400, description="Choose a scheduled local supplier.")
+        if supplier and view["config"]["supplier_mode"] == "supermarket":
+            flash("Supermarket-only mode is active. Open the combined checklist below.")
+            return redirect(url_for("meal_shop", month=raw))
         allowed = (supplier,) if supplier else monthly.SUPERMARKET_SHOPS
         scheduled = [visit for visit in view["visits"] if visit["shop"] in allowed]
         dates = sorted({visit["day"].isoformat() for visit in scheduled})

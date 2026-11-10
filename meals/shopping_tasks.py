@@ -1,4 +1,4 @@
-"""Keep one dated checklist task per scheduled butcher or greengrocer visit."""
+"""Keep one dated checklist task per scheduled specialist shop visit."""
 
 from datetime import date
 from hashlib import sha256
@@ -10,6 +10,9 @@ from receipt.local_time import uk_today
 SUPPLIERS = {
     "Butcher": "Buy meat from the butcher",
     "Greengrocer": "Shop at the greengrocer",
+    "Baker": "Shop at the baker",
+    "Fishmonger": "Shop at the fishmonger",
+    "Local shop": "Shop at the local shop",
 }
 
 
@@ -68,12 +71,43 @@ def sync(raw, on=None, *, first_only=False):
         state["shopping_task_months"] = sorted({raw, *months})[-24:]
 
 
+def clear_pending_specialist_tasks(state):
+    state["items"] = [
+        row for row in state["items"]
+        if row["done"] or not row.get("shop_month") or row.get("shop_supplier") not in SUPPLIERS
+    ]
+
+
+def sync_known_months(raw, on=None):
+    """Reconcile all already scheduled months when global shop preferences change."""
+    on = on or uk_today()
+    settings = monthly.store().read()
+    if settings.get("supplier_mode") == "supermarket":
+        with checklists.transaction() as state:
+            clear_pending_specialist_tasks(state)
+        return
+    active = settings["active_month"]
+    months = {raw, *checklists.load().get("shopping_task_months", [])}
+    if active:
+        months.add(active)
+    for month in sorted(months):
+        if monthly.bounds(month)[1] >= on:
+            sync(month, on)
+
+
 def ensure():
     """Replace outdated pending shop tasks while retaining completed history."""
     if not monthly.FILE.exists():
         return
-    active = monthly.store().read()["active_month"]
+    settings = monthly.store().read()
+    active = settings["active_month"]
     state = checklists.load()
+    if settings.get("supplier_mode") == "supermarket":
+        if any(not row["done"] and row.get("shop_month") and row.get("shop_supplier") in SUPPLIERS
+               for row in state["items"]):
+            with checklists.transaction() as fresh:
+                clear_pending_specialist_tasks(fresh)
+        return
     on = uk_today()
     months = set(state.get("shopping_task_months", []))
     if active:

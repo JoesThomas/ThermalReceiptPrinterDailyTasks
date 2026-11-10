@@ -6,11 +6,20 @@ The month is backed by the same private Sunday-start weekly files used by the da
 
 ## Shopping pattern
 
-The default supplier pattern is:
+In **Shopping days & shops**, choose **Supermarket only** for one supermarket
+checklist per shopping date, or **Split between specialist shops** to route
+ingredient categories separately. Changing modes preserves your supplier
+choices and keeps existing weekend and freshness rules. It does not change
+the saved menu.
+
+The default split supplier pattern is:
 
 - **Main supermarket shop:** combined store-cupboard and explicitly frozen items for remaining meals.
 - **Butcher:** weekly meat requirements, preserving cut/ingredient names and compatible units.
 - **Greengrocer:** weekly fresh produce, optionally split by a second weekend shopping day.
+- **Baker:** bread, rolls, wraps and other bakery products on new setups.
+  Existing setups keep their former fresh-essentials supplier for bakery
+  items until you change it.
 - **Supermarket top-up:** fresh essentials and fish by default. Assign these to a local shop, greengrocer or fishmonger where the supplier stocks those items.
 
 Shops are scheduled on Saturday by default, with Sunday available in settings. Select a shared day to combine stops into an outing. The report counts shopping days, shop stops and supermarket stops separately. These are suggested purchase groupings, not opening-hour checks, optimised journeys or a promise that weekly trips are always sufficient. If a meal needs ingredients before the next weekend, the list flags the dates so you can check stock or change those meals. Remaining requirements regroup from the date you view the month; purchases are not automatically tracked or ordered.
@@ -42,6 +51,6 @@ The calendar shows lunch on the date it is planned for, using the previous dinne
 
 ## Local suppliers and meal attendance
 
-Butcher, greengrocer, fishmonger and local shop ingredients stay off the supermarket checklist. Open the local supplier’s dated list from **Shopping lists** to review, print or copy it. Edit the category’s supplier under **Shopping days & shops** if you prefer to buy it elsewhere. The app adds a task for each scheduled butcher and greengrocer visit, with a link to the list. Existing unfinished weekday shop tasks are reconciled to the weekend when tasks refresh; completed tasks are kept. Automated shop tasks appear as due only on their scheduled weekend day.
+Baker, butcher, greengrocer, fishmonger and local shop ingredients stay off the supermarket checklist. Open the local supplier’s dated list from **Shopping lists** to review, print or copy it. Edit the category’s supplier under **Shopping days & shops** if you prefer to buy it elsewhere. The app adds a task for each scheduled specialist shop visit, with a link to the list. Existing unfinished weekday shop tasks are reconciled to the weekend when tasks refresh; completed tasks are kept. Automated shop tasks appear as due only on their scheduled weekend day.
 
 With household profiles configured, expand **Who’s eating?** on a date to skip individual breakfasts, lunches or dinners. Mark all three for a full day away. Breakfast and dinner portions follow their own headcounts; lunch counts adjust extras reserved with the previous dinner where the recipe provides them. A home meal is paused when nobody needs it. Saved dinner recipes remain available if attendance changes again, and household dietary restrictions still apply. The planner does not invent a standalone lunch when there is no suitable previous dinner.
