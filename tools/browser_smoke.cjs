@@ -964,6 +964,8 @@ process.on('exit', () => child.kill());
   await page.getByRole('heading',{name:'Bill price history',exact:true}).waitFor();
   await page.goto('http://receipt.test/meals/use-first');
   await page.getByRole('heading',{name:'Use this first',exact:true}).waitFor();
+  const kitchenA11y=await require('./browser_cooking.cjs')(page);
+  if(kitchenA11y) accessibilityFailures.push(kitchenA11y);
   accessibilityFailures.push(...await require('./browser_household_meals.cjs')(page));
   assert.deepEqual(accessibilityFailures, [], `Accessibility violations: ${JSON.stringify(accessibilityFailures)}`);
   if (process.env.RECEIPT_BROWSER_SCREENSHOT) {

@@ -117,7 +117,7 @@ def fixture_monthly_meals():
     month=(uk_today().replace(day=1)+timedelta(days=32)).replace(day=1).strftime('%Y-%m')
     recipes=[]
     for i in range(9):
-        recipes.append(dict(name='Monthly fixture dinner '+str(i),total_minutes=20,cuisine='Fixture',ingredients=['150g chicken breast','75g rice','1 carrot','1 egg'],method=['Cook the meal'],allergens={'uk_14':[]},dietary={'vegetarian':False},prep_components=[],lunch={'extra_ingredients':['1 tortilla']},cost={'estimated_per_portion':4}))
+        recipes.append(dict(name='Monthly fixture dinner '+str(i),total_minutes=20,cuisine='Fixture',ingredients=['150g chicken breast','75g rice','1 carrot','1 egg'],method=['Prepare the ingredients', 'Cook the meal', 'Serve the meal'],allergens={'uk_14':[]},dietary={'vegetarian':False},prep_components=[],lunch={'extra_ingredients':['1 tortilla']},cost={'estimated_per_portion':4}))
     write_json(copy/'data'/'recipes.json', {'recipes':recipes})
     write_json(copy/'data'/'meal_preferences.json', {'weekday_max_minutes':30})
     lifestyle.store().update(lambda s:s['away'].update(enabled=False))

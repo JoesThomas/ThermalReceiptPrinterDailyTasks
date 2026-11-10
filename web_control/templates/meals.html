@@ -19,6 +19,9 @@
                 <p class="muted">
                     {{ today.strftime('%A %d %B') }} · Changing the recipe updates today's printed recipe and the meal plan shopping list.
                 </p>
+                <p>
+                    <a class="button primary" href="{{ url_for('cooking_page') }}">Open Kitchen mode</a>
+                </p>
             </header>
             {% if household_meals_available|default(false) %}
                 <p>

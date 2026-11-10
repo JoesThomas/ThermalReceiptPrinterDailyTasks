@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% include 'favicon.html' %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{{ recipe.name if recipe else 'Choose a recipe' }} · Kitchen mode</title>
+        <link rel="stylesheet"
+              href="{{ url_for('static', filename='cooking.css') }}">
+        <script src="{{ url_for('static', filename='cooking.js') }}" defer></script>
+    </head>
+    <body>
+        <main id="main-content"
+              class="kitchen"
+              {% if recipe %}data-progress-key="{{ progress_key }}"{% endif %}>
+            <header class="kitchen-header">
+                <div>
+                    <a href="{{ url_for('meals_page') }}" class="kitchen-back">← Meals &amp; recipes</a>
+                    <p class="kitchen-kicker">Kitchen mode · {{ today.strftime('%a %d %b') }}</p>
+                    <h1>{{ recipe.name if recipe else 'Choose a recipe' }}</h1>
+                    {% if recipe %}
+                        <p class="kitchen-meta">
+                            {{ 'Recipe library' if choice else 'Today’s planned recipe' }}
+                            {% if recipe.total_minutes %}· About {{ recipe.total_minutes }} min{% endif %}
+                            {% if recipe._household_scaled %}
+                                · {{ recipe._household_diners }} diners · {{ '%g'|format(recipe._household_cook) }} standard portions
+                                {% if recipe._household_lunch_reserved %}, including planned lunch{% endif %}
+                            {% elif recipe.cook_servings or recipe.servings %}
+                                · {{ recipe.cook_servings or recipe.servings }} servings
+                            {% endif %}
+                        </p>
+                    {% endif %}
+                </div>
+                {% if recipe %}
+                    <div class="kitchen-tools">
+                        <button type="button" id="keep-awake" aria-pressed="false" hidden>Keep screen awake</button>
+                        <p role="status" id="awake-status" class="kitchen-meta" hidden></p>
+                    </div>
+                {% endif %}
+            </header>
+            {% if problem %}<p class="kitchen-notice">{{ problem }}</p>{% endif %}
+            {% if recipe %}
+                <nav class="kitchen-jumps" aria-label="Recipe sections">
+                    <a href="#method">Method</a>
+                    <a href="#ingredients">Ingredients</a>
+                    <a href="#recipe-notes">Recipe notes</a>
+                </nav>
+                <div class="kitchen-grid">
+                    <section id="method" aria-labelledby="method-heading">
+                        <div class="kitchen-section-heading">
+                            <h2 id="method-heading">Method</h2>
+                            <button type="button" id="all-steps" aria-pressed="false" hidden>Show all steps</button>
+                        </div>
+                        <p id="step-status" class="kitchen-meta" role="status" hidden></p>
+                        <ol class="kitchen-steps" id="steps">
+                            {% for step in method %}<li value="{{ loop.index }}" data-step>{{ step }}</li>{% endfor %}
+                        </ol>
+                        <div class="kitchen-step-controls" id="step-controls" hidden>
+                            <button type="button" id="previous-step">Previous</button>
+                            <button type="button" class="kitchen-primary" id="next-step">Next step</button>
+                        </div>
+                    </section>
+                    <section id="ingredients" aria-labelledby="ingredients-heading">
+                        <div class="kitchen-section-heading">
+                            <h2 id="ingredients-heading">Ingredients</h2>
+                            <button type="button" id="reset-ingredients" hidden>Clear ticks</button>
+                        </div>
+                        <ul class="kitchen-ingredients">
+                            {% for ingredient in ingredients %}
+                                <li>
+                                    <label>
+                                        <input type="checkbox" data-ingredient="{{ loop.index0 }}">
+                                        <span>{{ ingredient }}</span>
+                                    </label>
+                                </li>
+                            {% else %}
+                                <li>No ingredient list is saved for this recipe.</li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                </div>
+                <section id="recipe-notes" aria-labelledby="notes-heading">
+                    <h2 id="notes-heading">Recipe notes</h2>
+                    {% if recipe.overview %}<p>{{ recipe.overview }}</p>{% endif %}
+                    <p>
+                        <strong>Listed allergens:</strong> {{ allergens|join(', ')|replace('_', ' ') if allergens else 'None listed' }}.
+                    </p>
+                    {% if recipe.allergens and recipe.allergens.check_labels_for %}
+                        <p>
+                            <strong>Check labels for:</strong> {{ recipe.allergens.check_labels_for|join(', ') }}.
+                        </p>
+                    {% endif %}
+                    {% include 'diet_handling.html' %}
+                    {% if recipe._household_scaled %}
+                        <p>Ingredient amounts follow your meal plan. Review recipe timings and equipment when cooking a larger batch.</p>
+                    {% endif %}
+                </section>
+            {% endif %}
+            <section aria-labelledby="choose-heading">
+                <h2 id="choose-heading">Open another recipe</h2>
+                {% if options %}
+                    <form method="get"
+                          action="{{ url_for('cooking_page') }}"
+                          class="kitchen-picker">
+                        <label for="recipe-choice">Recipe</label>
+                        <select id="recipe-choice" name="recipe">
+                            <option value="">Today’s planned recipe</option>
+                            {% for name in options %}
+                                <option value="{{ name }}" {% if choice == name %}selected{% endif %}>{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button>Open recipe</button>
+                    </form>
+                    <p class="kitchen-meta">Opening a recipe here does not change today’s plan.</p>
+                {% else %}
+                    <p>No recipes available with the current meal settings.</p>
+                {% endif %}
+            </section>
+        </main>
+    </body>
+</html>
