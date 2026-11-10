@@ -18,6 +18,7 @@ CATEGORIES = (
     "Fish",
     "Fresh produce",
     "Fresh essentials",
+    "Bread & bakery",
 )
 SHOPS = (
     "Main supermarket shop",
@@ -26,12 +27,15 @@ SHOPS = (
     "Fishmonger",
     "Supermarket top-up",
     "Local shop",
+    "Baker",
 )
 
 
 SUPERMARKET_SHOPS = (SHOPS[0], SHOPS[4])
 LOCAL_SHOPS = tuple(shop for shop in SHOPS if shop not in SUPERMARKET_SHOPS)
 WEEKEND_DAYS = (5, 6)
+SUPPLIER_MODES = ("specialist", "supermarket")
+BAKERY = "Bread & bakery"
 
 
 def defaults():
@@ -41,9 +45,17 @@ def defaults():
         weekly_day=5,
         veg_topup=False,
         veg_day=6,
-        shops=dict(zip(CATEGORIES, (SHOPS[0], SHOPS[1], SHOPS[4], SHOPS[2], SHOPS[4]))),
+        supplier_mode="specialist",
+        shops=dict(zip(CATEGORIES, (SHOPS[0], SHOPS[1], SHOPS[4], SHOPS[2], SHOPS[4], "Baker"))),
         overrides={},
     )
+
+
+def specialist_shops(settings):
+    shops = dict(settings["shops"])
+    # Existing installations keep their original bread supplier until edited.
+    shops.setdefault(BAKERY, shops["Fresh essentials"])
+    return shops
 
 
 def bounds(raw):
@@ -63,7 +75,11 @@ def validate(value):
             raise ValueError("Choose a shopping weekday.")
     if type(value["veg_topup"]) is not bool:
         raise ValueError("Invalid top-up setting.")
-    if not isinstance(value["shops"], dict) or set(value["shops"]) != set(CATEGORIES):
+    if value.get("supplier_mode", "specialist") not in SUPPLIER_MODES:
+        raise ValueError("Choose supermarket or specialist shopping.")
+    if not isinstance(value["shops"], dict) or set(value["shops"]) not in (
+        set(CATEGORIES), set(CATEGORIES) - {BAKERY}
+    ):
         raise ValueError("Invalid shop categories.")
     for category, shop in value["shops"].items():
         if shop not in SHOPS or (category != CATEGORIES[0] and shop == SHOPS[0]):
@@ -164,6 +180,8 @@ def category_for_name(name):
         name,
     ):
         return CATEGORIES[3]
+    if re.search(r"\b(bread|rolls?|bagels?|pittas?|pitas?|flatbreads?|tortillas?|wraps?|naans?|buns?|brioche|ciabatta|sourdough)\b", name):
+        return BAKERY
     # Unknown foods are not assumed to keep for a whole month.
     return CATEGORIES[4]
 
@@ -385,8 +403,10 @@ def shopping(rows, settings, first, on):
     if first_pantry_need is not None and first_weekend <= first_pantry_need < main_shop:
         main_shop = first_weekend
 
+    supermarket_only = settings.get("supplier_mode", "specialist") == "supermarket"
+    shops = specialist_shops(settings)
     for row, key, kind in classified:
-        shop = settings["shops"][kind]
+        shop = SUPERMARKET_SHOPS[0] if supermarket_only else shops[kind]
         need = row["day"]
         if kind == CATEGORIES[0]:
             buy = main_shop
@@ -538,6 +558,8 @@ def report(raw, on=None):
             rows.extend(dict(day=row['day'],line=item,recipe=b['recipe']['name'],scope='Breakfast') for item in b['recipe']['ingredients'])
     # Include the last day's planned leftover lunch even when it falls in the next month.
     config = store().read()
+    config.setdefault("supplier_mode", "specialist")
+    config["shops"] = specialist_shops(config)
     config["weekly_day"] = weekend_day(config["weekly_day"])
     config["veg_day"] = weekend_day(config["veg_day"], 6)
     from meals.resource_planning import analyse

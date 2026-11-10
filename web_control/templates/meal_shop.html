@@ -36,7 +36,9 @@
                         </select>
                         <button>Show ingredients</button>
                     </form>
-                    {% if not supplier %}<p>Items assigned to local suppliers have their own lists.</p>{% endif %}
+                    {% if not supplier and view.config.supplier_mode == 'specialist' %}
+                        <p>Items assigned to local suppliers have their own lists.</p>
+                    {% endif %}
                     {% if view.resources.batches %}
                         <p>
                             <a href="{{ url_for('monthly_meals_page',month=view.month,_anchor='month-components') }}">Check any homemade components separately</a>.

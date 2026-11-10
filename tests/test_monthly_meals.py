@@ -136,6 +136,8 @@ class MonthlyTests(MonthlyFixture, TestCase):
             ("200ml chicken stock", "Fresh essentials"),
             ("1 chicken stock cube", "Store cupboard / frozen"),
             ("Greek yoghurt", "Fresh essentials"),
+            ("2 sourdough rolls", "Bread & bakery"),
+            ("2 frozen rolls", "Store cupboard / frozen"),
             ("unknown product", "Fresh essentials"),
         ]:
             self.assertEqual(monthly.category(line), category, line)
@@ -181,6 +183,27 @@ class MonthlyTests(MonthlyFixture, TestCase):
         combined = monthly.shopping(rows, s, date(2026, 11, 1), TODAY)
         self.assertEqual(combined["stops"], 1)
         self.assertEqual(len(combined["visits"][0]["items"]), 2)
+
+    def test_supermarket_mode_combines_suppliers_by_date_without_moving_fresh_food_earlier(self):
+        settings = monthly.defaults()
+        rows = [
+            dict(day=date(2026, 11, 8), line=line, recipe="Dinner")
+            for line in ["75g rice", "150g chicken breast", "1 carrot", "2 bread rolls", "150g salmon"]
+        ] + [dict(day=date(2026, 11, 15), line="150g chicken breast", recipe="Dinner")]
+        split = monthly.shopping(rows, settings, date(2026, 11, 1), TODAY)
+        self.assertIn("Baker", {visit["shop"] for visit in split["visits"]})
+        settings["supplier_mode"] = "supermarket"
+        combined = monthly.shopping(rows, settings, date(2026, 11, 1), TODAY)
+        self.assertEqual(len(combined["visits"]), 2)
+        self.assertEqual(combined["supermarket_stops"], 2)
+        self.assertEqual({v["shop"] for v in combined["visits"]}, {monthly.SUPERMARKET_SHOPS[0]})
+        self.assertEqual([len(v["items"]) for v in combined["visits"]], [5, 1])
+
+        settings.pop("supplier_mode")
+        settings["shops"].pop(monthly.BAKERY)
+        monthly.validate(settings)
+        legacy = monthly.shopping(rows, settings, date(2026, 11, 1), TODAY)
+        self.assertNotIn("Baker", {visit["shop"] for visit in legacy["visits"]})
 
     def test_weekday_meals_before_next_shop_are_flagged(self):
         on = date(2026, 11, 9)
@@ -521,9 +544,9 @@ class MonthlyWebTests(MonthlyFixture, TestCase):
         shopping_tasks.sync("2026-11", TODAY)
         tasks = checklists.rows("tasks")
         self.assertEqual(
-            {t["shop_supplier"] for t in tasks}, {"Butcher", "Greengrocer"}
+            {t["shop_supplier"] for t in tasks}, {"Butcher", "Greengrocer", "Baker"}
         )
-        self.assertEqual([t["due"] for t in tasks], [day.isoformat()] * 2)
+        self.assertEqual({t["due"] for t in tasks}, {day.isoformat()})
         checklists.update("tasks", "toggle", tasks[0]["id"])
         self.post("attendance", day=day.isoformat(), absent="legacy-0:dinner")
         self.assertEqual(len(checklists.rows("tasks")), 1)
@@ -535,12 +558,33 @@ class MonthlyWebTests(MonthlyFixture, TestCase):
         )
         self.assertEqual(view["visits"], [])
         self.post("attendance", day=day.isoformat())
-        self.assertEqual(len(checklists.rows("tasks")), 2)
+        self.assertEqual(len(checklists.rows("tasks")), 3)
         self.assertTrue(
             next(t for t in checklists.rows("tasks") if t["id"] == tasks[0]["id"])[
                 "completed"
             ]
         )
+
+    def test_switching_supplier_mode_preserves_choices_and_completed_tasks(self):
+        from actions import checklists
+
+        self.login()
+        self.post("generate")
+        before = monthly.store().read()["shops"]
+        first = checklists.rows("tasks")[0]
+        checklists.update("tasks", "toggle", first["id"])
+        self.post("settings", supplier_mode="supermarket", shop_1="Local shop")
+        self.assertEqual(monthly.store().read()["shops"], before)
+        self.assertTrue(all(task["completed"] for task in checklists.rows("tasks")))
+        page = self.client.get("/meals/shop?month=2026-11")
+        self.assertIn(b"chicken breast", page.data)
+        self.assertIn(b"carrot", page.data)
+        self.assertIn(b"tortilla", page.data)
+        self.post("settings", supplier_mode="specialist")
+        self.assertEqual(monthly.store().read()["shops"], before)
+        self.assertTrue(any(not task["completed"] for task in checklists.rows("tasks")))
+        self.assertTrue(any(task["id"] == first["id"] and task["completed"]
+                            for task in checklists.rows("tasks")))
 
     def test_initialized_weekday_tasks_are_rescheduled_and_hidden_from_weekdays(self):
         from actions import checklists

@@ -189,6 +189,9 @@
             <section id="month-shops">
                 <h2>Shopping lists · {{ view.label }}</h2>
                 <p>
+                    {{ 'Supermarket only' if view.config.supplier_mode == 'supermarket' else 'Split between specialist shops' }} · <a href="#month-settings">Change shopping mode</a>
+                </p>
+                <p>
                     {% for shop in local_shops if view.visits|selectattr('shop','equalto',shop)|first %}
                         <a class="button"
                            href="{{ url_for('meal_shop',month=view.month,supplier=shop) }}">{{ shop }} lists</a>
@@ -208,7 +211,9 @@
                 {% if view.handling %}<p class="helper">{{ view.handling.shopping }}</p>{% endif %}
                 {% for visit in view.visits %}
                     <details class="shop-list" {% if loop.first %}open{% endif %}>
-                        <summary>{{ visit.day.strftime('%a %d %b') }} · {{ visit.shop }} · {{ visit['items']|length }} ingredient(s)</summary>
+                        <summary>
+                            {{ visit.day.strftime('%a %d %b') }} · {{ 'Supermarket' if view.config.supplier_mode == 'supermarket' else visit.shop }} · {{ visit['items']|length }} ingredient(s)
+                        </summary>
                         {% if visit.needed_before_shop %}
                             <p class="helper">Some meals need ingredients before this shop. Check what you have or change those meals.</p>
                         {% endif %}
@@ -271,6 +276,22 @@
                 <form method="post" action="{{ url_for('monthly_meals_settings') }}">
                     {{ csrf() }}
                     <label>
+                        Where to buy ingredients
+                        <select name="supplier_mode">
+                            <option value="supermarket"
+                                    {% if view.config.supplier_mode == 'supermarket' %}selected{% endif %}>
+                                Supermarket only
+                            </option>
+                            <option value="specialist"
+                                    {% if view.config.supplier_mode == 'specialist' %}selected{% endif %}>
+                                Split between specialist shops
+                            </option>
+                        </select>
+                    </label>
+                    <p class="muted">
+                        Supermarket only combines ingredients into one supermarket list per shopping date. Split mode uses the supplier choices below. Those choices are remembered if you switch modes.
+                    </p>
+                    <label>
                         Usual weekly shopping day
                         <select name="weekly_day">
                             {% for weekday, name in weekend_days.items() %}
@@ -294,20 +315,23 @@
                             {% endfor %}
                         </select>
                     </label>
-                    {% for category in categories %}
-                        {% set index=loop.index0 %}
-                        <label>
-                            {{ category }} supplier
-                            <select name="shop_{{ index }}">
-                                {% for shop in shops if category==categories[0] or shop!=shops[0] %}
-                                    <option value="{{ shop }}"
-                                            {% if view.config.shops[category]==shop %}selected{% endif %}>
-                                        {{ shop }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </label>
-                    {% endfor %}
+                    <details {% if view.config.supplier_mode == 'specialist' %}open{% endif %}>
+                        <summary>Supplier choices for split shopping</summary>
+                        {% for category in categories %}
+                            {% set index=loop.index0 %}
+                            <label>
+                                {{ category }} supplier
+                                <select name="shop_{{ index }}">
+                                    {% for shop in shops if category==categories[0] or shop!=shops[0] %}
+                                        <option value="{{ shop }}"
+                                                {% if view.config.shops[category]==shop %}selected{% endif %}>
+                                            {{ shop }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                        {% endfor %}
+                    </details>
                     <button>Save shopping preferences</button>
                 </form>
                 <p class="muted">
