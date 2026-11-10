@@ -1,0 +1,59 @@
+{% macro shopping_items(items, view, categories) %}
+    <ul class="shopping-ingredients">
+        {% for item in items %}
+            <li>
+                <details>
+                    <summary>
+                        <strong>{{ item.amount }}</strong>
+                        {% if item.pantry %}<small>· Check pantry</small>{% endif %}
+                    </summary>
+                    {% if item.whole_chicken %}
+                        <p>
+                            Set aside the cuts below. Ask the butcher to portion the bird if needed. Plan another meal for the remaining cuts or freeze suitable portions following the label. The carcass can be used for stock.
+                        </p>
+                    {% endif %}
+                    {% if item.key == 'fresh herbs' %}
+                        <p>
+                            These recipes leave the herb choice open. Flat-leaf parsley is a suggested default if it suits your household. Reuse it across dishes; add it to taste.
+                        </p>
+                    {% endif %}
+                    <ul>
+                        {% for day, recipe, line in item.usage %}
+                            <li>{{ day.strftime('%a %d %b') }} · {{ recipe }}: {{ line }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% if categories and not item.whole_chicken %}
+                        <form method="post" action="{{ url_for('monthly_meals_ingredient') }}">
+                            {{ csrf() }}
+                            <input type="hidden" name="ingredient" value="{{ item.key }}">
+                            <label>
+                                Shopping category for {{ item.key }}
+                                <select name="category">
+                                    <option value="default">Automatic category</option>
+                                    {% for category in categories %}
+                                        <option value="{{ category }}"
+                                                {% if view.category_overrides.get(item.key)==category %}selected{% endif %}>
+                                            {{ category }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <button>Save category</button>
+                        </form>
+                    {% endif %}
+                </details>
+            </li>
+        {% endfor %}
+    </ul>
+{% endmacro %}
+
+{% macro chicken_size_note(guide) %}
+    {% if guide %}
+        <details>
+            <summary>Whole-bird option: about {{ guide.size }} for weighed cuts</summary>
+            <p>
+                Ask the butcher if a bird of this size can provide {{ guide.needs }}. This is a rough estimate for the weighed cuts only; mention any counted cuts you also need. Buy extra cuts if the bird won’t yield enough.
+            </p>
+        </details>
+    {% endif %}
+{% endmacro %}

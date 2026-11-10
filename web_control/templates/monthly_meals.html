@@ -2,6 +2,7 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="month" value="{{ view.month }}">
 {% endmacro %}
+{% from 'meal_shopping_items.html' import shopping_items, chicken_size_note with context %}
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -200,73 +201,46 @@
                 <p>
                     {{ view.shopping_days }} planned shopping day(s), {{ view.stops }} shop stop(s), including {{ view.supermarket_stops }} supermarket stop(s). Several stops on the same date can be one outing; this is not a calculated travel route.
                 </p>
-                <aside class="helper">
-                    <p>
-                        Lists show remaining recipe requirements, not confirmed purchases. Pantry items stay visible with a stock-check note because a cupboard entry does not prove you have enough for a month. Unmeasured ingredients and homemade components need a manual quantity check.
-                    </p>
-                    <p>
-                        Shop dates group purchases; they are not shelf-life promises. Check use-by/opened-pack labels, freezer space and safe storage. Buy fresh food closer to use when necessary, or freeze suitable portions before their use-by date. The main shop is for clearly shelf-stable or frozen items, not a month of fresh meat or veg.
-                    </p>
-                </aside>
+                <p>Amounts are for this shop. Open an ingredient for the meals and dates it covers.</p>
                 {% if view.handling %}<p class="helper">{{ view.handling.shopping }}</p>{% endif %}
                 {% for visit in view.visits %}
+                    {% set shop = 'Supermarket' if view.config.supplier_mode == 'supermarket' else visit.shop %}
                     <details class="shop-list" {% if loop.first %}open{% endif %}>
                         <summary>
-                            {{ visit.day.strftime('%a %d %b') }} · {{ 'Supermarket' if view.config.supplier_mode == 'supermarket' else visit.shop }} · {{ visit['items']|length }} ingredient(s)
+                            {{ visit.day.strftime('%a %d %b') }} · {{ shop }}
+                            {% if visit['items'] %}
+                                · {{ visit['items']|length }} items
+                            {% else %}
+                                · Check earlier meals
+                            {% endif %}
                         </summary>
-                        {% if visit.needed_before_shop %}
-                            <p class="helper">Some meals need ingredients before this shop. Check what you have or change those meals.</p>
-                        {% endif %}
-                        {% if visit.shop in local_shops %}
+                        {% if visit['items'] %}
                             <p>
-                                <a href="{{ url_for('meal_shop',month=view.month,supplier=visit.shop,day=visit.day.isoformat()) }}">Open {{ visit.shop }} list for {{ visit.day.strftime('%d %b') }}</a>
+                                <a href="{{ url_for('meal_shop',month=view.month,supplier=visit.shop if visit.shop in local_shops else None,day=visit.day.isoformat()) }}">Open phone or print checklist</a>
                             </p>
+                            {{ shopping_items(visit['items'], view, categories) }}
+                            {{ chicken_size_note(visit.chicken_size) }}
                         {% endif %}
-                        <ul>
-                            {% for item in visit['items'] %}
-                                <li>
-                                    {% for amount in item.amounts %}
-                                        <strong>{{ amount }}</strong>
-                                        {% if not loop.last %};{% endif %}
-                                    {% endfor %}
-                                    <small>Needed: {{ item.needs|join(', ') }}
-                                        {% if item.pantry %}· Listed in pantry: check available quantity{% endif %}
-                                        {% if item.unmeasured %}· Amount unspecified: check recipe{% endif %}
-                                    </small>
-                                    <details>
-                                        <summary>Used by / change category</summary>
-                                        <p>{{ item.recipes|join(', ') }}</p>
-                                        <form method="post" action="{{ url_for('monthly_meals_ingredient') }}">
-                                            {{ csrf() }}
-                                            <input type="hidden" name="ingredient" value="{{ item.key }}">
-                                            <label>
-                                                Shopping category for {{ item.key }}
-                                                <select name="category">
-                                                    {% for category in categories %}
-                                                        <option value="{{ category }}"
-                                                                {% if view.config.overrides.get(item.key)==category %}selected{% endif %}>
-                                                            {{ category }}
-                                                        </option>
-                                                    {% endfor %}
-                                                    <option value="default"
-                                                            {% if item.key not in view.config.overrides %}selected{% endif %}>
-                                                        Automatic category
-                                                    </option>
-                                                </select>
-                                            </label>
-                                            <button>Save category</button>
-                                        </form>
-                                    </details>
-                                </li>
-                            {% endfor %}
-                        </ul>
+                        {% if visit.before_shop_items %}
+                            <details class="helper" open>
+                                <summary>Needed before this shop · {{ visit.before_shop_items|length }} items</summary>
+                                <p>Check what you already have or adjust those meals. These amounts are separate from the weekend checklist.</p>
+                                {{ shopping_items(visit.before_shop_items, view, categories) }}
+                            </details>
+                        {% endif %}
                     </details>
                 {% else %}
                     <p>No remaining recipe ingredients. Create the menu or choose another month.</p>
                 {% endfor %}
-                <p class="muted">
-                    Next-day lunch extras from the final dinner may fall in the following month. Household basics, drinks and snacks are not automatically invented. Compatible units are combined; weight/count conversions are not guessed.
-                </p>
+                <details>
+                    <summary>How these lists are calculated</summary>
+                    <p>
+                        Lists cover planned recipes, including next-day lunch extras, and leave pantry items visible to check. Homemade components may need their own ingredients. Different units stay separate when a recipe gives no conversion.
+                    </p>
+                    <p>
+                        Shop dates are for grouping purchases. Follow packaging for use-by dates and storage, and freeze suitable portions if needed.
+                    </p>
+                </details>
             </section>
             <section id="month-settings">
                 <h2>Shopping days & shops</h2>
@@ -290,6 +264,16 @@
                     </label>
                     <p class="muted">
                         Supermarket only combines ingredients into one supermarket list per shopping date. Split mode uses the supplier choices below. Those choices are remembered if you switch modes.
+                    </p>
+                    <label>
+                        <input type="hidden" name="whole_chicken_setting" value="1">
+                        <input name="prefer_whole_chicken"
+                               type="checkbox"
+                               {% if view.config.prefer_whole_chicken %}checked{% endif %}>
+                        Prefer a whole chicken when multiple cuts are needed
+                    </label>
+                    <p class="muted">
+                        Combines counted breasts and thighs for the same shop when a bird can supply at least two planned cuts. Recipes that specify a weight keep their listed cuts.
                     </p>
                     <label>
                         Usual weekly shopping day

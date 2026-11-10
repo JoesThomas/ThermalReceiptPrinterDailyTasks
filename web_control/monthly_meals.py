@@ -2,6 +2,7 @@
 
 from flask import abort, flash, redirect, render_template, request, url_for
 from meals import monthly, legacy_planner as planner, shopping_checklist
+from meals.whole_chicken import size_guide
 from receipt.local_time import uk_today
 
 
@@ -87,6 +88,11 @@ def register(app, login_required, start_print, root):
                     }
                 s.update(
                     supplier_mode=supplier_mode,
+                    prefer_whole_chicken=(
+                        request.form.get("prefer_whole_chicken") == "on"
+                        if "whole_chicken_setting" in request.form
+                        else s.get("prefer_whole_chicken", True)
+                    ),
                     weekly_day=weekly_day,
                     veg_topup=request.form.get("veg_topup") == "on",
                     veg_day=veg_day,
@@ -172,14 +178,14 @@ def register(app, login_required, start_print, root):
             )
         )
 
-    def queue_checklist(day, supplier, amounts):
+    def queue_checklist(day, supplier, amounts, *, chicken_size=None):
         from datetime import date, datetime, timezone
         from hashlib import sha256
         from receipt.archive import save
         from receipt.repeat_guard import recent, record
 
         text = shopping_checklist.receipt_text(
-            date.fromisoformat(day), supplier, amounts
+            date.fromisoformat(day), supplier, amounts, chicken_size=chicken_size
         )
         stable = ["--shopping-list", sha256(text.encode()).hexdigest()]
         if recent(root, stable) and request.form.get("allow_repeat") != "on":
@@ -225,13 +231,32 @@ def register(app, login_required, start_print, root):
             return redirect(url_for("meal_shop", month=raw))
         allowed = (supplier,) if supplier else monthly.SUPERMARKET_SHOPS
         scheduled = [visit for visit in view["visits"] if visit["shop"] in allowed]
-        dates = sorted({visit["day"].isoformat() for visit in scheduled})
-        day = request.values.get("day", dates[0] if dates else "")
+        dates = {
+            day.isoformat(): day.strftime("%a %d %b")
+            for day in sorted({visit["day"] for visit in scheduled})
+        }
+        default_day = next(
+            (v["day"].isoformat() for v in scheduled if v["items"]),
+            next(iter(dates), ""),
+        )
+        day = request.values.get("day", default_day)
         if day and day not in dates:
             flash("That shopping date is no longer available. Select a current list.")
             return redirect(url_for("meal_shop", month=raw, supplier=supplier or None))
         visits = [v for v in scheduled if v["day"].isoformat() == day]
         rows, fingerprint = shopping_checklist.review(visits, (raw, day, supplier))
+
+        def chicken_guide(keys=None):
+            if not view["config"]["prefer_whole_chicken"]:
+                return None
+            return size_guide(
+                line
+                for visit in visits
+                for item in visit["items"]
+                if keys is None or item["key"] in keys
+                for line in item["requirements"]
+            )
+
         checked = {r["id"] for r in rows}
         if request.method == "POST":
             chosen = set(request.form.getlist("item"))
@@ -244,8 +269,13 @@ def register(app, login_required, start_print, root):
                 flash("Choose at least one item to print.")
             else:
                 checked = chosen
-                amounts = [r["amount"] for r in rows if r["id"] in chosen]
-                queue_checklist(day, supplier, amounts)
+                selected_rows = [r for r in rows if r["id"] in chosen]
+                queue_checklist(
+                    day,
+                    supplier,
+                    [r["amount"] for r in selected_rows],
+                    chicken_size=chicken_guide({r["key"] for r in selected_rows}),
+                )
         return render_template(
             "meal_shop.html",
             view=view,
@@ -255,7 +285,8 @@ def register(app, login_required, start_print, root):
             rows=rows,
             checked=checked,
             fingerprint=fingerprint,
-            needed_before_shop=sorted({need for visit in visits for need in visit["needed_before_shop"]}),
+            before_shop_items=[item for visit in visits for item in visit["before_shop_items"]],
+            chicken_size=chicken_guide(),
         )
 
     @app.post("/meals/month/ingredient")
@@ -270,9 +301,12 @@ def register(app, login_required, start_print, root):
                 abort(400)
 
             def save(s):
-                if kind == "default":
-                    s["overrides"].pop(key, None)
-                else:
+                from meals.ingredients import shopping_key
+
+                for saved in list(s["overrides"]):
+                    if shopping_key(saved) == key:
+                        del s["overrides"][saved]
+                if kind != "default":
                     s["overrides"][key] = kind
 
             monthly.store().update(save)

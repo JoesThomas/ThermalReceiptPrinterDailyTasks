@@ -155,7 +155,7 @@ class MonthlyTests(MonthlyFixture, TestCase):
         view = monthly.shopping(rows, s, date(2026, 11, 1), TODAY)
         main = [v for v in view["visits"] if v["shop"] == "Main supermarket shop"]
         self.assertEqual(len(main), 1)
-        self.assertEqual(main[0]["items"][0]["amounts"], ["1000g rice"])
+        self.assertEqual(main[0]["items"][0]["amount"], "1 kg rice")
         self.assertEqual(
             [v["day"] for v in view["visits"] if v["shop"] == "Butcher"],
             [date(2026, 11, 7), date(2026, 11, 14)],
@@ -213,26 +213,90 @@ class MonthlyTests(MonthlyFixture, TestCase):
         settings["weekly_day"] = 2  # An existing, saved weekday preference.
         visits = monthly.shopping(rows, settings, date(2026, 11, 1), on)["visits"]
         self.assertEqual({visit["day"] for visit in visits}, {date(2026, 11, 14)})
-        self.assertTrue(all(visit["needed_before_shop"] == [on] for visit in visits))
+        self.assertTrue(all(not visit["items"] for visit in visits))
+        self.assertTrue(all(visit["before_shop_items"][0]["needs"] == [on.isoformat()] for visit in visits))
 
     def test_pantry_is_not_assumed_to_cover_the_month_and_unknown_amounts_stay_visible(
         self,
     ):
         write_json(planner.PANTRY_FILE, {"items": {"rice": True}})
+        saturday = date(2026, 11, 7)
         view = monthly.shopping(
             [
-                dict(day=TODAY, line="500g rice", recipe="Dinner"),
-                dict(day=TODAY, line="fresh herbs", recipe="Dinner"),
+                dict(day=saturday, line="500g rice", recipe="Dinner"),
+                dict(day=saturday, line="fresh herbs", recipe="Dinner"),
             ],
             monthly.defaults(),
             TODAY,
             TODAY,
         )
-        items = [i for v in view["visits"] for i in v["items"]]
-        self.assertTrue(next(i for i in items if i["key"] == "rice")["pantry"])
-        self.assertTrue(
-            next(i for i in items if i["key"] == "fresh herbs")["unmeasured"]
+        items = {i["key"]: i for v in view["visits"] for i in v["items"]}
+        self.assertTrue(items["rice"]["pantry"])
+        self.assertEqual(items["fresh herbs"]["amount"], "Flat-leaf parsley (suggested; to taste)")
+
+    def test_shopping_quantities_match_checklist_without_including_earlier_meals(self):
+        from meals import shopping_checklist
+
+        on = date(2026, 11, 10)
+        shop = date(2026, 11, 14)
+        next_day = date(2026, 11, 15)
+        settings = dict(monthly.defaults(), supplier_mode="supermarket")
+        rows = [
+            dict(day=day, line=line, recipe=recipe)
+            for day, line, recipe in [
+                (on, "3 apples", "Earlier breakfast"),
+                (shop, "1 apple", "Breakfast"),
+                (next_day, "2 apples", "Breakfast"),
+                (shop, "6 tomatoes", "Salad"),
+                (next_day, "450g tomatoes", "Roast"),
+                (shop, "fresh herbs (unmeasured; scale for 2x)", "Salad"),
+                (next_day, "fresh herbs (unmeasured; scale for 3x)", "Roast"),
+            ]
+        ]
+        visit, = monthly.shopping(rows, settings, on, on)["visits"]
+        self.assertEqual([i["amount"] for i in visit["before_shop_items"]], ["3 apples"])
+        self.assertEqual(
+            [i["amount"] for i in visit["items"]],
+            ["3 apples", "Flat-leaf parsley (suggested; to taste)", "6 tomatoes + 450 g tomatoes"],
         )
+        self.assertEqual(len(visit["items"][1]["usage"]), 2)
+        checklist, _ = shopping_checklist.review([visit], "supermarket")
+        self.assertEqual([i["amount"] for i in checklist], [i["amount"] for i in visit["items"]])
+
+    def test_whole_chicken_covers_counted_cuts_without_guessing_weights(self):
+        settings = monthly.defaults()
+        shop = date(2026, 11, 7)
+        rows = [
+            dict(day=shop, line="1 chicken breast", recipe="Salad"),
+            dict(day=shop + timedelta(days=2), line="1 chicken thigh", recipe="Traybake"),
+            dict(day=shop + timedelta(days=3), line="150g chicken breast", recipe="Curry"),
+            dict(day=shop + timedelta(days=7), line="1 chicken breast", recipe="Pasta"),
+        ]
+        visits = monthly.shopping(rows, settings, shop, shop)["visits"]
+        items = {i["key"]: i for i in visits[0]["items"]}
+        self.assertEqual(items["whole chicken"]["amount"], "1 whole chicken")
+        self.assertEqual(
+            [line for _, _, line in items["whole chicken"]["usage"]],
+            ["1 chicken breast from the whole chicken", "1 chicken thigh from the whole chicken"],
+        )
+        self.assertEqual(items["chicken breast"]["amount"], "150 g chicken breast")
+        self.assertEqual(visits[0]["chicken_size"], {"needs": "150 g chicken breast", "size": "0.9 kg"})
+        self.assertEqual(visits[1]["items"][0]["amount"], "1 chicken breast")
+        self.assertIsNone(visits[1]["chicken_size"])
+        settings["prefer_whole_chicken"] = False
+        items = monthly.shopping(rows, settings, shop, shop)["visits"][0]["items"]
+        self.assertEqual({i["key"] for i in items}, {"chicken breast", "chicken thigh"})
+
+    def test_chicken_size_note_uses_the_larger_of_the_two_cut_requirements(self):
+        from meals.shopping_checklist import receipt_text
+        from meals.whole_chicken import size_guide
+
+        guide = size_guide(["400g chicken breasts", "100g chicken thigh", "1 chicken breast"])
+        self.assertEqual(guide, {"needs": "400 g chicken breast + 100 g chicken thigh", "size": "2.3 kg"})
+        receipt = receipt_text(TODAY, "Butcher", ["400 g chicken breasts"], chicken_size=guide)
+        self.assertIn("[ ] 400 g chicken breasts", receipt)
+        self.assertIn("Whole-bird option: about 2.3 kg", receipt)
+        self.assertEqual(receipt.count("[ ]"), 1)
 
     def test_eaten_away_and_skipped_meals_do_not_create_extra_leftover_purchases(self):
         meals = [

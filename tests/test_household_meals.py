@@ -276,7 +276,7 @@ class HouseholdTests(HouseholdFixture, TestCase):
                 for visit in report["visits"]
                 for item in visit["items"]
                 if "cereal" in item["key"]
-                for a in item["amounts"]
+                for a in item["requirements"]
             ]
 
         before = amount(view)
