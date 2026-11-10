@@ -1435,5 +1435,8 @@ register_use_first(app, login_required)
 from web_control.meal_settings import register as register_meal_settings
 register_meal_settings(app, login_required)
 
+from web_control.cooking import register as register_cooking
+register_cooking(app, login_required)
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)
