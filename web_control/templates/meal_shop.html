@@ -69,6 +69,12 @@
                                     {{ row.amount }}
                                     {% if row.pantry %}· check pantry{% endif %}
                                 </legend>
+                                {% if row.produce_note %}
+                                    <details>
+                                        <summary>Quantity &amp; variety guide</summary>
+                                        <p>{{ row.produce_note }}</p>
+                                    </details>
+                                {% endif %}
                                 <label>
                                     <input type="checkbox" data-shop-got="{{ row.id }}">
                                     Got it

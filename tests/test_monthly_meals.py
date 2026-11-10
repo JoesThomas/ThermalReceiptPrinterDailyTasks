@@ -257,7 +257,7 @@ class MonthlyTests(MonthlyFixture, TestCase):
         self.assertEqual([i["amount"] for i in visit["before_shop_items"]], ["3 apples"])
         self.assertEqual(
             [i["amount"] for i in visit["items"]],
-            ["3 apples", "Flat-leaf parsley (suggested; to taste)", "6 tomatoes + 450 g tomatoes"],
+            ["3 apples", "Flat-leaf parsley (suggested; to taste)", "6 medium round tomatoes + 450 g medium round tomatoes (suggested)"],
         )
         self.assertEqual(len(visit["items"][1]["usage"]), 2)
         checklist, _ = shopping_checklist.review([visit], "supermarket")

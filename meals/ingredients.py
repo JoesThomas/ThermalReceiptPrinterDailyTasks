@@ -18,6 +18,39 @@ UNITS = {'kg': ('g', 1000), 'g': ('g', 1), 'l': ('ml', 1000), 'ml': ('ml', 1),
          'nests': ('nest', 1), 'handful': ('handful', 1), 'handfuls': ('handful', 1)}
 QUANTITY = re.compile(r'^(\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?)\s*')
 UNMEASURED_SCALE = re.compile(r' \(unmeasured; scale for \d+(?:\.\d+)?x\)$')
+LEAF_CHOICES = {
+    'leafy greens': 'baby spinach (suggested)',
+    'salad leaves': 'mixed salad leaves',
+    'spinach': 'spinach',
+    'baby spinach': 'baby spinach',
+    'mixed salad leaves': 'mixed salad leaves',
+    'lettuce': 'lettuce',
+}
+LEAF_HANDFUL_GRAMS = 25  # Shopping estimate, not a recipe measurement.
+
+
+def leaf_shopping_lines(key, lines):
+    """Estimate only explicit handfuls, retaining weights and unknown amounts."""
+    if key not in LEAF_CHOICES:
+        return lines, False
+    converted = []
+    estimated = False
+    for line in lines:
+        parsed = parse(line)
+        handfuls = None
+        if parsed and parsed[1] == 'handful':
+            handfuls = parsed[0]
+        elif not parsed:
+            raw = ' '.join(str(line).casefold().split())
+            if UNMEASURED_SCALE.sub('', raw).startswith('handful of '):
+                scale = re.search(r' \(unmeasured; scale for (\d+(?:\.\d+)?)x\)$', raw)
+                handfuls = Fraction(scale.group(1)) if scale else Fraction(1)
+        if handfuls is not None and handfuls > 0:
+            converted.append(f'{number(handfuls * LEAF_HANDFUL_GRAMS)}g {key}')
+            estimated = True
+        else:
+            converted.append(line)
+    return converted, estimated
 
 
 def parse(text):
@@ -64,7 +97,40 @@ def shopping_key(line):
     return ' '.join(PLURALS.get(word, word) for word in name.split())
 
 
-def shopping_amount(key, lines, *, pack_sizes=None):
+def tomato_choice(lines, recipes):
+    # Counted tomatoes must remain medium-sized; a cherry tomato is not an
+    # interchangeable piece. Variety suggestions don't change recipe amounts.
+    parsed = [parse(line) for line in lines]
+    if not parsed or any(not row or row[1] != 'g' for row in parsed):
+        return 'medium round tomatoes'
+    names = [name.casefold() for name in recipes]
+    if names and all(any(word in name for word in ('salad', 'roast tomatoes')) for name in names):
+        return 'cherry tomatoes'
+    if names and all(any(word in name for word in ('sauce', 'ragù', 'ragu', 'bolognese')) for name in names):
+        return 'plum tomatoes'
+    return 'round tomatoes'
+
+
+def shopping_produce_note(key, lines):
+    if key in LEAF_CHOICES:
+        _, estimated = leaf_shopping_lines(key, lines)
+        notes = []
+        if key == 'leafy greens':
+            notes.append('Baby spinach is a suggested default where the recipe leaves the greens unspecified.')
+        if estimated:
+            notes.append('Shopping estimate: 25 g per handful, multiplied by the household portion factor. Actual handfuls vary; original recipe amounts are below.')
+        return ' '.join(notes)
+    if key == 'tomato':
+        return ('The recipe does not name a variety, so this is a shopping suggestion. '
+                'Counts mean medium round tomatoes; cherry or piccolo tomatoes are not a one-for-one replacement. '
+                'Keep any weight specified by the recipe.')
+    return ''
+
+
+def shopping_amount(key, lines, *, pack_sizes=None, recipes=()):
+    lines = list(lines)
+    tomato = tomato_choice(lines, recipes) if key == 'tomato' else None
+    lines, leaf_estimate = leaf_shopping_lines(key, lines)
     measured = []
     uncertain = False
     for line in lines:
@@ -87,6 +153,12 @@ def shopping_amount(key, lines, *, pack_sizes=None):
     if key == 'fresh herbs' and uncertain and not measured:
         return 'Flat-leaf parsley (suggested; to taste)'
     result = ' + '.join(amounts) or key
+    if key in LEAF_CHOICES:
+        result = result.replace(key, LEAF_CHOICES[key])
+    if leaf_estimate:
+        result = 'Approx. ' + result
+    if tomato and measured:
+        result = re.sub(r'\btomato(?:es)?\b', tomato, result) + ' (suggested)'
     if uncertain:
         result += ' (check extra amount)' if measured else ' (check amount)'
     return result

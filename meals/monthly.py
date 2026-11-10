@@ -9,7 +9,7 @@ import re
 from storage import PrivateStore, file_lock
 from receipt.local_time import uk_today
 from meals import legacy_planner as planner
-from meals.ingredients import load_pack_sizes, shopping_amount, shopping_key
+from meals.ingredients import load_pack_sizes, shopping_amount, shopping_key, shopping_produce_note
 from meals.whole_chicken import combine_cuts, size_guide
 
 FILE = Path(__file__).resolve().parents[1] / "data" / "monthly_meals.json"
@@ -391,7 +391,9 @@ def shopping_items(uses, pantry_has, pack_sizes):
         })
         entries.append(dict(
             key=key,
-            amount=shopping_amount(key, requirements, pack_sizes=pack_sizes),
+            amount=shopping_amount(key, requirements, pack_sizes=pack_sizes, recipes=[row["recipe"] for row in lines]),
+            produce_note=shopping_produce_note(key, requirements),
+            recipes=sorted({row["recipe"] for row in lines}),
             requirements=requirements,
             needs=sorted({day.isoformat() for day, _, _ in usage}),
             usage=usage,

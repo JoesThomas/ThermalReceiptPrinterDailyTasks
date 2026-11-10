@@ -12,6 +12,7 @@
                             Set aside the cuts below. Ask the butcher to portion the bird if needed. Plan another meal for the remaining cuts or freeze suitable portions following the label. The carcass can be used for stock.
                         </p>
                     {% endif %}
+                    {% if item.produce_note %}<p>{{ item.produce_note }}</p>{% endif %}
                     {% if item.key == 'fresh herbs' %}
                         <p>
                             These recipes leave the herb choice open. Flat-leaf parsley is a suggested default if it suits your household. Reuse it across dishes; add it to taste.
