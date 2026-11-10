@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 from storage import PrivateStore
 from receipt.local_time import uk_today
-from meals.ingredients import parse, number
+from meals.ingredients import parse, number, clarify_saved_leaves
 from meals.nutrition_guidance import ages
 
 FILE = Path(__file__).resolve().parents[1] / "data" / "meal_household.json"
@@ -421,6 +421,7 @@ def component_foods(recipe):
 
 
 def permitted(recipe, s, on, slot="dinner"):
+    recipe = clarify_saved_leaves(recipe)
     if recipe.get("id") and recipe.get("slot") in ("dinner", "breakfast"):
         current = next(
             (r for r in s["custom"] if r["id"] == recipe["id"] and r["slot"] == slot),
@@ -528,6 +529,7 @@ def scaled_line(line, factor):
 
 
 def prepare(recipe, on, s=None, *, slot="dinner"):
+    recipe = clarify_saved_leaves(recipe)
     s = s or store().read()
     if not s["configured"] or recipe.get("_household_scaled"):
         return deepcopy(recipe)

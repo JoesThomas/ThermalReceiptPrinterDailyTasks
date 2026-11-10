@@ -50,6 +50,37 @@ class HouseholdFixture(MonthlyFixture):
 
 
 class HouseholdTests(HouseholdFixture, TestCase):
+    def test_saved_leaf_recipes_are_clarified_before_household_scaling(self):
+        original = recipe("Saved dinner", ["handful of leafy greens"])
+        original["lunch"] = {
+            "source": "extra_portion",
+            "extra_dinner_portion": 0,
+            "extra_ingredients": ["handful of salad leaves"],
+        }
+        snapshot = deepcopy(original)
+        s = settings()
+        s["people"].append(dict(h.person(), name="Second"))
+        displayed = h.prepare(original, SAT, s)
+        self.assertEqual(displayed["ingredients"], ["50g baby spinach"])
+        self.assertEqual(displayed["lunch"]["extra_ingredients"], ["50g mixed salad leaves"])
+        self.assertIn("planning estimate", displayed["ingredient_notes"])
+        self.assertEqual(original, snapshot)
+        self.assertEqual(h.prepare(displayed, SAT, s), displayed)
+
+    def test_saved_scaled_leaves_are_not_scaled_twice_and_exclusions_are_checked(self):
+        original = dict(
+            recipe("Saved dinner", ["handful of leafy greens (unmeasured; scale for 3x)"]),
+            _household_scaled=True,
+        )
+        self.assertEqual(h.prepare(original, SAT, settings())["ingredients"],
+                         ["75g baby spinach"])
+        s = settings()
+        s["people"][0]["avoid"] = ["spinach"]
+        self.assertFalse(h.permitted(recipe("Saved dinner", ["handful of leafy greens"]), s, SAT))
+        custom = dict(recipe("Custom", ["handful of leafy greens"]), id="personal")
+        self.assertEqual(h.prepare(custom, SAT, h.defaults())["ingredients"],
+                         ["handful of leafy greens"])
+
     def test_combined_allergens_diets_and_dislikes_filter_the_actual_pool(self):
         s = settings()
         vegan = dict(

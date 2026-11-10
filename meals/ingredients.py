@@ -97,6 +97,50 @@ def shopping_key(line):
     return ' '.join(PLURALS.get(word, word) for word in name.split())
 
 
+def clarify_saved_leaves(recipe):
+    """Present old built-in snapshots with explicit leaves, without saving them."""
+    if recipe.get('id'):
+        return recipe
+    choices = {'leafy greens': 'baby spinach', 'salad leaves': 'mixed salad leaves'}
+    changed = False
+    estimated = False
+
+    def clarify(lines):
+        nonlocal changed, estimated
+        result = []
+        for line in lines:
+            key = shopping_key(line)
+            if key in choices:
+                converted, estimate = leaf_shopping_lines(key, [line])
+                value = converted[0].replace(key, choices[key])
+                if value != line:
+                    changed = True
+                    estimated |= estimate
+                result.append(value)
+            else:
+                result.append(line)
+        return result
+
+    ingredients = clarify(recipe.get('ingredients', []))
+    lunch = recipe.get('lunch')
+    extras = clarify(lunch.get('extra_ingredients', [])) if isinstance(lunch, dict) else []
+    if not changed:
+        return recipe
+    from copy import deepcopy
+
+    result = deepcopy(recipe)
+    result['ingredients'] = ingredients
+    if isinstance(lunch, dict) and 'extra_ingredients' in lunch:
+        result['lunch']['extra_ingredients'] = extras
+    result['method'] = [step.replace('leafy greens', 'baby spinach') for step in recipe.get('method', [])]
+    note = ('Generic greens are shown as baby spinach; salad leaves as mixed salad leaves. '
+            'These are suggested ingredient choices.')
+    if estimated:
+        note += f' Former handfuls use a planning estimate of {LEAF_HANDFUL_GRAMS}g per handful, multiplied by any existing portion factor.'
+    result['ingredient_notes'] = ' '.join(filter(None, [recipe.get('ingredient_notes'), note]))
+    return result
+
+
 BEEF_CUTS = {
     "Beef Kofta & Tahini Flatbread": "lean beef mince",
     "Harissa Beef Couscous": "lean beef strips",
