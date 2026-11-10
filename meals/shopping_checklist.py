@@ -4,7 +4,7 @@ import hashlib
 import json
 from textwrap import wrap
 
-from meals.ingredients import load_pack_sizes, shopping_amount
+from meals.ingredients import load_pack_sizes, shopping_amount, shopping_produce_note
 from receipt.profile import COLUMNS
 from receipt.text import printer_safe_text
 
@@ -14,8 +14,9 @@ def review(visits, scope):
     grouped = {}
     for visit in visits:
         for item in visit["items"]:
-            entry = grouped.setdefault(item["key"], dict(lines=[], pantry=False, whole_chicken=False))
+            entry = grouped.setdefault(item["key"], dict(lines=[], recipes=set(), pantry=False, whole_chicken=False))
             entry["lines"].extend(item["requirements"])
+            entry["recipes"].update(item["recipes"])
             entry["pantry"] |= item["pantry"]
             entry["whole_chicken"] |= item["whole_chicken"]
     pack_sizes = load_pack_sizes() if grouped else {}
@@ -23,7 +24,8 @@ def review(visits, scope):
         dict(
             id=str(index),
             key=key,
-            amount=shopping_amount(key, entry["lines"], pack_sizes=pack_sizes),
+            amount=shopping_amount(key, entry["lines"], pack_sizes=pack_sizes, recipes=entry["recipes"]),
+            produce_note=shopping_produce_note(key, entry["lines"]),
             pantry=entry["pantry"],
             whole_chicken=entry["whole_chicken"],
         )
