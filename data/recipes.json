@@ -11350,6 +11350,796 @@
       },
       "prep_components": [],
       "ingredient_notes": "Specific produce choices and garnish amounts are planning defaults, not measured yields. Original handfuls use 25g; unspecified herbs use 5g parsley per base recipe. Household settings scale these quantities. Adjust garnish to taste and check actual pack sizes."
+    },
+    {
+      "name": "Frozen Pizza, Chips, Peas & Beans",
+      "overview": "A low-preparation freezer meal with oven chips, peas and baked beans.",
+      "total_minutes": 30,
+      "servings": 1,
+      "cuisine": "British",
+      "tags": [
+        "freezer_convenience",
+        "low_prep",
+        "oven",
+        "chips",
+        "peas",
+        "baked_beans"
+      ],
+      "techniques": [
+        "oven_baking",
+        "timing"
+      ],
+      "nutrition_per_serving": {},
+      "nutrition_note": "Nutrition depends on the exact products and portions. Use the selected packs; no brand-specific calories or macros are assumed.",
+      "balance": {
+        "protein": "cheese",
+        "carbohydrate": "oven chips",
+        "vegetables": "peas and baked beans",
+        "fat": "varies by selected products"
+      },
+      "ingredients": [
+        "1 frozen individual vegetarian margherita pizza",
+        "100g frozen oven chips",
+        "80g frozen peas",
+        "100g tinned baked beans"
+      ],
+      "method": [
+        "Read the main item's and chips' packet instructions before starting; the displayed time is only a planning estimate.",
+        "Preheat the oven as directed. Start the item needing the longer time first. Use separate trays and leave space around each item; if temperatures differ, use a compatible pack method or cook in separate batches.",
+        "Cook the frozen main item and chips according to their respective packets, including any turning, standing or checking instructions. Only cook directly from frozen when the packet says to.",
+        "Cook the frozen peas following their packet instructions. Heat the baked beans separately according to the tin instructions, stirring as directed.",
+        "Check all items are cooked as instructed, then serve the main item with the chips, peas and baked beans."
+      ],
+      "hacks": [
+        "Use the same chips, peas and baked beans across these meals to simplify the shopping list.",
+        "Take out only the portions you plan to cook and follow the storage instructions on each pack."
+      ],
+      "allergens": {
+        "uk_14": [
+          "cereals_containing_gluten",
+          "milk"
+        ],
+        "notes": [
+          "Conservative planning exclusions include common coating or recipe variants; the exact product can differ."
+        ],
+        "check_labels_for": [
+          "1 frozen individual vegetarian margherita pizza",
+          "frozen oven chips",
+          "tinned baked beans",
+          "may contain warnings",
+          "vegetarian suitability"
+        ],
+        "warning": "Check the exact product's ingredients and allergen label each time. This generic recipe does not verify any brand or preparation method."
+      },
+      "dietary": {
+        "vegetarian": true,
+        "vegan": false,
+        "contains_meat": false,
+        "contains_fish_or_shellfish": false
+      },
+      "meal_type": "single",
+      "cook_servings": 1,
+      "effort": "low",
+      "equipment": [
+        "oven",
+        "baking_tray",
+        "saucepan"
+      ],
+      "cost": {
+        "band": "low",
+        "estimated_per_portion": 2.5,
+        "estimate_only": true,
+        "note": "Illustrative planning estimate, not a live price; selected packs and portions change the cost."
+      },
+      "prep_components": [],
+      "ingredient_notes": "Portions are planning defaults per diner. Pizza uses a smaller chip portion. Scale for the household, check the pack serving sizes and cook whole pieces as needed. No next-day lunch is automatically reserved.",
+      "cooking_sources": [
+        "https://www.food.gov.uk/safety-hygiene/cooking-your-food"
+      ]
+    },
+    {
+      "name": "Frozen Fish Fingers, Chips, Peas & Beans",
+      "overview": "A low-preparation freezer meal with oven chips, peas and baked beans.",
+      "total_minutes": 30,
+      "servings": 1,
+      "cuisine": "British",
+      "tags": [
+        "freezer_convenience",
+        "low_prep",
+        "oven",
+        "chips",
+        "peas",
+        "baked_beans"
+      ],
+      "techniques": [
+        "oven_baking",
+        "timing"
+      ],
+      "nutrition_per_serving": {},
+      "nutrition_note": "Nutrition depends on the exact products and portions. Use the selected packs; no brand-specific calories or macros are assumed.",
+      "balance": {
+        "protein": "fish",
+        "carbohydrate": "oven chips",
+        "vegetables": "peas and baked beans",
+        "fat": "varies by selected products"
+      },
+      "ingredients": [
+        "4 frozen cod fish fingers",
+        "200g frozen oven chips",
+        "80g frozen peas",
+        "100g tinned baked beans"
+      ],
+      "method": [
+        "Read the main item's and chips' packet instructions before starting; the displayed time is only a planning estimate.",
+        "Preheat the oven as directed. Start the item needing the longer time first. Use separate trays and leave space around each item; if temperatures differ, use a compatible pack method or cook in separate batches.",
+        "Cook the frozen main item and chips according to their respective packets, including any turning, standing or checking instructions. Only cook directly from frozen when the packet says to.",
+        "Cook the frozen peas following their packet instructions. Heat the baked beans separately according to the tin instructions, stirring as directed.",
+        "Check all items are cooked as instructed, then serve the main item with the chips, peas and baked beans."
+      ],
+      "hacks": [
+        "Use the same chips, peas and baked beans across these meals to simplify the shopping list.",
+        "Take out only the portions you plan to cook and follow the storage instructions on each pack."
+      ],
+      "allergens": {
+        "uk_14": [
+          "cereals_containing_gluten",
+          "fish",
+          "eggs",
+          "milk"
+        ],
+        "notes": [
+          "Conservative planning exclusions include common coating or recipe variants; the exact product can differ."
+        ],
+        "check_labels_for": [
+          "4 frozen cod fish fingers",
+          "frozen oven chips",
+          "tinned baked beans",
+          "may contain warnings",
+          "coatings and seasonings"
+        ],
+        "warning": "Check the exact product's ingredients and allergen label each time. This generic recipe does not verify any brand or preparation method."
+      },
+      "dietary": {
+        "vegetarian": false,
+        "vegan": false,
+        "contains_meat": false,
+        "contains_fish_or_shellfish": true
+      },
+      "meal_type": "single",
+      "cook_servings": 1,
+      "effort": "low",
+      "equipment": [
+        "oven",
+        "baking_tray",
+        "saucepan"
+      ],
+      "cost": {
+        "band": "low",
+        "estimated_per_portion": 2.5,
+        "estimate_only": true,
+        "note": "Illustrative planning estimate, not a live price; selected packs and portions change the cost."
+      },
+      "prep_components": [],
+      "ingredient_notes": "Portions are planning defaults per diner. Pizza uses a smaller chip portion. Scale for the household, check the pack serving sizes and cook whole pieces as needed. No next-day lunch is automatically reserved.",
+      "cooking_sources": [
+        "https://www.food.gov.uk/safety-hygiene/cooking-your-food"
+      ]
+    },
+    {
+      "name": "Frozen Battered Fish, Chips, Peas & Beans",
+      "overview": "A low-preparation freezer meal with oven chips, peas and baked beans.",
+      "total_minutes": 30,
+      "servings": 1,
+      "cuisine": "British",
+      "tags": [
+        "freezer_convenience",
+        "low_prep",
+        "oven",
+        "chips",
+        "peas",
+        "baked_beans"
+      ],
+      "techniques": [
+        "oven_baking",
+        "timing"
+      ],
+      "nutrition_per_serving": {},
+      "nutrition_note": "Nutrition depends on the exact products and portions. Use the selected packs; no brand-specific calories or macros are assumed.",
+      "balance": {
+        "protein": "fish",
+        "carbohydrate": "oven chips",
+        "vegetables": "peas and baked beans",
+        "fat": "varies by selected products"
+      },
+      "ingredients": [
+        "1 frozen battered cod fillet",
+        "200g frozen oven chips",
+        "80g frozen peas",
+        "100g tinned baked beans"
+      ],
+      "method": [
+        "Read the main item's and chips' packet instructions before starting; the displayed time is only a planning estimate.",
+        "Preheat the oven as directed. Start the item needing the longer time first. Use separate trays and leave space around each item; if temperatures differ, use a compatible pack method or cook in separate batches.",
+        "Cook the frozen main item and chips according to their respective packets, including any turning, standing or checking instructions. Only cook directly from frozen when the packet says to.",
+        "Cook the frozen peas following their packet instructions. Heat the baked beans separately according to the tin instructions, stirring as directed.",
+        "Check all items are cooked as instructed, then serve the main item with the chips, peas and baked beans."
+      ],
+      "hacks": [
+        "Use the same chips, peas and baked beans across these meals to simplify the shopping list.",
+        "Take out only the portions you plan to cook and follow the storage instructions on each pack."
+      ],
+      "allergens": {
+        "uk_14": [
+          "cereals_containing_gluten",
+          "fish",
+          "eggs",
+          "milk"
+        ],
+        "notes": [
+          "Conservative planning exclusions include common coating or recipe variants; the exact product can differ."
+        ],
+        "check_labels_for": [
+          "1 frozen battered cod fillet",
+          "frozen oven chips",
+          "tinned baked beans",
+          "may contain warnings",
+          "coatings and seasonings"
+        ],
+        "warning": "Check the exact product's ingredients and allergen label each time. This generic recipe does not verify any brand or preparation method."
+      },
+      "dietary": {
+        "vegetarian": false,
+        "vegan": false,
+        "contains_meat": false,
+        "contains_fish_or_shellfish": true
+      },
+      "meal_type": "single",
+      "cook_servings": 1,
+      "effort": "low",
+      "equipment": [
+        "oven",
+        "baking_tray",
+        "saucepan"
+      ],
+      "cost": {
+        "band": "low",
+        "estimated_per_portion": 3.0,
+        "estimate_only": true,
+        "note": "Illustrative planning estimate, not a live price; selected packs and portions change the cost."
+      },
+      "prep_components": [],
+      "ingredient_notes": "Portions are planning defaults per diner. Pizza uses a smaller chip portion. Scale for the household, check the pack serving sizes and cook whole pieces as needed. No next-day lunch is automatically reserved.",
+      "cooking_sources": [
+        "https://www.food.gov.uk/safety-hygiene/cooking-your-food"
+      ]
+    },
+    {
+      "name": "Frozen Chicken Kiev, Chips, Peas & Beans",
+      "overview": "A low-preparation freezer meal with oven chips, peas and baked beans.",
+      "total_minutes": 35,
+      "servings": 1,
+      "cuisine": "British",
+      "tags": [
+        "freezer_convenience",
+        "low_prep",
+        "oven",
+        "chips",
+        "peas",
+        "baked_beans"
+      ],
+      "techniques": [
+        "oven_baking",
+        "timing"
+      ],
+      "nutrition_per_serving": {},
+      "nutrition_note": "Nutrition depends on the exact products and portions. Use the selected packs; no brand-specific calories or macros are assumed.",
+      "balance": {
+        "protein": "chicken",
+        "carbohydrate": "oven chips",
+        "vegetables": "peas and baked beans",
+        "fat": "varies by selected products"
+      },
+      "ingredients": [
+        "1 frozen chicken kiev",
+        "200g frozen oven chips",
+        "80g frozen peas",
+        "100g tinned baked beans"
+      ],
+      "method": [
+        "Read the main item's and chips' packet instructions before starting; the displayed time is only a planning estimate.",
+        "Preheat the oven as directed. Start the item needing the longer time first. Use separate trays and leave space around each item; if temperatures differ, use a compatible pack method or cook in separate batches.",
+        "Cook the frozen main item and chips according to their respective packets, including any turning, standing or checking instructions. Only cook directly from frozen when the packet says to.",
+        "Coated frozen chicken can be raw despite its browned coating; follow the full pack instructions and do not judge doneness from the coating colour.",
+        "Cook the frozen peas following their packet instructions. Heat the baked beans separately according to the tin instructions, stirring as directed.",
+        "Check all items are cooked as instructed, then serve the main item with the chips, peas and baked beans."
+      ],
+      "hacks": [
+        "Use the same chips, peas and baked beans across these meals to simplify the shopping list.",
+        "Take out only the portions you plan to cook and follow the storage instructions on each pack."
+      ],
+      "allergens": {
+        "uk_14": [
+          "cereals_containing_gluten",
+          "milk",
+          "eggs"
+        ],
+        "notes": [
+          "Conservative planning exclusions include common coating or recipe variants; the exact product can differ."
+        ],
+        "check_labels_for": [
+          "1 frozen chicken kiev",
+          "frozen oven chips",
+          "tinned baked beans",
+          "may contain warnings",
+          "coatings and seasonings"
+        ],
+        "warning": "Check the exact product's ingredients and allergen label each time. This generic recipe does not verify any brand or preparation method."
+      },
+      "dietary": {
+        "vegetarian": false,
+        "vegan": false,
+        "contains_meat": true,
+        "contains_fish_or_shellfish": false
+      },
+      "meal_type": "single",
+      "cook_servings": 1,
+      "effort": "low",
+      "equipment": [
+        "oven",
+        "baking_tray",
+        "saucepan"
+      ],
+      "cost": {
+        "band": "low",
+        "estimated_per_portion": 3.0,
+        "estimate_only": true,
+        "note": "Illustrative planning estimate, not a live price; selected packs and portions change the cost."
+      },
+      "prep_components": [],
+      "ingredient_notes": "Portions are planning defaults per diner. Pizza uses a smaller chip portion. Scale for the household, check the pack serving sizes and cook whole pieces as needed. No next-day lunch is automatically reserved.",
+      "cooking_sources": [
+        "https://www.food.gov.uk/safety-hygiene/cooking-your-food"
+      ]
+    },
+    {
+      "name": "Frozen Chicken Nuggets, Chips, Peas & Beans",
+      "overview": "A low-preparation freezer meal with oven chips, peas and baked beans.",
+      "total_minutes": 30,
+      "servings": 1,
+      "cuisine": "British",
+      "tags": [
+        "freezer_convenience",
+        "low_prep",
+        "oven",
+        "chips",
+        "peas",
+        "baked_beans"
+      ],
+      "techniques": [
+        "oven_baking",
+        "timing"
+      ],
+      "nutrition_per_serving": {},
+      "nutrition_note": "Nutrition depends on the exact products and portions. Use the selected packs; no brand-specific calories or macros are assumed.",
+      "balance": {
+        "protein": "chicken",
+        "carbohydrate": "oven chips",
+        "vegetables": "peas and baked beans",
+        "fat": "varies by selected products"
+      },
+      "ingredients": [
+        "6 frozen chicken nuggets",
+        "200g frozen oven chips",
+        "80g frozen peas",
+        "100g tinned baked beans"
+      ],
+      "method": [
+        "Read the main item's and chips' packet instructions before starting; the displayed time is only a planning estimate.",
+        "Preheat the oven as directed. Start the item needing the longer time first. Use separate trays and leave space around each item; if temperatures differ, use a compatible pack method or cook in separate batches.",
+        "Cook the frozen main item and chips according to their respective packets, including any turning, standing or checking instructions. Only cook directly from frozen when the packet says to.",
+        "Coated frozen chicken can be raw despite its browned coating; follow the full pack instructions and do not judge doneness from the coating colour.",
+        "Cook the frozen peas following their packet instructions. Heat the baked beans separately according to the tin instructions, stirring as directed.",
+        "Check all items are cooked as instructed, then serve the main item with the chips, peas and baked beans."
+      ],
+      "hacks": [
+        "Use the same chips, peas and baked beans across these meals to simplify the shopping list.",
+        "Take out only the portions you plan to cook and follow the storage instructions on each pack."
+      ],
+      "allergens": {
+        "uk_14": [
+          "cereals_containing_gluten",
+          "eggs",
+          "milk"
+        ],
+        "notes": [
+          "Conservative planning exclusions include common coating or recipe variants; the exact product can differ."
+        ],
+        "check_labels_for": [
+          "6 frozen chicken nuggets",
+          "frozen oven chips",
+          "tinned baked beans",
+          "may contain warnings",
+          "coatings and seasonings"
+        ],
+        "warning": "Check the exact product's ingredients and allergen label each time. This generic recipe does not verify any brand or preparation method."
+      },
+      "dietary": {
+        "vegetarian": false,
+        "vegan": false,
+        "contains_meat": true,
+        "contains_fish_or_shellfish": false
+      },
+      "meal_type": "single",
+      "cook_servings": 1,
+      "effort": "low",
+      "equipment": [
+        "oven",
+        "baking_tray",
+        "saucepan"
+      ],
+      "cost": {
+        "band": "low",
+        "estimated_per_portion": 2.5,
+        "estimate_only": true,
+        "note": "Illustrative planning estimate, not a live price; selected packs and portions change the cost."
+      },
+      "prep_components": [],
+      "ingredient_notes": "Portions are planning defaults per diner. Pizza uses a smaller chip portion. Scale for the household, check the pack serving sizes and cook whole pieces as needed. No next-day lunch is automatically reserved.",
+      "cooking_sources": [
+        "https://www.food.gov.uk/safety-hygiene/cooking-your-food"
+      ]
+    },
+    {
+      "name": "Frozen Chicken Goujons, Chips, Peas & Beans",
+      "overview": "A low-preparation freezer meal with oven chips, peas and baked beans.",
+      "total_minutes": 30,
+      "servings": 1,
+      "cuisine": "British",
+      "tags": [
+        "freezer_convenience",
+        "low_prep",
+        "oven",
+        "chips",
+        "peas",
+        "baked_beans"
+      ],
+      "techniques": [
+        "oven_baking",
+        "timing"
+      ],
+      "nutrition_per_serving": {},
+      "nutrition_note": "Nutrition depends on the exact products and portions. Use the selected packs; no brand-specific calories or macros are assumed.",
+      "balance": {
+        "protein": "chicken",
+        "carbohydrate": "oven chips",
+        "vegetables": "peas and baked beans",
+        "fat": "varies by selected products"
+      },
+      "ingredients": [
+        "4 frozen breaded chicken goujons",
+        "200g frozen oven chips",
+        "80g frozen peas",
+        "100g tinned baked beans"
+      ],
+      "method": [
+        "Read the main item's and chips' packet instructions before starting; the displayed time is only a planning estimate.",
+        "Preheat the oven as directed. Start the item needing the longer time first. Use separate trays and leave space around each item; if temperatures differ, use a compatible pack method or cook in separate batches.",
+        "Cook the frozen main item and chips according to their respective packets, including any turning, standing or checking instructions. Only cook directly from frozen when the packet says to.",
+        "Coated frozen chicken can be raw despite its browned coating; follow the full pack instructions and do not judge doneness from the coating colour.",
+        "Cook the frozen peas following their packet instructions. Heat the baked beans separately according to the tin instructions, stirring as directed.",
+        "Check all items are cooked as instructed, then serve the main item with the chips, peas and baked beans."
+      ],
+      "hacks": [
+        "Use the same chips, peas and baked beans across these meals to simplify the shopping list.",
+        "Take out only the portions you plan to cook and follow the storage instructions on each pack."
+      ],
+      "allergens": {
+        "uk_14": [
+          "cereals_containing_gluten",
+          "eggs",
+          "milk"
+        ],
+        "notes": [
+          "Conservative planning exclusions include common coating or recipe variants; the exact product can differ."
+        ],
+        "check_labels_for": [
+          "4 frozen breaded chicken goujons",
+          "frozen oven chips",
+          "tinned baked beans",
+          "may contain warnings",
+          "coatings and seasonings"
+        ],
+        "warning": "Check the exact product's ingredients and allergen label each time. This generic recipe does not verify any brand or preparation method."
+      },
+      "dietary": {
+        "vegetarian": false,
+        "vegan": false,
+        "contains_meat": true,
+        "contains_fish_or_shellfish": false
+      },
+      "meal_type": "single",
+      "cook_servings": 1,
+      "effort": "low",
+      "equipment": [
+        "oven",
+        "baking_tray",
+        "saucepan"
+      ],
+      "cost": {
+        "band": "low",
+        "estimated_per_portion": 2.75,
+        "estimate_only": true,
+        "note": "Illustrative planning estimate, not a live price; selected packs and portions change the cost."
+      },
+      "prep_components": [],
+      "ingredient_notes": "Portions are planning defaults per diner. Pizza uses a smaller chip portion. Scale for the household, check the pack serving sizes and cook whole pieces as needed. No next-day lunch is automatically reserved.",
+      "cooking_sources": [
+        "https://www.food.gov.uk/safety-hygiene/cooking-your-food"
+      ]
+    },
+    {
+      "name": "Frozen Fishcakes, Chips, Peas & Beans",
+      "overview": "A low-preparation freezer meal with oven chips, peas and baked beans.",
+      "total_minutes": 30,
+      "servings": 1,
+      "cuisine": "British",
+      "tags": [
+        "freezer_convenience",
+        "low_prep",
+        "oven",
+        "chips",
+        "peas",
+        "baked_beans"
+      ],
+      "techniques": [
+        "oven_baking",
+        "timing"
+      ],
+      "nutrition_per_serving": {},
+      "nutrition_note": "Nutrition depends on the exact products and portions. Use the selected packs; no brand-specific calories or macros are assumed.",
+      "balance": {
+        "protein": "fish",
+        "carbohydrate": "oven chips",
+        "vegetables": "peas and baked beans",
+        "fat": "varies by selected products"
+      },
+      "ingredients": [
+        "2 frozen cod fishcakes",
+        "200g frozen oven chips",
+        "80g frozen peas",
+        "100g tinned baked beans"
+      ],
+      "method": [
+        "Read the main item's and chips' packet instructions before starting; the displayed time is only a planning estimate.",
+        "Preheat the oven as directed. Start the item needing the longer time first. Use separate trays and leave space around each item; if temperatures differ, use a compatible pack method or cook in separate batches.",
+        "Cook the frozen main item and chips according to their respective packets, including any turning, standing or checking instructions. Only cook directly from frozen when the packet says to.",
+        "Cook the frozen peas following their packet instructions. Heat the baked beans separately according to the tin instructions, stirring as directed.",
+        "Check all items are cooked as instructed, then serve the main item with the chips, peas and baked beans."
+      ],
+      "hacks": [
+        "Use the same chips, peas and baked beans across these meals to simplify the shopping list.",
+        "Take out only the portions you plan to cook and follow the storage instructions on each pack."
+      ],
+      "allergens": {
+        "uk_14": [
+          "cereals_containing_gluten",
+          "fish",
+          "eggs",
+          "milk"
+        ],
+        "notes": [
+          "Conservative planning exclusions include common coating or recipe variants; the exact product can differ."
+        ],
+        "check_labels_for": [
+          "2 frozen cod fishcakes",
+          "frozen oven chips",
+          "tinned baked beans",
+          "may contain warnings",
+          "coatings and seasonings"
+        ],
+        "warning": "Check the exact product's ingredients and allergen label each time. This generic recipe does not verify any brand or preparation method."
+      },
+      "dietary": {
+        "vegetarian": false,
+        "vegan": false,
+        "contains_meat": false,
+        "contains_fish_or_shellfish": true
+      },
+      "meal_type": "single",
+      "cook_servings": 1,
+      "effort": "low",
+      "equipment": [
+        "oven",
+        "baking_tray",
+        "saucepan"
+      ],
+      "cost": {
+        "band": "low",
+        "estimated_per_portion": 2.5,
+        "estimate_only": true,
+        "note": "Illustrative planning estimate, not a live price; selected packs and portions change the cost."
+      },
+      "prep_components": [],
+      "ingredient_notes": "Portions are planning defaults per diner. Pizza uses a smaller chip portion. Scale for the household, check the pack serving sizes and cook whole pieces as needed. No next-day lunch is automatically reserved.",
+      "cooking_sources": [
+        "https://www.food.gov.uk/safety-hygiene/cooking-your-food"
+      ]
+    },
+    {
+      "name": "Frozen Sausages, Chips, Peas & Beans",
+      "overview": "A low-preparation freezer meal with oven chips, peas and baked beans.",
+      "total_minutes": 35,
+      "servings": 1,
+      "cuisine": "British",
+      "tags": [
+        "freezer_convenience",
+        "low_prep",
+        "oven",
+        "chips",
+        "peas",
+        "baked_beans"
+      ],
+      "techniques": [
+        "oven_baking",
+        "timing"
+      ],
+      "nutrition_per_serving": {},
+      "nutrition_note": "Nutrition depends on the exact products and portions. Use the selected packs; no brand-specific calories or macros are assumed.",
+      "balance": {
+        "protein": "pork",
+        "carbohydrate": "oven chips",
+        "vegetables": "peas and baked beans",
+        "fat": "varies by selected products"
+      },
+      "ingredients": [
+        "2 frozen pork sausages",
+        "200g frozen oven chips",
+        "80g frozen peas",
+        "100g tinned baked beans"
+      ],
+      "method": [
+        "Read the main item's and chips' packet instructions before starting; the displayed time is only a planning estimate.",
+        "Preheat the oven as directed. Start the item needing the longer time first. Use separate trays and leave space around each item; if temperatures differ, use a compatible pack method or cook in separate batches.",
+        "Cook the frozen main item and chips according to their respective packets, including any turning, standing or checking instructions. Only cook directly from frozen when the packet says to.",
+        "Cook the frozen peas following their packet instructions. Heat the baked beans separately according to the tin instructions, stirring as directed.",
+        "Check all items are cooked as instructed, then serve the main item with the chips, peas and baked beans."
+      ],
+      "hacks": [
+        "Use the same chips, peas and baked beans across these meals to simplify the shopping list.",
+        "Take out only the portions you plan to cook and follow the storage instructions on each pack."
+      ],
+      "allergens": {
+        "uk_14": [
+          "cereals_containing_gluten",
+          "sulphites",
+          "soybeans",
+          "mustard",
+          "celery"
+        ],
+        "notes": [
+          "Conservative planning exclusions include common coating or recipe variants; the exact product can differ."
+        ],
+        "check_labels_for": [
+          "2 frozen pork sausages",
+          "frozen oven chips",
+          "tinned baked beans",
+          "may contain warnings",
+          "coatings and seasonings"
+        ],
+        "warning": "Check the exact product's ingredients and allergen label each time. This generic recipe does not verify any brand or preparation method."
+      },
+      "dietary": {
+        "vegetarian": false,
+        "vegan": false,
+        "contains_meat": true,
+        "contains_fish_or_shellfish": false
+      },
+      "meal_type": "single",
+      "cook_servings": 1,
+      "effort": "low",
+      "equipment": [
+        "oven",
+        "baking_tray",
+        "saucepan"
+      ],
+      "cost": {
+        "band": "low",
+        "estimated_per_portion": 2.5,
+        "estimate_only": true,
+        "note": "Illustrative planning estimate, not a live price; selected packs and portions change the cost."
+      },
+      "prep_components": [],
+      "ingredient_notes": "Portions are planning defaults per diner. Pizza uses a smaller chip portion. Scale for the household, check the pack serving sizes and cook whole pieces as needed. No next-day lunch is automatically reserved.",
+      "cooking_sources": [
+        "https://www.food.gov.uk/safety-hygiene/cooking-your-food"
+      ]
+    },
+    {
+      "name": "Frozen Vegetable Fingers, Chips, Peas & Beans",
+      "overview": "A low-preparation freezer meal with oven chips, peas and baked beans.",
+      "total_minutes": 30,
+      "servings": 1,
+      "cuisine": "British",
+      "tags": [
+        "freezer_convenience",
+        "low_prep",
+        "oven",
+        "chips",
+        "peas",
+        "baked_beans"
+      ],
+      "techniques": [
+        "oven_baking",
+        "timing"
+      ],
+      "nutrition_per_serving": {},
+      "nutrition_note": "Nutrition depends on the exact products and portions. Use the selected packs; no brand-specific calories or macros are assumed.",
+      "balance": {
+        "protein": "vegetables and beans",
+        "carbohydrate": "oven chips",
+        "vegetables": "peas and baked beans",
+        "fat": "varies by selected products"
+      },
+      "ingredients": [
+        "4 frozen vegetarian vegetable fingers",
+        "200g frozen oven chips",
+        "80g frozen peas",
+        "100g tinned baked beans"
+      ],
+      "method": [
+        "Read the main item's and chips' packet instructions before starting; the displayed time is only a planning estimate.",
+        "Preheat the oven as directed. Start the item needing the longer time first. Use separate trays and leave space around each item; if temperatures differ, use a compatible pack method or cook in separate batches.",
+        "Cook the frozen main item and chips according to their respective packets, including any turning, standing or checking instructions. Only cook directly from frozen when the packet says to.",
+        "Cook the frozen peas following their packet instructions. Heat the baked beans separately according to the tin instructions, stirring as directed.",
+        "Check all items are cooked as instructed, then serve the main item with the chips, peas and baked beans."
+      ],
+      "hacks": [
+        "Use the same chips, peas and baked beans across these meals to simplify the shopping list.",
+        "Take out only the portions you plan to cook and follow the storage instructions on each pack."
+      ],
+      "allergens": {
+        "uk_14": [
+          "cereals_containing_gluten",
+          "eggs",
+          "milk"
+        ],
+        "notes": [
+          "Conservative planning exclusions include common coating or recipe variants; the exact product can differ."
+        ],
+        "check_labels_for": [
+          "4 frozen vegetarian vegetable fingers",
+          "frozen oven chips",
+          "tinned baked beans",
+          "may contain warnings",
+          "vegetarian suitability"
+        ],
+        "warning": "Check the exact product's ingredients and allergen label each time. This generic recipe does not verify any brand or preparation method."
+      },
+      "dietary": {
+        "vegetarian": true,
+        "vegan": false,
+        "contains_meat": false,
+        "contains_fish_or_shellfish": false
+      },
+      "meal_type": "single",
+      "cook_servings": 1,
+      "effort": "low",
+      "equipment": [
+        "oven",
+        "baking_tray",
+        "saucepan"
+      ],
+      "cost": {
+        "band": "low",
+        "estimated_per_portion": 2.5,
+        "estimate_only": true,
+        "note": "Illustrative planning estimate, not a live price; selected packs and portions change the cost."
+      },
+      "prep_components": [],
+      "ingredient_notes": "Portions are planning defaults per diner. Pizza uses a smaller chip portion. Scale for the household, check the pack serving sizes and cook whole pieces as needed. No next-day lunch is automatically reserved.",
+      "cooking_sources": [
+        "https://www.food.gov.uk/safety-hygiene/cooking-your-food"
+      ]
     }
   ]
 }

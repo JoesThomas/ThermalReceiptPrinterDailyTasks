@@ -10,7 +10,10 @@ PLURALS = {'onions': 'onion', 'carrots': 'carrot', 'peppers': 'pepper',
            'lemons': 'lemon', 'limes': 'lime', 'cloves': 'clove', 'fillets': 'fillet',
            'breasts': 'breast', 'thighs': 'thigh', 'chickens': 'chicken', 'beans': 'bean', 'noodles': 'noodle',
            'apples': 'apple', 'bananas': 'banana', 'avocados': 'avocado',
-           'cucumbers': 'cucumber', 'mushrooms': 'mushroom', 'courgettes': 'courgette'}
+           'cucumbers': 'cucumber', 'mushrooms': 'mushroom', 'courgettes': 'courgette',
+           'pizzas': 'pizza', 'fingers': 'finger', 'kievs': 'kiev',
+           'nuggets': 'nugget', 'goujons': 'goujon', 'fishcakes': 'fishcake',
+           'sausages': 'sausage'}
 SINGULAR_TO_PLURAL = {singular: plural for plural, singular in PLURALS.items()}
 UNITS = {'kg': ('g', 1000), 'g': ('g', 1), 'l': ('ml', 1000), 'ml': ('ml', 1),
          'tsp': ('tsp', 1), 'tbsp': ('tsp', 3), 'tin': ('tin', 1), 'tins': ('tin', 1),
