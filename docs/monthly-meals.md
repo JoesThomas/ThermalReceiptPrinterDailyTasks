@@ -64,3 +64,23 @@ The calendar shows lunch on the date it is planned for, using the previous dinne
 Baker, butcher, greengrocer, fishmonger and local shop ingredients stay off the supermarket checklist. Open the local supplier’s dated list from **Shopping lists** to review, print or copy it. Edit the category’s supplier under **Shopping days & shops** if you prefer to buy it elsewhere. The app adds a task for each scheduled specialist shop visit, with a link to the list. Existing unfinished weekday shop tasks are reconciled to the weekend when tasks refresh; completed tasks are kept. Automated shop tasks appear as due only on their scheduled weekend day.
 
 With household profiles configured, expand **Who’s eating?** on a date to skip individual breakfasts, lunches or dinners. Mark all three for a full day away. Breakfast and dinner portions follow their own headcounts; lunch counts adjust extras reserved with the previous dinner where the recipe provides them. A home meal is paused when nobody needs it. Saved dinner recipes remain available if attendance changes again, and household dietary restrictions still apply. The planner does not invent a standalone lunch when there is no suitable previous dinner.
+
+
+## Convenient freezer meals
+
+The recipe library includes frozen pizza, fish fingers, battered fish, chicken
+Kievs, chicken nuggets, chicken goujons, fishcakes, pork sausages and vegetarian
+vegetable fingers, each with frozen oven chips, frozen peas and tinned baked
+beans. Select them under **Meals → Household & meal settings**, using the same
+recipe preferences as other dinners. Existing saved menus are not replaced.
+
+Portions are explicit per-diner planning defaults, scaled using the household
+settings. The pizza recipe has a smaller chip portion. Shared sides combine in
+shopping lists and frozen/tinned items use the normal cupboard/freezer shop.
+These are single meals with no assumed next-day lunch.
+
+Timings and costs are illustrative planning estimates. No product-specific
+nutrition is invented. Check the selected packs for portions, allergens, dietary
+suitability, cooking and storage instructions, including whether cooking from
+frozen is allowed. Recipes use those instructions rather than a universal oven
+temperature or time, following [FSA cooking guidance](https://www.food.gov.uk/safety-hygiene/cooking-your-food).
