@@ -949,10 +949,13 @@ process.on('exit', () => child.kill());
   const shopA11y=await require('./browser_meal_shop.cjs')(page);
   if(shopA11y) accessibilityFailures.push(shopA11y);
   await page.goto('http://receipt.test/quick-print');
-  await page.getByLabel('Receipt text').fill('Buy oat milk\nCall the garage');
+  await page.getByLabel('Title (optional)', {exact:true}).fill('Weekend errands');
+  await page.getByLabel('Receipt text', {exact:true}).fill('Buy oat milk\nCall the garage');
   await page.getByLabel('Add a tick box', {exact:false}).check();
   await page.getByRole('button',{name:'Preview',exact:true}).click();
-  assert.match(await page.locator('main pre').innerText(), /\[ \] Buy oat milk\n\[ \] Call the garage/);
+  assert.equal((await page.locator('main pre').innerText()).trim(),
+    'Weekend errands\n\n[ ] Buy oat milk\n[ ] Call the garage');
+  assert.equal(await page.getByLabel('Title (optional)', {exact:true}).inputValue(), 'Weekend errands');
   await page.getByRole('button',{name:'Print note',exact:true}).click();
   await page.locator('main').getByText('Quick Print note queued.',{exact:true}).waitFor();
   const noteArgs = await page.evaluate(async () => (await fetch('/__fixture_last_print')).json());

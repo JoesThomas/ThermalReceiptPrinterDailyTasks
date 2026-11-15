@@ -20,6 +20,16 @@ class WeeklyToolsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             quick_note.format_note("x\n" * 81)
 
+    def test_quick_note_title_wraps_without_checkboxes_and_counts_towards_print_limit(self):
+        text = quick_note.format_note("Buy milk", True, 12, title="Weekend\x00 shopping")
+        self.assertEqual([line.strip() for line in text.splitlines()],
+                         ["Weekend", "shopping", "", "[ ] Buy milk"])
+        self.assertEqual(quick_note.format_note("Buy milk", title=" \n "), "Buy milk\n")
+        with self.assertRaisesRegex(ValueError, "80 lines"):
+            quick_note.format_note("x\n" * 79, title="Heading")
+        with self.assertRaisesRegex(ValueError, "characters for the title"):
+            quick_note.format_note("Buy milk", title="x" * (quick_note.MAX_TITLE_CHARS + 1))
+
     def test_print_payload_is_not_retained_after_printer_failure(self):
         with tempfile.TemporaryDirectory() as temp:
             key = quick_note.spool(temp, "Private text\n")

@@ -6,8 +6,9 @@
   appointments. A visit has no fixed time, so this is a prompt to check timing.
   Calendar coverage and forecast assumptions are labelled. Sunday’s Actions
   receipt prints at most two review items; other days keep the usual follow-ups.
-- **More tools → Quick Print** prints text as a separate receipt. Preview
-  before sending, or choose to add a tick box to each non-empty input line.
+- **More tools → Quick Print** prints text as a separate receipt. Add an
+  optional centred title, and preview before sending. Tick boxes apply to
+  non-empty receipt text lines only; the title never gets one.
   Wrapped lines continue under their original item. Quick Print uses the
   configured paper width and existing printer status; it does not enter the
   receipt archive. The worker uses a private temporary spool file that it
