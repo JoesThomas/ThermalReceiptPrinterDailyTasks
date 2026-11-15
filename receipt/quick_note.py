@@ -1,7 +1,7 @@
 """Format and spool a one-off note without placing it in the receipt archive."""
 from pathlib import Path
 import re
-from textwrap import TextWrapper
+from textwrap import TextWrapper, wrap
 from uuid import uuid4
 
 from receipt.profile import COLUMNS
@@ -10,11 +10,14 @@ from storage import write_json, read_json_object
 
 MAX_CHARS = 2000
 MAX_LINES = 80
+MAX_TITLE_CHARS = 120
 
 
-def format_note(text, checklist=False, columns=COLUMNS):
+def format_note(text, checklist=False, columns=COLUMNS, *, title=""):
     if len(text) > MAX_CHARS:
         raise ValueError("Use at most 2,000 characters.")
+    if len(title) > MAX_TITLE_CHARS:
+        raise ValueError(f"Use at most {MAX_TITLE_CHARS} characters for the title.")
     wrapper = TextWrapper(width=columns, replace_whitespace=False,
                           initial_indent="[ ] " if checklist else "",
                           subsequent_indent="    " if checklist else "")
@@ -23,6 +26,9 @@ def format_note(text, checklist=False, columns=COLUMNS):
         lines.extend(wrapper.wrap(raw.strip()) or [""])
     if not any(lines):
         raise ValueError("Enter some printable text.")
+    heading = " ".join(printer_safe_text(title).split())
+    if heading:
+        lines = [line.center(columns).rstrip() for line in wrap(heading, width=columns)] + [""] + lines
     if len(lines) > MAX_LINES:
         raise ValueError("The note would print more than 80 lines. Shorten it before printing.")
     return "\n".join(lines) + "\n"

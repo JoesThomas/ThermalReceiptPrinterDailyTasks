@@ -18,11 +18,17 @@
             <section data-private>
                 <form method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label for="quick-note-title">Title (optional)</label>
+                    <input type="text"
+                           id="quick-note-title"
+                           name="title"
+                           maxlength="{{ max_title_chars }}"
+                           value="{{ title }}">
                     <label for="quick-note">Receipt text</label>
                     <textarea id="quick-note" name="text" rows="9" maxlength="2000" required>{{ text }}</textarea>
                     <label>
                         <input type="checkbox" name="checklist" {% if checklist %}checked{% endif %}>
-                        Add a tick box to each non-empty line
+                        Add a tick box to each non-empty line of receipt text
                     </label>
                     <button name="intent" value="preview">Preview</button>
                     <button class="primary" name="intent" value="print">Print note</button>

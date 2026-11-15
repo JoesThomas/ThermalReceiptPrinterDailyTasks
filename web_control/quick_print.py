@@ -14,12 +14,13 @@ def register(app, login_required, start_print, root):
     @app.route("/quick-print", methods=["GET", "POST"])
     @login_required
     def quick_print():
-        text, preview, checklist = "", "", False
+        title, text, preview, checklist = "", "", "", False
         if request.method == "POST":
+            title = request.form.get("title", "")
             text = request.form.get("text", "")
             checklist = request.form.get("checklist") == "on"
             try:
-                preview = quick_note.format_note(text, checklist)
+                preview = quick_note.format_note(text, checklist, title=title)
                 if request.form.get("intent") == "print":
                     signature = ["--quick-note-content", sha256(preview.encode()).hexdigest()]
                     if repeat_guard.recent(root, signature) and request.form.get("allow_repeat") != "on":
@@ -42,7 +43,11 @@ def register(app, login_required, start_print, root):
                         flash(error)
             except ValueError as error:
                 flash(str(error))
+                title = title[:quick_note.MAX_TITLE_CHARS]
                 text = text[:quick_note.MAX_CHARS]
             except OSError:
                 flash("Quick Print could not prepare the note.")
-        return render_template("quick_print.html", text=text, preview=preview, checklist=checklist)
+        return render_template(
+            "quick_print.html", title=title, max_title_chars=quick_note.MAX_TITLE_CHARS,
+            text=text, preview=preview, checklist=checklist,
+        )
