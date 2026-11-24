@@ -6,16 +6,50 @@ from uuid import uuid4
 
 from receipt.profile import COLUMNS
 from receipt.text import printer_safe_text
-from storage import write_json, read_json_object
+from storage import PrivateStore, write_json, read_json_object
 
-MAX_CHARS = 2000
-MAX_LINES = 80
+MAX_CHARS = 20_000
+MAX_ALLOWED_CHARS = 100_000
+# The character setting is the user-facing limit; wrapped lines must not impose
+# an unexpected smaller limit, even when every character is on its own line.
+MAX_LINES = MAX_ALLOWED_CHARS + 125
+MAX_RENDERED_CHARS = MAX_ALLOWED_CHARS * 10
 MAX_TITLE_CHARS = 120
 
 
-def format_note(text, checklist=False, columns=COLUMNS, *, title=""):
-    if len(text) > MAX_CHARS:
-        raise ValueError("Use at most 2,000 characters.")
+def validate_limit(value):
+    if type(value) is not int or not 1 <= value <= MAX_ALLOWED_CHARS:
+        raise ValueError(f"Choose a character limit from 1 to {MAX_ALLOWED_CHARS:,}.")
+
+
+def settings_store(root):
+    def validate(value):
+        if not isinstance(value, dict) or value.get("version") != 1:
+            raise ValueError("Invalid Quick Print settings.")
+        validate_limit(value.get("max_chars"))
+
+    return PrivateStore(
+        Path(root) / "data" / "quick_print_settings.json",
+        default=lambda: dict(version=1, max_chars=MAX_CHARS),
+        validate=validate, max_bytes=1024,
+    )
+
+
+def length_advice(note):
+    count = len(note.splitlines())
+    if count > 80:
+        return (
+            f"This layout has {count:,} printed lines and will make a long receipt. "
+            "Consider keeping only key points, splitting it into shorter notes, "
+            "or reading the full text on screen."
+        )
+    return ""
+
+
+def format_note(text, checklist=False, columns=COLUMNS, *, title="", max_chars=MAX_CHARS):
+    validate_limit(max_chars)
+    if len(text) > max_chars:
+        raise ValueError(f"Use at most {max_chars:,} characters, or increase the limit in Quick Print settings.")
     if len(title) > MAX_TITLE_CHARS:
         raise ValueError(f"Use at most {MAX_TITLE_CHARS} characters for the title.")
     wrapper = TextWrapper(width=columns, replace_whitespace=False,
@@ -29,8 +63,6 @@ def format_note(text, checklist=False, columns=COLUMNS, *, title=""):
     heading = " ".join(printer_safe_text(title).split())
     if heading:
         lines = [line.center(columns).rstrip() for line in wrap(heading, width=columns)] + [""] + lines
-    if len(lines) > MAX_LINES:
-        raise ValueError("The note would print more than 80 lines. Shorten it before printing.")
     return "\n".join(lines) + "\n"
 
 
@@ -55,7 +87,8 @@ def send(root, key):
     path = path_for(root, key)
     text = read_json_object(path).get("text")
     path.unlink(missing_ok=True)
-    if not isinstance(text, str) or not text or len(text.splitlines()) > MAX_LINES:
+    if (not isinstance(text, str) or not text or len(text) > MAX_RENDERED_CHARS
+            or len(text.splitlines()) > MAX_LINES):
         raise ValueError("Quick Print note unavailable")
     printer = ContentPrinter(open_printer(initial_cut=False))
     try:
