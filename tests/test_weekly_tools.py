@@ -17,16 +17,15 @@ class WeeklyToolsTests(unittest.TestCase):
         self.assertEqual(quick_note.format_note("First\nSecond"), "First\nSecond\n")
         with self.assertRaises(ValueError):
             quick_note.format_note("\x00")
-        with self.assertRaises(ValueError):
-            quick_note.format_note("x\n" * 81)
+        self.assertEqual(len(quick_note.format_note("x\n" * 81).splitlines()), 81)
 
     def test_quick_note_title_wraps_without_checkboxes_and_counts_towards_print_limit(self):
         text = quick_note.format_note("Buy milk", True, 12, title="Weekend\x00 shopping")
         self.assertEqual([line.strip() for line in text.splitlines()],
                          ["Weekend", "shopping", "", "[ ] Buy milk"])
         self.assertEqual(quick_note.format_note("Buy milk", title=" \n "), "Buy milk\n")
-        with self.assertRaisesRegex(ValueError, "80 lines"):
-            quick_note.format_note("x\n" * 79, title="Heading")
+        long_note = quick_note.format_note("x\n" * 79, title="Heading")
+        self.assertIn("81 printed lines", quick_note.length_advice(long_note))
         with self.assertRaisesRegex(ValueError, "characters for the title"):
             quick_note.format_note("Buy milk", title="x" * (quick_note.MAX_TITLE_CHARS + 1))
 

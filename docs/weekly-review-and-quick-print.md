@@ -9,6 +9,13 @@
 - **More tools → Quick Print** prints text as a separate receipt. Add an
   optional centred title, and preview before sending. Tick boxes apply to
   non-empty receipt text lines only; the title never gets one.
+  Open **Quick Print settings** to edit the body character limit (default 20,000,
+  supported range 1–100,000). The title still has its separate 120-character limit.
+  The live counter flags long drafts; preview shows the actual wrapped line count
+  and suggests trimming, splitting or reading on screen above 80 printed lines.
+  This is advice, not the former 80-line block. Saving a limit keeps the draft,
+  including when it is longer than the new limit. Preferences are stored locally
+  in the private, Git-ignored `data/quick_print_settings.json` file.
   Wrapped lines continue under their original item. Quick Print uses the
   configured paper width and existing printer status; it does not enter the
   receipt archive. The worker uses a private temporary spool file that it

@@ -8,6 +8,7 @@
         <link rel="stylesheet"
               href="{{ url_for('static', filename='control.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+        <script src="{{ url_for('static', filename='quick-print.js') }}" defer></script>
     </head>
     <body>
         {% include 'navigation.html' %}
@@ -15,33 +16,65 @@
             <h1>Quick Print</h1>
             <p>Print a separate note or checklist. Notes are not kept in the receipt archive.</p>
             {% for message in get_flashed_messages() %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
-            <section data-private>
-                <form method="post">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <label for="quick-note-title">Title (optional)</label>
-                    <input type="text"
-                           id="quick-note-title"
-                           name="title"
-                           maxlength="{{ max_title_chars }}"
-                           value="{{ title }}">
-                    <label for="quick-note">Receipt text</label>
-                    <textarea id="quick-note" name="text" rows="9" maxlength="2000" required>{{ text }}</textarea>
-                    <label>
-                        <input type="checkbox" name="checklist" {% if checklist %}checked{% endif %}>
-                        Add a tick box to each non-empty line of receipt text
-                    </label>
-                    <button name="intent" value="preview">Preview</button>
-                    <button class="primary" name="intent" value="print">Print note</button>
-                    <label>
-                        <input type="checkbox" name="allow_repeat">
-                        Allow intentional reprint
-                    </label>
-                </form>
-                {% if preview %}
-                    <h2>Print layout</h2>
-                    <pre class="quick-note-preview" tabindex="0" aria-label="Print layout">{{ preview }}</pre>
-                {% endif %}
-            </section>
+            {% if settings_error %}
+                <p role="alert">{{ settings_error }}</p>
+            {% else %}
+                <section data-private>
+                    <form method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <label for="quick-note-title">Title (optional)</label>
+                        <input type="text"
+                               id="quick-note-title"
+                               name="title"
+                               maxlength="{{ max_title_chars }}"
+                               value="{{ title }}">
+                        <label for="quick-note">Receipt text</label>
+                        <textarea id="quick-note"
+                                  name="text"
+                                  rows="9"
+                                  maxlength="{{ max_chars }}"
+                                  aria-describedby="quick-note-count quick-note-advice"
+                                  required>{{ text }}</textarea>
+                        <p id="quick-note-count">{{ text|length }} / {{ max_chars }} characters</p>
+                        <p id="quick-note-advice">
+                            {% if text|length > 2000 %}
+                                Long note: preview the layout and consider printing only key points or splitting it into shorter notes.
+                            {% endif %}
+                        </p>
+                        <label>
+                            <input type="checkbox" name="checklist" {% if checklist %}checked{% endif %}>
+                            Add a tick box to each non-empty line of receipt text
+                        </label>
+                        <button name="intent" value="preview">Preview</button>
+                        <button class="primary" name="intent" value="print">Print note</button>
+                        <label>
+                            <input type="checkbox" name="allow_repeat">
+                            Allow intentional reprint
+                        </label>
+                        <details>
+                            <summary>Quick Print settings</summary>
+                            <label for="quick-max-chars">Maximum body characters</label>
+                            <input type="number"
+                                   id="quick-max-chars"
+                                   name="max_chars"
+                                   min="1"
+                                   max="{{ max_allowed_chars }}"
+                                   step="1"
+                                   value="{{ max_chars }}">
+                            <p>
+                                2,000 suits short notes; 20,000 allows longer text. Choose up to {{ max_allowed_chars }}. Titles have their own 120-character limit.
+                            </p>
+                            <button name="intent" value="save_settings" formnovalidate>Save character limit</button>
+                        </details>
+                    </form>
+                    {% if preview %}
+                        <h2>Print layout</h2>
+                        <p>{{ preview.splitlines()|length }} printed lines.</p>
+                        {% if advice %}<p class="helper" role="status">{{ advice }}</p>{% endif %}
+                        <pre class="quick-note-preview" tabindex="0" aria-label="Print layout">{{ preview }}</pre>
+                    {% endif %}
+                </section>
+            {% endif %}
             <a href="{{ url_for('preview') }}">View printer status</a>
         </main>
     </body>

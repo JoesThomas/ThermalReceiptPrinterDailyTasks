@@ -269,3 +269,6 @@ data/quick_notes/
 data/use_first.json
 data/use_first.lock
 data/subscriptions.lock
+
+# Private Quick Print preferences
+data/quick_print_settings.json*
